@@ -292,6 +292,12 @@ CVE-2026-35414
 # default gemset becomes worthwhile.
 CVE-2026-41316
 
+# CVE-2026-42246 (net-imap) — STARTTLS stripping via invalid response
+# timing. Default gem bundled with ruby:<ver>-slim; the image does not
+# use IMAP. Fix available (0.3.10 / 0.4.24 / 0.5.14); will be
+# addressed during .trivyignore audit. Issue #149.
+CVE-2026-42246
+
 # jq / libjq1 (Debian trixie, jq 1.7.1) — used for JSON parsing in
 # CI workflows (docs-deploy version-command), not on untrusted input.
 # No Debian fix available (status=affected). Issue #81.
