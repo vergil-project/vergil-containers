@@ -22,15 +22,11 @@ jobs:
   hadolint:
     name: Lint Dockerfiles
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/wphillipmoore/dev-base:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-
-      - name: Download Hadolint
-        run: |
-          curl -sL "https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-Linux-x86_64" \
-            -o /usr/local/bin/hadolint
-          chmod +x /usr/local/bin/hadolint
 
       - name: Generate Dockerfiles from templates
         run: docker/generate.sh
