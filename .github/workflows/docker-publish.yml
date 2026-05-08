@@ -116,6 +116,8 @@ jobs:
           push: true
 
       - name: Trivy scan (amd64)
+        id: trivy-amd64
+        continue-on-error: true
         uses: wphillipmoore/standard-actions/actions/security/trivy@v1.4
         with:
           scan-type: image
@@ -125,6 +127,8 @@ jobs:
           trivyignores: .trivyignore
 
       - name: Trivy scan (arm64)
+        id: trivy-arm64
+        continue-on-error: true
         shell: bash
         env:
           TRIVY_IMAGE: aquasec/trivy:0.70.0
@@ -169,6 +173,14 @@ jobs:
         with:
           sarif_file: trivy-arm64.sarif
           category: "trivy-image-${{ matrix.language }}-${{ matrix.version }}-arm64"
+
+      - name: Fail if vulnerabilities found
+        if: >-
+          steps.trivy-amd64.outcome == 'failure' ||
+          steps.trivy-arm64.outcome == 'failure'
+        run: |
+          echo "::error::Trivy found CRITICAL/HIGH vulnerabilities"
+          exit 1
 
       - name: Get candidate digest
         id: digest
@@ -236,6 +248,8 @@ jobs:
           push: true
 
       - name: Trivy scan (amd64)
+        id: trivy-amd64
+        continue-on-error: true
         uses: wphillipmoore/standard-actions/actions/security/trivy@v1.4
         with:
           scan-type: image
@@ -245,6 +259,8 @@ jobs:
           trivyignores: .trivyignore
 
       - name: Trivy scan (arm64)
+        id: trivy-arm64
+        continue-on-error: true
         shell: bash
         env:
           TRIVY_IMAGE: aquasec/trivy:0.70.0
@@ -289,6 +305,14 @@ jobs:
         with:
           sarif_file: trivy-arm64.sarif
           category: trivy-image-base-arm64
+
+      - name: Fail if vulnerabilities found
+        if: >-
+          steps.trivy-amd64.outcome == 'failure' ||
+          steps.trivy-arm64.outcome == 'failure'
+        run: |
+          echo "::error::Trivy found CRITICAL/HIGH vulnerabilities"
+          exit 1
 
       - name: Get candidate digest
         id: digest
