@@ -332,6 +332,25 @@ CVE-2026-33845
 # known hosts (GitHub, PyPI, NodeSource). No Debian fix available.
 CVE-2026-33846
 
+# libgnutls30t64 (Debian trixie) — policy bypass due to case-sensitive
+# comparison in certificate name matching. Same trust boundary as above:
+# curl connects only to known hosts. No Debian fix available.
+CVE-2026-3833
+
+# libgnutls30t64 (Debian trixie) — authentication bypass via NUL
+# character in certificate name. Requires a malicious server certificate;
+# images connect only to known hosts. No Debian fix available.
+CVE-2026-42010
+
+# libgnutls30t64 (Debian trixie) — security bypass due to incorrect
+# name matching. Same trust boundary. No Debian fix available.
+CVE-2026-42011
+
+# libssh2-1t64 (Debian trixie) — security vulnerability in libssh2.
+# Used by git for SSH transport to known hosts (GitHub) only. No Debian
+# fix available (status=affected).
+CVE-2026-7598
+
 # linux-libc-dev — kernel s390/mm secure storage fixup. Container false
 # positive: containers use the host kernel, not the kernel headers in
 # the image.
@@ -340,6 +359,18 @@ CVE-2026-31568
 # linux-libc-dev — kernel ALSA ctxfi index mapping error check.
 # Container false positive: same rationale as above.
 CVE-2026-31777
+
+# linux-libc-dev — kernel driver core: enforce device_lock. Container
+# false positive: containers use the host kernel.
+CVE-2026-31688
+
+# linux-libc-dev — kernel f2fs: UAF caused by decrementing
+# sbi->nr_pages[]. Container false positive.
+CVE-2026-31715
+
+# linux-libc-dev — kernel ring-buffer: possible dereference. Container
+# false positive.
+CVE-2026-43272
 
 # openssh-client — arbitrary command execution via shell metacharacters
 # in username. Requires connecting to a malicious server with a crafted
