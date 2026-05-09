@@ -12,5 +12,8 @@ codex = "Co-Authored-By: wphillipmoore-codex <255923655+wphillipmoore-codex@user
 [workflows.post-merge]
 docker-publish = "docker-publish.yml"
 
+[publish]
+docs = true
+
 [dependencies]
 standard-tooling = "v1.4"
