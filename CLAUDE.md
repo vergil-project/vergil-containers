@@ -183,18 +183,24 @@ for the full inventory.
 ### GHCR Publishing
 
 Images are published as multi-architecture manifests (amd64 + arm64) to
-GitHub Container Registry by the `docker-publish.yml` workflow on push to
-`develop` or `main`, or via manual `workflow_dispatch`.
+GitHub Container Registry via the reusable `cd-docker-publish.yml`
+workflow, parameterized by an `image-prefix` input:
 
-The publish pipeline builds a candidate tag, scans both platforms with Trivy,
-attests build provenance (SLSA), then promotes the candidate to the final tag
-via `docker buildx imagetools create`.
+- **`dev-` images** — built on every push to `develop` and rebuilt
+  nightly via `ops.yml` to pick up base-image security patches.
+- **`prod-` images** — built on push to `main`, after the release
+  workflow generates a changelog, git tag, and GitHub release.
 
-Image naming: `ghcr.io/wphillipmoore/dev-{language}:{version}`
+Image naming: `ghcr.io/wphillipmoore/{prefix}-{language}:{version}`
+where `{prefix}` is `dev` or `prod`.
 
 Image URLs use the **user namespace** (`ghcr.io/wphillipmoore/...`), not a
 repo-specific namespace. This means image paths are stable across repo
 migrations — they do not change when the publishing repository changes.
+
+The publish pipeline builds a candidate tag, scans both platforms with Trivy,
+attests build provenance (SLSA), then promotes the candidate to the final tag
+via `docker buildx imagetools create`.
 
 #### Publishing prerequisites
 
@@ -204,7 +210,7 @@ explicitly grant this repository write access because the packages were
 originally created by the `standard-tooling` repository.
 
 Per-package setup (one-time, for each of `dev-base`, `dev-python`, `dev-java`,
-`dev-go`, `dev-ruby`, `dev-rust`):
+`dev-go`, `dev-ruby`, `dev-rust`, and the corresponding `prod-` packages):
 
 1. Navigate to the package settings page on GHCR.
 2. Under **Manage Actions access**, click **Add Repository**.
@@ -221,8 +227,7 @@ Per-package setup (one-time, for each of `dev-base`, `dev-python`, `dev-java`,
 | Go       | 1.25, 1.26       |
 | Rust     | 1.92, 1.93       |
 
-To trigger a rebuild manually: Actions > "Publish dev container images" >
-Run workflow.
+To trigger a rebuild manually: Actions > CD > Run workflow.
 
 ### Design Principles
 

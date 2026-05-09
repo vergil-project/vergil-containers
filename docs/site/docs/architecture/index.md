@@ -95,8 +95,17 @@ using QEMU emulation on the GitHub Actions runner.
 ## Publishing
 
 Images are published as multi-arch manifests to GitHub Container Registry
-on every push to `develop` or `main` via the `docker-publish.yml`
-workflow. The pipeline:
+via the reusable `cd-docker-publish.yml` workflow, parameterized by an
+`image-prefix` input that determines the naming convention:
+
+- **`dev-` images** (`ghcr.io/wphillipmoore/dev-{language}:{version}`) —
+  built on every push to `develop` and rebuilt nightly via `ops.yml` to
+  pick up base-image security patches.
+- **`prod-` images** (`ghcr.io/wphillipmoore/prod-{language}:{version}`) —
+  built on push to `main`, after the release workflow generates a
+  changelog, git tag, and GitHub release.
+
+The publish pipeline for each prefix:
 
 1. Builds a candidate tag for both platforms (amd64 + arm64)
 2. Scans each platform independently with Trivy (SARIF upload)
@@ -111,6 +120,22 @@ a repo-specific namespace. This means image paths are stable across
 repository migrations — they do not change when the publishing repository
 changes.
 
+Image naming: `ghcr.io/wphillipmoore/{prefix}-{language}:{version}` where
+`{prefix}` is `dev` or `prod`.
+
+### Release workflow
+
+Pushes to `main` trigger the `cd-release.yml` reusable workflow, which
+generates a changelog (via git-cliff), creates a git tag and GitHub
+release, and opens a version-bump PR back to `develop`. The docker
+publish job runs after the release completes.
+
+### Nightly rebuilds
+
+The `ops.yml` workflow runs daily at 06:15 UTC and rebuilds all `dev-`
+images. This ensures development images stay current with upstream
+security patches without waiting for a code change to trigger a build.
+
 ### Authentication
 
 The workflow authenticates with `GITHUB_TOKEN` using `packages: write`
@@ -118,13 +143,14 @@ permission. No personal access token or additional secret is needed.
 
 ### GHCR package access grants
 
-Each `dev-*` package on GHCR must explicitly grant this repository write
-access. The packages were originally created by the `standard-tooling`
-repository, so that repo has implicit write access. This repo does not,
-unless manually configured.
+Each `dev-*` and `prod-*` package on GHCR must explicitly grant this
+repository write access. The packages were originally created by the
+`standard-tooling` repository, so that repo has implicit write access.
+This repo does not, unless manually configured.
 
-Per-package setup (one-time, for each of `dev-python`, `dev-java`,
-`dev-go`, `dev-ruby`, `dev-rust`, `dev-base`):
+Per-package setup (one-time, for each of `dev-base`, `dev-python`,
+`dev-java`, `dev-go`, `dev-ruby`, `dev-rust`, and the corresponding
+`prod-` packages):
 
 1. Navigate to the package settings page on GHCR.
 2. Under **Manage Actions access**, click **Add Repository**.
