@@ -175,6 +175,11 @@ Every image includes (installed via shared fragments in `docker/common/`):
 - **jq**, git, curl, openssh-client
 - Language-specific package manager and linting tools
 
+The `dev-base` image includes additional documentation tooling (MkDocs
+Material, mike, semgrep). See the
+[images documentation](https://wphillipmoore.github.io/standard-tooling-docker/images/)
+for the full inventory.
+
 ### GHCR Publishing
 
 Images are published as multi-architecture manifests (amd64 + arm64) to
