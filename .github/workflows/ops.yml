@@ -1,0 +1,32 @@
+name: Ops
+
+on:
+  schedule:
+    - cron: '15 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  packages: write
+  security-events: write
+  attestations: write
+  id-token: write
+
+jobs:
+  github-config:
+    uses: wphillipmoore/standard-actions/.github/workflows/ops-github-config.yml@v1.5
+    permissions:
+      contents: read
+      issues: write
+
+  nightly-rebuild:
+    uses: ./.github/workflows/cd-docker-publish.yml
+    with:
+      image-prefix: dev
+    permissions:
+      packages: write
+      contents: read
+      security-events: write
+      attestations: write
+      id-token: write
