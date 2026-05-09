@@ -279,7 +279,7 @@ backwards-compatible.
 - Add `publish.yml` workflow (git tag + GitHub Release on push to
   `main`).
 - Bump `VERSION` to `1.1.0` via `st-prepare-release`.
-- Update `docs/repository-standards.md` to reflect real release model
+- Update `standard-tooling.toml` to reflect real release model
   (resolves issue #61).
 
 **Consumer impact:** None. Existing mutable tags still pushed.

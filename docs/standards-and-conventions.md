@@ -36,5 +36,5 @@ Conventions repository:
 
 ## Project-specific overlay
 
-Project-specific content lives in `docs/repository-standards.md` and is
-included from `CLAUDE.md`.
+Project-specific content lives in `standard-tooling.toml` at the
+repository root.
