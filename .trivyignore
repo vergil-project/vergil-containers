@@ -372,6 +372,31 @@ CVE-2026-31715
 # false positive.
 CVE-2026-43272
 
+# linux-libc-dev — kernel mm: "Dirty Frag" local privilege escalation.
+# Container false positive: containers use the host kernel. Fix available
+# in 6.12.86-1 but only affects the header package, not the running kernel.
+CVE-2026-43284
+
+# linux-libc-dev — kernel mm/page_alloc: clear page->private. Container
+# false positive.
+CVE-2026-43303
+
+# linux-libc-dev — kernel bpf: mark live registers for indirect jumps.
+# Container false positive.
+CVE-2026-43321
+
+# linux-libc-dev — kernel i3c: mipi-i3c-hci RING_CTRL_ABORT handling.
+# Container false positive.
+CVE-2026-43352
+
+# linux-libc-dev — kernel i3c: mipi-i3c-hci DMA ring dequeue race.
+# Container false positive.
+CVE-2026-43353
+
+# linux-libc-dev — kernel powerpc perf: check current->mm is alive.
+# Container false positive.
+CVE-2026-43416
+
 # openssh-client — arbitrary command execution via shell metacharacters
 # in username. Requires connecting to a malicious server with a crafted
 # username. Image uses ssh only for git remotes to known hosts (GitHub).
