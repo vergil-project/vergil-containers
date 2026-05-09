@@ -73,11 +73,6 @@ docker-docs serve   # Live-reloading preview at http://localhost:8000
 docker-docs build   # Build static site (validation)
 ```
 
-**Fragment prerequisites**: The wrapper automatically mounts a sibling
-`mq-rest-admin-common` clone into the container at
-`.mq-rest-admin-common`, matching the first `base_path` entry in all
-`mkdocs.yml` files.
-
 **Python repos**: When `pyproject.toml` is detected, the wrapper runs
 `uv sync --group docs` before mkdocs so that mkdocstrings and other
 Python-specific plugins are available.
