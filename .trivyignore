@@ -406,6 +406,10 @@ CVE-2026-43463
 CVE-2026-43464
 CVE-2026-43465
 
+# linux-libc-dev — kernel: rxrpc: Also unshare DATA/RESPONSE packets when
+# paged frags. Container false positive.
+CVE-2026-43500
+
 # openssh-client — arbitrary command execution via shell metacharacters
 # in username. Requires connecting to a malicious server with a crafted
 # username. Image uses ssh only for git remotes to known hosts (GitHub).
