@@ -397,6 +397,15 @@ CVE-2026-43353
 # Container false positive.
 CVE-2026-43416
 
+# linux-libc-dev — kernel: rxrpc, afs: Fix missing error pointer check.
+# Container false positive.
+CVE-2026-43463
+
+# linux-libc-dev — kernel: net/mlx5e: RX, Fix XDP multi-buf frag counting.
+# Container false positive.
+CVE-2026-43464
+CVE-2026-43465
+
 # openssh-client — arbitrary command execution via shell metacharacters
 # in username. Requires connecting to a malicious server with a crafted
 # username. Image uses ssh only for git remotes to known hosts (GitHub).
