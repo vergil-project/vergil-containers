@@ -20,8 +20,5 @@ docker-publish = "cd.yml"
 release = true
 docs = true
 
-[ci]
-versions = ["latest"]
-
 [dependencies]
 standard-tooling = "v1.4"
