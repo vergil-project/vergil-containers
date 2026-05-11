@@ -181,11 +181,11 @@ CVE-2026-0861
 
 CVE-2026-24882
 
-# Go stdlib CVEs in shfmt 3.12.0 and actionlint 1.7.11 binaries — neither
-# binary exercises the affected code paths (no TLS, no database/sql, no
-# archive processing, no URL parsing, no x509 cert handling). Both are
-# static linters operating on local files only. Awaiting shfmt /
-# actionlint rebuilds with patched Go (1.25.9 / 1.26.2).
+# Go stdlib CVEs in shfmt 3.13.1, actionlint 1.7.12, and git-cliff 2.13.1
+# binaries — none exercise the affected code paths (no DNS resolution,
+# no HTTP/2, no email parsing, no x509 cert handling). All are static
+# linters / changelog generators operating on local files only. Awaiting
+# upstream rebuilds with patched Go (1.26.3+).
 
 CVE-2025-47907
 CVE-2025-58183
@@ -198,6 +198,12 @@ CVE-2026-25679
 CVE-2026-32280
 CVE-2026-32281
 CVE-2026-32283
+CVE-2026-33810
+CVE-2026-33811
+CVE-2026-33814
+CVE-2026-39820
+CVE-2026-39836
+CVE-2026-42499
 
 # npm transitive dependencies from markdownlint-cli@0.47.0 — no fix
 # available without an upstream markdownlint-cli release.
