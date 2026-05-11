@@ -163,14 +163,14 @@ directives. `generate.sh` expands these to produce the final `Dockerfile`
 Every image includes (installed via shared fragments in `docker/common/`):
 
 - **Node.js 22** (via NodeSource apt repository)
-- **markdownlint-cli** (`0.47.0`)
+- **markdownlint-cli** (`0.48.0`)
 - **ShellCheck** (`0.11.0`)
-- **shfmt** (`3.12.0`)
-- **actionlint** (`1.7.11`)
-- **git-cliff** (`2.8.0`)
+- **shfmt** (`3.13.1`)
+- **actionlint** (`1.7.12`)
+- **git-cliff** (`2.13.1`)
 - **hadolint** (`2.14.0`)
 - **gh** (GitHub CLI, via official apt repository)
-- **uv** (`0.7.12`)
+- **uv** (`0.11.13`)
 - **yamllint** (`1.38.0`)
 - **jq**, git, curl, openssh-client
 - Language-specific package manager and linting tools
