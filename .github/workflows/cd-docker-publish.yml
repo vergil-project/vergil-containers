@@ -1,4 +1,4 @@
-name: Publish dev container images
+name: Publish container images
 
 on:
   workflow_call:
@@ -24,7 +24,7 @@ jobs:
     name: Lint Dockerfiles
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/wphillipmoore/dev-base:latest
+      image: ghcr.io/wphillipmoore/prod-base:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6

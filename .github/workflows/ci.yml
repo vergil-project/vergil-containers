@@ -24,7 +24,7 @@ jobs:
     name: "quality / hadolint"
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/wphillipmoore/dev-base:latest
+      image: ghcr.io/wphillipmoore/prod-base:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
