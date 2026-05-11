@@ -1,0 +1,1120 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Docker dev container images for the standard-tooling ecosystem">
+      
+      
+      
+      
+        <link rel="prev" href="../images/">
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+    
+    
+      
+        <title>Architecture - Standard Tooling Docker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.2afb09e1.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Standard Tooling Docker" class="md-header__button md-logo" aria-label="Standard Tooling Docker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Standard Tooling Docker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/wphillipmoore/standard-tooling-docker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    wphillipmoore/standard-tooling-docker
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../changelog/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Releases
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../images/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Images
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Standard Tooling Docker" class="md-nav__button md-logo" aria-label="Standard Tooling Docker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Standard Tooling Docker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/wphillipmoore/standard-tooling-docker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    wphillipmoore/standard-tooling-docker
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Releases
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Releases
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Changelog
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../releases/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Release Notes
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Release Notes
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v1.5.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    v1.5.0
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Images
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#build-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Build Strategy
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Build Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#templating" class="md-nav__link">
+    <span class="md-ellipsis">
+      Templating
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#version-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Version management
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-tooling-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Tooling Layer
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      Design Principles
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-architecture-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-Architecture Support
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#publishing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Publishing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Publishing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#image-namespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      Image namespace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#release-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Release workflow
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nightly-rebuilds" class="md-nav__link">
+    <span class="md-ellipsis">
+      Nightly rebuilds
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      Authentication
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ghcr-package-access-grants" class="md-nav__link">
+    <span class="md-ellipsis">
+      GHCR package access grants
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consumption" class="md-nav__link">
+    <span class="md-ellipsis">
+      Consumption
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#build-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Build Strategy
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Build Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#templating" class="md-nav__link">
+    <span class="md-ellipsis">
+      Templating
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#version-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Version management
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-tooling-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Tooling Layer
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      Design Principles
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-architecture-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-Architecture Support
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#publishing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Publishing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Publishing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#image-namespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      Image namespace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#release-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Release workflow
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nightly-rebuilds" class="md-nav__link">
+    <span class="md-ellipsis">
+      Nightly rebuilds
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      Authentication
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ghcr-package-access-grants" class="md-nav__link">
+    <span class="md-ellipsis">
+      GHCR package access grants
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consumption" class="md-nav__link">
+    <span class="md-ellipsis">
+      Consumption
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h1>
+<h2 id="build-strategy">Build Strategy<a class="headerlink" href="#build-strategy" title="Permanent link">&para;</a></h2>
+<p>All images are built from Dockerfile templates using a two-stage process:</p>
+<ol>
+<li><code>generate.sh</code> expands <code>Dockerfile.template</code> files by replacing
+   <code># @include</code> directives with the contents of shared fragments from
+   <code>docker/common/</code>.</li>
+<li><code>build.sh</code> calls <code>generate.sh</code> then runs <code>docker build</code> for every
+   language and version combination.</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker/
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── build.sh                    # Builds all images
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── generate.sh                 # Expands templates into Dockerfiles
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── common/
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   ├── github-cli.dockerfile
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   ├── node-markdownlint.dockerfile
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│   ├── path-defaults.dockerfile
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   ├── python-support.dockerfile
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│   └── validation-tools.dockerfile
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── base/Dockerfile.template
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── python/Dockerfile.template
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── ruby/Dockerfile.template
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── go/Dockerfile.template
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── java/Dockerfile.template
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>└── rust/Dockerfile.template
+</code></pre></div>
+<h3 id="templating">Templating<a class="headerlink" href="#templating" title="Permanent link">&para;</a></h3>
+<p>Each <code>Dockerfile.template</code> contains standard Dockerfile instructions plus
+<code># @include common/&lt;fragment&gt;.dockerfile</code> directives. <code>generate.sh</code>
+replaces each directive with the full contents of the referenced fragment,
+producing a final <code>Dockerfile</code> in the same directory.</p>
+<p>This eliminates duplication — shared tool installations (GitHub CLI,
+Node.js, markdownlint, validation tools) are maintained once in
+<code>docker/common/</code> and included by every template that needs them.</p>
+<h3 id="version-management">Version management<a class="headerlink" href="#version-management" title="Permanent link">&para;</a></h3>
+<p>All shared tool versions are pinned via <code>ARG</code> directives in the common
+fragments. A version bump is a one-line change in one file, applied to
+all images automatically at build time.</p>
+<h2 id="common-tooling-layer">Common Tooling Layer<a class="headerlink" href="#common-tooling-layer" title="Permanent link">&para;</a></h2>
+<p>Every language image includes the following shared fragments:</p>
+<ul>
+<li><strong><code>path-defaults.dockerfile</code></strong> — Sets PATH for <code>uv tool install</code>
+  entry points across GitHub Actions and local contexts.</li>
+<li><strong><code>node-markdownlint.dockerfile</code></strong> — Node.js via NodeSource apt repo
+  and markdownlint-cli via npm.</li>
+<li><strong><code>github-cli.dockerfile</code></strong> — GitHub CLI via the official apt repo.</li>
+<li><strong><code>validation-tools.dockerfile</code></strong> — Architecture-aware binary
+  installs of shellcheck, shfmt, actionlint, git-cliff, and hadolint.
+  Uses <code>TARGETARCH</code> (injected by Docker Buildx) to select the correct
+  binary for amd64 or arm64.</li>
+<li><strong><code>python-support.dockerfile</code></strong> — Minimal Python plus yamllint and
+  uv, used by non-Python images.</li>
+</ul>
+<p>Python-based images (<code>dev-python</code>, <code>dev-base</code>) install yamllint and uv
+directly via pip rather than the <code>python-support</code> fragment.</p>
+<p>The <code>dev-base</code> image includes all common fragments plus documentation
+tooling (MkDocs Material, mike, semgrep). It is the fallback image for
+repos with no detected language.</p>
+<h2 id="design-principles">Design Principles<a class="headerlink" href="#design-principles" title="Permanent link">&para;</a></h2>
+<p><strong>Thin images</strong> — Each image provides the language runtime, package
+manager, and common tooling layer. Project-specific dependencies (from
+lockfiles like <code>Gemfile.lock</code>, <code>uv.lock</code>, <code>go.sum</code>) are installed at
+container startup by the consuming repository's test script.</p>
+<p><strong>No repo-specific logic</strong> — Images are general-purpose dev containers.
+Any repository using the supported language can use them.</p>
+<p><strong>No duplication</strong> — Shared tooling is maintained in common fragments.
+Adding a tool to all images means editing one fragment file.</p>
+<h2 id="multi-architecture-support">Multi-Architecture Support<a class="headerlink" href="#multi-architecture-support" title="Permanent link">&para;</a></h2>
+<p>All images are published as multi-architecture manifests supporting
+<strong>amd64</strong> and <strong>arm64</strong>. Binary tool downloads in <code>validation-tools.dockerfile</code>
+use <code>TARGETARCH</code> (injected by Docker Buildx) to select the correct
+platform artifact.</p>
+<p>Local builds via <code>docker/build.sh</code> build for the host's native
+architecture only (for speed). The CI pipeline builds both platforms
+using QEMU emulation on the GitHub Actions runner.</p>
+<h2 id="publishing">Publishing<a class="headerlink" href="#publishing" title="Permanent link">&para;</a></h2>
+<p>Images are published as multi-arch manifests to GitHub Container Registry
+via the reusable <code>cd-docker-publish.yml</code> workflow, parameterized by an
+<code>image-prefix</code> input that determines the naming convention:</p>
+<ul>
+<li><strong><code>dev-</code> images</strong> (<code>ghcr.io/wphillipmoore/dev-{language}:{version}</code>) —
+  built on every push to <code>develop</code> and rebuilt nightly via <code>ops.yml</code> to
+  pick up base-image security patches.</li>
+<li><strong><code>prod-</code> images</strong> (<code>ghcr.io/wphillipmoore/prod-{language}:{version}</code>) —
+  built on push to <code>main</code>, after the release workflow generates a
+  changelog, git tag, and GitHub release.</li>
+</ul>
+<p>The publish pipeline for each prefix:</p>
+<ol>
+<li>Builds a candidate tag for both platforms (amd64 + arm64)</li>
+<li>Scans each platform independently with Trivy (SARIF upload)</li>
+<li>Attests build provenance (SLSA via GitHub attestations)</li>
+<li>Promotes the candidate to the final tag via <code>docker buildx imagetools create</code></li>
+<li>Verifies digest preservation between candidate and final</li>
+</ol>
+<h3 id="image-namespace">Image namespace<a class="headerlink" href="#image-namespace" title="Permanent link">&para;</a></h3>
+<p>Image URLs use the <strong>user namespace</strong> (<code>ghcr.io/wphillipmoore/...</code>), not
+a repo-specific namespace. This means image paths are stable across
+repository migrations — they do not change when the publishing repository
+changes.</p>
+<p>Image naming: <code>ghcr.io/wphillipmoore/{prefix}-{language}:{version}</code> where
+<code>{prefix}</code> is <code>dev</code> or <code>prod</code>.</p>
+<h3 id="release-workflow">Release workflow<a class="headerlink" href="#release-workflow" title="Permanent link">&para;</a></h3>
+<p>Pushes to <code>main</code> trigger the <code>cd-release.yml</code> reusable workflow, which
+generates a changelog (via git-cliff), creates a git tag and GitHub
+release, and opens a version-bump PR back to <code>develop</code>. The docker
+publish job runs after the release completes.</p>
+<h3 id="nightly-rebuilds">Nightly rebuilds<a class="headerlink" href="#nightly-rebuilds" title="Permanent link">&para;</a></h3>
+<p>The <code>ops.yml</code> workflow runs daily at 06:15 UTC and rebuilds all <code>dev-</code>
+images. This ensures development images stay current with upstream
+security patches without waiting for a code change to trigger a build.</p>
+<h3 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h3>
+<p>The workflow authenticates with <code>GITHUB_TOKEN</code> using <code>packages: write</code>
+permission. No personal access token or additional secret is needed.</p>
+<h3 id="ghcr-package-access-grants">GHCR package access grants<a class="headerlink" href="#ghcr-package-access-grants" title="Permanent link">&para;</a></h3>
+<p>Each <code>dev-*</code> and <code>prod-*</code> package on GHCR must explicitly grant this
+repository write access. The packages were originally created by the
+<code>standard-tooling</code> repository, so that repo has implicit write access.
+This repo does not, unless manually configured.</p>
+<p>Per-package setup (one-time, for each of <code>dev-base</code>, <code>dev-python</code>,
+<code>dev-java</code>, <code>dev-go</code>, <code>dev-ruby</code>, <code>dev-rust</code>, and the corresponding
+<code>prod-</code> packages):</p>
+<ol>
+<li>Navigate to the package settings page on GHCR.</li>
+<li>Under <strong>Manage Actions access</strong>, click <strong>Add Repository</strong>.</li>
+<li>Select <code>standard-tooling-docker</code>.</li>
+<li>Set role to <strong>Write</strong>.</li>
+</ol>
+<h2 id="consumption">Consumption<a class="headerlink" href="#consumption" title="Permanent link">&para;</a></h2>
+<p>Images are consumed via <code>st-docker-run</code> and <code>st-docker-test</code> in
+<a href="https://github.com/wphillipmoore/standard-tooling">standard-tooling</a>.
+<code>st-docker-run</code> runs arbitrary commands inside the matching container;
+<code>st-docker-test</code> auto-detects the project language and runs the test
+suite. Consuming repos can override the image with the <code>DOCKER_DEV_IMAGE</code>
+environment variable.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c8b220af.min.js"></script>
+      
+    
+  </body>
+</html>
