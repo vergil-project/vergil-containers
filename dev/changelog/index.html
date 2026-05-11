@@ -480,13 +480,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#unreleased" class="md-nav__link">
+  <a href="#150-2026-05-11" class="md-nav__link">
     <span class="md-ellipsis">
-      [Unreleased]
+      [1.5.0] - 2026-05-11
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[Unreleased]">
+    <nav class="md-nav" aria-label="[1.5.0] - 2026-05-11">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -502,6 +502,15 @@
   <a href="#ci" class="md-nav__link">
     <span class="md-ellipsis">
       CI
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chores" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chores
     </span>
   </a>
   
@@ -570,6 +579,8 @@
           
         
       
+        
+      
     
     
     
@@ -602,6 +613,11 @@
 
             </a>
             
+              
+              <label class="md-nav__link " for="__nav_2_2" id="__nav_2_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
           </div>
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
@@ -611,6 +627,29 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v1.5.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    v1.5.0
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
               
             
           </ul>
@@ -701,13 +740,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#unreleased" class="md-nav__link">
+  <a href="#150-2026-05-11" class="md-nav__link">
     <span class="md-ellipsis">
-      [Unreleased]
+      [1.5.0] - 2026-05-11
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[Unreleased]">
+    <nav class="md-nav" aria-label="[1.5.0] - 2026-05-11">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -723,6 +762,15 @@
   <a href="#ci" class="md-nav__link">
     <span class="md-ellipsis">
       CI
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chores" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chores
     </span>
   </a>
   
@@ -791,7 +839,7 @@
 <p>All notable changes to this project will be documented in this file.</p>
 <p>The format is based on <a href="https://keepachangelog.com/">Keep a Changelog</a>
 and this project adheres to <a href="https://semver.org/">Semantic Versioning</a>.</p>
-<h2 id="unreleased">[Unreleased]<a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="150-2026-05-11">[1.5.0] - 2026-05-11<a class="headerlink" href="#150-2026-05-11" title="Permanent link">&para;</a></h2>
 <h3 id="bug-fixes">Bug fixes<a class="headerlink" href="#bug-fixes" title="Permanent link">&para;</a></h3>
 <ul>
 <li>scope standalone markdownlint step to README.md only (#197) (#13)</li>
@@ -804,10 +852,62 @@ and this project adheres to <a href="https://semver.org/">Semantic Versioning</a
 <li>pin standard-tooling-pip fragment to v1.3 (#73)</li>
 <li>bump stale standard-actions trivy pins from @v1.1 to @v1.3 (#80)</li>
 <li>triage jq CVEs blocking docker-publish (post-#78) (#82)</li>
+<li>fix semgrep build and triage new Trivy CVEs (#110)</li>
+<li>add /github/home/.local/bin to PATH for GitHub Actions compatibility (#116)</li>
+<li>triage 8 new linux-libc-dev kernel CVEs blocking docker-publish (#118)</li>
+<li>triage linux-libc-dev kernel CVE blocking docker-publish (#129)</li>
+<li>remove candidate tag cleanup that deletes promoted images (#134)</li>
+<li>triage CVE-2026-33846 and fix trailing blank lines in workflow (#135)</li>
+<li>install uv in non-Python dev images (#136)</li>
+<li>add /workspace/.venv/bin to PATH for uv sync entry points (#142)</li>
+<li>revert /workspace/.venv/bin PATH addition from #141 (#144)</li>
+<li>suppress CVE-2026-42246 (net-imap) in Trivy ignore list (#150)</li>
+<li>suppress new linux-libc-dev kernel CVEs in Trivy ignore list (#151)</li>
+<li>suppress new gnutls, libssh2, and linux-libc-dev CVEs in Trivy ignore list (#158)</li>
+<li>use dev-base container for hadolint instead of downloading binary (#162)</li>
+<li>pass boolean to ci-security reusable workflow inputs (#163)</li>
+<li>ensure both Trivy scans run before gating on vulnerabilities (#166)</li>
+<li>suppress new linux-libc-dev kernel CVEs in Trivy ignore list (#171)</li>
+<li>suppress new linux-libc-dev kernel CVEs in Trivy ignore list (#177)</li>
+<li>suppress CVE-2026-43500 linux-libc-dev kernel CVE in Trivy ignore list (#178)</li>
+<li>pin go-test-coverage to v2.18.3 for hadolint DL3062</li>
 </ul>
 <h3 id="ci">CI<a class="headerlink" href="#ci" title="Permanent link">&para;</a></h3>
 <ul>
 <li>publish dev-docs container to GHCR (#27)</li>
+<li>bump docker/login-action to v4 and attest-build-provenance to v4 for Node.js 24 (#114)</li>
+<li>bump Docker actions to Node.js 24-compatible versions (#133)</li>
+<li>adopt standard-actions v1.5 reusable workflows and bump to 1.5.0 (#146)</li>
+<li>remove redundant bespoke shellcheck job (#148)</li>
+</ul>
+<h3 id="chores">Chores<a class="headerlink" href="#chores" title="Permanent link">&para;</a></h3>
+<ul>
+<li>suppress four new CVEs in trivyignore</li>
+<li>use .markdownlintignore for lint exclusions (#190) (#9)</li>
+<li>install standard-tooling plugin via marketplace (#12)</li>
+<li>ban MEMORY.md usage in CLAUDE.md (#35)</li>
+<li>add trivy-out.json to .gitignore (#36)</li>
+<li>vendor .githooks gate + .yamllint; clean stale CLAUDE.md refs (#53) (#54)</li>
+<li>migrate standard-actions refs from @develop to @v1.3 (#70)</li>
+<li>remove add-to-project.yml workflow (#76)</li>
+<li>upgrade standard-actions from @v1.3 to @v1.4 (#83)</li>
+<li>bump ST_TOOLING_TAG from v1.3 to v1.4 (#85)</li>
+<li>bootstrap st-config.toml for cache-first docker workflow (#93)</li>
+<li>strip pre-baked standard-tooling from all dev container images (#94) (#95)</li>
+<li>seed standard-tooling.toml (#98)</li>
+<li>strip config sections from repository-standards.md (#100)</li>
+<li>remove legacy st-config.toml (#102)</li>
+<li>add [workflows.post-merge] section listing docker-publish (#120)</li>
+<li>add memory management policy (#122)</li>
+<li>remove standalone markdownlint CI job (standard-tooling#476) (#124)</li>
+<li>update st-validate-local reference to st-validate (#159)</li>
+<li>fleet-wide config and workflow cleanup (#160)</li>
+<li>shorten issue template header comments to fit yamllint line-length (#164)</li>
+<li>migrate to reusable publish/docs workflows (#167)</li>
+<li>add [ci] section to standard-tooling.toml (#174)</li>
+<li>prepare release 1.0.0</li>
+<li>merge main into release/1.0.0</li>
+<li>prepare release 1.0.0</li>
 </ul>
 <h3 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h3>
 <ul>
@@ -818,6 +918,13 @@ and this project adheres to <a href="https://semver.org/">Semantic Versioning</a
 <li>add cliff config + regenerate CHANGELOG; sanity-check docs accuracy (#58)</li>
 <li>remove include directives and downgrade standards-and-conventions refs (#87)</li>
 <li>add versioned image tags spec and pushback review (#88)</li>
+<li>comprehensive documentation review for consistency (#90)</li>
+<li>add implementation plan and review docs for host-only tool guardrails (#96)</li>
+<li>add multi-arch design spec, implementation plan, and review reports (#126)</li>
+<li>fix hadolint arch labels and add revised alignment review (#130)</li>
+<li>update documentation to reflect current image contents and multi-arch publishing (#138)</li>
+<li>replace stale repository-standards.md references with standard-tooling.toml (#168)</li>
+<li>review and update repository documentation (#169)</li>
 </ul>
 <h3 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h3>
 <ul>
@@ -836,6 +943,12 @@ and this project adheres to <a href="https://semver.org/">Semantic Versioning</a
 <li>pin standard-tooling to rolling minor tag; rebuild on release (#51) (#52)</li>
 <li>prune dangling images and stale build cache after local build (#74)</li>
 <li>add jq to all dev container images (#78)</li>
+<li>add ~/.local/bin to default PATH in all dev container images (#103) (#104)</li>
+<li>bake pyyaml, semgrep, and hadolint into dev container images (#109)</li>
+<li>publish multi-arch (amd64 + arm64) dev container images (#131)</li>
+<li>add license_finder to dev-ruby image (#156)</li>
+<li>adopt CI/CD workflow convention (#383) (#172)</li>
+<li>add reusable docker-publish workflow with dev/prod naming and nightly rebuilds (#175)</li>
 </ul>
 <h3 id="refactoring">Refactoring<a class="headerlink" href="#refactoring" title="Permanent link">&para;</a></h3>
 <ul>
