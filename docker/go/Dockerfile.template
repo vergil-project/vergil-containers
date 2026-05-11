@@ -18,11 +18,14 @@ RUN apt-get update && \
 # @include common/python-support.dockerfile
 
 # --- Go tools ----------------------------------------------------------------
-RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 && \
+# go-test-coverage v2.18.4+ requires Go >= 1.26; pin v2.18.3 for Go 1.25.
+RUN GTC_VERSION="v2.18.8" && \
+    case "$(go env GOVERSION)" in go1.25*) GTC_VERSION="v2.18.3" ;; esac && \
+    go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 && \
     go install golang.org/x/vuln/cmd/govulncheck@v1.3.0 && \
     go install github.com/google/go-licenses/v2@v2.0.1 && \
     go install github.com/fzipp/gocyclo/cmd/gocyclo@v0.6.0 && \
     go install golang.org/x/tools/cmd/goimports@v0.45.0 && \
-    go install github.com/vladopajic/go-test-coverage/v2@v2.18.8
+    go install github.com/vladopajic/go-test-coverage/v2@${GTC_VERSION}
 
 WORKDIR /workspace
