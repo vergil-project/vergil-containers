@@ -1,11 +1,12 @@
-# Changelog
+## [develop-v1.0.0] - 2026-03-05
 
-All notable changes to this project will be documented in this file.
+### 🚀 Features
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/)
-and this project adheres to [Semantic Versioning](https://semver.org/).
+- Initial repository with Docker dev container images
+- Add cross-language validation tools to all dev containers (#15)
+- *(dev-go)* Add go-test-coverage to Go dev image (#17)
 
-## [Unreleased]
+### 🐛 Bug Fixes
 
 ### Bug fixes
 
