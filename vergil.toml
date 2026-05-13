@@ -6,7 +6,7 @@ release-model = "tagged-release"
 primary-language = "shell"
 
 [project.co-authors]
-agent = "Co-Authored-By: wphillipmoore-agent <284101533+wphillipmoore-agent@users.noreply.github.com>"
+wphillipmoore-agent = "Co-Authored-By: wphillipmoore-agent <284101533+wphillipmoore-agent@users.noreply.github.com>"
 
 [ci]
 versions = ["latest"]
@@ -20,5 +20,5 @@ release = true
 docs = true
 
 [dependencies]
-vergil = "v2.0.1"
-vergil-tooling = "v2.0.1"
+vergil = "v2.0"
+vergil-tooling = "v2.0"
