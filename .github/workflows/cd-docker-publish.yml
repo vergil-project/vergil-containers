@@ -1,4 +1,4 @@
-name: Publish dev container images
+name: Publish container images
 
 on:
   workflow_call:
@@ -24,7 +24,7 @@ jobs:
     name: Lint Dockerfiles
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/wphillipmoore/dev-base:latest
+      image: ghcr.io/vergil-project/prod-base:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -81,9 +81,9 @@ jobs:
             build-arg: RUST_VERSION
 
     env:
-      IMAGE: "ghcr.io/wphillipmoore/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
-      CANDIDATE: "ghcr.io/wphillipmoore/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}-candidate"
-      CACHE_TAG: "ghcr.io/wphillipmoore/${{ inputs.image-prefix }}-${{ matrix.language }}:cache-${{ matrix.version }}"
+      IMAGE: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
+      CANDIDATE: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}-candidate"
+      CACHE_TAG: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:cache-${{ matrix.version }}"
 
     steps:
       - name: Checkout code
@@ -119,7 +119,7 @@ jobs:
       - name: Trivy scan (amd64)
         id: trivy-amd64
         continue-on-error: true
-        uses: wphillipmoore/standard-actions/actions/security/trivy@v1.4
+        uses: vergil-project/vergil-actions/actions/security/trivy@v1.4
         with:
           scan-type: image
           scan-ref: ${{ env.CANDIDATE }}
@@ -192,7 +192,7 @@ jobs:
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v4
         with:
-          subject-name: "ghcr.io/wphillipmoore/${{ inputs.image-prefix }}-${{ matrix.language }}"
+          subject-name: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}"
           subject-digest: ${{ steps.digest.outputs.digest }}
 
       - name: Promote to final tag
@@ -216,9 +216,9 @@ jobs:
     needs: [hadolint]
     runs-on: ubuntu-latest
     env:
-      IMAGE: ghcr.io/wphillipmoore/${{ inputs.image-prefix }}-base:latest
-      CANDIDATE: ghcr.io/wphillipmoore/${{ inputs.image-prefix }}-base:latest-candidate
-      CACHE_TAG: ghcr.io/wphillipmoore/${{ inputs.image-prefix }}-base:cache-latest
+      IMAGE: ghcr.io/vergil-project/${{ inputs.image-prefix }}-base:latest
+      CANDIDATE: ghcr.io/vergil-project/${{ inputs.image-prefix }}-base:latest-candidate
+      CACHE_TAG: ghcr.io/vergil-project/${{ inputs.image-prefix }}-base:cache-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -252,7 +252,7 @@ jobs:
       - name: Trivy scan (amd64)
         id: trivy-amd64
         continue-on-error: true
-        uses: wphillipmoore/standard-actions/actions/security/trivy@v1.4
+        uses: vergil-project/vergil-actions/actions/security/trivy@v1.4
         with:
           scan-type: image
           scan-ref: ${{ env.CANDIDATE }}
@@ -325,7 +325,7 @@ jobs:
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v4
         with:
-          subject-name: ghcr.io/wphillipmoore/${{ inputs.image-prefix }}-base
+          subject-name: ghcr.io/vergil-project/${{ inputs.image-prefix }}-base
           subject-digest: ${{ steps.digest.outputs.digest }}
 
       - name: Promote to final tag

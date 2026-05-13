@@ -1,4 +1,4 @@
-# Standard Tooling Docker Repository Standards
+# VERGIL Docker Repository Standards
 
 ## Table of Contents
 
@@ -39,24 +39,24 @@ Do not construct commit messages or PR bodies manually.
 ### Committing
 
 ```bash
-st-commit \
+vrg-commit \
   --type TYPE --message MESSAGE --agent AGENT \
   [--scope SCOPE] [--body BODY]
 ```
 
 - `--type` (required): `feat|fix|docs|style|refactor|test|chore|ci|build`
 - `--message` (required): commit description
-- `--agent` (required): `claude` or `codex`
+- `--agent` (required): `agent`
 - `--scope` (optional): conventional commit scope
 - `--body` (optional): detailed commit body
 
 The script resolves the correct `Co-Authored-By` identity from
-`standard-tooling.toml` and the git hooks validate the result.
+`vergil.toml` and the git hooks validate the result.
 
 ### Submitting PRs
 
 ```bash
-st-submit-pr \
+vrg-submit-pr \
   --issue NUMBER --summary TEXT \
   [--linkage KEYWORD] [--title TEXT] \
   [--notes TEXT] [--dry-run]

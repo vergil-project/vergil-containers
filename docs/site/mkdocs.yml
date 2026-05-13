@@ -1,7 +1,7 @@
 site_name: Standard Tooling Docker
-site_description: Docker dev container images for the standard-tooling ecosystem
-repo_url: https://github.com/wphillipmoore/standard-tooling-docker
-repo_name: wphillipmoore/standard-tooling-docker
+site_description: Docker dev container images for the VERGIL ecosystem
+repo_url: https://github.com/vergil-project/vergil-docker
+repo_name: vergil-project/vergil-docker
 
 docs_dir: docs
 strict: true

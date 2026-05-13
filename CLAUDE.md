@@ -25,15 +25,15 @@ while preserving shared project memory (which Claude Code derives from the
 session's starting CWD).
 
 **Canonical spec:**
-[`standard-tooling/docs/specs/worktree-convention.md`](https://github.com/wphillipmoore/standard-tooling/blob/develop/docs/specs/worktree-convention.md)
+[`vergil-tooling/docs/specs/worktree-convention.md`](https://github.com/vergil-project/vergil-tooling/blob/develop/docs/specs/worktree-convention.md)
 — full rationale, trust model, failure modes, and memory-path implications.
-The canonical text lives in `standard-tooling`; this section is the local
+The canonical text lives in `vergil-tooling`; this section is the local
 on-ramp.
 
 ### Structure
 
 ```text
-~/dev/github/standard-tooling-docker/     ← sessions ALWAYS start here
+~/dev/projects/vergil-project/vergil-docker/     ← sessions ALWAYS start here
   .git/
   CLAUDE.md, docker/, …                   ← main worktree (usually `develop`)
   .worktrees/                             ← container for parallel worktrees
@@ -44,7 +44,7 @@ on-ramp.
 ### Rules
 
 1. **Sessions always start at the project root.**
-   `cd ~/dev/github/standard-tooling-docker && claude` — never from inside
+   `cd ~/dev/projects/vergil-project/vergil-docker && claude` — never from inside
    `.worktrees/<name>/`. This keeps the memory-path slug stable and shared.
 2. **Each parallel agent is assigned exactly one worktree.** The session
    prompt names the worktree (see Agent prompt contract below).
@@ -67,7 +67,7 @@ placeholders):
 ```text
 You are working on issue #<N>: <issue title>.
 
-Your worktree is: /Users/pmoore/dev/github/standard-tooling-docker/.worktrees/issue-<N>-<slug>/
+Your worktree is: /Users/pmoore/dev/github/vergil-docker/.worktrees/issue-<N>-<slug>/
 Your branch is:   feature/<N>-<slug>
 
 Rules for this session:
@@ -86,31 +86,31 @@ All fields are required.
 ## Project Overview
 
 This repository contains the Docker dev container images for the
-standard-tooling ecosystem. Each image provides a language runtime plus
+VERGIL ecosystem. Each image provides a language runtime plus
 shared tooling (Node.js, ShellCheck, markdownlint) used by CI and local
 Docker-first development across all managed repositories.
 
-**Project name**: standard-tooling-docker
+**Project name**: vergil-docker
 
 **Status**: Active
 
-**Standards reference**: <https://github.com/wphillipmoore/standards-and-conventions>
+**Standards reference**: <https://github.com/vergil-project/standards-and-conventions>
 — historical reference; active standards documentation lives in the
-standard-tooling repository under `docs/`.
+vergil-tooling repository under `docs/`.
 
 ## Development Commands
 
 ### Environment Setup
 
 ```bash
-# Host-installed standard-tooling provides st-* commands on PATH.
+# Host-installed vergil-tooling provides vrg-* commands on PATH.
 # Install per the host-level-tool spec
-# (https://github.com/wphillipmoore/standard-tooling/blob/develop/docs/specs/host-level-tool.md):
-uv tool install 'standard-tooling @ git+https://github.com/wphillipmoore/standard-tooling@v1.4'
+# (https://github.com/vergil-project/vergil-tooling/blob/develop/docs/specs/host-level-tool.md):
+uv tool install 'vergil-tooling @ git+https://github.com/vergil-project/vergil-tooling@v1.4'
 # (or `pip install` into the same Python env that hosts `uv`).
 
 # Enable the pre-commit gate (refuses raw `git commit`; admits
-# st-commit). The gate is vendored at `.githooks/pre-commit` in
+# vrg-commit). The gate is vendored at `.githooks/pre-commit` in
 # this repo.
 git config core.hooksPath .githooks
 ```
@@ -163,21 +163,21 @@ directives. `generate.sh` expands these to produce the final `Dockerfile`
 Every image includes (installed via shared fragments in `docker/common/`):
 
 - **Node.js 22** (via NodeSource apt repository)
-- **markdownlint-cli** (`0.47.0`)
+- **markdownlint-cli** (`0.48.0`)
 - **ShellCheck** (`0.11.0`)
-- **shfmt** (`3.12.0`)
-- **actionlint** (`1.7.11`)
-- **git-cliff** (`2.8.0`)
+- **shfmt** (`3.13.1`)
+- **actionlint** (`1.7.12`)
+- **git-cliff** (`2.13.1`)
 - **hadolint** (`2.14.0`)
 - **gh** (GitHub CLI, via official apt repository)
-- **uv** (`0.7.12`)
+- **uv** (`0.11.13`)
 - **yamllint** (`1.38.0`)
 - **jq**, git, curl, openssh-client
 - Language-specific package manager and linting tools
 
 The `dev-base` image includes additional documentation tooling (MkDocs
 Material, mike, semgrep). See the
-[images documentation](https://wphillipmoore.github.io/standard-tooling-docker/images/)
+[images documentation](https://vergil-project.github.io/vergil-docker/images/)
 for the full inventory.
 
 ### GHCR Publishing
@@ -191,10 +191,10 @@ workflow, parameterized by an `image-prefix` input:
 - **`prod-` images** — built on push to `main`, after the release
   workflow generates a changelog, git tag, and GitHub release.
 
-Image naming: `ghcr.io/wphillipmoore/{prefix}-{language}:{version}`
+Image naming: `ghcr.io/vergil-project/{prefix}-{language}:{version}`
 where `{prefix}` is `dev` or `prod`.
 
-Image URLs use the **user namespace** (`ghcr.io/wphillipmoore/...`), not a
+Image URLs use the **user namespace** (`ghcr.io/vergil-project/...`), not a
 repo-specific namespace. This means image paths are stable across repo
 migrations — they do not change when the publishing repository changes.
 
@@ -207,14 +207,14 @@ via `docker buildx imagetools create`.
 The workflow uses `secrets.GITHUB_TOKEN` with `packages: write` permission.
 No PAT or additional secret is needed. However, each GHCR package must
 explicitly grant this repository write access because the packages were
-originally created by the `standard-tooling` repository.
+originally created by the `vergil-tooling` repository.
 
 Per-package setup (one-time, for each of `dev-base`, `dev-python`, `dev-java`,
 `dev-go`, `dev-ruby`, `dev-rust`, and the corresponding `prod-` packages):
 
 1. Navigate to the package settings page on GHCR.
 2. Under **Manage Actions access**, click **Add Repository**.
-3. Select `standard-tooling-docker`.
+3. Select `vergil-docker`.
 4. Set role to **Write**.
 
 ### Version Matrix
@@ -241,5 +241,5 @@ To trigger a rebuild manually: Actions > CD > Run workflow.
 
 **Sibling repositories**:
 
-- `../standard-tooling` — Python CLI tools and bash validators
-- `../standard-tooling-plugin` — Claude Code plugin (hooks, skills, agents)
+- `../vergil-tooling` — Python CLI tools and bash validators
+- `../vergil-claude-plugin` — Claude Code plugin (hooks, skills, agents)

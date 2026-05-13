@@ -1,7 +1,7 @@
-# standard-tooling-docker
+# vergil-docker
 
 Docker dev container images for the
-[standard-tooling](https://github.com/wphillipmoore/standard-tooling)
+[vergil-tooling](https://github.com/vergil-project/vergil-tooling)
 ecosystem. Each image provides a language runtime plus shared tooling
 used by CI and local Docker-first development across all managed
 repositories.
@@ -19,7 +19,7 @@ repositories.
 ## Available Images
 
 All images are published to GitHub Container Registry at
-`ghcr.io/wphillipmoore/dev-{language}:{version}`.
+`ghcr.io/vergil-project/dev-{language}:{version}`.
 
 | Image        | Versions         | Base                      |
 | ------------ | ---------------- | ------------------------- |
@@ -35,7 +35,7 @@ All images are published to GitHub Container Registry at
 Pull a pre-built image:
 
 ```bash
-docker pull ghcr.io/wphillipmoore/dev-python:3.14
+docker pull ghcr.io/vergil-project/dev-python:3.14
 ```
 
 Or build all images locally:
@@ -56,7 +56,7 @@ docker build --build-arg PYTHON_VERSION=3.14 \
 
 The `dev-base` image includes all common tooling plus MkDocs Material
 and mike for documentation. It is the fallback image used by
-`st-docker-run` when no language is detected, and is shared across all
+`vrg-docker-run` when no language is detected, and is shared across all
 repos for documentation builds.
 
 Build locally:
@@ -66,7 +66,7 @@ docker/generate.sh base
 docker build -t dev-base:latest docker/base/
 ```
 
-Use via the `docker-docs` wrapper in standard-tooling:
+Use via the `docker-docs` wrapper in vergil-tooling:
 
 ```bash
 docker-docs serve   # Live-reloading preview at http://localhost:8000
@@ -115,7 +115,7 @@ inclusion system. Shared tooling installations are maintained once in
 `docker/common/` and included via `# @include` directives. `generate.sh`
 expands templates into final Dockerfiles before each build.
 
-See [Architecture](https://wphillipmoore.github.io/standard-tooling-docker/architecture/)
+See [Architecture](https://vergil-project.github.io/vergil-docker/architecture/)
 for details.
 
 ## Publishing
@@ -126,7 +126,7 @@ on push to `develop` or `main` via the `docker-publish.yml` workflow.
 Manual rebuilds can be triggered via `workflow_dispatch` in the Actions
 tab.
 
-Image URLs use the user namespace (`ghcr.io/wphillipmoore/...`), not a
+Image URLs use the user namespace (`ghcr.io/vergil-project/...`), not a
 repo-specific namespace, so paths remain stable across repo migrations.
 
 ### GHCR access prerequisites
@@ -134,11 +134,11 @@ repo-specific namespace, so paths remain stable across repo migrations.
 The workflow authenticates with `GITHUB_TOKEN` (`packages: write`). No
 PAT or additional secret is needed. Each GHCR package must grant this
 repository write access because the packages were originally created by
-the `standard-tooling` repository:
+the `vergil-tooling` repository:
 
 1. Go to the package settings page on GHCR for each `dev-*` package.
 2. Under **Manage Actions access**, click **Add Repository**.
-3. Select `standard-tooling-docker` and set the role to **Write**.
+3. Select `vergil-docker` and set the role to **Write**.
 
 This applies to: `dev-python`, `dev-java`, `dev-go`, `dev-ruby`,
 `dev-rust`, `dev-base`.
@@ -146,7 +146,7 @@ This applies to: `dev-python`, `dev-java`, `dev-go`, `dev-ruby`,
 ## Migration Note
 
 These images were originally maintained in the
-[standard-tooling](https://github.com/wphillipmoore/standard-tooling)
+[vergil-tooling](https://github.com/vergil-project/vergil-tooling)
 repository under `docker/`. They were split into this dedicated
 repository to provide an independent release lifecycle and clearer
 separation of concerns.

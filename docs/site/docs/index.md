@@ -1,7 +1,7 @@
 # Standard Tooling Docker
 
 Docker dev container images for the
-[standard-tooling](https://github.com/wphillipmoore/standard-tooling)
+[vergil-tooling](https://github.com/vergil-project/vergil-tooling)
 ecosystem.
 
 ## Overview
@@ -15,7 +15,7 @@ share the same environment.
 ## Images
 
 All images are published to
-`ghcr.io/wphillipmoore/dev-<language>:<version>`.
+`ghcr.io/vergil-project/dev-<language>:<version>`.
 
 | Language | Versions         | Image        |
 | -------- | ---------------- | ------------ |
@@ -33,13 +33,13 @@ See [Images](images/index.md) for per-language tool details.
 ### Pull from GHCR
 
 ```bash
-docker pull ghcr.io/wphillipmoore/dev-python:3.14
+docker pull ghcr.io/vergil-project/dev-python:3.14
 ```
 
 ### Build locally
 
 ```bash
-cd standard-tooling-docker
+cd vergil-docker
 docker/build.sh
 ```
 

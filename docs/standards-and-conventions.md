@@ -1,4 +1,4 @@
-# Standard Tooling Docker Standards and Conventions
+# VERGIL Docker Standards and Conventions
 
 This repository follows the canonical standards in the Standards and
 Conventions repository:
@@ -36,5 +36,5 @@ Conventions repository:
 
 ## Project-specific overlay
 
-Project-specific content lives in `standard-tooling.toml` at the
+Project-specific content lives in `vergil.toml` at the
 repository root.

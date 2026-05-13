@@ -2,7 +2,7 @@
 
 Every image shares a common tooling layer and adds language-specific
 runtimes and tools. Images are published as multi-architecture manifests
-(amd64 + arm64) to `ghcr.io/wphillipmoore/dev-<language>:<version>`.
+(amd64 + arm64) to `ghcr.io/vergil-project/dev-<language>:<version>`.
 
 ## Common Layer
 
@@ -94,7 +94,7 @@ are pre-installed.
 
 The base image includes the full common layer (all tools listed above)
 plus documentation tooling. It is the fallback image used by
-`st-docker-run` when no language is detected.
+`vrg-docker-run` when no language is detected.
 
 | Tool            | Version | Purpose                    |
 | --------------- | ------- | -------------------------- |

@@ -20,8 +20,8 @@ RUN apt-get update && \
 # --- Rust tools --------------------------------------------------------------
 RUN rustup component add clippy rustfmt llvm-tools
 
-RUN cargo install cargo-deny@0.19.0 && \
-    cargo install cargo-llvm-cov@0.6.16 && \
+RUN cargo install cargo-deny@0.19.6 && \
+    cargo install cargo-llvm-cov@0.8.6 && \
     rm -rf /usr/local/cargo/registry
 
 WORKDIR /workspace
