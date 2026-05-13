@@ -1,4 +1,4 @@
-# https://github.com/wphillipmoore/standard-actions/blob/develop/.github/workflows/README.md
+# https://github.com/vergil-project/vergil-actions/blob/develop/.github/workflows/README.md
 name: CI
 
 on:
@@ -24,7 +24,7 @@ jobs:
     name: "quality / hadolint"
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/wphillipmoore/prod-base:latest
+      image: ghcr.io/vergil-project/prod-base:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -36,14 +36,14 @@ jobs:
         run: hadolint docker/*/Dockerfile
 
   quality:
-    uses: wphillipmoore/standard-actions/.github/workflows/ci-quality.yml@v1.5
+    uses: vergil-project/vergil-actions/.github/workflows/ci-quality.yml@v1.5
     with:
       language: shell
       versions: '["latest"]'
       container-suffix: base
 
   security:
-    uses: wphillipmoore/standard-actions/.github/workflows/ci-security.yml@v1.5
+    uses: vergil-project/vergil-actions/.github/workflows/ci-security.yml@v1.5
     with:
       language: shell
       run-codeql: false
@@ -54,7 +54,7 @@ jobs:
       security-events: write
 
   version:
-    uses: wphillipmoore/standard-actions/.github/workflows/ci-version-bump.yml@v1.5
+    uses: vergil-project/vergil-actions/.github/workflows/ci-version-bump.yml@v1.5
     with:
       language: shell
       run-release: ${{ inputs.run-release != 'false' }}

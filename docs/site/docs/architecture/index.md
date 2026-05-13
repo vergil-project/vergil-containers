@@ -98,10 +98,10 @@ Images are published as multi-arch manifests to GitHub Container Registry
 via the reusable `cd-docker-publish.yml` workflow, parameterized by an
 `image-prefix` input that determines the naming convention:
 
-- **`dev-` images** (`ghcr.io/wphillipmoore/dev-{language}:{version}`) —
+- **`dev-` images** (`ghcr.io/vergil-project/dev-{language}:{version}`) —
   built on every push to `develop` and rebuilt nightly via `ops.yml` to
   pick up base-image security patches.
-- **`prod-` images** (`ghcr.io/wphillipmoore/prod-{language}:{version}`) —
+- **`prod-` images** (`ghcr.io/vergil-project/prod-{language}:{version}`) —
   built on push to `main`, after the release workflow generates a
   changelog, git tag, and GitHub release.
 
@@ -115,12 +115,12 @@ The publish pipeline for each prefix:
 
 ### Image namespace
 
-Image URLs use the **user namespace** (`ghcr.io/wphillipmoore/...`), not
+Image URLs use the **user namespace** (`ghcr.io/vergil-project/...`), not
 a repo-specific namespace. This means image paths are stable across
 repository migrations — they do not change when the publishing repository
 changes.
 
-Image naming: `ghcr.io/wphillipmoore/{prefix}-{language}:{version}` where
+Image naming: `ghcr.io/vergil-project/{prefix}-{language}:{version}` where
 `{prefix}` is `dev` or `prod`.
 
 ### Release workflow
@@ -145,7 +145,7 @@ permission. No personal access token or additional secret is needed.
 
 Each `dev-*` and `prod-*` package on GHCR must explicitly grant this
 repository write access. The packages were originally created by the
-`standard-tooling` repository, so that repo has implicit write access.
+`vergil-tooling` repository, so that repo has implicit write access.
 This repo does not, unless manually configured.
 
 Per-package setup (one-time, for each of `dev-base`, `dev-python`,
@@ -154,14 +154,14 @@ Per-package setup (one-time, for each of `dev-base`, `dev-python`,
 
 1. Navigate to the package settings page on GHCR.
 2. Under **Manage Actions access**, click **Add Repository**.
-3. Select `standard-tooling-docker`.
+3. Select `vergil-docker`.
 4. Set role to **Write**.
 
 ## Consumption
 
-Images are consumed via `st-docker-run` and `st-docker-test` in
-[standard-tooling](https://github.com/wphillipmoore/standard-tooling).
-`st-docker-run` runs arbitrary commands inside the matching container;
-`st-docker-test` auto-detects the project language and runs the test
+Images are consumed via `vrg-docker-run` and `vrg-docker-test` in
+[vergil-tooling](https://github.com/vergil-project/vergil-tooling).
+`vrg-docker-run` runs arbitrary commands inside the matching container;
+`vrg-docker-test` auto-detects the project language and runs the test
 suite. Consuming repos can override the image with the `DOCKER_DEV_IMAGE`
 environment variable.
