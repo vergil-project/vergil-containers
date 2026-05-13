@@ -1,7 +1,7 @@
 # Versioned image tags for dev container images
 
 **Status:** Draft — passed `paad:pushback` 2026-04-28
-**Issue:** [#60](https://github.com/wphillipmoore/standard-tooling-docker/issues/60)
+**Issue:** [#60](https://github.com/vergil-project/vergil-docker/issues/60)
 **Pushback review:**
 [`paad/pushback-reviews/2026-04-28-versioned-image-tags-pushback.md`](../../paad/pushback-reviews/2026-04-28-versioned-image-tags-pushback.md)
 **Author:** wphillipmoore
@@ -15,7 +15,7 @@ radical image changes, per-repo pinning for stability, and decouples
 docker image patch releases from standard-tooling's release cycle.
 
 This spec reaches across repo boundaries: the publish side lives in
-`standard-tooling-docker`, the consumer resolution logic lives in
+`vergil-docker`, the consumer resolution logic lives in
 `standard-tooling`, consuming repos exercise the override mechanism,
 and standard-tooling's release skill gains a post-release coordination
 checklist.
@@ -205,7 +205,7 @@ The existing `repository_dispatch: [standard-tooling-released]`
 trigger in `docker-publish.yml` is **removed** by this spec. Under
 mutable-only tags, dispatch could fire a rebuild that overwrote tags
 in place — fully automated. Under versioned tags, updating the docker
-images requires a new release of standard-tooling-docker (bump
+images requires a new release of vergil-docker (bump
 VERSION, `st-prepare-release`, release branch, PR to `main`, merge).
 That ceremony is AI/human-driven; a GitHub Action cannot trigger it
 autonomously.
@@ -223,7 +223,7 @@ Release v1.5.0 tagged and published.
 Post-release checklist:
 [ ] Host install: uv tool install --upgrade 'standard-tooling @ git+...@v1.5'
 [ ] Docker images: if this release affects in-container behavior,
-    cut a new standard-tooling-docker release
+    cut a new vergil-docker release
     (bump ST_TOOLING_TAG, st-prepare-release, merge to main)
 [ ] Python repo venvs: version constraint pulls new release
     automatically on next uv sync
@@ -356,6 +356,6 @@ This is cleanup, not a migration step. It can happen at any pace.
 
 ## Related issues
 
-- [#60](https://github.com/wphillipmoore/standard-tooling-docker/issues/60) — original design issue (this spec implements it)
-- [#61](https://github.com/wphillipmoore/standard-tooling-docker/issues/61) — repo profile claims tagged-release but no workflow exists (resolved by Phase 1)
-- [#51](https://github.com/wphillipmoore/standard-tooling-docker/issues/51) — standard-tooling freshness in images (orthogonal but related coupling concern)
+- [#60](https://github.com/vergil-project/vergil-docker/issues/60) — original design issue (this spec implements it)
+- [#61](https://github.com/vergil-project/vergil-docker/issues/61) — repo profile claims tagged-release but no workflow exists (resolved by Phase 1)
+- [#51](https://github.com/vergil-project/vergil-docker/issues/51) — standard-tooling freshness in images (orthogonal but related coupling concern)

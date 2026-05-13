@@ -32,7 +32,7 @@ Two layers of defense, each in a separate repo:
 | Layer | Scope | Catches | Repo |
 |-------|-------|---------|------|
 | Host-side guard in `st-docker-run` | `gh` (all), `git` (mutating subcommands) | Direct invocation via `st-docker-run -- <tool> ...` | standard-tooling |
-| Container-side wrappers | `gh` shim (all), `git` wrapper (mutating subcommands) | Indirect invocation from scripts inside the container | standard-tooling-docker |
+| Container-side wrappers | `gh` shim (all), `git` wrapper (mutating subcommands) | Indirect invocation from scripts inside the container | vergil-docker |
 
 No intentional gaps — both direct and indirect invocation of blocked
 operations are caught.
@@ -47,14 +47,14 @@ operations are caught.
 
 ```python
 # Tools fully blocked from running inside dev containers.
-# Counterpart: container-side shim in standard-tooling-docker
+# Counterpart: container-side shim in vergil-docker
 # docker/common/gh-guardrail.dockerfile — keep both in sync.
 BLOCKED_TOOLS: frozenset[str] = frozenset({"gh"})
 
 # Git subcommands that modify state or talk to a remote.
 # Read-only git operations (log, tag, rev-parse, diff, etc.) are
 # container-safe and allowed through.
-# Counterpart: container-side wrapper in standard-tooling-docker
+# Counterpart: container-side wrapper in vergil-docker
 # docker/common/git-guardrail.dockerfile — keep both in sync.
 BLOCKED_GIT_SUBCOMMANDS: frozenset[str] = frozenset({
     "push", "pull", "fetch", "clone",
@@ -91,7 +91,7 @@ def check_blocked_command(command: list[str]) -> str | None:
 - `BLOCKED_TOOLS` for tools blocked entirely (currently just `gh`).
 - `BLOCKED_GIT_SUBCOMMANDS` for mutating/remote git operations.
 - Both constants include a comment cross-referencing the container-side
-  counterpart in standard-tooling-docker.
+  counterpart in vergil-docker.
 - Extracts basename from argv[0] to handle absolute paths like `/usr/bin/gh`.
 - Lives in `docker.py` (shared) so future `st-docker-*` commands can reuse it.
 
@@ -163,7 +163,7 @@ Add integration tests (follow existing patterns with `patch` and
 
 ---
 
-## Phase 2: Container-Side Wrappers (standard-tooling-docker)
+## Phase 2: Container-Side Wrappers (vergil-docker)
 
 ### 2.1 Create the `gh` shim fragment
 
@@ -283,7 +283,7 @@ This fragment is no longer included by any template. Remove it.
 1. **Phase 1 first** (standard-tooling): host-side guard provides immediate
    protection with zero risk of breaking existing workflows. Effective on
    next standard-tooling release. No Docker image rebuild needed.
-2. **Phase 2 second** (standard-tooling-docker): container-side wrappers
+2. **Phase 2 second** (vergil-docker): container-side wrappers
    require image rebuild and publish. Effective when downstream repos pull
    updated images.
 
@@ -330,7 +330,7 @@ lockfile, not live git clones.
 4. `st-docker-run -- git log --oneline` → works normally
 5. `st-docker-run -- uv run pytest tests/` → works normally
 
-### Phase 2 (standard-tooling-docker)
+### Phase 2 (vergil-docker)
 
 1. `docker/generate.sh && hadolint docker/*/Dockerfile` — lint clean
 2. `shellcheck docker/common/git-wrapper.sh` — lint clean

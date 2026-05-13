@@ -8,7 +8,7 @@
 
 **Tech Stack:** Docker buildx, `docker/build-push-action`, `docker/setup-qemu-action`, `docker/setup-buildx-action`, GHCR, Trivy, GitHub Actions attestations.
 
-**Issue:** [#111](https://github.com/wphillipmoore/standard-tooling-docker/issues/111)
+**Issue:** [#111](https://github.com/vergil-project/vergil-docker/issues/111)
 **Design spec:** [`docs/specs/2026-05-03-multi-arch-images-design.md`](../../specs/2026-05-03-multi-arch-images-design.md)
 
 ---
