@@ -1,4 +1,4 @@
-# Standard Tooling Docker
+# Vergil Docker
 
 Docker dev container images for the
 [vergil-tooling](https://github.com/vergil-project/vergil-tooling)

@@ -1,5 +1,5 @@
 # Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
-# Canonical source: https://github.com/wphillipmoore/standard-tooling-docker
+# Canonical source: https://github.com/vergil-project/vergil-docker
 # dev-base — Base dev container with all common tooling. Language-specific
 # images extend this with runtime and language-specific tools.
 FROM python:3.14-slim

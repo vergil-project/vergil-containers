@@ -1,4 +1,4 @@
-site_name: Standard Tooling Docker
+site_name: Vergil Docker
 site_description: Docker dev container images for the VERGIL ecosystem
 repo_url: https://github.com/vergil-project/vergil-docker
 repo_name: vergil-project/vergil-docker
