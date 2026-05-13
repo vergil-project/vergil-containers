@@ -5,7 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.5.0] - 2026-05-11
+## [2.0.1] - 2026-05-13
+
+### Bug fixes
+
+- pin go-test-coverage to v2.18.3 for hadolint DL3062
+- suppress new Go stdlib CVEs in Trivy ignore list
+- pin go-test-coverage v2.18.3 for Go 1.25 compatibility
+- correct trivy action path in cd-docker-publish
+
+### CI
+
+- update vergil-actions refs from v1.5 to v2.0
+
+### Chores
+
+- prepare release 1.0.0
+- merge main into release/1.0.0
+- prepare release 1.0.0
+- bump version to 1.5.1
+- switch hadolint container references from dev-base to prod-base
+- update plugin identity to vergil-marketplace
+- add vergil-tooling key to dependencies for config parser compat
+
+### Features
+
+- rename to vergil-docker under vergil-project org (#193)
+
+### Refactoring
+
+- align PR and issue templates with standard-tooling
+
+## [1.5.0] - 2026-05-10
 
 ### Bug fixes
 
@@ -37,7 +68,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - suppress new linux-libc-dev kernel CVEs in Trivy ignore list (#171)
 - suppress new linux-libc-dev kernel CVEs in Trivy ignore list (#177)
 - suppress CVE-2026-43500 linux-libc-dev kernel CVE in Trivy ignore list (#178)
-- pin go-test-coverage to v2.18.3 for hadolint DL3062
 
 ### CI
 
@@ -72,9 +102,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - shorten issue template header comments to fit yamllint line-length (#164)
 - migrate to reusable publish/docs workflows (#167)
 - add [ci] section to standard-tooling.toml (#174)
-- prepare release 1.0.0
-- merge main into release/1.0.0
-- prepare release 1.0.0
 
 ### Documentation
 
