@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - suppress new Go stdlib CVEs in Trivy ignore list
 - pin go-test-coverage v2.18.3 for Go 1.25 compatibility
 - correct trivy action path in cd-docker-publish
+- point vergil dependency at v2.0.1 (setup action reads this key)
 
 ### CI
 
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - switch hadolint container references from dev-base to prod-base
 - update plugin identity to vergil-marketplace
 - add vergil-tooling key to dependencies for config parser compat
+- pin vergil-tooling to v2.0.1 for import fix
 
 ### Features
 
