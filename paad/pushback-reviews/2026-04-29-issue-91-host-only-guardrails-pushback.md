@@ -35,7 +35,7 @@ None — no conflicts with recent changes.
 
 - **Category:** ambiguity
 - **Severity:** minor
-- **Issue:** The same blocked git subcommands list exists in `docker.py` (Python, standard-tooling repo) and the container-side git wrapper (shell, standard-tooling-docker repo). If someone updates one but not the other, they drift.
+- **Issue:** The same blocked git subcommands list exists in `docker.py` (Python, standard-tooling repo) and the container-side git wrapper (shell, vergil-docker repo). If someone updates one but not the other, they drift.
 - **Resolution:** Accepted. Accept the duplication (the list is stable — git rarely adds new write operations). Add a cross-referencing comment at each site pointing to the other location, so any agent or human modifying either list is aware of its counterpart.
 
 ## Summary

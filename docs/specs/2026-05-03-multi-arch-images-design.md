@@ -1,6 +1,6 @@
 # Multi-Arch (ARM64) Dev Container Images
 
-**Issue:** [#111](https://github.com/wphillipmoore/standard-tooling-docker/issues/111)
+**Issue:** [#111](https://github.com/vergil-project/vergil-docker/issues/111)
 **Date:** 2026-05-03
 **Status:** Approved
 

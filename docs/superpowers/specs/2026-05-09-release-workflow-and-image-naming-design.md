@@ -44,11 +44,11 @@ Key decisions made during brainstorming:
 
 | Area | Repository |
 |------|-----------|
-| Workflow restructuring (cd.yml, cd-docker-publish.yml, ops.yml) | standard-tooling-docker |
-| Delete docker-publish.yml | standard-tooling-docker |
-| Wire up cd-release.yml reusable workflow | standard-tooling-docker |
-| Nightly rebuild schedule in ops.yml | standard-tooling-docker |
-| Documentation updates | standard-tooling-docker |
+| Workflow restructuring (cd.yml, cd-docker-publish.yml, ops.yml) | vergil-docker |
+| Delete docker-publish.yml | vergil-docker |
+| Wire up cd-release.yml reusable workflow | vergil-docker |
+| Nightly rebuild schedule in ops.yml | vergil-docker |
+| Documentation updates | vergil-docker |
 | `st-docker-run` prefix-aware image resolution | standard-tooling |
 | `standard-tooling.toml` schema: `[docker] image-prefix` field | standard-tooling |
 | Reusable CI workflow image references | standard-tooling (standard-actions) |
@@ -216,7 +216,7 @@ before they exist.
    configuration in GHCR package settings:
    - **Visibility:** set to Public (matching the `dev-` packages).
      Auto-created packages default to private in user namespaces.
-   - **Actions access:** Add Repository → standard-tooling-docker → Write.
+   - **Actions access:** Add Repository → vergil-docker → Write.
    Applies to: `prod-base`, `prod-python`, `prod-java`, `prod-go`,
    `prod-ruby`, `prod-rust`.
 

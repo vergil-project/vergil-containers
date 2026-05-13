@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Establish a dev/prod image naming convention, wire up the release workflow, and add nightly CVE rebuilds — across standard-tooling-docker, standard-tooling, and standard-actions.
+**Goal:** Establish a dev/prod image naming convention, wire up the release workflow, and add nightly CVE rebuilds — across vergil-docker, standard-tooling, and standard-actions.
 
 **Architecture:** The existing monolithic `docker-publish.yml` becomes a reusable `cd-docker-publish.yml` (workflow_call with `image-prefix` input). A thin `cd.yml` orchestrates docs, release, and docker-publish with branch-conditional prefix. `ops.yml` calls the same reusable workflow nightly for dev images. Consumer-side changes in standard-tooling make the image prefix configurable via `standard-tooling.toml`.
 
@@ -12,9 +12,9 @@
 
 ---
 
-## Phase 1: standard-tooling-docker workflow restructuring
+## Phase 1: vergil-docker workflow restructuring
 
-All files in this phase are in the `standard-tooling-docker` repo under `.github/workflows/`.
+All files in this phase are in the `vergil-docker` repo under `.github/workflows/`.
 
 ### Task 1: Create cd-docker-publish.yml
 
@@ -967,7 +967,7 @@ These are manual/coordination steps, not code tasks. They are documented here fo
 
 - [ ] **Step 1: Merge Phase 1 changes to develop**
 
-Submit PR from the feature branch in standard-tooling-docker. Once merged, the CD workflow will build `dev-` images using the new `cd-docker-publish.yml`. Verify the workflow runs successfully.
+Submit PR from the feature branch in vergil-docker. Once merged, the CD workflow will build `dev-` images using the new `cd-docker-publish.yml`. Verify the workflow runs successfully.
 
 - [ ] **Step 2: Merge develop to main — first release**
 
@@ -984,7 +984,7 @@ For each new package (`prod-base`, `prod-python`, `prod-java`, `prod-go`, `prod-
 1. Navigate to `https://github.com/users/wphillipmoore/packages/container/package/<package-name>/settings`
 2. Set **Visibility** to Public
 3. Under **Manage Actions access**, click **Add Repository**
-4. Select `standard-tooling-docker`
+4. Select `vergil-docker`
 5. Set role to **Write**
 
 - [ ] **Step 4: Merge Phase 2 changes (standard-tooling)**
@@ -999,7 +999,7 @@ Submit PR and merge. All reusable CI/CD workflows now reference `prod-` images.
 
 For every managed repo, update any hardcoded `dev-` image references to `prod-`. This includes:
 
-- `standard-tooling-docker` itself: `ci.yml` line 27 (`dev-base:latest` → `prod-base:latest`)
+- `vergil-docker` itself: `ci.yml` line 27 (`dev-base:latest` → `prod-base:latest`)
 - Any other managed repo with hardcoded container image references in their workflows
 
 Use `grep -r "dev-base\|dev-python\|dev-ruby\|dev-java\|dev-go\|dev-rust" .github/workflows/` in each repo to find references.

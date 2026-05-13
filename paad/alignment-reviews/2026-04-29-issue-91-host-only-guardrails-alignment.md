@@ -36,7 +36,7 @@ None — no conflicts with recent changes (verified during pushback review).
 - **Category:** deviation between intent and action
 - **Severity:** minor
 - **Documents:** Issue AC-3 vs Plan sections 1.1 and 2.2
-- **Issue:** The issue said "one maintainable location" but the implementation requires the blocked subcommands list in two locations (Python in standard-tooling, shell in standard-tooling-docker) due to different repos and languages.
+- **Issue:** The issue said "one maintainable location" but the implementation requires the blocked subcommands list in two locations (Python in standard-tooling, shell in vergil-docker) due to different repos and languages.
 - **Resolution:** Updated issue AC-3 to: "defined in a maintainable way with cross-referencing comments at each site." Acknowledges inherent duplication across repos.
 
 ## Alignment Summary

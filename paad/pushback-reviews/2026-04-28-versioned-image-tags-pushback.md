@@ -69,7 +69,7 @@ None — no conflicts with recent changes.
 - **Severity:** Major (elevated from minor during discussion)
 - **Issue:** With mutable-only tags, `repository_dispatch` from a
   standard-tooling release could fire a rebuild that overwrote tags in place.
-  With versioned tags, a standard-tooling release means standard-tooling-docker
+  With versioned tags, a standard-tooling release means vergil-docker
   needs a new release (bump VERSION, release branch, PR to `main`). That
   ceremony is AI/human-driven (`st-prepare-release`) — a GitHub Action cannot
   trigger it autonomously. The `repository_dispatch` pipeline breaks.
