@@ -98,6 +98,17 @@ Docker-first development across all managed repositories.
 — historical reference; active standards documentation lives in the
 vergil-tooling repository under `docs/`.
 
+## Shell command policy
+
+Use `vrg-git` instead of `git` for all git operations. Use `vrg-gh`
+instead of `gh` for all GitHub CLI operations. These wrappers enforce
+subcommand allowlists, flag deny lists, credential selection, and
+audit logging.
+
+Raw `git` and `gh` are denied by the permission model. If a command
+is not available through the wrappers, explain the situation to the
+human who can run it directly via `! <command>` in the prompt.
+
 ## Development Commands
 
 ### Environment Setup
