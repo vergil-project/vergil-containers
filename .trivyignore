@@ -427,3 +427,18 @@ CVE-2026-35386
 # known hosts (GitHub, PyPI, NodeSource); SMB protocol is not used.
 # No Debian fix available (status=affected). Issue #224.
 CVE-2026-5773
+
+# curl / libcurl (Debian trixie) — information disclosure due to cookie
+# leak. Images use curl only for HTTPS fetches from known hosts; no
+# cookies are set or read. No Debian fix available (status=affected).
+CVE-2026-6276
+
+# libexpat1 (Debian trixie) — computational complexity DoS in libexpat
+# before 2.8.1. XML parsing is not exercised on attacker-controlled input
+# in these images. No Debian fix available (status=affected).
+CVE-2026-45186
+
+# linux-libc-dev — kernel "Fragnesia" variant of Dirty Frag vulnerability.
+# Container false positive: containers use the host kernel, not the kernel
+# headers in the image.
+CVE-2026-46300
