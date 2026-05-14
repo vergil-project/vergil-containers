@@ -421,3 +421,9 @@ CVE-2026-43500
 # username. Image uses ssh only for git remotes to known hosts (GitHub).
 # No Debian fix available (status=affected).
 CVE-2026-35386
+
+# curl / libcurl (Debian trixie) — wrong file transfer due to incorrect
+# SMB connection reuse. Images use curl only for HTTPS fetches from
+# known hosts (GitHub, PyPI, NodeSource); SMB protocol is not used.
+# No Debian fix available (status=affected). Issue #224.
+CVE-2026-5773
