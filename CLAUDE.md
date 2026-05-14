@@ -12,9 +12,9 @@ workflow.
 
 Available skills:
 
-- `/standard-tooling:memory-init` — set up or update the policy header
+- `/vergil:memory-init` — set up or update the policy header
   in a project's `MEMORY.md`.
-- `/standard-tooling:memory-audit` — structured collaborative review
+- `/vergil:memory-audit` — structured collaborative review
   of memory files.
 
 ## Parallel AI agent development
