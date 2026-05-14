@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.5] - 2026-05-14
+
+### Chores
+
+- bump version to 2.0.5
+- remove stale standard-tooling references and redundant dependency key
+
 ## [2.0.4] - 2026-05-13
 
 ### Chores
