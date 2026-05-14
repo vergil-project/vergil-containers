@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.6] - 2026-05-14
+
+### Bug fixes
+
+- suppress CVE-2026-5773 curl SMB connection reuse
+
+### Chores
+
+- add GPL-3 LICENSE file
+- bump version to 2.0.6
+- remove per-repo templates in favor of org defaults
+
+### Features
+
+- deploy permission model configuration
+
 ## [2.0.5] - 2026-05-14
 
 ### Chores
