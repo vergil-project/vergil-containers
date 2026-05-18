@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.7] - 2026-05-18
+
+### Bug fixes
+
+- suppress 11 new CVEs blocking CD publish pipeline
+
+### Chores
+
+- bump version to 2.0.7
+- remove co-authors section, normalize vergil dep to v2.0
+
+### Documentation
+
+- add scorecard CLI implementation plan for #234
+- add scorecard to Common Layer inventory
+
+### Features
+
+- deploy deny rules to project-level settings
+- add security-tools fragment with scorecard 5.5.0
+- include security-tools in dev-base template
+
 ## [2.0.6] - 2026-05-14
 
 ### Bug fixes
