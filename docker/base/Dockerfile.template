@@ -16,6 +16,7 @@ RUN apt-get update && \
 # @include common/node-markdownlint.dockerfile
 # @include common/github-cli.dockerfile
 # @include common/validation-tools.dockerfile
+# @include common/security-tools.dockerfile
 
 # --- Python tools ------------------------------------------------------------
 # Upgrade system pip past CVE-2026-3219 (TAR/ZIP polyglot in archive
