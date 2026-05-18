@@ -442,3 +442,53 @@ CVE-2026-45186
 # Container false positive: containers use the host kernel, not the kernel
 # headers in the image.
 CVE-2026-46300
+
+# linux-libc-dev — kernel: read root-owned files as unprivileged user.
+# Container false positive: containers use the host kernel.
+CVE-2026-46333
+
+# Debian system cpython — CVE-2026-7210 (libpython3.13-minimal, python3.13):
+# xml.parsers.expat and xml.etree.ElementTree vulnerability. Present in all
+# images via Debian base. No Debian fix available (status=affected). Image
+# does not parse untrusted XML. Same pattern as CVE-2026-6100.
+CVE-2026-7210
+
+# Scorecard 5.5.0 Go transitive dependencies — scorecard is a read-only
+# GitHub API auditor. It does not run Docker containers, does not use
+# go-git's file I/O for local repositories, and does not run BuildKit.
+# None of these code paths are exercised. Awaiting upstream scorecard
+# release with bumped dependencies.
+
+# CVE-2026-34040 (docker/docker) — Moby authorization bypass.
+CVE-2026-34040
+
+# CVE-2026-41567 (docker/docker) — PUT /containers archive execution.
+CVE-2026-41567
+
+# CVE-2026-42306 (docker/docker) — docker cp race condition bind mount.
+CVE-2026-42306
+
+# CVE-2026-44973 (go-billy) — path traversal vulnerabilities.
+CVE-2026-44973
+
+# CVE-2026-45022 (go-git) — improper parsing of crafted objects.
+CVE-2026-45022
+
+# CVE-2026-33747 (buildkit) — arbitrary file access.
+CVE-2026-33747
+
+# CVE-2026-33748 (buildkit) — unauthorized file access.
+CVE-2026-33748
+
+# Ruby net-imap default gem — image does not use IMAP. Fix available
+# upstream but requires bumping the bundled gem. Same package as
+# existing CVE-2026-42246 suppression.
+
+# CVE-2026-42257 (net-imap) — arbitrary IMAP command injection.
+CVE-2026-42257
+
+# CVE-2026-42258 (net-imap) — related IMAP command injection.
+CVE-2026-42258
+
+# CVE-2026-42245 (net-imap) — DoS via crafted input.
+CVE-2026-42245
