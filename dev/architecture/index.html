@@ -1262,6 +1262,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#download-integrity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Download Integrity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#publishing" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1379,13 +1390,14 @@
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   ├── node-markdownlint.dockerfile
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│   ├── path-defaults.dockerfile
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   ├── python-support.dockerfile
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│   └── validation-tools.dockerfile
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── base/Dockerfile.template
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── python/Dockerfile.template
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── ruby/Dockerfile.template
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── go/Dockerfile.template
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── java/Dockerfile.template
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>└── rust/Dockerfile.template
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│   ├── security-tools.dockerfile
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│   └── validation-tools.dockerfile
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── base/Dockerfile.template
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── python/Dockerfile.template
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── ruby/Dockerfile.template
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── go/Dockerfile.template
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>├── java/Dockerfile.template
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>└── rust/Dockerfile.template
 </code></pre></div>
 <h3 id="templating">Templating<a class="headerlink" href="#templating" title="Permanent link">&para;</a></h3>
 <p>Each <code>Dockerfile.template</code> contains standard Dockerfile instructions plus
@@ -1411,6 +1423,8 @@ all images automatically at build time.</p>
   installs of shellcheck, shfmt, actionlint, git-cliff, and hadolint.
   Uses <code>TARGETARCH</code> (injected by Docker Buildx) to select the correct
   binary for amd64 or arm64.</li>
+<li><strong><code>security-tools.dockerfile</code></strong> — Security analysis tools installed
+  from binary releases. Currently includes scorecard (OpenSSF).</li>
 <li><strong><code>python-support.dockerfile</code></strong> — Minimal Python plus yamllint and
   uv, used by non-Python images.</li>
 </ul>
@@ -1436,6 +1450,63 @@ platform artifact.</p>
 <p>Local builds via <code>docker/build.sh</code> build for the host's native
 architecture only (for speed). The CI pipeline builds both platforms
 using QEMU emulation on the GitHub Actions runner.</p>
+<h2 id="download-integrity">Download Integrity<a class="headerlink" href="#download-integrity" title="Permanent link">&para;</a></h2>
+<p>Binary tools installed from GitHub releases are verified against
+checksums published by the upstream project. Each verified download
+follows a three-step pattern: download the artifact to a temporary
+location, verify it against the upstream checksums file, then
+extract and install. The build fails immediately if a checksum does
+not match.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Verification</th>
+<th>Algorithm</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>actionlint</td>
+<td>Consolidated checksums file</td>
+<td>SHA-256</td>
+</tr>
+<tr>
+<td>git-cliff</td>
+<td>Per-artifact sidecar file</td>
+<td>SHA-512</td>
+</tr>
+<tr>
+<td>hadolint</td>
+<td>Per-artifact sidecar file</td>
+<td>SHA-256</td>
+</tr>
+<tr>
+<td>scorecard</td>
+<td>Consolidated checksums file</td>
+<td>SHA-256</td>
+</tr>
+<tr>
+<td>shellcheck</td>
+<td>None (upstream does not publish checksums)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>shfmt</td>
+<td>None (upstream does not publish checksums)</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>This protects against corrupted downloads, CDN integrity failures,
+and partial compromise of release artifacts. It does not protect
+against an attacker who compromises both the artifact and its
+checksums file simultaneously — that threat is addressed at a
+different layer (SLSA build provenance attestation on the published
+images).</p>
+<p>Tools whose upstream projects do not publish checksums are installed
+without verification. If a project begins publishing checksums in the
+future, verification will be added at that time.</p>
 <h2 id="publishing">Publishing<a class="headerlink" href="#publishing" title="Permanent link">&para;</a></h2>
 <p>Images are published as multi-arch manifests to GitHub Container Registry
 via the reusable <code>cd-docker-publish.yml</code> workflow, parameterized by an
