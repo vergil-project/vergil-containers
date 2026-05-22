@@ -19,6 +19,7 @@ docker/
 │   ├── node-markdownlint.dockerfile
 │   ├── path-defaults.dockerfile
 │   ├── python-support.dockerfile
+│   ├── security-tools.dockerfile
 │   └── validation-tools.dockerfile
 ├── base/Dockerfile.template
 ├── python/Dockerfile.template
@@ -58,6 +59,8 @@ Every language image includes the following shared fragments:
   installs of shellcheck, shfmt, actionlint, git-cliff, and hadolint.
   Uses `TARGETARCH` (injected by Docker Buildx) to select the correct
   binary for amd64 or arm64.
+- **`security-tools.dockerfile`** — Security analysis tools installed
+  from binary releases. Currently includes scorecard (OpenSSF).
 - **`python-support.dockerfile`** — Minimal Python plus yamllint and
   uv, used by non-Python images.
 
@@ -91,6 +94,35 @@ platform artifact.
 Local builds via `docker/build.sh` build for the host's native
 architecture only (for speed). The CI pipeline builds both platforms
 using QEMU emulation on the GitHub Actions runner.
+
+## Download Integrity
+
+Binary tools installed from GitHub releases are verified against
+checksums published by the upstream project. Each verified download
+follows a three-step pattern: download the artifact to a temporary
+location, verify it against the upstream checksums file, then
+extract and install. The build fails immediately if a checksum does
+not match.
+
+| Tool | Verification | Algorithm |
+| --- | --- | --- |
+| actionlint | Consolidated checksums file | SHA-256 |
+| git-cliff | Per-artifact sidecar file | SHA-512 |
+| hadolint | Per-artifact sidecar file | SHA-256 |
+| scorecard | Consolidated checksums file | SHA-256 |
+| shellcheck | None (upstream does not publish checksums) | — |
+| shfmt | None (upstream does not publish checksums) | — |
+
+This protects against corrupted downloads, CDN integrity failures,
+and partial compromise of release artifacts. It does not protect
+against an attacker who compromises both the artifact and its
+checksums file simultaneously — that threat is addressed at a
+different layer (SLSA build provenance attestation on the published
+images).
+
+Tools whose upstream projects do not publish checksums are installed
+without verification. If a project begins publishing checksums in the
+future, verification will be added at that time.
 
 ## Publishing
 
