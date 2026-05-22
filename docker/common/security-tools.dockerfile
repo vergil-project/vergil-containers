@@ -2,6 +2,7 @@
 ARG TARGETARCH
 ARG SCORECARD_VERSION=5.5.0
 
+# hadolint ignore=DL3003
 RUN SC_TARBALL="scorecard_${SCORECARD_VERSION}_linux_${TARGETARCH}.tar.gz" && \
     curl -fsSL "https://github.com/ossf/scorecard/releases/download/v${SCORECARD_VERSION}/${SC_TARBALL}" \
       -o "/tmp/${SC_TARBALL}" && \

@@ -9,6 +9,7 @@ ARG ACTIONLINT_VERSION=1.7.12
 ARG GIT_CLIFF_VERSION=2.13.1
 ARG HADOLINT_VERSION=2.14.0
 
+# hadolint ignore=DL3003
 RUN case "${TARGETARCH}" in \
       amd64) \
         SC_ARCH="x86_64" ; \
