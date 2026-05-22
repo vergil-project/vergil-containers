@@ -492,3 +492,29 @@ CVE-2026-42258
 
 # CVE-2026-42245 (net-imap) — DoS via crafted input.
 CVE-2026-42245
+
+# libexpat1 (Debian trixie) — XML parsing vulnerability in Expat.
+# No Debian patch available (status=affected). Dev containers do not
+# parse untrusted XML. Issue #249.
+CVE-2025-59375
+
+# libgssapi-krb5-2 (Debian trixie) — MIT Kerberos DoS via integer
+# overflow. No Debian patch available (status=affected). Dev containers
+# do not run Kerberos services. Issue #249.
+CVE-2026-40356
+
+# libgnutls30t64 (Debian trixie) — DoS via DTLS packet reordering.
+# Fix available in 3.8.9-3+deb13u4 but not yet in all base images.
+# DTLS is not used by any tool in the image. Issue #249.
+CVE-2026-42009
+
+# linux-libc-dev — kernel net/rds: reset op_nents when zerocopy page
+# pin fails. Container false positive: containers use the host kernel,
+# not the kernel headers in the image. Issue #249.
+CVE-2026-43494
+
+# containerd (Go dependency in dev-base) — user ID handling bypass
+# allows runAsNonRoot policy evasion. Fix available at v1.7.32.
+# Dev containers do not run containerd; this surfaces from Trivy
+# scanning Go binaries in the image. Issue #249.
+CVE-2026-46680
