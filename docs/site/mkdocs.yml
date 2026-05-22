@@ -62,4 +62,11 @@ nav:
       - Release Notes:
           - releases/index.md
   - Images: images/index.md
-  - Architecture: architecture/index.md
+  - Architecture:
+      - architecture/index.md
+      - Design Decisions:
+          - Multi-Arch Images: architecture/decisions/multi-arch-images.md
+          - Release Workflow: architecture/decisions/release-workflow.md
+  - Operations:
+      - Repository Standards: operations/repository-standards.md
+      - Trivy CVE Triage: operations/trivy-triage.md

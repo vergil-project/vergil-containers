@@ -40,14 +40,13 @@ Do not construct commit messages or PR bodies manually.
 
 ```bash
 vrg-commit \
-  --type TYPE --message MESSAGE --agent AGENT \
-  [--scope SCOPE] [--body BODY]
+  --type TYPE --scope SCOPE --message MESSAGE \
+  [--body BODY]
 ```
 
-- `--type` (required): `feat|fix|docs|style|refactor|test|chore|ci|build`
+- `--type` (required): `feat|fix|docs|style|refactor|test|chore|ci|build|revert`
+- `--scope` (required): conventional commit scope
 - `--message` (required): commit description
-- `--agent` (required): `agent`
-- `--scope` (optional): conventional commit scope
 - `--body` (optional): detailed commit body
 
 The script resolves the correct `Co-Authored-By` identity from
