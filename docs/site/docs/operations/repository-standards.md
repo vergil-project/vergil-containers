@@ -29,18 +29,11 @@ system package manager or download the binaries.
   - Commit message lint (conventional commits)
   - PR issue linkage validation
 
-### Local pre-commit hooks
+### Claude Code hook guard
 
-The `.githooks/pre-commit` gate enforces:
-
-- **Branch naming** — branching-model-aware prefix validation
-- **Commit message format** — conventional commits required
-
-Enable hooks with:
-
-```bash
-git config core.hooksPath .githooks
-```
+The `.claude/hooks/guard.sh` PreToolUse hook blocks raw `git` and
+`gh` commands in AI agent sessions — all operations must go through
+the `vrg-git` / `vrg-gh` wrappers.
 
 ## Commit and PR Scripts
 
