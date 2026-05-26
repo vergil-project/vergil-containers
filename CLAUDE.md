@@ -120,10 +120,8 @@ human who can run it directly via `! <command>` in the prompt.
 uv tool install 'vergil-tooling @ git+https://github.com/vergil-project/vergil-tooling@v1.4'
 # (or `pip install` into the same Python env that hosts `uv`).
 
-# Enable the pre-commit gate (refuses raw `git commit`; admits
-# vrg-commit). The gate is vendored at `.githooks/pre-commit` in
-# this repo.
-git config core.hooksPath .githooks
+# The Claude Code PreToolUse hook guard (.claude/hooks/guard.sh)
+# blocks raw git/gh commands — use vrg-git / vrg-gh wrappers.
 ```
 
 ### Validation
