@@ -1198,10 +1198,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#local-pre-commit-hooks" class="md-nav__link">
+  <a href="#claude-code-hook-guard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Local pre-commit hooks
+        Claude Code hook guard
       
     </span>
   </a>
@@ -1368,10 +1368,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#local-pre-commit-hooks" class="md-nav__link">
+  <a href="#claude-code-hook-guard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Local pre-commit hooks
+        Claude Code hook guard
       
     </span>
   </a>
@@ -1476,23 +1476,18 @@ system package manager or download the binaries.</p>
 <li>Commit message lint (conventional commits)</li>
 <li>PR issue linkage validation</li>
 </ul>
-<h3 id="local-pre-commit-hooks">Local pre-commit hooks<a class="headerlink" href="#local-pre-commit-hooks" title="Permanent link">&para;</a></h3>
-<p>The <code>.githooks/pre-commit</code> gate enforces:</p>
-<ul>
-<li><strong>Branch naming</strong> — branching-model-aware prefix validation</li>
-<li><strong>Commit message format</strong> — conventional commits required</li>
-</ul>
-<p>Enable hooks with:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>config<span class="w"> </span>core.hooksPath<span class="w"> </span>.githooks
-</code></pre></div>
+<h3 id="claude-code-hook-guard">Claude Code hook guard<a class="headerlink" href="#claude-code-hook-guard" title="Permanent link">&para;</a></h3>
+<p>The <code>.claude/hooks/guard.sh</code> PreToolUse hook blocks raw <code>git</code> and
+<code>gh</code> commands in AI agent sessions — all operations must go through
+the <code>vrg-git</code> / <code>vrg-gh</code> wrappers.</p>
 <h2 id="commit-and-pr-scripts">Commit and PR Scripts<a class="headerlink" href="#commit-and-pr-scripts" title="Permanent link">&para;</a></h2>
 <p>AI agents and contributors use wrapper scripts for commits and PR
 submission. These enforce formatting standards and co-authorship
 attribution.</p>
 <h3 id="committing">Committing<a class="headerlink" href="#committing" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>vrg-commit<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--type<span class="w"> </span>TYPE<span class="w"> </span>--scope<span class="w"> </span>SCOPE<span class="w"> </span>--message<span class="w"> </span>MESSAGE<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="o">[</span>--body<span class="w"> </span>BODY<span class="o">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>vrg-commit<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>--type<span class="w"> </span>TYPE<span class="w"> </span>--scope<span class="w"> </span>SCOPE<span class="w"> </span>--message<span class="w"> </span>MESSAGE<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="o">[</span>--body<span class="w"> </span>BODY<span class="o">]</span>
 </code></pre></div>
 <ul>
 <li><code>--type</code> (required): <code>feat | fix | docs | style | refactor | test | chore | ci | build | revert</code></li>
@@ -1503,10 +1498,10 @@ attribution.</p>
 <p>The script resolves the correct <code>Co-Authored-By</code> identity from
 <code>vergil.toml</code> and the git hooks validate the result.</p>
 <h3 id="submitting-prs">Submitting PRs<a class="headerlink" href="#submitting-prs" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>vrg-submit-pr<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--issue<span class="w"> </span>NUMBER<span class="w"> </span>--summary<span class="w"> </span>TEXT<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="o">[</span>--linkage<span class="w"> </span>KEYWORD<span class="o">]</span><span class="w"> </span><span class="o">[</span>--title<span class="w"> </span>TEXT<span class="o">]</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="o">[</span>--notes<span class="w"> </span>TEXT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--dry-run<span class="o">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>vrg-submit-pr<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--issue<span class="w"> </span>NUMBER<span class="w"> </span>--summary<span class="w"> </span>TEXT<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="o">[</span>--linkage<span class="w"> </span>KEYWORD<span class="o">]</span><span class="w"> </span><span class="o">[</span>--title<span class="w"> </span>TEXT<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="o">[</span>--notes<span class="w"> </span>TEXT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--dry-run<span class="o">]</span>
 </code></pre></div>
 <ul>
 <li><code>--issue</code> (required): GitHub issue number</li>
