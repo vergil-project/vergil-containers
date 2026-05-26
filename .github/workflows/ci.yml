@@ -41,6 +41,7 @@ jobs:
       language: shell
       versions: '["latest"]'
       container-suffix: base
+      container-tag: 'latest'
 
   security:
     uses: vergil-project/vergil-actions/.github/workflows/ci-security.yml@v2.0
@@ -49,6 +50,8 @@ jobs:
       run-codeql: false
       run-standards: ${{ inputs.run-release != 'false' }}
       run-security: ${{ inputs.run-security != 'false' }}
+      container-suffix: base
+      container-tag: 'latest'
     permissions:
       contents: read
       security-events: write
@@ -58,3 +61,5 @@ jobs:
     with:
       language: shell
       run-release: ${{ inputs.run-release != 'false' }}
+      container-suffix: base
+      container-tag: 'latest'
