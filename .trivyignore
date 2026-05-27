@@ -528,3 +528,16 @@ CVE-2026-43503
 # Dev containers do not run containerd; this surfaces from Trivy
 # scanning Go binaries in the image. Issue #249.
 CVE-2026-46680
+
+# Perl Archive::Tar (libperl5.40, perl, perl-base, perl-modules-5.40) —
+# symlink extraction and memory consumption vulnerabilities. No Debian
+# fix available (status=affected). Dev containers do not extract
+# untrusted tar archives via Perl. Issue #270.
+CVE-2026-42496
+CVE-2026-9538
+
+# Go stdlib URL handling regression in scorecard, actionlint, git-cliff,
+# hadolint, and trivy binaries — incomplete fix for CVE-2026-27142.
+# These tools do not process attacker-controlled URLs. Awaiting upstream
+# rebuilds with Go 1.25.10+ / 1.26.3+. Issue #270.
+CVE-2026-39823
