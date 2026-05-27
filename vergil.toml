@@ -9,9 +9,6 @@ primary-language = "shell"
 versions = ["latest"]
 integration-tests = false
 
-[workflows.post-merge]
-docker-publish = "cd.yml"
-
 [publish]
 release = true
 docs = true
