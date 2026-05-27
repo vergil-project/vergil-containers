@@ -179,6 +179,7 @@ Every image includes (installed via shared fragments in `docker/common/`):
 - **git-cliff** (`2.13.1`)
 - **hadolint** (`2.14.0`)
 - **scorecard** (`5.5.0`)
+- **trivy** (`0.70.0`)
 - **gh** (GitHub CLI, via official apt repository)
 - **uv** (`0.11.13`)
 - **yamllint** (`1.38.0`)
