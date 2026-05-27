@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.8] - 2026-05-27
+
+### Bug fixes
+
+- pass app secrets to github-config audit
+- suppress DL3003 for checksum verification subshells
+- suppress linux-libc-dev CVE-2024-2193 and CVE-2026-43503
+- suppress Perl Archive::Tar and Go stdlib CVEs blocking dev image publish
+- suppress additional Perl and Go stdlib CVEs from updated Trivy DB
+
+### Chores
+
+- bump version to 2.0.8
+- add Version label to site header version selector
+- suppress five new HIGH CVEs blocking docker-publish
+- replace .githooks with Claude Code hook guard
+- add missing container parameters and fix stale standards doc
+- remove orphaned [workflows.post-merge] from vergil.toml
+- align CLAUDE.md with consumer template and drop unsupported primary-language
+
+### Documentation
+
+- document download integrity verification in architecture page
+
+### Features
+
+- integrate repo docs into site and add Trivy triage runbook
+- add checksum verification to binary tool downloads
+- add trivy 0.70.0 to security-tools fragment
+
 ## [2.0.7] - 2026-05-18
 
 ### Bug fixes
