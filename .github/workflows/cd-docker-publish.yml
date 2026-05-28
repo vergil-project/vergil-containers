@@ -7,6 +7,11 @@ on:
         description: "Image name prefix (dev or prod)"
         type: string
         required: true
+      no-cache:
+        description: "Skip registry cache (for nightly fresh rebuilds)"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   packages: write
