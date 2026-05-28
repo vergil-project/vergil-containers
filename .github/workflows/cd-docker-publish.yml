@@ -116,6 +116,9 @@ jobs:
           cache-to: type=registry,ref=${{ env.CACHE_TAG }},mode=max
           push: true
 
+      - name: Install vergil-tooling
+        uses: vergil-project/vergil-actions/actions/shared/setup/vergil@v2.0
+
       - name: Trivy scan (amd64)
         id: trivy-amd64
         continue-on-error: true
@@ -248,6 +251,9 @@ jobs:
           cache-from: type=registry,ref=${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.CACHE_TAG }},mode=max
           push: true
+
+      - name: Install vergil-tooling
+        uses: vergil-project/vergil-actions/actions/shared/setup/vergil@v2.0
 
       - name: Trivy scan (amd64)
         id: trivy-amd64
