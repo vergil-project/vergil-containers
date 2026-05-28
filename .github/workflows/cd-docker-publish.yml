@@ -24,7 +24,7 @@ jobs:
     name: Lint Dockerfiles
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/vergil-project/dev-base:latest
+      image: ghcr.io/vergil-project/prod-base:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
