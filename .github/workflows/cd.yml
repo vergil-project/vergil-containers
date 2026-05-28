@@ -24,8 +24,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     uses: vergil-project/vergil-actions/.github/workflows/cd-release.yml@v2.0
     with:
-      language: base
-      container-tag: latest
+      container-suffix: base
     secrets: inherit
     permissions:
       contents: write
