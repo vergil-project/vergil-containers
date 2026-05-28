@@ -190,3 +190,8 @@ CVE-2026-42496
 CVE-2026-42497
 CVE-2026-8376
 CVE-2026-9538
+
+# linux-libc-dev (Debian trixie) — kernel BPF tcx/netkit detach
+# permission check. No Debian fix available (status=affected).
+# Containers do not load or manage BPF programs.
+CVE-2026-45932
