@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.18] - 2026-05-28
+
+### Bug fixes
+
+- suppress CVE-2026-45932 linux-libc-dev kernel BPF CVE blocking docker-publish
+
 ## [2.0.17] - 2026-05-28
 
 ### Bug fixes
