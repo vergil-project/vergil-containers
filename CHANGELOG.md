@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [2.0.16] - 2026-05-28
+## [2.0.17] - 2026-05-28
 
 ### Bug fixes
 
@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - upgrade pip in python-support fragment to fix CVE-2026-8643
 - audit trivyignore: remove 182 stale entries and update comments
 - remove redundant vergil-tooling install steps from bare-runner build jobs
+- replace language: base with container-suffix: base
+- remove pip from non-Python images, install uv via standalone installer
 
 ### Chores
 
