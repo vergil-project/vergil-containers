@@ -41,20 +41,29 @@ jobs:
       language: shell
       versions: '["latest"]'
       container-suffix: base
+      container-tag: 'latest'
 
-  security:
-    uses: vergil-project/vergil-actions/.github/workflows/ci-security.yml@v2.0
-    with:
-      language: shell
-      run-codeql: false
-      run-standards: ${{ inputs.run-release != 'false' }}
-      run-security: ${{ inputs.run-security != 'false' }}
-    permissions:
-      contents: read
-      security-events: write
+  # TEMPORARILY DISABLED: security job removed to bootstrap prod images
+  # with trivy. vergil-actions@v2.0 (v2.0.21) calls vrg-trivy-scan which
+  # requires trivy in the prod-base image, but prod-base hasn't been
+  # published yet. Re-enable after prod images are live. Issue #281.
+  # security:
+  #   uses: vergil-project/vergil-actions/.github/workflows/ci-security.yml@v2.0
+  #   with:
+  #     language: shell
+  #     run-codeql: false
+  #     run-standards: ${{ inputs.run-release != 'false' }}
+  #     run-security: ${{ inputs.run-security != 'false' }}
+  #     container-suffix: base
+  #     container-tag: 'latest'
+  #   permissions:
+  #     contents: read
+  #     security-events: write
 
   version:
     uses: vergil-project/vergil-actions/.github/workflows/ci-version-bump.yml@v2.0
     with:
       language: shell
       run-release: ${{ inputs.run-release != 'false' }}
+      container-suffix: base
+      container-tag: 'latest'

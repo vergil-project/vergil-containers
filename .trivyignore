@@ -492,3 +492,55 @@ CVE-2026-42258
 
 # CVE-2026-42245 (net-imap) — DoS via crafted input.
 CVE-2026-42245
+
+# libexpat1 (Debian trixie) — XML parsing vulnerability in Expat.
+# No Debian patch available (status=affected). Dev containers do not
+# parse untrusted XML. Issue #249.
+CVE-2025-59375
+
+# libgssapi-krb5-2 (Debian trixie) — MIT Kerberos DoS via integer
+# overflow. No Debian patch available (status=affected). Dev containers
+# do not run Kerberos services. Issue #249.
+CVE-2026-40356
+
+# libgnutls30t64 (Debian trixie) — DoS via DTLS packet reordering.
+# Fix available in 3.8.9-3+deb13u4 but not yet in all base images.
+# DTLS is not used by any tool in the image. Issue #249.
+CVE-2026-42009
+
+# linux-libc-dev — kernel net/rds: reset op_nents when zerocopy page
+# pin fails. Container false positive: containers use the host kernel,
+# not the kernel headers in the image. Issue #249.
+CVE-2026-43494
+
+# linux-libc-dev — Speculative Race Condition (SRC) in modern CPUs.
+# Container false positive: containers use the host kernel. No fix
+# available (status=affected). Issue #263.
+CVE-2024-2193
+
+# linux-libc-dev — kernel net: skbuff shared-frag marker propagation.
+# Container false positive: containers use the host kernel. Fix
+# available in 6.12.90-1. Issue #263.
+CVE-2026-43503
+
+# containerd (Go dependency in dev-base) — user ID handling bypass
+# allows runAsNonRoot policy evasion. Fix available at v1.7.32.
+# Dev containers do not run containerd; this surfaces from Trivy
+# scanning Go binaries in the image. Issue #249.
+CVE-2026-46680
+
+# Perl (libperl5.40, perl, perl-base, perl-modules-5.40) — no Debian
+# fix available (status=affected). Dev containers do not extract
+# untrusted tar archives or process attacker-controlled Perl input.
+# Issue #270.
+CVE-2026-42496
+CVE-2026-9538
+CVE-2026-8376
+
+# Go stdlib vulnerabilities in scorecard, actionlint, git-cliff,
+# hadolint, and trivy binaries. These tools do not run ReverseProxy,
+# process attacker-controlled URLs, or render HTML templates. Awaiting
+# upstream rebuilds with Go 1.25.10+ / 1.26.3+. Issue #270.
+CVE-2026-39823
+CVE-2026-39825
+CVE-2026-39826
