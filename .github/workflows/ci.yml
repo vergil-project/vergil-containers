@@ -24,7 +24,7 @@ jobs:
     name: "quality / hadolint"
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/vergil-project/dev-base:latest
+      image: ghcr.io/vergil-project/prod-base:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -43,22 +43,18 @@ jobs:
       container-suffix: base
       container-tag: 'latest'
 
-  # TEMPORARILY DISABLED: security job removed to bootstrap prod images
-  # with trivy. vergil-actions@v2.0 (v2.0.21) calls vrg-trivy-scan which
-  # requires trivy in the prod-base image, but prod-base hasn't been
-  # published yet. Re-enable after prod images are live. Issue #281.
-  # security:
-  #   uses: vergil-project/vergil-actions/.github/workflows/ci-security.yml@v2.0
-  #   with:
-  #     language: shell
-  #     run-codeql: false
-  #     run-standards: ${{ inputs.run-release != 'false' }}
-  #     run-security: ${{ inputs.run-security != 'false' }}
-  #     container-suffix: base
-  #     container-tag: 'latest'
-  #   permissions:
-  #     contents: read
-  #     security-events: write
+  security:
+    uses: vergil-project/vergil-actions/.github/workflows/ci-security.yml@v2.0
+    with:
+      language: shell
+      run-codeql: false
+      run-standards: ${{ inputs.run-release != 'false' }}
+      run-security: ${{ inputs.run-security != 'false' }}
+      container-suffix: base
+      container-tag: 'latest'
+    permissions:
+      contents: read
+      security-events: write
 
   version:
     uses: vergil-project/vergil-actions/.github/workflows/ci-version-bump.yml@v2.0
