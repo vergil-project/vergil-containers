@@ -83,8 +83,11 @@ nightly-rebuild-prod:
     no-cache: true
 ```
 
-The two jobs run in parallel (no dependency between them). The existing
-`github-config` job is unrelated and unchanged.
+The two jobs run in parallel (no dependency between them). Both require the
+same permissions as the existing `nightly-rebuild` job (`packages: write`,
+`contents: read`, `security-events: write`, `attestations: write`,
+`id-token: write`). The existing `github-config` job is unrelated and
+unchanged.
 
 ### 4. CD builds unchanged
 
