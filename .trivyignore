@@ -544,3 +544,23 @@ CVE-2026-8376
 CVE-2026-39823
 CVE-2026-39825
 CVE-2026-39826
+
+# Perl Archive::Tar hardlink extraction — same family as CVE-2026-42496.
+# No Debian fix available (status=affected). Issue #288.
+CVE-2026-42497
+
+# linux-libc-dev — kernel bpf use-after-free in arena_vm_close on fork.
+# Container false positive: containers use the host kernel. Issue #288.
+CVE-2026-45837
+
+# linux-libc-dev — kernel udf partition descriptor bookkeeping.
+# Container false positive. Issue #288.
+CVE-2026-45991
+
+# linux-libc-dev — kernel selinux overlayfs mmap/mprotect access check.
+# Container false positive. Issue #288.
+CVE-2026-46054
+
+# linux-libc-dev — kernel ALSA aloop peer runtime UAF.
+# Container false positive. Issue #288.
+CVE-2026-46090
