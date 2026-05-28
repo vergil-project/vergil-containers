@@ -5,16 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.11] - 2026-05-28
+
+### Bug fixes
+
+- pass app secrets to github-config audit
+- suppress DL3003 for checksum verification subshells
+- suppress linux-libc-dev CVE-2024-2193 and CVE-2026-43503
+- suppress Perl Archive::Tar and Go stdlib CVEs blocking dev image publish
+- suppress additional Perl and Go stdlib CVEs from updated Trivy DB
+
+### Documentation
+
+- document download integrity verification in architecture page
+
+### Features
+
+- integrate repo docs into site and add Trivy triage runbook
+- add checksum verification to binary tool downloads
+- add trivy 0.70.0 to security-tools fragment
+
 ## [2.0.7] - 2026-05-18
 
 ### Bug fixes
 
 - suppress 11 new CVEs blocking CD publish pipeline
-
-### Chores
-
-- bump version to 2.0.7
-- remove co-authors section, normalize vergil dep to v2.0
 
 ### Documentation
 
@@ -33,38 +48,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - suppress CVE-2026-5773 curl SMB connection reuse
 
-### Chores
-
-- add GPL-3 LICENSE file
-- bump version to 2.0.6
-- remove per-repo templates in favor of org defaults
-
 ### Features
 
 - deploy permission model configuration
 
-## [2.0.5] - 2026-05-14
-
-### Chores
-
-- bump version to 2.0.5
-- remove stale standard-tooling references and redundant dependency key
-
 ## [2.0.4] - 2026-05-13
-
-### Chores
-
-- bump version to 2.0.4
 
 ### Documentation
 
 - replace stale standard-tooling references with vergil-docker
 
 ## [2.0.3] - 2026-05-13
-
-### Chores
-
-- bump version to 2.0.3
 
 ### Documentation
 
@@ -83,17 +77,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### CI
 
 - update vergil-actions refs from v1.5 to v2.0
-
-### Chores
-
-- prepare release 1.0.0
-- merge main into release/1.0.0
-- prepare release 1.0.0
-- bump version to 1.5.1
-- switch hadolint container references from dev-base to prod-base
-- update plugin identity to vergil-marketplace
-- add vergil-tooling key to dependencies for config parser compat
-- pin vergil-tooling to v2.0.1 for import fix
 
 ### Features
 
@@ -144,32 +127,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - adopt standard-actions v1.5 reusable workflows and bump to 1.5.0 (#146)
 - remove redundant bespoke shellcheck job (#148)
 
-### Chores
-
-- suppress four new CVEs in trivyignore
-- use .markdownlintignore for lint exclusions (#190) (#9)
-- install standard-tooling plugin via marketplace (#12)
-- ban MEMORY.md usage in CLAUDE.md (#35)
-- add trivy-out.json to .gitignore (#36)
-- vendor .githooks gate + .yamllint; clean stale CLAUDE.md refs (#53) (#54)
-- migrate standard-actions refs from @develop to @v1.3 (#70)
-- remove add-to-project.yml workflow (#76)
-- upgrade standard-actions from @v1.3 to @v1.4 (#83)
-- bump ST_TOOLING_TAG from v1.3 to v1.4 (#85)
-- bootstrap st-config.toml for cache-first docker workflow (#93)
-- strip pre-baked standard-tooling from all dev container images (#94) (#95)
-- seed standard-tooling.toml (#98)
-- strip config sections from repository-standards.md (#100)
-- remove legacy st-config.toml (#102)
-- add [workflows.post-merge] section listing docker-publish (#120)
-- add memory management policy (#122)
-- remove standalone markdownlint CI job (standard-tooling#476) (#124)
-- update st-validate-local reference to st-validate (#159)
-- fleet-wide config and workflow cleanup (#160)
-- shorten issue template header comments to fit yamllint line-length (#164)
-- migrate to reusable publish/docs workflows (#167)
-- add [ci] section to standard-tooling.toml (#174)
-
 ### Documentation
 
 - add MkDocs/mike documentation site (#4)
@@ -218,3 +175,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Styling
 
 - fix table alignment and code fence language for markdownlint (#5)
+
