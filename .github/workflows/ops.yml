@@ -23,10 +23,23 @@ jobs:
       APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
 
-  nightly-rebuild:
+  nightly-rebuild-dev:
     uses: ./.github/workflows/cd-docker-publish.yml
     with:
       image-prefix: dev
+      no-cache: true
+    permissions:
+      packages: write
+      contents: read
+      security-events: write
+      attestations: write
+      id-token: write
+
+  nightly-rebuild-prod:
+    uses: ./.github/workflows/cd-docker-publish.yml
+    with:
+      image-prefix: prod
+      no-cache: true
     permissions:
       packages: write
       contents: read
