@@ -117,8 +117,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: "${{ matrix.build-arg }}=${{ matrix.version }}"
           tags: ${{ env.CANDIDATE }}
-          cache-from: type=registry,ref=${{ env.CACHE_TAG }}
-          cache-to: type=registry,ref=${{ env.CACHE_TAG }},mode=max
+          cache-from: ${{ inputs.no-cache && '' || format('type=registry,ref={0}', env.CACHE_TAG) }}
+          cache-to: ${{ inputs.no-cache && '' || format('type=registry,ref={0},mode=max', env.CACHE_TAG) }}
           push: true
 
       - name: Trivy scan (amd64)
