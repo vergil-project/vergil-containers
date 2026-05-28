@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../v2.0.7/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../v2.0.5/">
+        <link rel="next" href="../v2.0.12/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>2.0.6 - Vergil Docker</title>
+        <title>2.0.16 - Vergil Docker</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#release-206-2026-05-14" class="md-skip">
+        <a href="#release-2016-2026-05-28" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              2.0.6
+              2.0.16
             
           </span>
         </div>
@@ -592,10 +592,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../v2.0.16/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.16
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -611,6 +638,48 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#bug-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bug fixes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chores" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chores
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -732,37 +801,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    2.0.6
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../v2.0.6/" class="md-nav__link">
         
   
   
@@ -778,59 +820,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#bug-fixes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Bug fixes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#chores" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Chores
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#features" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Features
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1413,17 +1402,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#features" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Features
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -1441,27 +1419,36 @@
 
 
 
-<h1 id="release-206-2026-05-14">Release 2.0.6 (2026-05-14)<a class="headerlink" href="#release-206-2026-05-14" title="Permanent link">&para;</a></h1>
+<h1 id="release-2016-2026-05-28">Release 2.0.16 (2026-05-28)<a class="headerlink" href="#release-2016-2026-05-28" title="Permanent link">&para;</a></h1>
 <h2 id="bug-fixes">Bug fixes<a class="headerlink" href="#bug-fixes" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>suppress CVE-2026-5773 curl SMB connection reuse</strong>
-Debian trixie curl 8.14.1-2+deb13u2 has no fix available. SMB protocol is not used by any image in this repository — curl is only used for HTTPS fetches from known hosts. Ref #224</li>
+<li>
+<p><strong>install vergil-tooling in bare-runner build jobs</strong>
+Add the vergil-actions setup/vergil composite action to the build-scan-push and publish-base jobs before their Trivy scan steps, so vrg-trivy-scan is available on bare ubuntu-latest runners.</p>
+</li>
+<li>
+<p><strong>upgrade pip in python-support fragment to fix CVE-2026-8643</strong>
+The Debian python3-pip package (25.1.1+dfsg-1) is vulnerable to CVE-2026-8643 (path traversal via malicious entry point name). This blocks Trivy scans for Go and Rust prod images. Upgrade pip to &gt;=26.1 before installing yamllint and uv, matching the pattern already used in the Python Dockerfile template.</p>
+</li>
+<li>
+<p><strong>audit trivyignore: remove 182 stale entries and update comments</strong>
+Scanned all six dev images (base, python, go, rust, ruby, java) against
+Trivy 0.70.0 without the ignore file. Cross-referenced the 89 live CVEs
+against the 270 entries in .trivyignore.</p>
+</li>
+</ul>
+<p>Removed 182 entries that Trivy no longer reports (fixed upstream in base
+images or dependencies). Updated comments on remaining entries to reflect
+current fix availability — several Debian packages (gnutls, openssh, jq,
+libcap, krb5, nghttp2, cpython) now have fixes that will land on the next
+image rebuild. Consolidated duplicate comment blocks and added audit date.</p>
+<p>Reduced from 270 to 88 CVE entries (67% reduction).</p>
+<ul>
+<li><strong>remove redundant vergil-tooling install steps from bare-runner build jobs</strong></li>
 </ul>
 <h2 id="chores">Chores<a class="headerlink" href="#chores" title="Permanent link">&para;</a></h2>
 <ul>
-<li>
-<p><strong>add GPL-3 LICENSE file</strong>
-GitHub does not inherit LICENSE files from the org-level .github repo. Each repo must have its own for the license badge to display and for CONTRIBUTING.md to reference a unified license.</p>
-</li>
-<li>
-<p><strong>bump version to 2.0.6</strong></p>
-</li>
-<li><strong>remove per-repo templates in favor of org defaults</strong>
-Issue templates and PR template are now inherited from vergil-project/.github. Per-repo copies were byte-identical and are no longer needed.</li>
-</ul>
-<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>deploy permission model configuration</strong></li>
+<li><strong>bump version to 2.0.13</strong></li>
 </ul>
 
 
