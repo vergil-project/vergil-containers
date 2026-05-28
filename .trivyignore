@@ -1,8 +1,10 @@
 # Trivy ignore file for dev container images.
 #
-# These CVEs are either false positives for containers or unfixable
-# upstream issues. Review periodically and remove entries when fixes
-# become available in base images or dependencies.
+# These CVEs are either false positives for containers, unfixable
+# upstream issues, or awaiting base image rebuilds to pick up Debian
+# patches. Review periodically and remove entries when fixes land.
+#
+# Last audited: 2026-05-28 (issue #300).
 
 # Linux kernel CVEs — containers use the host kernel, not the kernel
 # headers/modules baked into the base image. False positives.
@@ -21,180 +23,52 @@ CVE-2025-38187
 CVE-2025-38204
 CVE-2025-38206
 CVE-2025-38421
-CVE-2025-38584
-CVE-2025-38627
 CVE-2025-38636
 CVE-2025-39859
 CVE-2025-39862
 CVE-2025-39958
-CVE-2025-40064
-CVE-2025-40135
-CVE-2025-40158
-CVE-2025-40168
-CVE-2026-23066
-CVE-2026-23152
-CVE-2026-23171
-CVE-2026-23210
-CVE-2025-71152
-CVE-2026-23226
-CVE-2025-71238
-CVE-2026-23231
-CVE-2025-71221
 CVE-2026-23102
+CVE-2026-23171
 CVE-2026-23208
-CVE-2026-23227
-CVE-2026-23243
-CVE-2026-23270
-CVE-2026-23315
-CVE-2026-23318
-CVE-2026-23319
-CVE-2026-23325
 CVE-2026-23327
-CVE-2026-23343
-CVE-2026-23354
-CVE-2026-23359
-CVE-2026-23361
-CVE-2026-23363
-CVE-2026-23378
-CVE-2026-23387
-CVE-2026-23388
-CVE-2026-23392
-CVE-2026-23395
-CVE-2026-23397
-CVE-2026-23412
-CVE-2026-23413
-CVE-2026-23422
-CVE-2026-23427
-CVE-2026-23428
-CVE-2026-23447
-CVE-2026-23455
-CVE-2026-31402
-CVE-2026-31408
-CVE-2026-31411
-CVE-2026-31419
-CVE-2026-31435
-CVE-2026-31436
-CVE-2026-31438
-CVE-2026-31446
-CVE-2026-31448
-CVE-2026-31449
-CVE-2026-31450
-CVE-2026-31453
-CVE-2026-31454
-CVE-2026-31456
-CVE-2026-31464
-CVE-2026-31469
-CVE-2026-31470
-CVE-2026-31473
-CVE-2026-31480
-CVE-2026-31482
-CVE-2026-31483
-CVE-2026-31485
-CVE-2026-31487
-CVE-2026-31492
 CVE-2026-31493
-CVE-2026-31498
-CVE-2026-31499
-CVE-2026-31500
-CVE-2026-31504
-CVE-2026-31505
-CVE-2026-31507
-CVE-2026-31508
-CVE-2026-31511
-CVE-2026-31512
-CVE-2026-31515
-CVE-2026-31519
-CVE-2026-31521
-CVE-2026-31523
-CVE-2026-31526
-CVE-2026-31527
-CVE-2026-31528
-CVE-2026-31532
-CVE-2026-31533
-CVE-2026-31554
-CVE-2026-31555
-CVE-2026-31557
-CVE-2026-31570
-CVE-2026-31581
-CVE-2026-31583
-CVE-2026-31586
-CVE-2026-31588
-CVE-2026-31591
-CVE-2026-31592
-CVE-2026-31593
-CVE-2026-31607
-CVE-2026-31609
-CVE-2026-31613
-CVE-2026-31614
-CVE-2026-31617
-CVE-2026-31619
-CVE-2026-31620
-CVE-2026-31623
-CVE-2026-31624
-CVE-2026-31625
-CVE-2026-31628
-CVE-2026-31630
-CVE-2026-31637
-CVE-2026-31638
-CVE-2026-31642
-CVE-2026-31648
-CVE-2026-31649
-CVE-2026-31662
+CVE-2026-31568
 CVE-2026-31663
-CVE-2026-31665
-CVE-2026-31666
-CVE-2026-31667
-CVE-2026-31669
-CVE-2026-31788
-CVE-2026-31692
-CVE-2026-31709
-CVE-2026-31771
-CVE-2026-43009
-CVE-2026-43021
-CVE-2026-43029
-CVE-2026-43042
-CVE-2026-43048
-CVE-2026-43083
-CVE-2026-43101
-CVE-2026-43109
-CVE-2026-43116
-CVE-2026-43118
-CVE-2026-43172
-CVE-2026-43176
+CVE-2026-31688
 CVE-2026-43198
-CVE-2026-43213
+CVE-2026-43494
+CVE-2026-43503
+CVE-2026-45837
+CVE-2026-45991
+CVE-2026-46054
+CVE-2026-46090
+CVE-2026-46300
+CVE-2026-46333
 
-# Debian system cpython — present in go/ruby base images via Debian
-# packages. Not the language runtime we use, no Debian patch available.
-
+# Debian system cpython — present in non-Python images via Debian
+# packages. Fix available (3.13.5-2+deb13u1); will resolve on next
+# image rebuild.
 CVE-2025-13836
-CVE-2025-15366
-CVE-2025-15367
-CVE-2025-8194
-CVE-2026-1299
 
-# glibc — no fix available in Debian bookworm at time of writing.
+# CVE-2026-6100 (python3.13) — use-after-free in decompression.
+# Fix available (3.13.5-2+deb13u2); will resolve on next image rebuild.
+CVE-2026-6100
 
-CVE-2026-0861
+# CVE-2026-7210 (python3.13) — xml.parsers.expat vulnerability.
+# No Debian fix available (status=affected). Image does not parse
+# untrusted XML.
+CVE-2026-7210
 
 # GnuPG tpm2daemon — dev containers do not use TPM. Low practical risk.
-
+# No Debian fix available.
 CVE-2026-24882
 
-# Go stdlib CVEs in shfmt 3.13.1, actionlint 1.7.12, and git-cliff 2.13.1
-# binaries — none exercise the affected code paths (no DNS resolution,
-# no HTTP/2, no email parsing, no x509 cert handling). All are static
-# linters / changelog generators operating on local files only. Awaiting
-# upstream rebuilds with patched Go (1.26.3+).
+# Go stdlib CVEs in shfmt, actionlint, git-cliff, hadolint, scorecard,
+# and trivy binaries — none exercise the affected code paths (no DNS
+# resolution, no HTTP/2, no email parsing, no x509 cert handling). All
+# are static linters / changelog generators operating on local files
+# only. Awaiting upstream rebuilds with patched Go (1.25.10+ / 1.26.3+).
 
-CVE-2025-47907
-CVE-2025-58183
-CVE-2025-61726
-CVE-2025-61728
-CVE-2025-61729
-CVE-2025-61730
-CVE-2025-68121
-CVE-2026-25679
 CVE-2026-32280
 CVE-2026-32281
 CVE-2026-32283
@@ -202,256 +76,11 @@ CVE-2026-33810
 CVE-2026-33811
 CVE-2026-33814
 CVE-2026-39820
+CVE-2026-39823
+CVE-2026-39825
+CVE-2026-39826
 CVE-2026-39836
 CVE-2026-42499
-
-# npm transitive dependencies from markdownlint-cli@0.47.0 — no fix
-# available without an upstream markdownlint-cli release.
-#
-# CVE-2026-33671 (picomatch ReDoS via crafted extglob): fix exists in
-# picomatch 4.0.4, but markdownlint-cli@0.47.0 transitively pins 4.0.3.
-# markdownlint-cli@0.48.0 is available; bumping it is a behavior-affecting
-# change tracked separately. picomatch is exercised on .md files in the
-# repo (lockfile-bounded user input), not on attacker-controlled paths.
-
-CVE-2025-64756
-CVE-2025-69873
-CVE-2026-22036
-CVE-2026-23745
-CVE-2026-23950
-CVE-2026-24001
-CVE-2026-24842
-CVE-2026-26960
-CVE-2026-26996
-CVE-2026-27699
-CVE-2026-27903
-CVE-2026-27904
-GHSA-qffp-2rhf-9h96
-CVE-2026-29786
-CVE-2026-33671
-
-# Node.js CVEs — should be resolved by Node 22.22.0 upgrade. Listed
-# here as safety net in case Trivy DB still attributes them to copied
-# node binary. Remove after confirming clean scan.
-
-CVE-2025-55130
-CVE-2025-55131
-CVE-2025-59465
-CVE-2025-59466
-CVE-2026-21637
-
-# GitHub CLI (gh) — docker/cli dependency. Windows-only privilege
-# escalation via malicious plugin binaries. Not applicable to Linux
-# containers.
-
-CVE-2025-15558
-
-# Debian trixie 13.4 system packages from python:3.14-slim base image —
-# all currently lack a fixed Debian package (fix=—). See per-CVE
-# justification below; remove entries as Debian publishes patched
-# packages and rebuilds incorporate them. Tracked in #64.
-
-# CVE-2026-25210 (libexpat1) — XML parsing UAF. Used by Python's
-# xml.etree and apt's package metadata parsing. Image itself doesn't
-# parse untrusted XML; consumers using xml.etree on attacker input
-# would inherit this risk. Awaiting Debian patch.
-CVE-2026-25210
-
-# CVE-2026-41989 (libgcrypt20) — crypto library. Used by gpg / apt-key
-# during apt package signature verification. Not exposed at runtime.
-CVE-2026-41989
-
-# CVE-2025-69720 (ncurses-base, ncurses-bin, libncursesw6, libtinfo6) —
-# buffer overflow in terminal handling. Containers run non-interactively
-# in CI; ncurses code paths are not exercised.
-CVE-2025-69720
-
-# CVE-2026-27135 (libnghttp2-14) — HTTP/2 in curl. Curl is invoked
-# during build to fetch release binaries from github.com (controlled
-# upstream, not attacker-controlled). Runtime curl usage by consumers
-# inherits the risk; awaiting Debian patch.
-CVE-2026-27135
-
-# CVE-2026-6100 (python3.13, python3.13-minimal, libpython3.13-stdlib,
-# libpython3.13-minimal) — use-after-free in decompression. Triggered
-# by malicious archives passed to Python's tar/zip modules. pip install
-# operations target PyPI which is not (typically) a malicious archive
-# source. Most-exposed of the Debian CVEs in this batch; remove as
-# soon as Debian ships a patched python3.13.
-CVE-2026-6100
-
-# CVE-2026-29111 (libsystemd0, libudev1) — systemd IPC arbitrary code
-# execution. Containers don't run systemd as PID 1; the libraries are
-# linked in for binary compatibility but the IPC paths aren't exercised.
-CVE-2026-29111
-
-# CVE-2026-35385 (openssh-client) — privilege escalation via legacy
-# scp protocol when not preserving file. Modern scp uses sftp by
-# default; legacy mode requires opt-in. Image uses ssh for git remotes
-# (not scp). Not exercised.
-CVE-2026-35385
-
-# CVE-2026-35414 (openssh-client) — security bypass via authorized_keys
-# principals option. Server-side (sshd) issue. Image ships only the
-# ssh client. Not affected.
-CVE-2026-35414
-
-# Ruby default gems shipped with ruby:<ver>-slim base image — fix
-# requires bumping the bundled gem post-install. Not currently
-# exercised on attacker-controlled input by the image itself.
-
-# CVE-2026-41316 (erb) — arbitrary code execution via ERB#def_method /
-# similar after Marshal.load of attacker-controlled data. The image
-# does not deserialize untrusted ERB; consumers using ERB on trusted
-# templates are unaffected. Fix in 4.0.4.1; revisit when bumping the
-# default gemset becomes worthwhile.
-CVE-2026-41316
-
-# CVE-2026-42246 (net-imap) — STARTTLS stripping via invalid response
-# timing. Default gem bundled with ruby:<ver>-slim; the image does not
-# use IMAP. Fix available (0.3.10 / 0.4.24 / 0.5.14); will be
-# addressed during .trivyignore audit. Issue #149.
-CVE-2026-42246
-
-# jq / libjq1 (Debian trixie, jq 1.7.1) — used for JSON parsing in
-# CI workflows (docs-deploy version-command), not on untrusted input.
-# No Debian fix available (status=affected). Issue #81.
-
-# CVE-2026-32316 (jq) — DoS or potential arbitrary code execution.
-CVE-2026-32316
-
-# CVE-2026-40164 (jq) — DoS via crafted JSON causing hash collisions.
-CVE-2026-40164
-
-# libcap2 (Debian trixie) — TOCTOU race in cap_set_file(). Requires
-# CAP_SETFCAP on a local filesystem; containers run without this
-# capability by default. No Debian fix available (status=affected).
-CVE-2026-4878
-
-# libgnutls30t64 (Debian trixie) — DoS via DTLS zero-length fragment.
-# DTLS is not used by any tool in the image (curl uses TLS, not DTLS).
-# No Debian fix available (status=affected).
-CVE-2026-33845
-
-# libgnutls30t64 (Debian trixie) — heap buffer overflow in GnuTLS.
-# Same package as above. Curl uses GnuTLS for TLS but only connects to
-# known hosts (GitHub, PyPI, NodeSource). No Debian fix available.
-CVE-2026-33846
-
-# libgnutls30t64 (Debian trixie) — policy bypass due to case-sensitive
-# comparison in certificate name matching. Same trust boundary as above:
-# curl connects only to known hosts. No Debian fix available.
-CVE-2026-3833
-
-# libgnutls30t64 (Debian trixie) — authentication bypass via NUL
-# character in certificate name. Requires a malicious server certificate;
-# images connect only to known hosts. No Debian fix available.
-CVE-2026-42010
-
-# libgnutls30t64 (Debian trixie) — security bypass due to incorrect
-# name matching. Same trust boundary. No Debian fix available.
-CVE-2026-42011
-
-# libssh2-1t64 (Debian trixie) — security vulnerability in libssh2.
-# Used by git for SSH transport to known hosts (GitHub) only. No Debian
-# fix available (status=affected).
-CVE-2026-7598
-
-# linux-libc-dev — kernel s390/mm secure storage fixup. Container false
-# positive: containers use the host kernel, not the kernel headers in
-# the image.
-CVE-2026-31568
-
-# linux-libc-dev — kernel ALSA ctxfi index mapping error check.
-# Container false positive: same rationale as above.
-CVE-2026-31777
-
-# linux-libc-dev — kernel driver core: enforce device_lock. Container
-# false positive: containers use the host kernel.
-CVE-2026-31688
-
-# linux-libc-dev — kernel f2fs: UAF caused by decrementing
-# sbi->nr_pages[]. Container false positive.
-CVE-2026-31715
-
-# linux-libc-dev — kernel ring-buffer: possible dereference. Container
-# false positive.
-CVE-2026-43272
-
-# linux-libc-dev — kernel mm: "Dirty Frag" local privilege escalation.
-# Container false positive: containers use the host kernel. Fix available
-# in 6.12.86-1 but only affects the header package, not the running kernel.
-CVE-2026-43284
-
-# linux-libc-dev — kernel mm/page_alloc: clear page->private. Container
-# false positive.
-CVE-2026-43303
-
-# linux-libc-dev — kernel bpf: mark live registers for indirect jumps.
-# Container false positive.
-CVE-2026-43321
-
-# linux-libc-dev — kernel i3c: mipi-i3c-hci RING_CTRL_ABORT handling.
-# Container false positive.
-CVE-2026-43352
-
-# linux-libc-dev — kernel i3c: mipi-i3c-hci DMA ring dequeue race.
-# Container false positive.
-CVE-2026-43353
-
-# linux-libc-dev — kernel powerpc perf: check current->mm is alive.
-# Container false positive.
-CVE-2026-43416
-
-# linux-libc-dev — kernel: rxrpc, afs: Fix missing error pointer check.
-# Container false positive.
-CVE-2026-43463
-
-# linux-libc-dev — kernel: net/mlx5e: RX, Fix XDP multi-buf frag counting.
-# Container false positive.
-CVE-2026-43464
-CVE-2026-43465
-
-# linux-libc-dev — kernel: rxrpc: Also unshare DATA/RESPONSE packets when
-# paged frags. Container false positive.
-CVE-2026-43500
-
-# openssh-client — arbitrary command execution via shell metacharacters
-# in username. Requires connecting to a malicious server with a crafted
-# username. Image uses ssh only for git remotes to known hosts (GitHub).
-# No Debian fix available (status=affected).
-CVE-2026-35386
-
-# curl / libcurl (Debian trixie) — wrong file transfer due to incorrect
-# SMB connection reuse. Images use curl only for HTTPS fetches from
-# known hosts (GitHub, PyPI, NodeSource); SMB protocol is not used.
-# No Debian fix available (status=affected). Issue #224.
-CVE-2026-5773
-
-# curl / libcurl (Debian trixie) — information disclosure due to cookie
-# leak. Images use curl only for HTTPS fetches from known hosts; no
-# cookies are set or read. No Debian fix available (status=affected).
-CVE-2026-6276
-
-# libexpat1 (Debian trixie) — computational complexity DoS in libexpat
-# before 2.8.1. XML parsing is not exercised on attacker-controlled input
-# in these images. No Debian fix available (status=affected).
-CVE-2026-45186
-
-# linux-libc-dev — kernel "Fragnesia" variant of Dirty Frag vulnerability.
-# Container false positive: containers use the host kernel, not the kernel
-# headers in the image.
-CVE-2026-46300
-
-# linux-libc-dev — kernel: read root-owned files as unprivileged user.
-# Container false positive: containers use the host kernel.
-CVE-2026-46333
-
-# Debian system cpython — CVE-2026-7210 (libpython3.13-minimal, python3.13):
-# xml.parsers.expat and xml.etree.ElementTree vulnerability. Present in all
-# images via Debian base. No Debian fix available (status=affected). Image
-# does not parse untrusted XML. Same pattern as CVE-2026-6100.
-CVE-2026-7210
 
 # Scorecard 5.5.0 Go transitive dependencies — scorecard is a read-only
 # GitHub API auditor. It does not run Docker containers, does not use
@@ -459,108 +88,105 @@ CVE-2026-7210
 # None of these code paths are exercised. Awaiting upstream scorecard
 # release with bumped dependencies.
 
-# CVE-2026-34040 (docker/docker) — Moby authorization bypass.
-CVE-2026-34040
-
-# CVE-2026-41567 (docker/docker) — PUT /containers archive execution.
-CVE-2026-41567
-
-# CVE-2026-42306 (docker/docker) — docker cp race condition bind mount.
-CVE-2026-42306
-
-# CVE-2026-44973 (go-billy) — path traversal vulnerabilities.
-CVE-2026-44973
-
-# CVE-2026-45022 (go-git) — improper parsing of crafted objects.
-CVE-2026-45022
-
-# CVE-2026-33747 (buildkit) — arbitrary file access.
 CVE-2026-33747
-
-# CVE-2026-33748 (buildkit) — unauthorized file access.
 CVE-2026-33748
-
-# Ruby net-imap default gem — image does not use IMAP. Fix available
-# upstream but requires bumping the bundled gem. Same package as
-# existing CVE-2026-42246 suppression.
-
-# CVE-2026-42257 (net-imap) — arbitrary IMAP command injection.
-CVE-2026-42257
-
-# CVE-2026-42258 (net-imap) — related IMAP command injection.
-CVE-2026-42258
-
-# CVE-2026-42245 (net-imap) — DoS via crafted input.
-CVE-2026-42245
-
-# libexpat1 (Debian trixie) — XML parsing vulnerability in Expat.
-# No Debian patch available (status=affected). Dev containers do not
-# parse untrusted XML. Issue #249.
-CVE-2025-59375
-
-# libgssapi-krb5-2 (Debian trixie) — MIT Kerberos DoS via integer
-# overflow. No Debian patch available (status=affected). Dev containers
-# do not run Kerberos services. Issue #249.
-CVE-2026-40356
-
-# libgnutls30t64 (Debian trixie) — DoS via DTLS packet reordering.
-# Fix available in 3.8.9-3+deb13u4 but not yet in all base images.
-# DTLS is not used by any tool in the image. Issue #249.
-CVE-2026-42009
-
-# linux-libc-dev — kernel net/rds: reset op_nents when zerocopy page
-# pin fails. Container false positive: containers use the host kernel,
-# not the kernel headers in the image. Issue #249.
-CVE-2026-43494
-
-# linux-libc-dev — Speculative Race Condition (SRC) in modern CPUs.
-# Container false positive: containers use the host kernel. No fix
-# available (status=affected). Issue #263.
-CVE-2024-2193
-
-# linux-libc-dev — kernel net: skbuff shared-frag marker propagation.
-# Container false positive: containers use the host kernel. Fix
-# available in 6.12.90-1. Issue #263.
-CVE-2026-43503
-
-# containerd (Go dependency in dev-base) — user ID handling bypass
-# allows runAsNonRoot policy evasion. Fix available at v1.7.32.
-# Dev containers do not run containerd; this surfaces from Trivy
-# scanning Go binaries in the image. Issue #249.
+CVE-2026-34040
+CVE-2026-41567
+CVE-2026-42306
+CVE-2026-44973
+CVE-2026-45022
 CVE-2026-46680
 
-# Perl (libperl5.40, perl, perl-base, perl-modules-5.40) — no Debian
-# fix available (status=affected). Dev containers do not extract
-# untrusted tar archives or process attacker-controlled Perl input.
-# Issue #270.
+# npm transitive dependency from markdownlint-cli — picomatch ReDoS
+# via crafted extglob. Fix exists in picomatch 4.0.4 but
+# markdownlint-cli@0.48.0 transitively pins 4.0.3. picomatch is
+# exercised on .md files (lockfile-bounded user input), not on
+# attacker-controlled paths.
+CVE-2026-33671
+
+# libexpat1 (Debian trixie) — XML parsing vulnerabilities. No Debian
+# fix available (status=affected). Dev containers do not parse
+# untrusted XML.
+CVE-2026-25210
+CVE-2026-45186
+
+# ncurses (Debian trixie) — buffer overflow in terminal handling.
+# No Debian fix available. Containers run non-interactively in CI;
+# ncurses code paths are not exercised.
+CVE-2025-69720
+
+# libnghttp2-14 (Debian trixie) — HTTP/2 vulnerability in curl.
+# Fix available (1.64.0-1.1+deb13u1); only present in Rust image
+# (older base). Will resolve on next image rebuild.
+CVE-2026-27135
+
+# openssh-client (Debian trixie) — three CVEs covering privilege
+# escalation, metacharacter injection, and authorized_keys bypass.
+# Fix available (1:10.0p1-7+deb13u3); only present in Rust image
+# (older base). Will resolve on next image rebuild. Image uses ssh
+# only for git remotes to known hosts (GitHub).
+CVE-2026-35385
+CVE-2026-35386
+CVE-2026-35414
+
+# Ruby default gems shipped with ruby:<ver>-slim base image — fix
+# requires bumping the bundled gem post-install. Not exercised on
+# attacker-controlled input by the image itself.
+
+# erb — arbitrary code execution via ERB#def_method.
+CVE-2026-41316
+
+# net-imap — STARTTLS stripping, command injection, and DoS.
+# Image does not use IMAP. Fix available upstream.
+CVE-2026-42245
+CVE-2026-42246
+CVE-2026-42257
+CVE-2026-42258
+
+# jq / libjq1 (Debian trixie) — DoS and potential code execution.
+# Fix available (1.7.1-6+deb13u2); only present in Rust image (older
+# base). Will resolve on next image rebuild. Used for JSON parsing in
+# CI workflows, not on untrusted input.
+CVE-2026-32316
+CVE-2026-40164
+
+# libcap2 (Debian trixie) — TOCTOU race in cap_set_file(). Fix
+# available (1:2.75-10+deb13u1); only present in Rust image (older
+# base). Containers run without CAP_SETFCAP by default.
+CVE-2026-4878
+
+# libgnutls30t64 (Debian trixie) — multiple TLS/DTLS vulnerabilities.
+# Fix available (3.8.9-3+deb13u4); only present in Rust image (older
+# base). Will resolve on next image rebuild. Curl uses GnuTLS for TLS
+# but only connects to known hosts (GitHub, PyPI, NodeSource).
+CVE-2026-3833
+CVE-2026-33845
+CVE-2026-33846
+CVE-2026-42009
+CVE-2026-42010
+
+# libgssapi-krb5-2 (Debian trixie) — MIT Kerberos DoS via integer
+# overflow. Fix available (1.21.3-5+deb13u1); will resolve on next
+# image rebuild. Dev containers do not run Kerberos services.
+CVE-2026-40356
+
+# libssh2-1t64 (Debian trixie) — security vulnerability in libssh2.
+# Used by git for SSH transport to known hosts (GitHub) only. No Debian
+# fix available (status=affected).
+CVE-2026-7598
+
+# curl / libcurl (Debian trixie) — SMB connection reuse and cookie
+# leak vulnerabilities. Images use curl only for HTTPS fetches from
+# known hosts; SMB and cookies are not used. No Debian fix available
+# (status=affected).
+CVE-2026-5773
+CVE-2026-6276
+
+# Perl (Debian trixie) — tar archive extraction and related
+# vulnerabilities. No Debian fix available (status=affected). Dev
+# containers do not extract untrusted tar archives or process
+# attacker-controlled Perl input.
 CVE-2026-42496
-CVE-2026-9538
-CVE-2026-8376
-
-# Go stdlib vulnerabilities in scorecard, actionlint, git-cliff,
-# hadolint, and trivy binaries. These tools do not run ReverseProxy,
-# process attacker-controlled URLs, or render HTML templates. Awaiting
-# upstream rebuilds with Go 1.25.10+ / 1.26.3+. Issue #270.
-CVE-2026-39823
-CVE-2026-39825
-CVE-2026-39826
-
-# Perl Archive::Tar hardlink extraction — same family as CVE-2026-42496.
-# No Debian fix available (status=affected). Issue #288.
 CVE-2026-42497
-
-# linux-libc-dev — kernel bpf use-after-free in arena_vm_close on fork.
-# Container false positive: containers use the host kernel. Issue #288.
-CVE-2026-45837
-
-# linux-libc-dev — kernel udf partition descriptor bookkeeping.
-# Container false positive. Issue #288.
-CVE-2026-45991
-
-# linux-libc-dev — kernel selinux overlayfs mmap/mprotect access check.
-# Container false positive. Issue #288.
-CVE-2026-46054
-
-# linux-libc-dev — kernel ALSA aloop peer runtime UAF.
-# Container false positive. Issue #288.
-CVE-2026-46090
+CVE-2026-8376
+CVE-2026-9538
