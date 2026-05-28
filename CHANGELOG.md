@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.16] - 2026-05-28
+
+### Bug fixes
+
+- install vergil-tooling in bare-runner build jobs
+- upgrade pip in python-support fragment to fix CVE-2026-8643
+- audit trivyignore: remove 182 stale entries and update comments
+- remove redundant vergil-tooling install steps from bare-runner build jobs
+
+### Chores
+
+- bump version to 2.0.13
+
 ## [2.0.12] - 2026-05-28
 
 ### Bug fixes
