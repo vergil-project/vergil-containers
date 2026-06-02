@@ -3,7 +3,7 @@
 Docker dev container images for the
 [vergil-tooling](https://github.com/vergil-project/vergil-tooling)
 ecosystem. Each image provides a language runtime plus shared tooling
-used by CI and local Docker-first development across all managed
+used by CI and local container-based development across all managed
 repositories.
 
 ## Table of Contents
@@ -43,6 +43,11 @@ Or build all images locally:
 ```bash
 docker/build.sh
 ```
+
+`build.sh` auto-detects the container runtime — it prefers `nerdctl`
+(Lima + containerd) and falls back to `docker`. Set
+`VRG_CONTAINER_RUNTIME` to force a specific one. The single-image
+commands below work with either `nerdctl build` or `docker build`.
 
 Build a single image:
 
