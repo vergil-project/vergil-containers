@@ -42,8 +42,23 @@ CVE-2026-45837
 CVE-2026-45991
 CVE-2026-46054
 CVE-2026-46090
+CVE-2026-46116
 CVE-2026-46117
+CVE-2026-46120
+CVE-2026-46125
+CVE-2026-46135
+CVE-2026-46145
+CVE-2026-46150
+CVE-2026-46152
+CVE-2026-46155
+CVE-2026-46166
+CVE-2026-46173
+CVE-2026-46176
 CVE-2026-46181
+CVE-2026-46189
+CVE-2026-46195
+CVE-2026-46209
+CVE-2026-46227
 CVE-2026-46300
 CVE-2026-46333
 
@@ -201,3 +216,9 @@ CVE-2026-48962
 # permission check. No Debian fix available (status=affected).
 # Containers do not load or manage BPF programs.
 CVE-2026-45932
+
+# gh CLI (github.com/cli/cli) — fixed in 2.93.0, but GitHub's apt repo
+# still serves 2.92.0, so the image cannot pull the fix on rebuild yet.
+# gh is used only against GitHub (a known host) for git and API
+# operations. Temporary: remove once apt publishes gh 2.93.0+ (#326).
+CVE-2026-48501
