@@ -79,6 +79,17 @@ if [ -z "$runtime" ]; then
     exit 1
   fi
 fi
+
+# Validate the resolved runtime — covers both the override and the
+# auto-detect paths, so a typo'd or uninstalled VRG_CONTAINER_RUNTIME
+# fails here with a clear message rather than later as a raw
+# "command not found".
+if ! command -v "$runtime" >/dev/null 2>&1; then
+  echo "ERROR: container runtime '$runtime' not found on PATH" \
+       "(set VRG_CONTAINER_RUNTIME to nerdctl or docker, or leave it unset" \
+       "to auto-detect)" >&2
+  exit 1
+fi
 ```
 
 Properties:
@@ -90,8 +101,11 @@ Properties:
 - **Preference:** `nerdctl` before `docker`, matching the Python
   `detect_runtime()` so local behaviour is consistent across the bash and
   framework paths.
-- **No silent failure:** if neither runtime exists, the script exits non-zero
-  with a clear message rather than falling through.
+- **No silent failure:** if neither runtime exists — or an overridden
+  runtime is not installed — the script exits non-zero with a clear message
+  rather than falling through. The override is *not* restricted to a fixed
+  allow-list, so a deliberate alternative OCI runtime (e.g. `podman`) is
+  still possible; it just has to actually be on PATH.
 
 ### Command substitution
 
@@ -103,9 +117,42 @@ Replace the three hard-coded `docker` invocations with `"$runtime"`:
 | `docker image prune -f` | `"$runtime" image prune -f` |
 | `docker builder prune -af --filter 'until=720h'` | runtime-aware (below) |
 
-`nerdctl build` requires `buildkitd`, which is confirmed running in the Lima
-environment (rootless containerd worker). `image prune -f` is identical
-across both runtimes.
+`nerdctl build` requires `buildkitd` to be running; `image prune -f` is
+identical across both runtimes. The buildkit dependency is handled by an
+explicit precondition check (below) rather than left to surface as a raw
+build error.
+
+### Buildkit precondition (nerdctl only)
+
+`nerdctl build` fails if `buildkitd` is not reachable. buildkit is confirmed
+present in the current Lima setup (rootless containerd worker), but nothing
+*in this repo* guarantees it — a freshly provisioned or differently
+configured Lima VM could lack it. Rather than let the first `build` call die
+with nerdctl's native error, `build.sh` probes buildkit up front (only when
+the runtime is `nerdctl`) and exits with a remediation message if it is
+unreachable:
+
+```bash
+if [ "$runtime" = "nerdctl" ]; then
+  if ! nerdctl info >/dev/null 2>&1; then
+    echo "ERROR: nerdctl cannot reach its containerd/buildkit backend." \
+         "Ensure the Lima VM is running and provisions buildkitd" \
+         "(see the vergil-vm Lima template). To use Docker instead," \
+         "set VRG_CONTAINER_RUNTIME=docker." >&2
+    exit 1
+  fi
+fi
+```
+
+`nerdctl info` is a cheap round-trip that fails when the VM/containerd/
+buildkit backend is not reachable, turning a cryptic mid-build failure into
+an actionable up-front error.
+
+**Handoff:** the `vergil-vm` Lima template must guarantee `buildkitd` is
+installed and running so `nerdctl build` works out of the box. This is the
+real owner of the dependency; track it against `vergil-vm` rather than
+papering over it here. This spec only ensures `build.sh` *fails informatively*
+when the guarantee is not met.
 
 ### Builder-cache prune (runtime divergence)
 
@@ -134,6 +181,13 @@ fi
 
 ### Documentation
 
+- `docker/build.sh` header comment: it currently states "dangling images and
+  stale build cache (>30 days) are pruned". After the change that is true only
+  on docker, so reword it to describe the runtime-aware behaviour — e.g.
+  "dangling images are pruned; build-cache pruning is runtime-aware — docker
+  prunes cache older than 30 days, nerdctl prunes dangling cache only
+  (`nerdctl builder prune` has no `--filter`)". Keeps the comment honest at
+  the point of use.
 - `CLAUDE.md`: the "**No host requirements — Docker is the only
   prerequisite for local development**" design principle and the
   `docker build --build-arg …` example are reworded to reference "an OCI
@@ -145,17 +199,31 @@ fi
 
 - `vrg-container-run -- vrg-validate` — shellcheck / shfmt must pass on the
   edited `build.sh`.
-- Manual: run `build.sh` end-to-end for at least one image under `nerdctl`
-  and confirm the image is produced.
+- Manual round-trip under `nerdctl`: run `build.sh` end-to-end for at least
+  one image, then confirm the result is not just *built* but *usable* by the
+  run path:
+  - the tag appears in `nerdctl images`, **and**
+  - it is consumable downstream — `vrg-container-run` against the freshly
+    built tag (or a plain `nerdctl run … <tag>`) succeeds.
+  - This guards against the namespace gap: nerdctl + buildkit loads images
+    into a containerd namespace, and a "successful" build is worthless if the
+    run path reads a different namespace. The round-trip proves build → run
+    continuity, not just build success.
+- Precondition behaviour: with `buildkitd` stopped/unreachable, confirm
+  `build.sh` (under nerdctl) exits with the remediation message rather than a
+  raw nerdctl build error.
+- Override validation: confirm `VRG_CONTAINER_RUNTIME=<not-installed>` exits
+  with the clear "runtime not found on PATH" error.
 - Confirm the `VRG_CONTAINER_RUNTIME=docker` code path remains syntactically
   intact for developers who still use Docker (static review; no Docker
   install required to verify the branch).
 
 ## Risks and notes
 
-- **buildkitd availability** is the only real runtime risk for `nerdctl
-  build`; it is confirmed present in the current Lima setup. If a developer's
-  Lima VM lacks buildkit, `nerdctl build` will error clearly — acceptable,
-  and surfaced rather than hidden.
+- **buildkitd availability** is the main runtime dependency for `nerdctl
+  build`. It is confirmed present in the current Lima setup, and the
+  precondition check (see "Buildkit precondition") converts a missing backend
+  into an actionable up-front error. The durable fix — guaranteeing buildkitd
+  in the Lima VM — is owned by `vergil-vm` and tracked there.
 - **Behavioural change on nerdctl prune** is intentional and documented
   above; it is gentler, not more destructive, than the docker path.
