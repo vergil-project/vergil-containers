@@ -152,7 +152,9 @@ an actionable up-front error.
 installed and running so `nerdctl build` works out of the box. This is the
 real owner of the dependency; track it against `vergil-vm` rather than
 papering over it here. This spec only ensures `build.sh` *fails informatively*
-when the guarantee is not met.
+when the guarantee is not met. A tracking issue for that guarantee is filed
+against `vergil-vm` as part of this work (see the implementation plan); its
+link is recorded here once created.
 
 ### Builder-cache prune (runtime divergence)
 
@@ -224,6 +226,7 @@ fi
   build`. It is confirmed present in the current Lima setup, and the
   precondition check (see "Buildkit precondition") converts a missing backend
   into an actionable up-front error. The durable fix — guaranteeing buildkitd
-  in the Lima VM — is owned by `vergil-vm` and tracked there.
+  in the Lima VM — is owned by `vergil-vm` and tracked in a dedicated issue
+  there (filed as part of this work; see the implementation plan).
 - **Behavioural change on nerdctl prune** is intentional and documented
   above; it is gentler, not more destructive, than the docker path.

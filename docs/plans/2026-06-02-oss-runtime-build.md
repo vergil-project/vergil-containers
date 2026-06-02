@@ -240,7 +240,27 @@ nerdctl info >/dev/null 2>&1; echo "nerdctl_info_exit=$?"
 Expected: `nerdctl_info_exit=0` (so the precondition block will not block a
 real build in this environment).
 
-- [ ] **Step 9: Commit.**
+- [ ] **Step 9: Behavioral check — buildkit failure path fires the
+  remediation message.**
+
+Exercise the negative branch without disturbing the real daemon: put a stub
+`nerdctl` (that fails like an unreachable backend) first on `PATH` for a
+single run.
+
+```bash
+tmpdir="$(mktemp -d)"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$tmpdir/nerdctl"
+chmod +x "$tmpdir/nerdctl"
+PATH="$tmpdir:$PATH" VRG_CONTAINER_RUNTIME=nerdctl docker/build.sh; echo "exit=$?"
+rm -rf "$tmpdir"
+```
+
+Expected: prints
+`ERROR: nerdctl cannot reach its containerd/buildkit backend. ...` to stderr
+and `exit=1`, with no "Building ..." lines. The stub forces `nerdctl info` to
+fail, hitting the precondition branch; the real backend is untouched.
+
+- [ ] **Step 10: Commit.**
 
 ```bash
 vrg-git add docker/build.sh
@@ -428,15 +448,95 @@ the runtime-aware prune runs without error.
 
 ---
 
+## Task 4: File the `vergil-vm` buildkitd tracking issue
+
+**Files:** none in this repo (cross-repo issue + one spec cross-reference line).
+
+The spec assigns the durable fix — guaranteeing `buildkitd` in the Lima VM —
+to `vergil-vm`. This task creates the tracking artifact so the handoff does
+not evaporate when this branch merges, then links it back from the spec.
+
+- [ ] **Step 1: Draft the issue body.**
+
+Write `/tmp/vergil-vm-buildkitd.md` with exactly:
+
+```markdown
+## Goal
+
+Guarantee `buildkitd` is installed and running in the Lima VM so
+`nerdctl build` works out of the box for local image builds.
+
+## Why
+
+vergil-docker's `docker/build.sh` now prefers `nerdctl` over `docker`
+(vergil-project/vergil-docker#322). `nerdctl build` requires a reachable
+buildkit backend. `build.sh` probes it and fails with a remediation message
+if absent, but the durable fix is to provision buildkitd in the VM the
+ecosystem uses, so the failure never happens in normal use.
+
+## Acceptance
+
+- The Lima template provisions and starts `buildkitd` (rootless containerd
+  worker is acceptable).
+- A freshly created VM can run `nerdctl build` with no manual setup.
+
+## Related
+
+- vergil-project/vergil-docker#322
+```
+
+- [ ] **Step 2: Create the issue.**
+
+```bash
+vrg-gh issue create --repo vergil-project/vergil-vm \
+  --title "Guarantee buildkitd in the Lima VM for nerdctl build" \
+  --body-file /tmp/vergil-vm-buildkitd.md
+```
+
+Expected: prints the new issue URL. Note the issue number — it feeds Step 3.
+
+- [ ] **Step 3: Cross-reference the issue from the spec.**
+
+In `docs/specs/2026-06-02-oss-runtime-build-design.md`, the "Buildkit
+precondition" section's handoff paragraph contains the sentence:
+
+```markdown
+A tracking issue for that guarantee is filed against `vergil-vm` as part of
+this work (see the implementation plan); its link is recorded here once
+created.
+```
+
+Replace that sentence with the concrete link, using the number from Step 2
+(shown here as `<N>`):
+
+```markdown
+The durable fix is tracked in vergil-project/vergil-vm#<N>.
+```
+
+- [ ] **Step 4: Commit the spec cross-reference.**
+
+```bash
+vrg-git add docs/specs/2026-06-02-oss-runtime-build-design.md
+vrg-commit --type docs --scope spec \
+  --message "link vergil-vm buildkitd tracking issue (#322)" \
+  --body "Record the concrete vergil-vm issue that owns guaranteeing buildkitd in the Lima VM, closing the handoff loop from the buildkit precondition.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
 ## Self-Review (completed by plan author)
 
 **Spec coverage:**
 - Runtime detection + `VRG_CONTAINER_RUNTIME` override → Task 1 Step 1. ✔
 - Override validation (resolved-runtime existence check) → Task 1 Step 1 +
   Task 1 Step 7. ✔
-- Buildkit precondition + remediation message → Task 1 Step 1 + Task 1
-  Step 8; `vergil-vm` handoff lives in the spec (out-of-repo, not a code
-  task). ✔
+- Buildkit precondition + remediation message → Task 1 Step 1 (code), Task 1
+  Step 8 (healthy path passes), Task 1 Step 9 (failure path fires the
+  remediation message via a stubbed backend). ✔
+- `vergil-vm` buildkitd handoff actioned → Task 4 (file the tracking issue +
+  cross-reference it from the spec). ✔
 - Swap all `docker` invocations → Task 1 Steps 2–4. ✔
 - Runtime-aware builder prune (no `--filter` on nerdctl) → Task 1 Step 4. ✔
 - Header-comment update → Task 1 Step 5. ✔
