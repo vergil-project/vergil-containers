@@ -4,7 +4,7 @@
 # upstream issues, or awaiting base image rebuilds to pick up Debian
 # patches. Review periodically and remove entries when fixes land.
 #
-# Last audited: 2026-05-28 (issue #300).
+# Last audited: 2026-06-02 (issue #323).
 
 # Linux kernel CVEs — containers use the host kernel, not the kernel
 # headers/modules baked into the base image. False positives.
@@ -42,6 +42,8 @@ CVE-2026-45837
 CVE-2026-45991
 CVE-2026-46054
 CVE-2026-46090
+CVE-2026-46117
+CVE-2026-46181
 CVE-2026-46300
 CVE-2026-46333
 
@@ -104,9 +106,11 @@ CVE-2026-46680
 # attacker-controlled paths.
 CVE-2026-33671
 
-# libexpat1 (Debian trixie) — XML parsing vulnerabilities. No Debian
+# libexpat1 (Debian trixie) — XML parsing vulnerabilities, including
+# large dynamic memory allocation DoS (CVE-2025-59375). No Debian
 # fix available (status=affected). Dev containers do not parse
 # untrusted XML.
+CVE-2025-59375
 CVE-2026-25210
 CVE-2026-45186
 
@@ -182,14 +186,16 @@ CVE-2026-7598
 CVE-2026-5773
 CVE-2026-6276
 
-# Perl (Debian trixie) — tar archive extraction and related
-# vulnerabilities. No Debian fix available (status=affected). Dev
-# containers do not extract untrusted tar archives or process
+# Perl (Debian trixie) — tar archive extraction, IO-Compress arbitrary
+# code execution via attacker-controlled output glob (CVE-2026-48962),
+# and related vulnerabilities. No Debian fix available (status=affected).
+# Dev containers do not extract untrusted tar archives or process
 # attacker-controlled Perl input.
 CVE-2026-42496
 CVE-2026-42497
 CVE-2026-8376
 CVE-2026-9538
+CVE-2026-48962
 
 # linux-libc-dev (Debian trixie) — kernel BPF tcx/netkit detach
 # permission check. No Debian fix available (status=affected).
