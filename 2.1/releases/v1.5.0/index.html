@@ -1,0 +1,2185 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Docker dev container images for the VERGIL ecosystem">
+      
+      
+      
+      
+        <link rel="prev" href="../v2.0.1/">
+      
+      
+        <link rel="next" href="../../images/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>1.5.0 - Vergil Docker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#release-150-2026-05-11" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Vergil Docker" class="md-header__button md-logo" aria-label="Vergil Docker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Vergil Docker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              1.5.0
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/vergil-project/vergil-docker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    vergil-project/vergil-docker
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../changelog/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Releases
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../images/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Images
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../operations/repository-standards/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Vergil Docker" class="md-nav__button md-logo" aria-label="Vergil Docker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Vergil Docker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/vergil-project/vergil-docker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    vergil-project/vergil-docker
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Releases
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_2" id="__nav_2_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Release Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.18/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.18
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.17/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.17
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.16/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.16
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.12/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.12
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.11/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.11
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.10/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.10
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.7/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.7
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.0.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.0.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1.5.0
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1.5.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#bug-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bug fixes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chores" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chores
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#refactoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refactoring
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#styling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Styling
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../architecture/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/decisions/multi-arch-images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Arch Images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/decisions/release-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/repository-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/trivy-triage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trivy CVE Triage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#bug-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bug fixes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chores" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chores
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#refactoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refactoring
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#styling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Styling
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="release-150-2026-05-11">Release 1.5.0 (2026-05-11)<a class="headerlink" href="#release-150-2026-05-11" title="Permanent link">&para;</a></h1>
+<h2 id="bug-fixes">Bug fixes<a class="headerlink" href="#bug-fixes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>
+<p><strong>scope standalone markdownlint step to README.md only (#197) (#13)</strong>
+The standalone markdownlint CI step was using <code>markdownlint .</code> which
+lints every markdown file including CLAUDE.md and other operational
+files. Scope it to README.md only — the security-and-standards job
+already runs markdown-standards for full docs/site/ coverage.</p>
+</li>
+<li>
+<p><strong>update trivyignore for new CVEs and pin go-test-coverage (#21)</strong>
+Add Go stdlib CVEs in shfmt binary (no affected code paths exercised), new kernel CVEs (containers use host kernel), and npm tar GHSA. Pin go-test-coverage to v2.18.3 for hadolint DL3062.</p>
+</li>
+<li>
+<p><strong>add CVE-2026-29786 (tar) to trivyignore (#30)</strong>
+Hardlink path traversal in npm tar package, transitive dependency of
+markdownlint-cli@0.47.0. No fix available without an upstream
+markdownlint-cli release.</p>
+</li>
+<li>
+<p><strong>add CVE-2025-15558 (gh docker/cli, Windows-only) to trivyignore (#40)</strong></p>
+</li>
+<li><strong>scan locally-built image with Trivy, not published :latest (#56)</strong>
+The Trivy step was scanning the GHCR-namespaced tag, which Trivy
+resolves by pulling from the registry — meaning every run scanned the
+already-published :latest, not the freshly-built local image. Once a
+HIGH/CRITICAL CVE landed in the published image, push was permanently
+gated on a stale artifact that could not roll forward. Result: dev-*
+images frozen at 2026-03-10 for 6+ weeks despite repeated rebuild
+triggers from standard-tooling releases.</li>
+</ul>
+<p>Build with a local-only candidate tag (dev-<lang>-candidate:<ver> /
+dev-base-candidate:latest), point Trivy at that tag, then docker tag +
+push to the GHCR ref. Local-only namespace cannot collide with anything
+published, so Trivy is forced to use the freshly-built daemon image.</p>
+<ul>
+<li><strong>bump pip to &gt;=26.1 (CVE-2026-3219) (#63)</strong>
+CVE-2026-3219 / GHSA-58qw-9mgm-455v: pip &lt;=26.0.1 has a TAR/ZIP
+polyglot bug in archive parsing. pip 26.1 (released 2026-04-26) is
+the fix. The <code>python:3.14-slim</code> upstream base image still ships
+26.0.1, so dev-python and dev-base images carry the vulnerable pip
+until this lands.</li>
+</ul>
+<p>Upgrade system pip to &gt;=26.1 in dev-python and dev-base
+Dockerfile.templates, before the existing yamllint + uv install
+step.</p>
+<p>Verified locally on a freshly-built dev-python:3.14:</p>
+<ul>
+<li>pip --version → 26.1</li>
+<li>In a uv-managed venv, pip-audit -r req.txt against pip==26.0.1
+    correctly flags CVE-2026-3219; against pip==26.1, clean.</li>
+<li>
+<p>uv 0.7.12 (current pin) already resolves pip to 26.1 when
+    installing pip-audit, so no uv bump needed.</p>
+</li>
+<li>
+<p><strong>triage HIGH/CRITICAL CVEs blocking docker-publish (#68)</strong></p>
+</li>
+<li><strong>pin standard-tooling-pip fragment to v1.3 (#73)</strong>
+The pip fragment was cloning -b develop, while the parallel uv
+fragment pins to the rolling-minor release tag (v1.3). Net effect:
+non-Python images (dev-ruby/go/java/rust) carried whatever was on
+develop at build time, including unreleased commits, while the
+Python images (dev-python, dev-base) got the latest released
+standard-tooling. Concretely visible after PR #68: dev-python:3.14
+shipped 1.3.4, dev-ruby:3.4 shipped 1.3.5 from the same publish run.</li>
+</ul>
+<p>Mirror standard-tooling-uv.dockerfile shape — ARG ST_TOOLING_TAG
+defaulted to v1.3, identical comment block explaining the rolling-
+minor pin and the release-dispatch rebuild policy.</p>
+<p>After this lands and images rebuild, all six image kinds will
+report the same standard-tooling version, advancing only on actual
+standard-tooling releases.</p>
+<ul>
+<li><strong>bump stale standard-actions trivy pins from @v1.1 to @v1.3 (#80)</strong></li>
+<li><strong>triage jq CVEs blocking docker-publish (post-#78) (#82)</strong></li>
+<li><strong>fix semgrep build and triage new Trivy CVEs (#110)</strong>
+Install build-essential before uv tool install semgrep to provide
+gcc for native extension compilation, then purge it to keep the
+image slim.</li>
+</ul>
+<p>Triage four new HIGH CVEs blocking docker-publish:
+- CVE-2026-4878 (libcap2): TOCTOU race, requires CAP_SETFCAP
+- CVE-2026-33845 (libgnutls30t64): DTLS DoS, not used by image
+- CVE-2026-31568 (linux-libc-dev): kernel s390/mm, container FP
+- CVE-2026-35386 (openssh-client): metachar injection, known hosts only</p>
+<ul>
+<li>
+<p><strong>add /github/home/.local/bin to PATH for GitHub Actions compatibility (#116)</strong>
+GitHub Actions forces HOME=/github/home in container jobs (actions/runner#863), causing uv tool install to write executables to /github/home/.local/bin instead of /root/.local/bin. Include both paths so tools installed via uv are found in CI and local Docker contexts. Closes #115</p>
+</li>
+<li>
+<p><strong>triage 8 new linux-libc-dev kernel CVEs blocking docker-publish (#118)</strong>
+All 8 CVEs are linux-libc-dev kernel header false positives in containers (containers use the host kernel, not headers in the image). Status affected, no fix version. Added to .trivyignore to unblock Ruby, Go, and Rust image publishing. Ref #117</p>
+</li>
+<li>
+<p><strong>triage linux-libc-dev kernel CVE blocking docker-publish (#129)</strong>
+Add CVE-2026-31777 (kernel ALSA ctxfi index mapping) to .trivyignore.
+Container false positive: containers use the host kernel, not the
+kernel headers in the base image. Same rationale as existing
+linux-libc-dev entries.</p>
+</li>
+<li>
+<p><strong>remove candidate tag cleanup that deletes promoted images (#134)</strong>
+The delete-candidate-tag step destroys the final image because imagetools create promotes by retagging the same manifest digest. Deleting the candidate version by ID removes the shared manifest, making the promoted tag (e.g. dev-base:latest) unavailable. Remove both cleanup steps. Stale candidate tags are harmless since they point to the same content as the final tag. Part of #111.</p>
+</li>
+<li>
+<p><strong>triage CVE-2026-33846 and fix trailing blank lines in workflow (#135)</strong>
+Add CVE-2026-33846 (libgnutls30t64 heap buffer overflow) to .trivyignore. Same package as existing CVE-2026-33845; curl only connects to known hosts. Also remove trailing blank lines in docker-publish.yml left by the candidate cleanup removal. Part of #111.</p>
+</li>
+<li>
+<p><strong>install uv in non-Python dev images (#136)</strong>
+The docker cache layer runs uv tool install standard-tooling inside all dev containers, but uv was only available in Python and base images. Add uv==0.7.12 to the python-support common fragment so Go, Java, Ruby, and Rust images can build the cache layer successfully. Closes #127</p>
+</li>
+<li>
+<p><strong>add /workspace/.venv/bin to PATH for uv sync entry points (#142)</strong></p>
+</li>
+<li>
+<p><strong>revert /workspace/.venv/bin PATH addition from #141 (#144)</strong>
+The static /workspace path never resolves in CI (Actions overrides WORKDIR to /__w/<repo>/<repo>) and is redundant locally (uv run activates the .venv automatically). The correct fix is inline PATH prepend in the workflow run blocks (standard-actions #362). Closes #143</p>
+</li>
+<li>
+<p><strong>suppress CVE-2026-42246 (net-imap) in Trivy ignore list (#150)</strong></p>
+</li>
+<li><strong>suppress new linux-libc-dev kernel CVEs in Trivy ignore list (#151)</strong></li>
+<li><strong>suppress new gnutls, libssh2, and linux-libc-dev CVEs in Trivy ignore list (#158)</strong></li>
+<li>
+<p><strong>use dev-base container for hadolint instead of downloading binary (#162)</strong>
+Hadolint is pre-installed in the dev-base container image. Remove the curl download step from both ci.yml and docker-publish.yml hadolint jobs and run them inside the container instead.</p>
+</li>
+<li>
+<p><strong>pass boolean to ci-security reusable workflow inputs (#163)</strong>
+The security reusable workflow declares run-standards and run-security as type: boolean. The caller was passing values via the || operator which produces strings, causing the reusable workflow to fail silently. Use the != 'false' pattern to produce actual booleans. Ref wphillipmoore/standard-tooling#632</p>
+</li>
+<li>
+<p><strong>ensure both Trivy scans run before gating on vulnerabilities (#166)</strong>
+The arm64 Trivy scan was skipped when the amd64 scan found vulnerabilities, because the amd64 step failure prevented subsequent steps from running. Add continue-on-error to both scan steps so they always produce SARIF reports, then re-assert the hard gate in a dedicated step that checks step outcomes.</p>
+</li>
+<li>
+<p><strong>suppress new linux-libc-dev kernel CVEs in Trivy ignore list (#171)</strong></p>
+</li>
+<li><strong>suppress new linux-libc-dev kernel CVEs in Trivy ignore list (#177)</strong></li>
+<li><strong>suppress CVE-2026-43500 linux-libc-dev kernel CVE in Trivy ignore list (#178)</strong></li>
+<li><strong>pin go-test-coverage to v2.18.3 for hadolint DL3062</strong></li>
+</ul>
+<h2 id="ci">CI<a class="headerlink" href="#ci" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>publish dev-docs container to GHCR (#27)</strong></li>
+<li>ci: publish dev-docs container and use it for docs CI</li>
+</ul>
+<p>Add standalone publish-docs job to docker-publish.yml to build, scan, and
+push ghcr.io/wphillipmoore/dev-docs:latest alongside the language images.</p>
+<p>Switch docs.yml to run inside the dev-docs container, removing the manual
+Python setup step and updating the action ref to @develop.</p>
+<ul>
+<li>
+<p><strong>bump docker/login-action to v4 and attest-build-provenance to v4 for Node.js 24 (#114)</strong>
+Both actions now run on Node.js 24, resolving the deprecation warnings. Node.js 20 will be forced off June 2, 2026 and removed September 16, 2026.</p>
+</li>
+<li>
+<p><strong>bump Docker actions to Node.js 24-compatible versions (#133)</strong></p>
+</li>
+<li>
+<p><strong>adopt standard-actions v1.5 reusable workflows and bump to 1.5.0 (#146)</strong>
+Replace bespoke ci-security.yml@v1.4 call with standardized workflow suite from standard-actions v1.5: add ci-quality.yml for common/lint checks, ci-release.yml for version-bump gate, and update ci-security.yml to v1.5 with proper boolean inputs. Keep bespoke hadolint and shellcheck jobs (require template generation and repo-specific file lists). Bump VERSION from 1.0.0 to 1.5.0.</p>
+</li>
+<li>
+<p><strong>remove redundant bespoke shellcheck job (#148)</strong></p>
+</li>
+</ul>
+<h2 id="chores">Chores<a class="headerlink" href="#chores" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>suppress four new CVEs in trivyignore</strong>
+Add two Linux kernel CVEs (CVE-2025-71152, CVE-2026-23226) — false
+positives for containers which use the host kernel, not the kernel
+headers in the base image.</li>
+</ul>
+<p>Add two minimatch CVEs (CVE-2026-27903, CVE-2026-27904) — transitive
+npm dependencies of markdownlint-cli@0.47.0, no fix available without
+an upstream release.</p>
+<ul>
+<li>
+<p><strong>use .markdownlintignore for lint exclusions (#190) (#9)</strong>
+Add .markdownlintignore and change CI and docs from
+<code>markdownlint '**/*.md'</code> to <code>markdownlint .</code> so exclusions are
+respected automatically.</p>
+</li>
+<li>
+<p><strong>install standard-tooling plugin via marketplace (#12)</strong></p>
+</li>
+<li><strong>ban MEMORY.md usage in CLAUDE.md (#35)</strong>
+MEMORY.md files are project-scoped and cause inconsistent behavior
+across repos. All persistent instructions belong in version-controlled
+documentation.</li>
+</ul>
+<p>Fixes wphillipmoore/standards-and-conventions#347</p>
+<ul>
+<li><strong>add trivy-out.json to .gitignore (#36)</strong></li>
+<li><strong>vendor .githooks gate + .yamllint; clean stale CLAUDE.md refs (#53) (#54)</strong></li>
+<li>
+<p><strong>migrate standard-actions refs from @develop to @v1.3 (#70)</strong>
+Pins ci-security.yml and docs-deploy to the @v1.3 rolling minor tag.</p>
+</li>
+<li>
+<p><strong>remove add-to-project.yml workflow (#76)</strong>
+GitHub Projects are no longer used for issue tracking. The workflow auto-added issues to a project board on creation but frequently failed (missing PROJECT_TOKEN, project drift) adding noise without value.</p>
+</li>
+<li>
+<p><strong>upgrade standard-actions from @v1.3 to @v1.4 (#83)</strong>
+Ref wphillipmoore/standard-actions#245</p>
+</li>
+<li>
+<p><strong>bump ST_TOOLING_TAG from v1.3 to v1.4 (#85)</strong>
+standard-tooling v1.4.0 released with rolling tag v1.4. Updates both fragment files so all images install from v1.4. Closes #84.</p>
+</li>
+<li>
+<p><strong>bootstrap st-config.toml for cache-first docker workflow (#93)</strong></p>
+</li>
+<li><strong>strip pre-baked standard-tooling from all dev container images (#94) (#95)</strong></li>
+<li><strong>seed standard-tooling.toml (#98)</strong></li>
+<li>
+<p><strong>strip config sections from repository-standards.md (#100)</strong>
+Remove AI co-authors, Repository profile, and Validation policy
+sections. These values now live in standard-tooling.toml and are
+read by the TOML-based config reader in standard-tooling v1.4.6.</p>
+</li>
+<li>
+<p><strong>remove legacy st-config.toml (#102)</strong></p>
+</li>
+<li>
+<p><strong>add [workflows.post-merge] section listing docker-publish (#120)</strong>
+The pr-workflow skill checks this section to verify post-merge async workflows. Without it, docker-publish failures went undetected after merges to develop. Stopgap until a dedicated st-wait-for-post-merge tool replaces the agent-interpreted check. Ref #119</p>
+</li>
+<li>
+<p><strong>add memory management policy (#122)</strong></p>
+</li>
+<li>
+<p>chore: add memory management policy</p>
+</li>
+<li>
+<p><strong>remove standalone markdownlint CI job (standard-tooling#476) (#124)</strong></p>
+</li>
+<li>
+<p><strong>update st-validate-local reference to st-validate (#159)</strong>
+st-validate-local was decommissioned in standard-tooling v1.4.22/v1.4.23 in favor of the Docker-first st-validate path. Update the edge case matrix in the issue #91 plan doc accordingly. Ref #154</p>
+</li>
+<li>
+<p><strong>fleet-wide config and workflow cleanup (#160)</strong></p>
+</li>
+<li>chore(config): fleet-wide config and workflow cleanup</li>
+</ul>
+<p>Remove stale linter configs (.yamllint, .markdownlint.yaml, .markdownlintignore) superseded by st-validate bundled configs. Add canonical issue templates from standard-tooling. Ref wphillipmoore/standard-tooling#626</p>
+<ul>
+<li>
+<p><strong>shorten issue template header comments to fit yamllint line-length (#164)</strong>
+Remove the word canonical from the source-pointer header to bring both template files under the 80-character yamllint line-length limit. Ref wphillipmoore/standard-tooling#626</p>
+</li>
+<li>
+<p><strong>migrate to reusable publish/docs workflows (#167)</strong></p>
+</li>
+<li>
+<p>chore: migrate to reusable publish/docs workflows</p>
+</li>
+<li>
+<p><strong>add [ci] section to standard-tooling.toml (#174)</strong></p>
+</li>
+<li><strong>prepare release 1.0.0</strong></li>
+<li><strong>merge main into release/1.0.0</strong></li>
+<li><strong>prepare release 1.0.0</strong></li>
+</ul>
+<h2 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>add MkDocs/mike documentation site (#4)</strong>
+Add versioned documentation site following the standard-tooling-plugin pattern.</li>
+</ul>
+<p>Files added:
+- VERSION (1.0.0)
+- docs/site/mkdocs.yml with Material theme and mike versioning
+- docs/site/docs/ pages: Home, Images, Architecture, Changelog, Release Notes
+- .github/workflows/docs.yml using standard-actions/docs-deploy
+- releases/.gitkeep for future release notes</p>
+<ul>
+<li>
+<p><strong>document GHCR package access prerequisites for publishing (#6)</strong>
+Add GHCR publishing prerequisites to CLAUDE.md and README.md covering per-package write access grants, GITHUB_TOKEN permissions, and the user-namespace image URL model.</p>
+</li>
+<li>
+<p><strong>add GHCR publishing prerequisites to MkDocs site (#8)</strong>
+Expand the Architecture &gt; Publishing section with image namespace model, authentication details, and per-package GHCR access grant instructions.</p>
+</li>
+<li>
+<p><strong>update documentation for templating system and current tooling inventory (#43)</strong>
+Architecture docs now describe the Dockerfile.template + generate.sh +
+@include fragment system. Images docs reflect the full common layer
+(gh, shfmt, actionlint, git-cliff, standard-tooling). README updated
+with build system section and current common tooling list. Validation
+command updated to run generate.sh before hadolint. Fixes #31.</p>
+</li>
+<li>
+<p><strong>add cliff config + regenerate CHANGELOG; sanity-check docs accuracy (#58)</strong>
+Adds the changelog/release-notes automation that the rest of the
+standard-tooling ecosystem uses (verbatim copies of cliff.toml and
+cliff-release-notes.toml from standard-tooling), regenerates
+CHANGELOG.md from conventional-commit history, and corrects three
+factual drift items in the docs:</p>
+</li>
+<li>
+<p>architecture: docs/Dockerfile.template → base/Dockerfile.template
+  (renamed in #44); added python-support fragment to the common-layer
+  description; expanded standard-tooling fragment description to
+  cover the rolling-minor pin and release-dispatch rebuild.</p>
+</li>
+<li>images: standard-tooling row showed <code>develop</code>, now <code>v1.3</code>; added
+  missing Go tools (goimports, go-test-coverage); cargo-deny 0.18.2 →
+  0.19.0.</li>
+</ul>
+<p>Skipping releases/v*.md until v1.0.0 is actually tagged — the
+docs-deploy action handles the empty case by writing
+"No releases yet." to the staged releases/index.md.</p>
+<ul>
+<li><strong>remove include directives and downgrade standards-and-conventions refs (#87)</strong></li>
+<li>
+<p><strong>add versioned image tags spec and pushback review (#88)</strong>
+Design spec for issue #60: three-tier versioned image tags, branch-aware publishing, release coordination model, and fleet migration plan. Includes paad:pushback review with all resolutions.</p>
+</li>
+<li>
+<p><strong>comprehensive documentation review for consistency (#90)</strong>
+Fixes documentation drift after recent PRs (#73-#88). Changes: CLAUDE.md updated image layout to show templates and generate.sh, corrected Node.js install method (NodeSource not multi-stage), expanded common layer tool list (jq, shfmt, actionlint, git-cliff, gh, standard-tooling), added dev-base to GHCR package list, added generate.sh to validation commands. ci.yml bumped markdownlint-cli from 0.41.0 to 0.47.0 and expanded lint scope from README.md to all markdown. repository-standards.md corrected ShellCheck scope. CHANGELOG.md regenerated via git-cliff to include all recent work. Added docs/specs/ and paad/ to .markdownlintignore (design docs with wide tables).</p>
+</li>
+<li>
+<p><strong>add implementation plan and review docs for host-only tool guardrails (#96)</strong></p>
+</li>
+<li>
+<p>docs(guardrails): add implementation plan and review docs for host-only tool guardrails</p>
+</li>
+<li>
+<p><strong>add multi-arch design spec, implementation plan, and review reports (#126)</strong>
+Add design spec for publishing multi-arch (amd64 + arm64) dev container images. Includes pushback review (6 issues found and resolved) and alignment check (spec and plan verified consistent). Key design changes from pushback: QEMU setup step, dual-platform Trivy scans, attestation before promotion, semgrep arm64 prerequisite validation.</p>
+</li>
+<li>
+<p><strong>fix hadolint arch labels and add revised alignment review (#130)</strong>
+Correct hadolint architecture labels to canonical lowercase naming (linux-x86_64, linux-arm64) as verified against the GitHub Releases API. Add revised implementation plan (2026-05-04) and alignment review confirming plan-spec alignment. Part of #111.</p>
+</li>
+<li>
+<p><strong>update documentation to reflect current image contents and multi-arch publishing (#138)</strong>
+Remove references to standard-tooling being baked into images (stripped in 2d08ed8). Add hadolint, uv, and yamllint to common layer documentation. Document multi-arch (amd64 + arm64) publishing pipeline including candidate tag staging, dual-platform Trivy scanning, and SLSA attestation. Update architecture page fragment tree to match current state. Fix CI gates section to reflect consolidated security-and-standards workflow.</p>
+</li>
+<li>
+<p><strong>replace stale repository-standards.md references with standard-tooling.toml (#168)</strong></p>
+</li>
+<li><strong>review and update repository documentation (#169)</strong></li>
+<li>docs(images): add license_finder to Ruby image documentation</li>
+</ul>
+<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>initial repository with Docker dev container images</strong>
+Migrate Docker dev container images from standard-tooling into this
+dedicated repository. Includes Dockerfiles for Python, Java, Go, Ruby,
+and Rust, plus build script, GHCR publish workflow, CI workflow, and
+standard ecosystem documentation files.</li>
+</ul>
+<p>Adds Rust images (1.92, 1.93) to the CI publish matrix and removes the
+paths filter from docker-publish.yml since the entire repo is Docker
+content.</p>
+<ul>
+<li><strong>add cross-language validation tools to all dev containers (#15)</strong></li>
+<li>feat: add shfmt, actionlint, taplo, and yamllint to all dev containers (#14)</li>
+</ul>
+<p>Add cross-language validation tools to all 5 Dockerfiles (python, ruby,
+go, java, rust) to support PostToolUse hooks that validate files
+immediately on Write/Edit. Also adds goimports to the Go container.</p>
+<ul>
+<li>
+<p><strong>add go-test-coverage to Go dev image (#17)</strong>
+Required for container-first validation where coverage threshold
+enforcement runs inside the dev container via scripts/dev/test.sh.</p>
+</li>
+<li>
+<p><strong>update cargo-deny to 0.19.0 for CVSS 4.0 support (#24)</strong></p>
+</li>
+<li><strong>add dev-docs image for containerised MkDocs preview (#26)</strong>
+Adds a dedicated dev-docs Docker image (python:3.14-slim + mkdocs-material</li>
+<li>mike + uv) so documentation preview and build runs inside a container,
+closing the last gap in the docker-first tooling strategy.</li>
+</ul>
+<p>Resolves vergil-docker#10</p>
+<ul>
+<li><strong>install standard-tooling in all dev container images (#29)</strong></li>
+<li>feat: install standard-tooling in all dev container images</li>
+</ul>
+<p>Clone standard-tooling into /opt/standard-tooling and install it in
+an isolated venv using uv sync. All st-* entry points are now
+available on PATH in every dev container.</p>
+<p>Non-Python images (java, rust, go, ruby) use uv python install 3.14
+to get a controlled Python rather than depending on system python3.
+Dev deps are excluded with --no-group dev to keep images lean.</p>
+<ul>
+<li><strong>add Node.js and markdownlint-cli to dev-docs image (#32)</strong></li>
+<li>feat: add Node.js and markdownlint-cli to dev-docs image</li>
+</ul>
+<p>The standards-compliance action now runs inside the dev-docs container
+and requires markdownlint on PATH. Add Node.js (multi-stage copy from
+node-donor, matching the language images) and markdownlint-cli@0.47.0.</p>
+<ul>
+<li><strong>install gh CLI in all dev container images (#33)</strong>
+Add gh CLI v2.67.0 to all six Dockerfiles so st-submit-pr can create
+pull requests from inside containers. The docs image also gains curl
+as an apt dependency (already present in the other images).</li>
+</ul>
+<p>Ref wphillipmoore/mq-rest-admin-common#222</p>
+<ul>
+<li><strong>modernize tool installation and remove taplo from dev containers (#38)</strong></li>
+<li>
+<p>feat: refactor dev containers to use dev-python:3.14 as base image</p>
+</li>
+<li>
+<p>Install standard-tooling into system Python (no venv) to avoid .venv
+  corruption when volume-mounting workspaces</p>
+</li>
+<li>Use dev-python:3.14 as BASE_IMAGE for go, rust, ruby, java, and docs
+  images, eliminating duplicated tool installations</li>
+<li>Replace Node.js multi-stage COPY with NodeSource apt repo</li>
+<li>Replace gh CLI binary download with official apt repo</li>
+<li>Install shellcheck and shfmt via apt instead of binary downloads</li>
+<li>Install uv via pip instead of Docker image COPY</li>
+<li>Remove taplo from all images</li>
+<li>Add build-essential to rust image for cargo compilation</li>
+<li>Update build.sh to build Python 3.14 first, then pass as BASE_IMAGE</li>
+<li>
+<p>Split docker-publish.yml into phased builds: Python 3.14 first, then
+  all other images in parallel</p>
+</li>
+<li>
+<p><strong>replace Dockerfiles with templated fragments and add git-cliff (#41)</strong></p>
+</li>
+<li>feat: replace Dockerfiles with templated fragments and add git-cliff</li>
+</ul>
+<p>Extract common Dockerfile blocks into docker/common/ fragments. Each language image now has a Dockerfile.template with @include markers. build.sh generates final Dockerfiles at build time. Adds git-cliff to validation-tools fragment.</p>
+<ul>
+<li><strong>add openssh-client to all container images (#46)</strong></li>
+<li>feat: add openssh-client to all container images</li>
+</ul>
+<p>Install openssh-client in every Dockerfile template so git can perform
+SSH remote operations (push, fetch) inside containers.</p>
+<ul>
+<li><strong>adopt git worktree convention for parallel AI agent development (#49)</strong>
+Applies Phase 3 of the worktree-convention rollout from
+wphillipmoore/standard-tooling#258.</li>
+</ul>
+<p>Adds <code>.worktrees/</code> to .gitignore and a Parallel AI agent development
+section to CLAUDE.md describing the structure, rules, and canonical
+Agent prompt contract. Links to the canonical spec in standard-tooling.</p>
+<ul>
+<li><strong>pin standard-tooling to rolling minor tag; rebuild on release (#51) (#52)</strong></li>
+<li>
+<p><strong>prune dangling images and stale build cache after local build (#74)</strong>
+Prevents local Docker disk bloat by cleaning up after docker/build.sh completes. Only removes dangling (untagged) images and build cache older than 30 days — tagged images and volumes are never touched. Closes #66.</p>
+</li>
+<li>
+<p><strong>add jq to all dev container images (#78)</strong>
+The docs-deploy composite action requires jq for version-command parsing. Adding it to the common system package set across all six image templates. Closes #77.</p>
+</li>
+<li>
+<p><strong>add ~/.local/bin to default PATH in all dev container images (#103) (#104)</strong></p>
+</li>
+<li><strong>bake pyyaml, semgrep, and hadolint into dev container images (#109)</strong></li>
+<li>feat(images): bake pyyaml, semgrep, and hadolint into dev container images</li>
+</ul>
+<p>Add pyyaml to the MkDocs pip install block in dev-base, making
+the direct dependency explicit for docs-deploy nav-patching.</p>
+<p>Add semgrep via uv tool install in dev-base so the security/semgrep
+action can use it without runtime installation.</p>
+<p>Add hadolint v2.14.0 to the common validation-tools fragment so
+all images include it for local Dockerfile linting.</p>
+<ul>
+<li><strong>publish multi-arch (amd64 + arm64) dev container images (#131)</strong></li>
+<li>feat(images): parameterize binary tool downloads by TARGETARCH</li>
+</ul>
+<p>Rewrite validation-tools.dockerfile to use a case block that maps Docker buildx's TARGETARCH (amd64/arm64) to each tool's release artifact naming convention. All 5 binary tools (shellcheck, shfmt, actionlint, git-cliff, hadolint) are consolidated into a single RUN layer. Part of #111.</p>
+<ul>
+<li><strong>add license_finder to dev-ruby image (#156)</strong></li>
+<li><strong>adopt CI/CD workflow convention (#383) (#172)</strong></li>
+<li><strong>add reusable docker-publish workflow with dev/prod naming and nightly rebuilds (#175)</strong></li>
+<li>docs(design): add design spec for release workflow, image naming, and nightly rebuilds</li>
+</ul>
+<h2 id="refactoring">Refactoring<a class="headerlink" href="#refactoring" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>rename dev-docs to dev-base with full common tooling (#44)</strong>
+Rename the dev-docs image to dev-base to reflect its role as the base
+layer with all common tooling. The Dockerfile.template now includes
+validation-tools, yamllint, and uv fragments that were previously only
+in language-specific images.</li>
+</ul>
+<p>Update docker-publish.yml, build.sh, generate.sh, docs, and README to
+reference dev-base throughout.</p>
+<h2 id="styling">Styling<a class="headerlink" href="#styling" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>fix table alignment and code fence language for markdownlint (#5)</strong></li>
+<li>style: fix table alignment and code fence language for markdownlint</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
