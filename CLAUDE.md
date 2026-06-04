@@ -127,7 +127,7 @@ vergil-tooling repository under `docs/`.
 # Host-installed vergil-tooling provides vrg-* commands on PATH.
 # Install per the host-level-tool spec
 # (https://github.com/vergil-project/vergil-tooling/blob/develop/docs/specs/host-level-tool.md):
-uv tool install 'vergil-tooling @ git+https://github.com/vergil-project/vergil-tooling@v1.4'
+uv tool install 'vergil-tooling @ git+https://github.com/vergil-project/vergil-tooling@v2.1'
 # (or `pip install` into the same Python env that hosts `uv`).
 
 # The Claude Code PreToolUse hook guard (.claude/hooks/guard.sh)
@@ -139,6 +139,11 @@ uv tool install 'vergil-tooling @ git+https://github.com/vergil-project/vergil-t
 ```bash
 docker/build.sh                 # Build all images for every version in the matrix
 ```
+
+`build.sh` auto-detects the runtime — it prefers `nerdctl` (Lima +
+containerd) and falls back to `docker`. Set `VRG_CONTAINER_RUNTIME` to
+force one. The single-image command below works with either `nerdctl
+build` or `docker build`.
 
 Individual images can be built with:
 
@@ -246,8 +251,9 @@ To trigger a rebuild manually: Actions > CD > Run workflow.
 - **Thin images** — language runtime + package manager + git/curl
 - **Project-managed dependencies** — tools come from lockfiles at
   container startup (e.g., `bundle install`, `uv sync`, `go install`)
-- **No host requirements** — Docker is the only prerequisite for
-  local development
+- **No host requirements** — a single OCI container runtime is the only
+  prerequisite for local development (nerdctl/Lima preferred, Docker
+  supported)
 
 ## Key References
 

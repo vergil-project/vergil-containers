@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-06-04
+
+### CI
+
+- add no-cache input to cd-docker-publish (#304)
+- conditional cache in build-scan-push job (#304)
+- conditional cache in publish-base job (#304)
+- nightly no-cache rebuilds for dev and prod (#304)
+
+### Chores
+
+- triage new base-layer CVEs from 2026-06-02 nightly
+- triage second wave of base-layer CVEs (kernel batch + gh CLI)
+- migrate to vergil v2.1
+
+### Documentation
+
+- add design spec for no-cache nightly rebuild (#304)
+- add permissions note to nightly rebuild design (#304)
+- add implementation plan for no-cache nightly rebuild (#304)
+- design for OSS container runtime in local build.sh (#322)
+- move OSS runtime design to docs/specs (#322)
+- incorporate pushback fixes into OSS runtime design (#322)
+- implementation plan for OSS runtime in build.sh (#322)
+- align plan with spec: buildkit failure test + vergil-vm handoff task (#322)
+- describe OSS runtime preference for local builds (#322)
+- link vergil-vm buildkitd tracking issue (#322)
+
+### Features
+
+- prefer nerdctl over docker in build.sh, docker fallback (#322)
+
 ## [2.0.18] - 2026-05-28
 
 ### Bug fixes

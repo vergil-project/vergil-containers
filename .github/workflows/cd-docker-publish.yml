@@ -7,6 +7,11 @@ on:
         description: "Image name prefix (dev or prod)"
         type: string
         required: true
+      no-cache:
+        description: "Skip registry cache (for nightly fresh rebuilds)"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   packages: write
@@ -112,14 +117,14 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: "${{ matrix.build-arg }}=${{ matrix.version }}"
           tags: ${{ env.CANDIDATE }}
-          cache-from: type=registry,ref=${{ env.CACHE_TAG }}
-          cache-to: type=registry,ref=${{ env.CACHE_TAG }},mode=max
+          cache-from: ${{ inputs.no-cache && '' || format('type=registry,ref={0}', env.CACHE_TAG) }}
+          cache-to: ${{ inputs.no-cache && '' || format('type=registry,ref={0},mode=max', env.CACHE_TAG) }}
           push: true
 
       - name: Trivy scan (amd64)
         id: trivy-amd64
         continue-on-error: true
-        uses: vergil-project/vergil-actions/actions/shared/security/trivy@v2.0
+        uses: vergil-project/vergil-actions/actions/shared/security/trivy@v2.1
         with:
           scan-type: image
           scan-ref: ${{ env.CANDIDATE }}
@@ -245,14 +250,14 @@ jobs:
           context: docker/base
           platforms: linux/amd64,linux/arm64
           tags: ${{ env.CANDIDATE }}
-          cache-from: type=registry,ref=${{ env.CACHE_TAG }}
-          cache-to: type=registry,ref=${{ env.CACHE_TAG }},mode=max
+          cache-from: ${{ inputs.no-cache && '' || format('type=registry,ref={0}', env.CACHE_TAG) }}
+          cache-to: ${{ inputs.no-cache && '' || format('type=registry,ref={0},mode=max', env.CACHE_TAG) }}
           push: true
 
       - name: Trivy scan (amd64)
         id: trivy-amd64
         continue-on-error: true
-        uses: vergil-project/vergil-actions/actions/shared/security/trivy@v2.0
+        uses: vergil-project/vergil-actions/actions/shared/security/trivy@v2.1
         with:
           scan-type: image
           scan-ref: ${{ env.CANDIDATE }}
