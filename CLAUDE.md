@@ -127,7 +127,7 @@ vergil-tooling repository under `docs/`.
 # Host-installed vergil-tooling provides vrg-* commands on PATH.
 # Install per the host-level-tool spec
 # (https://github.com/vergil-project/vergil-tooling/blob/develop/docs/specs/host-level-tool.md):
-uv tool install 'vergil-tooling @ git+https://github.com/vergil-project/vergil-tooling@v1.4'
+uv tool install 'vergil-tooling @ git+https://github.com/vergil-project/vergil-tooling@v2.1'
 # (or `pip install` into the same Python env that hosts `uv`).
 
 # The Claude Code PreToolUse hook guard (.claude/hooks/guard.sh)

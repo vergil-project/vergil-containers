@@ -124,7 +124,7 @@ jobs:
       - name: Trivy scan (amd64)
         id: trivy-amd64
         continue-on-error: true
-        uses: vergil-project/vergil-actions/actions/shared/security/trivy@v2.0
+        uses: vergil-project/vergil-actions/actions/shared/security/trivy@v2.1
         with:
           scan-type: image
           scan-ref: ${{ env.CANDIDATE }}
@@ -257,7 +257,7 @@ jobs:
       - name: Trivy scan (amd64)
         id: trivy-amd64
         continue-on-error: true
-        uses: vergil-project/vergil-actions/actions/shared/security/trivy@v2.0
+        uses: vergil-project/vergil-actions/actions/shared/security/trivy@v2.1
         with:
           scan-type: image
           scan-ref: ${{ env.CANDIDATE }}
