@@ -100,6 +100,17 @@ CVE-2026-39826
 CVE-2026-39836
 CVE-2026-42499
 
+# CVE-2026-42504 (GO-2026-5038) — quadratic CPU use decoding
+# maliciously-crafted MIME headers (mime.WordDecoder.DecodeHeader).
+# Fixed in go1.25.11 / go1.26.4. Flags the prebuilt gh, actionlint,
+# shfmt, scorecard, and trivy binaries, which are compiled upstream
+# with older Go. None of them decode untrusted MIME headers — they
+# are local-file linters or API clients talking only to known hosts
+# (GitHub, ghcr). This gate failure blocks the image rebuild that
+# delivers the patched Go toolchain fleet-wide (issue #335). Remove
+# when upstream ships binaries rebuilt with go1.25.11+ / go1.26.4+.
+CVE-2026-42504
+
 # Scorecard 5.5.0 Go transitive dependencies — scorecard is a read-only
 # GitHub API auditor. It does not run Docker containers, does not use
 # go-git's file I/O for local repositories, and does not run BuildKit.
