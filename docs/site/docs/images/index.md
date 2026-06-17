@@ -20,6 +20,7 @@ All language images include:
 | hadolint         | 2.14.0  | Dockerfile linting             |
 | uv               | 0.7.12  | Python package manager         |
 | yamllint         | 1.38.0  | YAML linting                   |
+| ansible-lint     | 26.4.0  | Ansible playbook/role linting  |
 | git              | latest  | Repository operations          |
 | openssh-client   | latest  | SSH for git remote operations  |
 | curl             | latest  | HTTP requests                  |
@@ -28,7 +29,7 @@ The `dev-base` image includes the full common layer plus documentation
 tooling (MkDocs Material, mike, semgrep). It is the fallback image for
 repos with no detected language.
 
-Non-Python images install Python, yamllint, and uv via the
+Non-Python images install Python, yamllint, ansible-lint, and uv via the
 `python-support` fragment. Python-based images (`dev-python`, `dev-base`)
 install them directly via pip.
 
