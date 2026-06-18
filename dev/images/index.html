@@ -1675,6 +1675,11 @@ runtimes and tools. Images are published as multi-architecture manifests
 <td>YAML linting</td>
 </tr>
 <tr>
+<td>ansible-lint</td>
+<td>26.4.0</td>
+<td>Ansible playbook/role linting</td>
+</tr>
+<tr>
 <td>git</td>
 <td>latest</td>
 <td>Repository operations</td>
@@ -1694,7 +1699,7 @@ runtimes and tools. Images are published as multi-architecture manifests
 <p>The <code>dev-base</code> image includes the full common layer plus documentation
 tooling (MkDocs Material, mike, semgrep). It is the fallback image for
 repos with no detected language.</p>
-<p>Non-Python images install Python, yamllint, and uv via the
+<p>Non-Python images install Python, yamllint, ansible-lint, and uv via the
 <code>python-support</code> fragment. Python-based images (<code>dev-python</code>, <code>dev-base</code>)
 install them directly via pip.</p>
 <h2 id="python">Python<a class="headerlink" href="#python" title="Permanent link">&para;</a></h2>
