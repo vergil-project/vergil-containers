@@ -189,6 +189,7 @@ Every image includes (installed via shared fragments in `docker/common/`):
 - **gh** (GitHub CLI, via official apt repository)
 - **uv** (`0.11.13`)
 - **yamllint** (`1.38.0`)
+- **ansible-lint** (`26.4.0`)
 - **jq**, git, curl, openssh-client
 - Language-specific package manager and linting tools
 

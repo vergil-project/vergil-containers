@@ -19,10 +19,15 @@ RUN apt-get update && \
 # @include common/security-tools.dockerfile
 
 # --- Python tools ------------------------------------------------------------
-# Upgrade system pip past CVE-2026-3219 (TAR/ZIP polyglot in archive
-# parsing). pip 26.0.1 is affected; 26.1 is the fix. Issue #59.
-RUN pip install --no-cache-dir --upgrade 'pip>=26.1' && \
-    pip install --no-cache-dir yamllint==1.38.0 uv==0.11.14
+# Upgrade system pip past two advisories:
+#   - CVE-2026-3219  (TAR/ZIP polyglot in archive parsing). pip 26.0.1 is
+#     affected; 26.1 is the fix. Issue #59.
+#   - CVE-2026-8643 / PYSEC-2026-196 (entry-point path traversal). Affects
+#     pip <= 26.1.1; 26.1.2 is the fix. Issue #344.
+# The >=26.1.2 lower bound covers both; a plain >=26.1 floats to a still-
+# vulnerable pip.
+RUN pip install --no-cache-dir --upgrade 'pip>=26.1.2' && \
+    pip install --no-cache-dir yamllint==1.38.0 ansible-lint==26.4.0 uv==0.11.14
 
 # --- MkDocs ------------------------------------------------------------------
 ARG MKDOCS_MATERIAL_VERSION=9.7.6
