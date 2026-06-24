@@ -4,7 +4,7 @@
 # upstream issues, or awaiting base image rebuilds to pick up Debian
 # patches. Review periodically and remove entries when fixes land.
 #
-# Last audited: 2026-06-05 (issue #326).
+# Last audited: 2026-06-23 (issue #350).
 
 # Linux kernel CVEs — containers use the host kernel, not the kernel
 # headers/modules baked into the base image. False positives.
@@ -228,3 +228,101 @@ CVE-2026-48962
 # permission check. No Debian fix available (status=affected).
 # Containers do not load or manage BPF programs.
 CVE-2026-45932
+
+# =============================================================================
+# 2026-06-23 batch (issue #350) — 42 CVEs that newly broke the prod publish
+# gate for the 2.1.1 release. Grouped by class below. None is exploitable in
+# the images' actual runtime usage. Re-audit and remove the "fix available"
+# entries once the upstream language base images advance.
+# =============================================================================
+
+# --- linux-libc-dev kernel-header false positives ----------------------------
+# Same rationale as the kernel block at the top of this file: containers use
+# the host kernel, not the headers baked into the base image. Includes one
+# CRITICAL (CVE-2026-43185) — still a header-only false positive. Several have
+# a Debian fix and will drop off as the base advances; the rest are
+# status=affected with no fix. Present on the go / ruby / rust images.
+CVE-2025-22069
+CVE-2026-31536
+CVE-2026-43185
+CVE-2026-46162
+CVE-2026-46163
+CVE-2026-46180
+CVE-2026-46191
+CVE-2026-46203
+CVE-2026-46219
+CVE-2026-46234
+CVE-2026-46241
+CVE-2026-46243
+CVE-2026-46316
+CVE-2026-46319
+CVE-2026-46323
+CVE-2026-46330
+CVE-2026-46331
+
+# --- Go stdlib / module CVEs in prebuilt tool binaries -----------------------
+# Same rationale as the Go-stdlib and CVE-2026-42504 blocks above: these flag
+# the prebuilt gh, trivy, scorecard, actionlint, shfmt, and git-cliff binaries,
+# which are compiled upstream with older Go / module versions. They are static
+# linters and known-host API clients (GitHub, ghcr) — they do not run SSH
+# servers, parse untrusted HTML, decode untrusted MIME, or verify untrusted
+# x509 certs. Remove once upstream ships binaries rebuilt with the patched
+# toolchain and dependencies.
+#
+# stdlib — crypto/x509 (*Certificate).VerifyHostname (fix go1.25.11 / go1.26.4).
+CVE-2026-27145
+# golang.org/x/net — HTML/HTTP-parsing CPU-exhaustion DoS (fix 0.55.0).
+CVE-2026-25680
+CVE-2026-25681
+CVE-2026-27136
+CVE-2026-39821
+CVE-2026-42502
+CVE-2026-42506
+# golang.org/x/crypto — SSH server/client/knownhosts CVEs (fix 0.52.0). The
+# images use ssh only for git remotes to known hosts and run no SSH server.
+CVE-2026-39827
+CVE-2026-39828
+CVE-2026-39829
+CVE-2026-39830
+CVE-2026-39835
+CVE-2026-42508
+CVE-2026-46595
+CVE-2026-46597
+# github.com/containerd/containerd — embedded in the trivy / scorecard
+# binaries. The images do not run containerd. CVE-2026-53492 has no fix yet.
+CVE-2026-53488
+CVE-2026-53489
+CVE-2026-53492
+
+# github.com/cli/cli/v2 — gh CLI < 2.93.0 (fix 2.93.0). NOTE: this suppression
+# was removed in #326 on the premise that all rebuilds pull gh 2.93.0. It
+# recurs only on the stale-base images (ruby:3.2, rust:1.92, rust:1.93) whose
+# upstream *-slim base predates gh 2.93.0. Re-suppressed pending those bases
+# advancing; remove again once they do.
+CVE-2026-48501
+
+# --- Debian OS packages, no upstream fix -------------------------------------
+# status=affected, no Debian fix available. Not run on untrusted input.
+#
+# jq / libjq1 (Debian trixie) — DoS / potential code execution. Used for JSON
+# parsing in CI workflows, not on untrusted input. (Joins the existing jq
+# entries above.)
+CVE-2026-49839
+# libsqlite3-0 (Debian trixie) — memory corruption / heap overflow in SQLite
+# < 3.53.2. The images do not open untrusted SQLite databases.
+CVE-2026-11822
+CVE-2026-11824
+
+# --- Debian OS packages, fix available, clears on base refresh ---------------
+# Present only on the stale-base images (ruby:3.2, rust:1.92, rust:1.93) whose
+# upstream *-slim base ships an older Debian snapshot. Will resolve on the next
+# rebuild once those bases advance.
+#
+# libpython3.13-* (system cpython) — CVE-2026-3644 fix 3.13.5-2+deb13u2;
+# CVE-2026-4224 status=affected, no fix. Image does not run the affected paths
+# on untrusted input.
+CVE-2026-3644
+CVE-2026-4224
+# openssl / libssl3t64 (Debian trixie) — fix 3.5.6-1~deb13u2. TLS is used only
+# to connect to known hosts (GitHub, PyPI, NodeSource).
+CVE-2026-45447

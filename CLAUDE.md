@@ -194,7 +194,8 @@ Every image includes (installed via shared fragments in `docker/common/`):
 - Language-specific package manager and linting tools
 
 The `dev-base` image includes additional documentation tooling (MkDocs
-Material, mike, semgrep). See the
+Material, mike, semgrep) and **OpenTofu** (`1.12.3`) for in-sandbox
+`tofu fmt -check` / `tofu validate` of OpenTofu modules. See the
 [images documentation](https://vergil-project.github.io/vergil-docker/images/)
 for the full inventory.
 
