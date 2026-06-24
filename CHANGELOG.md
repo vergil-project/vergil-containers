@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.2] - 2026-06-24
+
+### Bug fixes
+
+- triage 42 new CVEs blocking the 2.1.1 prod publish (#351)
+
+### Features
+
+- add OpenTofu to the dev-base image (#353)
+
+## [2.1.1] - 2026-06-23
+
+### Bug fixes
+
+- grant actions: read to the security job (#340)
+- pin pip>=26.1.2 to close CVE-2026-8643 (#345)
+- pin marketplace source ref to v2.1 (#347)
+
+### Chores
+
+- remove gh CVE-2026-48501 ignore and triage CVE-2026-46244
+- triage CVE-2026-42504 to unblock patched-Go image rebuilds
+
+### Features
+
+- add ansible-lint to the common tooling layer (#343)
+
 ## [2.1.0] - 2026-06-04
 
 ### CI
