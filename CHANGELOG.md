@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.2] - 2026-06-24
+
+### Bug fixes
+
+- triage 42 new CVEs blocking the 2.1.1 prod publish (#351)
+
+### Features
+
+- add OpenTofu to the dev-base image (#353)
+
 ## [2.1.1] - 2026-06-23
 
 ### Bug fixes
