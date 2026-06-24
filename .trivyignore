@@ -4,7 +4,7 @@
 # upstream issues, or awaiting base image rebuilds to pick up Debian
 # patches. Review periodically and remove entries when fixes land.
 #
-# Last audited: 2026-06-23 (issue #350).
+# Last audited: 2026-06-24 (issue #360).
 
 # Linux kernel CVEs — containers use the host kernel, not the kernel
 # headers/modules baked into the base image. False positives.
@@ -326,3 +326,29 @@ CVE-2026-4224
 # openssl / libssl3t64 (Debian trixie) — fix 3.5.6-1~deb13u2. TLS is used only
 # to connect to known hosts (GitHub, PyPI, NodeSource).
 CVE-2026-45447
+
+# =============================================================================
+# 2026-06-24 batch (issue #360) — 4 CVEs that newly broke the prod publish gate
+# for the 2.1.2 release (the release + docs jobs and the java images passed;
+# base/python/ruby/go/rust docker-publish failed). None is exploitable in the
+# images' actual runtime usage.
+# =============================================================================
+
+# go.opentelemetry.io/otel/sdk — CVE-2026-39883 (HIGH, fixed 1.43.0). An
+# OpenTelemetry SDK transitive dependency embedded in the prebuilt scorecard /
+# trivy binaries (base layer). The tools do not export OTel telemetry over an
+# attacker-controlled path; same rationale as the Go tool-binary block above.
+# Remove once upstream ships binaries rebuilt with the bumped dependency.
+CVE-2026-39883
+
+# libssh2-1t64 (Debian trixie) — additional libssh2 vulnerability, all images.
+# No Debian fix (status=affected). Used by git for SSH transport to known hosts
+# (GitHub) only. Joins the existing libssh2 entry (CVE-2026-7598).
+CVE-2026-55200
+
+# linux-libc-dev (Debian trixie) — kernel-header false positives on the stale
+# base images (ruby:3.2, rust:1.92, rust:1.93). Containers use the host kernel,
+# not the baked-in headers. CVE-2026-52908 has a Debian fix (6.12.94-1) and
+# will drop off as the base advances; CVE-2026-52910 is status=affected, no fix.
+CVE-2026-52908
+CVE-2026-52910
