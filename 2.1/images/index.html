@@ -532,6 +532,8 @@
       
         
       
+        
+      
     
     
     
@@ -584,6 +586,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1727,8 +1757,9 @@ runtimes and tools. Images are published as multi-architecture manifests
 </tbody>
 </table>
 <p>The <code>dev-base</code> image includes the full common layer plus documentation
-tooling (MkDocs Material, mike, semgrep). It is the fallback image for
-repos with no detected language.</p>
+tooling (MkDocs Material, mike, semgrep) and OpenTofu for in-sandbox
+OpenTofu module validation. It is the fallback image for repos with no
+detected language.</p>
 <p>Non-Python images install Python, yamllint, ansible-lint, and uv via the
 <code>python-support</code> fragment. Python-based images (<code>dev-python</code>, <code>dev-base</code>)
 install them directly via pip.</p>
@@ -1898,6 +1929,11 @@ plus documentation tooling. It is the fallback image used by
 <td>pyyaml</td>
 <td>6.0.3</td>
 <td>YAML parsing (MkDocs dep)</td>
+</tr>
+<tr>
+<td>OpenTofu</td>
+<td>1.12.3</td>
+<td>OpenTofu module validation</td>
 </tr>
 </tbody>
 </table>
