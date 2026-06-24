@@ -26,8 +26,9 @@ All language images include:
 | curl             | latest  | HTTP requests                  |
 
 The `dev-base` image includes the full common layer plus documentation
-tooling (MkDocs Material, mike, semgrep). It is the fallback image for
-repos with no detected language.
+tooling (MkDocs Material, mike, semgrep) and OpenTofu for in-sandbox
+OpenTofu module validation. It is the fallback image for repos with no
+detected language.
 
 Non-Python images install Python, yamllint, ansible-lint, and uv via the
 `python-support` fragment. Python-based images (`dev-python`, `dev-base`)
@@ -103,3 +104,4 @@ plus documentation tooling. It is the fallback image used by
 | mike            | 2.1.3   | Versioned doc deployment   |
 | semgrep         | latest  | Static analysis            |
 | pyyaml          | 6.0.3   | YAML parsing (MkDocs dep)  |
+| OpenTofu        | 1.12.3  | OpenTofu module validation |
