@@ -29,15 +29,15 @@ Pull the CVE IDs from the CI logs:
 
 ```bash
 # List failed jobs and their log URLs
-vrg-gh run view <run-id> --repo vergil-project/vergil-docker \
+vrg-gh run view <run-id> --repo vergil-project/vergil-containers \
   | grep -E "X "
 
 # Extract unique CVE IDs from the full run log
-vrg-gh run view <run-id> --repo vergil-project/vergil-docker --log \
+vrg-gh run view <run-id> --repo vergil-project/vergil-containers --log \
   | grep -oE "CVE-[0-9]+-[0-9]+" | sort -u
 
 # Get package context for each CVE
-vrg-gh run view <run-id> --repo vergil-project/vergil-docker --log \
+vrg-gh run view <run-id> --repo vergil-project/vergil-containers --log \
   | grep "CVE-" | grep -v "^--$"
 ```
 
@@ -110,7 +110,7 @@ Flag the CVE to the team with your assessment and wait for a decision.
 ### Create a tracking issue
 
 ```bash
-vrg-gh issue create --repo vergil-project/vergil-docker \
+vrg-gh issue create --repo vergil-project/vergil-containers \
   --title "triage HIGH CVEs blocking docker-publish (YYYY-MM-DD)" \
   --body-file <body-file>
 ```

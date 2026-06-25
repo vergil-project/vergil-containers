@@ -186,7 +186,7 @@ Per-package setup (one-time, for each of `dev-base`, `dev-python`,
 
 1. Navigate to the package settings page on GHCR.
 2. Under **Manage Actions access**, click **Add Repository**.
-3. Select `vergil-docker`.
+3. Select `vergil-containers`.
 4. Set role to **Write**.
 
 ## Consumption

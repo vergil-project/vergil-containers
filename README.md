@@ -1,4 +1,4 @@
-# vergil-docker
+# vergil-containers
 
 Docker dev container images for the
 [vergil-tooling](https://github.com/vergil-project/vergil-tooling)
@@ -120,7 +120,7 @@ inclusion system. Shared tooling installations are maintained once in
 `docker/common/` and included via `# @include` directives. `generate.sh`
 expands templates into final Dockerfiles before each build.
 
-See [Architecture](https://vergil-project.github.io/vergil-docker/architecture/)
+See [Architecture](https://vergil-project.github.io/vergil-containers/architecture/)
 for details.
 
 ## Publishing
@@ -143,7 +143,7 @@ the `vergil-tooling` repository:
 
 1. Go to the package settings page on GHCR for each `dev-*` package.
 2. Under **Manage Actions access**, click **Add Repository**.
-3. Select `vergil-docker` and set the role to **Write**.
+3. Select `vergil-containers` and set the role to **Write**.
 
 This applies to: `dev-python`, `dev-java`, `dev-go`, `dev-ruby`,
 `dev-rust`, `dev-base`.
