@@ -1,6 +1,6 @@
 # Repository Standards
 
-Standards and conventions specific to the vergil-docker repository.
+Standards and conventions specific to the vergil-containers repository.
 For ecosystem-wide standards, see the
 [vergil-tooling documentation](https://vergil-project.github.io/vergil-tooling/).
 

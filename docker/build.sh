@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Managed by vergil-docker — DO NOT EDIT in downstream repos.
-# Canonical source: https://github.com/vergil-project/vergil-docker
+# Managed by vergil-containers — DO NOT EDIT in downstream repos.
+# Canonical source: https://github.com/vergil-project/vergil-containers
 # build.sh — build all dev container images with default version tags.
 #
 # Each image is defined by a Dockerfile.template that may contain
