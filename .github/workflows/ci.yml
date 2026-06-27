@@ -68,4 +68,4 @@ jobs:
       container-tag: 'latest'
 
   docs:
-    uses: vergil-project/vergil-actions/.github/workflows/ci-docs.yml@v2.0
+    uses: vergil-project/vergil-actions/.github/workflows/ci-docs.yml@v2.1
