@@ -1,7 +1,7 @@
-site_name: Vergil Docker
+site_name: Vergil Containers
 site_description: Docker dev container images for the VERGIL ecosystem
-repo_url: https://github.com/vergil-project/vergil-docker
-repo_name: vergil-project/vergil-docker
+repo_url: https://github.com/vergil-project/vergil-containers
+repo_name: vergil-project/vergil-containers
 
 docs_dir: docs
 strict: true

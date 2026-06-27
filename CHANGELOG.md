@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.4] - 2026-06-27
+
+### CI
+
+- add build-only docs verification job to ci.yml (#369)
+- honor native no-cache and unconditionally repopulate buildx cache (#370)
+
+### Chores
+
+- gitignore .vergil/ tooling session directory (#367)
+- triage 2026-06-26 nightly publish failures (#371) (#372)
+
+### Documentation
+
+- update live references to vergil-containers (#328) (#368)
+
 ## [2.1.3] - 2026-06-24
 
 ### Bug fixes

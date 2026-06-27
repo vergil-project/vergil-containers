@@ -111,7 +111,7 @@ VERGIL ecosystem. Each image provides a language runtime plus
 shared tooling (Node.js, ShellCheck, markdownlint) used by CI and local
 Docker-first development across all managed repositories.
 
-**Project name**: vergil-docker
+**Project name**: vergil-containers
 
 **Status**: Active
 
@@ -196,7 +196,7 @@ Every image includes (installed via shared fragments in `docker/common/`):
 The `dev-base` image includes additional documentation tooling (MkDocs
 Material, mike, semgrep) and **OpenTofu** (`1.12.3`) for in-sandbox
 `tofu fmt -check` / `tofu validate` of OpenTofu modules. See the
-[images documentation](https://vergil-project.github.io/vergil-docker/images/)
+[images documentation](https://vergil-project.github.io/vergil-containers/images/)
 for the full inventory.
 
 ### GHCR Publishing
@@ -233,7 +233,7 @@ Per-package setup (one-time, for each of `dev-base`, `dev-python`, `dev-java`,
 
 1. Navigate to the package settings page on GHCR.
 2. Under **Manage Actions access**, click **Add Repository**.
-3. Select `vergil-docker`.
+3. Select `vergil-containers`.
 4. Set role to **Write**.
 
 ### Version Matrix

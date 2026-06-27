@@ -352,3 +352,36 @@ CVE-2026-55200
 # will drop off as the base advances; CVE-2026-52910 is status=affected, no fix.
 CVE-2026-52908
 CVE-2026-52910
+
+# =============================================================================
+# 2026-06-26 batch (issue #371) — 6 HIGH CVEs that broke the nightly ops
+# docker-publish gate. The base/ruby/rust/go images failed; java and python
+# passed. None is exploitable in the images' actual runtime usage. Grouped by
+# class below.
+# =============================================================================
+
+# --- linux-libc-dev kernel-header false positives ----------------------------
+# Same rationale as the kernel blocks above: containers use the host kernel,
+# not the headers baked into the base image. All status=affected with no Debian
+# fix. Present on the go / ruby / rust images.
+# CVE-2026-46130 — dm-verity-fec: reading parity bytes split across blocks.
+CVE-2026-46130
+# CVE-2026-53000 — netfilter nat: use kfree_rcu to release ops.
+CVE-2026-53000
+# CVE-2026-53009 — ice: double-free of tx_buf skb.
+CVE-2026-53009
+# CVE-2026-53091 — net: pull headers in qdisc_pkt_len_segs_init().
+CVE-2026-53091
+
+# --- Go module CVEs in prebuilt tool binaries (base image) -------------------
+# Same rationale as the Go tool-binary block above: these flag prebuilt tool
+# binaries compiled upstream with older module versions. Remove once upstream
+# ships binaries rebuilt with the bumped dependencies.
+#
+# golang.org/x/crypto — ssh/agent CVE (fix 0.52.0). Joins the existing x/crypto
+# block; the images run no SSH server and ssh only to known hosts (GitHub).
+CVE-2026-39832
+# github.com/sigstore/rekor — OOM via unbounded gzip (fix 1.5.2). Embedded in
+# the prebuilt scorecard / trivy binaries; the tools do not ingest untrusted
+# rekor entries.
+CVE-2026-48702

@@ -14,3 +14,6 @@ docker/*/Dockerfile
 
 # Parallel AI agent worktrees (see CLAUDE.md)
 .worktrees/
+
+# vergil-tooling per-worktree session artifacts (pr-workflow.json, logs)
+.vergil/

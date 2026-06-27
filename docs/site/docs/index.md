@@ -1,4 +1,4 @@
-# Vergil Docker
+# Vergil Containers
 
 Docker dev container images for the
 [vergil-tooling](https://github.com/vergil-project/vergil-tooling)
@@ -39,7 +39,7 @@ docker pull ghcr.io/vergil-project/dev-python:3.14
 ### Build locally
 
 ```bash
-cd vergil-docker
+cd vergil-containers
 docker/build.sh
 ```
 
