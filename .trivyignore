@@ -385,3 +385,21 @@ CVE-2026-39832
 # the prebuilt scorecard / trivy binaries; the tools do not ingest untrusted
 # rekor entries.
 CVE-2026-48702
+
+# =============================================================================
+# 2026-06-27 batch (issue #376) — 5 HIGH CVEs that broke the v2.1.4 release
+# docker-publish gate (and the nightly ops run). All are linux-libc-dev
+# kernel-header false positives: containers use the host kernel, not the headers
+# baked into the base image. All status=affected with no Debian fix. Present on
+# the go / ruby / rust images; base, python, and java pass.
+# =============================================================================
+# CVE-2026-52991 — sched/psi: race between file release and reuse.
+CVE-2026-52991
+# CVE-2026-53090 — bpf: ld_{abs,ind} failure path analysis.
+CVE-2026-53090
+# CVE-2026-53092 — bpf: linked reg delta tracking when src_reg == dst_reg.
+CVE-2026-53092
+# CVE-2026-53246 — sctp: validate cached peer INIT chunk length.
+CVE-2026-53246
+# CVE-2026-53277 — KVM arm64: take the SRCU lock for page-table walks.
+CVE-2026-53277
