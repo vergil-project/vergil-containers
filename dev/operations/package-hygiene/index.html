@@ -1843,6 +1843,9 @@ they <em>would</em> delete:</p>
 <ul>
 <li><strong>Preview on demand:</strong> Actions → <em>Package cleanup</em> → <em>Run workflow</em> (leave
   "Preview only" checked). Review the logs.</li>
+<li><strong>Delete on demand (one-off):</strong> the same manual run with "Preview only"
+  <strong>unchecked</strong> performs a real deletion for that run only, without changing the
+  schedule.</li>
 <li><strong>Arm scheduled deletions:</strong> once satisfied, set the repository variable
   <code>PACKAGE_CLEANUP_DRY_RUN</code> to <code>false</code> (Settings → Secrets and variables →
   Actions → Variables). The weekly run then deletes for real. No code change is
