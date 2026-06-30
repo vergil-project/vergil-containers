@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.6] - 2026-06-30
+
+### Chores
+
+- point plugin marketplace at main (single released channel, #45) (#383)
+- add GHCR package hygiene tooling (#384) (#385)
+
 ## [2.1.5] - 2026-06-27
 
 ### Chores
