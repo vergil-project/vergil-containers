@@ -65,6 +65,9 @@ they *would* delete:
 
 - **Preview on demand:** Actions → *Package cleanup* → *Run workflow* (leave
   "Preview only" checked). Review the logs.
+- **Delete on demand (one-off):** the same manual run with "Preview only"
+  **unchecked** performs a real deletion for that run only, without changing the
+  schedule.
 - **Arm scheduled deletions:** once satisfied, set the repository variable
   `PACKAGE_CLEANUP_DRY_RUN` to `false` (Settings → Secrets and variables →
   Actions → Variables). The weekly run then deletes for real. No code change is
