@@ -1,0 +1,70 @@
+name: Package cleanup
+
+# Prunes the untagged version cruft the publish pipeline mints on every run
+# (per-arch child manifests, provenance attestations, superseded :cache-*
+# digests). Tagged versions — latest, the language-version tags, and the
+# cache-* tags themselves — are never touched: untagged-only deletion leaves
+# all live, referenceable images intact, and `validate` re-checks that every
+# multi-arch tag still has its platform children afterward.
+#
+# Ships in DRY-RUN by default. After reviewing a preview run's logs, arm real
+# deletions by setting the repository variable PACKAGE_CLEANUP_DRY_RUN=false
+# (Settings → Secrets and variables → Actions → Variables). No code change.
+#
+# Token: the default GITHUB_TOKEN can list/preview. Real deletion of
+# org-owned package versions may require a PAT with `delete:packages` stored
+# as the secret GHCR_CLEANUP_TOKEN; the workflow prefers it when present.
+
+on:
+  schedule:
+    - cron: "30 11 * * 0"  # Sundays 11:30 UTC, after the nightly ops run settles
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview only — log what would be deleted, delete nothing"
+        type: boolean
+        default: true
+
+permissions:
+  packages: write
+  contents: read
+
+concurrency:
+  group: package-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: "cleanup: ${{ matrix.package }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - dev-base
+          - dev-ruby
+          - dev-python
+          - dev-java
+          - dev-go
+          - dev-rust
+          - prod-base
+          - prod-ruby
+          - prod-python
+          - prod-java
+          - prod-go
+          - prod-rust
+    steps:
+      - name: Prune untagged versions
+        uses: dataaxiom/ghcr-cleanup-action@v1.2.2
+        with:
+          owner: vergil-project
+          packages: ${{ matrix.package }}
+          token: ${{ secrets.GHCR_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
+          delete-untagged: true
+          validate: true
+          # Manual runs honor the dry_run input; scheduled runs stay in
+          # preview until PACKAGE_CLEANUP_DRY_RUN is explicitly set to 'false'.
+          dry-run: >-
+            ${{ github.event_name == 'workflow_dispatch'
+                && inputs.dry_run
+                || vars.PACKAGE_CLEANUP_DRY_RUN != 'false' }}

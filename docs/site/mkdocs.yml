@@ -70,3 +70,4 @@ nav:
   - Operations:
       - Repository Standards: operations/repository-standards.md
       - Trivy CVE Triage: operations/trivy-triage.md
+      - Package Hygiene: operations/package-hygiene.md
