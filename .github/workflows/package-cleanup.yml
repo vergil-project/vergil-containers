@@ -62,9 +62,15 @@ jobs:
           token: ${{ secrets.GHCR_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
           delete-untagged: true
           validate: true
-          # Manual runs honor the dry_run input; scheduled runs stay in
-          # preview until PACKAGE_CLEANUP_DRY_RUN is explicitly set to 'false'.
+          # Real deletion is armed only when a trigger explicitly asks for it:
+          # a manual run with "Preview only" unchecked, or a scheduled run with
+          # the repo variable PACKAGE_CLEANUP_DRY_RUN set to 'false'. Everything
+          # else (default) stays in preview. Written as !(armed) rather than
+          # `cond && a || b` to avoid the Actions falsy-fall-through pitfall,
+          # where an unchecked box (inputs.dry_run == false) would otherwise
+          # fall through to the scheduled branch.
           dry-run: >-
-            ${{ github.event_name == 'workflow_dispatch'
-                && inputs.dry_run
-                || vars.PACKAGE_CLEANUP_DRY_RUN != 'false' }}
+            ${{ !(
+                  (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
+                  || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
+                ) }}
