@@ -23,6 +23,33 @@ When a scan fails, the candidate image is **not promoted** — the
 consumer-facing tag still points to the last good build. Publishing is
 blocked until the new CVEs are either suppressed or fixed.
 
+## What the gate ignores automatically (`trivy.yaml`)
+
+Both scan paths auto-load `trivy.yaml` from the repository root (they run
+with the checkout mounted at `/workspace`), so a single config governs the
+gate on both platforms without touching the shared `vergil-actions` Trivy
+action. It applies two categorical filters so the gate only fires on
+**actionable** findings:
+
+- **`ignore-unfixed: true`** — the gate blocks only on CVEs that have an
+  upstream fix (ones a rebuild or version bump can resolve). CVEs with
+  `status=affected` and no fix are unactionable — blocking the publish does
+  not make the image safer, since the last-good image carries the same
+  unfixed CVE. They still appear in scan output; they just do not gate.
+- **`ignore-policy: .trivy/ignore-policy.rego`** — drops all `linux-libc-dev`
+  (kernel header) findings, which are always false positives (containers use
+  the host kernel, not the baked-in headers), including the rare one that
+  carries a Debian fix.
+
+**Consequence for triage:** with these filters, a gate failure now means a
+**fixed, non-kernel** CVE that is not yet in `.trivyignore`. That is either
+something to actually fix (bump the pin / rebuild to pick up the patch) or,
+if the fix is not yet reachable, a deliberate `.trivyignore` entry. The
+old pattern of hand-adding every unfixed kernel/OS-library CVE nightly is no
+longer necessary — those are filtered before they reach the gate. Many
+existing `.trivyignore` entries for unfixed CVEs are now redundant and can be
+pruned in a future cleanup pass.
+
 ## Step 1: Identify the failing CVEs
 
 Pull the CVE IDs from the CI logs:
