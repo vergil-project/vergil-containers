@@ -1625,6 +1625,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-the-gate-ignores-automatically-trivyyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the gate ignores automatically (trivy.yaml)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#step-1-identify-the-failing-cves" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1878,6 +1889,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-the-gate-ignores-automatically-trivyyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the gate ignores automatically (trivy.yaml)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#step-1-identify-the-failing-cves" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2085,6 +2107,31 @@ promoted to the final tag.</p>
 <p>When a scan fails, the candidate image is <strong>not promoted</strong> — the
 consumer-facing tag still points to the last good build. Publishing is
 blocked until the new CVEs are either suppressed or fixed.</p>
+<h2 id="what-the-gate-ignores-automatically-trivyyaml">What the gate ignores automatically (<code>trivy.yaml</code>)<a class="headerlink" href="#what-the-gate-ignores-automatically-trivyyaml" title="Permanent link">&para;</a></h2>
+<p>Both scan paths auto-load <code>trivy.yaml</code> from the repository root (they run
+with the checkout mounted at <code>/workspace</code>), so a single config governs the
+gate on both platforms without touching the shared <code>vergil-actions</code> Trivy
+action. It applies two categorical filters so the gate only fires on
+<strong>actionable</strong> findings:</p>
+<ul>
+<li><strong><code>ignore-unfixed: true</code></strong> — the gate blocks only on CVEs that have an
+  upstream fix (ones a rebuild or version bump can resolve). CVEs with
+  <code>status=affected</code> and no fix are unactionable — blocking the publish does
+  not make the image safer, since the last-good image carries the same
+  unfixed CVE. They still appear in scan output; they just do not gate.</li>
+<li><strong><code>ignore-policy: .trivy/ignore-policy.rego</code></strong> — drops all <code>linux-libc-dev</code>
+  (kernel header) findings, which are always false positives (containers use
+  the host kernel, not the baked-in headers), including the rare one that
+  carries a Debian fix.</li>
+</ul>
+<p><strong>Consequence for triage:</strong> with these filters, a gate failure now means a
+<strong>fixed, non-kernel</strong> CVE that is not yet in <code>.trivyignore</code>. That is either
+something to actually fix (bump the pin / rebuild to pick up the patch) or,
+if the fix is not yet reachable, a deliberate <code>.trivyignore</code> entry. The
+old pattern of hand-adding every unfixed kernel/OS-library CVE nightly is no
+longer necessary — those are filtered before they reach the gate. Many
+existing <code>.trivyignore</code> entries for unfixed CVEs are now redundant and can be
+pruned in a future cleanup pass.</p>
 <h2 id="step-1-identify-the-failing-cves">Step 1: Identify the failing CVEs<a class="headerlink" href="#step-1-identify-the-failing-cves" title="Permanent link">&para;</a></h2>
 <p>Pull the CVE IDs from the CI logs:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># List failed jobs and their log URLs</span>
