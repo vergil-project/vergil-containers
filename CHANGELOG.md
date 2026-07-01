@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.8] - 2026-07-01
+
+### Bug fixes
+
+- gate Trivy on actionable CVEs only via trivy.yaml (#395) (#396)
+
 ## [2.1.7] - 2026-06-30
 
 ### Bug fixes
