@@ -1,0 +1,26 @@
+# Trivy scan configuration for the container-publish vulnerability gate.
+#
+# This file is auto-loaded by every `trivy` invocation that runs from the
+# repository root. Both scan paths in the publish pipeline mount the checkout
+# at /workspace and run there — the shared amd64 action
+# (vergil-actions/actions/shared/security/trivy) and the raw arm64 scan in
+# cd-docker-publish.yml — so this single config governs both platforms without
+# any change to the shared action.
+#
+# Policy rationale (see docs/site/docs/operations/trivy-triage.md):
+#   - ignore-unfixed: the gate should only block on CVEs we can actually act on
+#     (those with an upstream fix — rebuild or bump to pick it up). CVEs with
+#     status=affected and no available fix are unactionable: blocking the
+#     publish does not make the image safer (the last-good image carries the
+#     same unfixed CVE), it just strands releases for weeks. They remain in the
+#     scan output; they simply do not fail the gate.
+#   - ignore-policy: drops linux-libc-dev kernel-header findings categorically
+#     (always false positives for containers — see the policy file).
+#
+# Fixed, un-suppressed, real CVEs still gate. Explicit per-CVE suppressions for
+# fixed findings continue to live in .trivyignore.
+
+vulnerability:
+  ignore-unfixed: true
+
+ignore-policy: .trivy/ignore-policy.rego
