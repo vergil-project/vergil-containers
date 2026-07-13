@@ -13,6 +13,10 @@ permissions:
   attestations: write
   id-token: write
   pull-requests: write
+  # Needed because the release job calls cd-release.yml@v2.1, whose CI-evidence
+  # harvest downloads the release PR's artifacts; a reusable workflow cannot
+  # request more permission than its caller grants.
+  actions: read
 
 jobs:
   docs:
