@@ -18,6 +18,7 @@ RUN apt-get update && \
 # @include common/validation-tools.dockerfile
 # @include common/security-tools.dockerfile
 # @include common/opentofu.dockerfile
+# @include common/nfpm.dockerfile
 
 # --- Python tools ------------------------------------------------------------
 # Upgrade system pip past two advisories:

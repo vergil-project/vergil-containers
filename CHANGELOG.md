@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.9] - 2026-07-15
+
+### Bug fixes
+
+- grant actions:read so CD starts with cd-release@v2.1 (#406)
+- grant actions:read on the release job so CD starts (#409)
+
+### CI
+
+- add on: issues.closed caller for event-driven epic rollup (#401)
+
+### Chores
+
+- relicense to MIT (#403)
+
+### Features
+
+- add nfpm to base dev image for .deb/.rpm packaging (#407)
+
 ## [2.1.8] - 2026-07-01
 
 ### Bug fixes

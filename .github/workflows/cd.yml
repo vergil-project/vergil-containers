@@ -13,6 +13,10 @@ permissions:
   attestations: write
   id-token: write
   pull-requests: write
+  # Needed because the release job calls cd-release.yml@v2.1, whose CI-evidence
+  # harvest downloads the release PR's artifacts; a reusable workflow cannot
+  # request more permission than its caller grants.
+  actions: read
 
 jobs:
   docs:
@@ -27,6 +31,12 @@ jobs:
       container-suffix: base
     secrets: inherit
     permissions:
+      # This job-level block replaces the top-level permissions, so the
+      # actions:read granted there does not carry over — cd-release.yml@v2.1's
+      # CI-evidence harvest needs it, and the reusable-workflow graph is
+      # validated at startup, so omitting it fails CD at load with
+      # startup_failure even on develop where this job is skipped.
+      actions: read
       contents: write
       pull-requests: write
       id-token: write
