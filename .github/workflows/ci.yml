@@ -35,6 +35,18 @@ jobs:
       - name: Run Hadolint
         run: hadolint docker/*/Dockerfile
 
+  pins:
+    name: "quality / pins"
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/vergil-project/prod-base:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Every exact pin is justified
+        run: python3 docker/pins/check_pins.py
+
   quality:
     uses: vergil-project/vergil-actions/.github/workflows/ci-quality.yml@v2.1
     with:
