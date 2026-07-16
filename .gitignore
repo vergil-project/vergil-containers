@@ -12,6 +12,11 @@ trivy-out.json
 # Generated Dockerfiles — source of truth is Dockerfile.template
 docker/*/Dockerfile
 
+# Python caches from docker/pins/ scripts + tests
+__pycache__/
+*.pyc
+.pytest_cache/
+
 # Parallel AI agent worktrees (see CLAUDE.md)
 .worktrees/
 
