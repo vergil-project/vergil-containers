@@ -1,11 +1,22 @@
 name: Package cleanup
 
-# Prunes the untagged version cruft the publish pipeline mints on every run
-# (per-arch child manifests, provenance attestations, superseded :cache-*
-# digests). Tagged versions — latest, the language-version tags, and the
-# cache-* tags themselves — are never touched: untagged-only deletion leaves
-# all live, referenceable images intact, and `validate` re-checks that every
-# multi-arch tag still has its platform children afterward.
+# Two jobs, one arming mechanism:
+#
+# `cleanup` prunes the untagged version cruft the publish pipeline mints on
+# every run (per-arch child manifests, provenance attestations, superseded
+# :cache-* digests). Tagged versions — latest, the language-version tags, and
+# the cache-* tags themselves — are never touched: untagged-only deletion
+# leaves all live, referenceable images intact, and `validate` re-checks that
+# every multi-arch tag still has its platform children afterward.
+#
+# `reap-aliases` enforces the sliding retention window on the immutable
+# datestamp aliases the publish pipeline mints alongside each rolling tag
+# ({prefix}-{lang}:{version}-YYYYMMDD, {prefix}-base:latest-YYYYMMDD). It
+# deletes ONLY those `*-YYYYMMDD` aliases once they age past the window —
+# prod = 30 days, dev = 7 days — so recent builds stay addressable for
+# repoint rollback while old ones stop accumulating. Rolling tags (latest,
+# 3.14, 1.26, 17, 21), build cache-* tags, and pre-promotion *-candidate tags
+# never match its delete rule.
 #
 # Ships in DRY-RUN by default. After reviewing a preview run's logs, arm real
 # deletions by setting the repository variable PACKAGE_CLEANUP_DRY_RUN=false
@@ -69,6 +80,74 @@ jobs:
           # `cond && a || b` to avoid the Actions falsy-fall-through pitfall,
           # where an unchecked box (inputs.dry_run == false) would otherwise
           # fall through to the scheduled branch.
+          dry-run: >-
+            ${{ !(
+                  (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
+                  || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
+                ) }}
+
+  reap-aliases:
+    name: "reap: ${{ matrix.package }} (older than ${{ matrix.older_than }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # prod aliases live 30 days, dev aliases 7 (spec §9 capacity windows).
+        include:
+          - package: prod-base
+            older_than: "30 days"
+          - package: prod-ruby
+            older_than: "30 days"
+          - package: prod-python
+            older_than: "30 days"
+          - package: prod-java
+            older_than: "30 days"
+          - package: prod-go
+            older_than: "30 days"
+          - package: prod-rust
+            older_than: "30 days"
+          - package: dev-base
+            older_than: "7 days"
+          - package: dev-ruby
+            older_than: "7 days"
+          - package: dev-python
+            older_than: "7 days"
+          - package: dev-java
+            older_than: "7 days"
+          - package: dev-go
+            older_than: "7 days"
+          - package: dev-rust
+            older_than: "7 days"
+    steps:
+      - name: Reap datestamp aliases past the retention window
+        uses: dataaxiom/ghcr-cleanup-action@v1.2.2
+        with:
+          owner: vergil-project
+          packages: ${{ matrix.package }}
+          token: ${{ secrets.GHCR_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
+          # Only images older than the window are eligible; in-window aliases
+          # (and every rolling tag) are left for repoint rollback.
+          older-than: ${{ matrix.older_than }}
+          use-regex: true
+          # Delete ONLY immutable datestamp aliases: any tag ending in a dash
+          # plus an 8-digit YYYYMMDD stamp — e.g. 3.14-20260716,
+          # latest-20260716. Rolling tags (latest, 3.14, 1.26, 17, 21),
+          # cache-* tags, and *-candidate tags carry no such suffix and never
+          # match. Anchored so the datestamp is the whole trailing segment.
+          delete-tags: '^.+-\d{8}$'
+          # Belt-and-suspenders: never delete a rolling version tag, a build
+          # cache tag, or a pre-promotion candidate tag, regardless of the
+          # delete rule. Anchored so a datestamp alias (…-YYYYMMDD) is NOT
+          # matched here — excluding it would neuter the reaper.
+          exclude-tags: '^(latest|cache-.*|.*-candidate|\d+(\.\d+)*)$'
+          # delete-untagged is left unset (defaults off because a delete rule
+          # is present): untagged pruning is the `cleanup` job's remit, not
+          # this one's.
+          validate: true
+          # Same arming mechanism as `cleanup`: preview unless a manual run
+          # explicitly unchecks "Preview only", or a scheduled run has the repo
+          # variable PACKAGE_CLEANUP_DRY_RUN set to 'false'. !(armed) form
+          # avoids the Actions falsy-fall-through pitfall.
           dry-run: >-
             ${{ !(
                   (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
