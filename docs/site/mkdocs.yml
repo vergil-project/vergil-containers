@@ -71,3 +71,4 @@ nav:
       - Repository Standards: operations/repository-standards.md
       - Trivy CVE Triage: operations/trivy-triage.md
       - Package Hygiene: operations/package-hygiene.md
+      - Image Rollback (Repoint): operations/rollback.md
