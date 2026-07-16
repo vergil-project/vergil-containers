@@ -201,10 +201,15 @@ jobs:
           subject-name: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}"
           subject-digest: ${{ steps.digest.outputs.digest }}
 
-      - name: Promote to final tag
+      - name: Compute datestamp
+        id: stamp
+        run: echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Promote to final + immutable tags
         run: |
           docker buildx imagetools create \
             --tag "$IMAGE" \
+            --tag "${IMAGE}-${{ steps.stamp.outputs.date }}" \
             "$CANDIDATE"
 
       - name: Verify digest preservation
@@ -335,10 +340,15 @@ jobs:
           subject-name: ghcr.io/vergil-project/${{ inputs.image-prefix }}-base
           subject-digest: ${{ steps.digest.outputs.digest }}
 
-      - name: Promote to final tag
+      - name: Compute datestamp
+        id: stamp
+        run: echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Promote to final + immutable tags
         run: |
           docker buildx imagetools create \
             --tag "$IMAGE" \
+            --tag "${IMAGE}-${{ steps.stamp.outputs.date }}" \
             "$CANDIDATE"
 
       - name: Verify digest preservation
