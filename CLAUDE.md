@@ -190,14 +190,14 @@ Every image includes (installed via shared fragments in `docker/common/`):
 - **uv** (`0.11.13`)
 - **yamllint** (`1.38.0`)
 - **ansible-lint** (`26.4.0`)
+- **nfpm** (`2.47.0`) for building `.deb`/`.rpm` packages from one
+  declarative config
 - **jq**, git, curl, openssh-client
 - Language-specific package manager and linting tools
 
 The `dev-base` image includes additional documentation tooling (MkDocs
-Material, mike, semgrep), **OpenTofu** (`1.12.3`) for in-sandbox
-`tofu fmt -check` / `tofu validate` of OpenTofu modules, and **nfpm**
-(`2.47.0`) for building `.deb`/`.rpm` packages from one declarative
-config. See the
+Material, mike, semgrep) and **OpenTofu** (`1.12.3`) for in-sandbox
+`tofu fmt -check` / `tofu validate` of OpenTofu modules. See the
 [images documentation](https://vergil-project.github.io/vergil-containers/images/)
 for the full inventory.
 
