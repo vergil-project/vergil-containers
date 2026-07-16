@@ -2,3 +2,10 @@ ignored:
   - DL3008  # pin versions in apt-get install — impractical for dev images
   - DL3028  # pin versions in gem install — impractical for dev images
   - DL3059  # multiple consecutive RUN instructions — intentional for clarity
+  # The pinning doctrine (epic vergil-project/.github#155) makes floating the
+  # default; version management lives in docker/pins/ (justified pins + CI gate
+  # + exposure report), not in hadolint. These pin-demanding rules would fight
+  # that policy for the deliberately-freed package-manager installs.
+  - DL3013  # pin versions in pip — floated by policy; see docker/pins/
+  - DL3016  # pin versions in npm — floated by policy; see docker/pins/
+  - DL3062  # pin versions in go install — floated by policy; see docker/pins/
