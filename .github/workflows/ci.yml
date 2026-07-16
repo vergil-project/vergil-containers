@@ -47,6 +47,9 @@ jobs:
       - name: Every exact pin is justified
         run: python3 docker/pins/check_pins.py
 
+      - name: CATALOG.md is up to date
+        run: python3 docker/pins/generate_catalog.py --check
+
   quality:
     uses: vergil-project/vergil-actions/.github/workflows/ci-quality.yml@v2.1
     with:

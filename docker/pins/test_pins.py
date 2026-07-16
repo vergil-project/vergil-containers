@@ -2,6 +2,7 @@ from pathlib import Path
 
 import extract_pins
 import check_pins
+import generate_catalog
 
 DOCKER = Path(__file__).resolve().parent.parent
 
@@ -41,3 +42,13 @@ def test_check_fails_on_undocumented_pin(tmp_path):
     (tmp_path / "pins").mkdir()
     (tmp_path / "pins" / "pins.yml").write_text("pins: {}\n")
     assert check_pins.main(tmp_path) == 1
+
+
+def test_catalog_lists_every_documented_pin():
+    md = generate_catalog.render(DOCKER)
+    assert "| go-test-coverage |" in md
+    assert "inducing" in md.lower()
+
+
+def test_catalog_check_matches_committed_file():
+    assert generate_catalog.render(DOCKER) == (DOCKER / "pins" / "CATALOG.md").read_text()
