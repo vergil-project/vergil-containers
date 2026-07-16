@@ -21,9 +21,19 @@
 #     robust default. inducing_release stays null — these are not held because a
 #     release broke us (Tenet 6), only because the install idiom needs a version.
 #     FLAGGED for human decision (see PR notes).
-#   - Security scanners (trivy, scorecard, govulncheck) are deliberately left as
-#     seed entries here — their freeing is gated on WS3 rollback (task #422 / the
-#     silent-failure set), out of scope for #418.
+#   - Security scanners were the silent-failure / fleet-gating set, deferred to
+#     WS3-gated task #422. WS3 repoint rollback now exists (#427), lifting that
+#     gate. Outcome of #422:
+#       * govulncheck floats — it installs via `go install ...@latest`, so it
+#         frees by dropping the version token (entry removed).
+#       * trivy and scorecard are KEPT as mechanism pins — they install via
+#         binary release-tarball download whose URL + per-version checksum embed
+#         the version, the same class as the #418 binary tools above. Floating
+#         them requires a build-time GitHub "latest" resolution on every image
+#         build, deferred to the unified binary-tool build-time-expansion
+#         follow-up. They are re-documented as mechanism pins below.
+#       * semgrep stays intentionally floating (`uv tool install semgrep`, no
+#         version) — no entry needed.
 pins:
   go-test-coverage:
     constraint: "==2.18.3 on Go 1.25, else ==2.18.8"
@@ -46,7 +56,14 @@ pins:
   opentofu:    {constraint: "==1.12.3", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release tarball + per-version SHA256SUMS URL embed the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
   nfpm:        {constraint: "==2.47.0", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release tarball + per-version checksums URL embed the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
 
-  # --- Security scanners — deferred to WS3-gated task #422 (NOT audited here) ---
-  scorecard:   {constraint: "==5.5.0",  inducing_release: null, deterministic: false, reason: "seed — unaudited; freeing gated on WS3 rollback (#422)", state: active, tracking_issue: null}
-  trivy:       {constraint: "==0.70.0", inducing_release: null, deterministic: false, reason: "seed — unaudited; freeing gated on WS3 rollback (#422)", state: active, tracking_issue: null}
-  govulncheck: {constraint: "==1.3.0",  inducing_release: null, deterministic: false, reason: "seed — unaudited; freeing gated on WS3 rollback (#422)", state: active, tracking_issue: null}
+  # --- Security scanners audited under #422 (WS3 rollback now exists) ----------
+  # trivy + scorecard are the same binary-download mechanism-pin class as the
+  # #418 tools above: their release-tarball URL and per-version checksum file
+  # embed the version, so they cannot float by dropping a token. Floating them
+  # requires a per-build GitHub "latest" resolution on every image build —
+  # deferred to the unified binary-tool build-time-expansion follow-up (the same
+  # bucket as shellcheck/shfmt/actionlint/git-cliff/hadolint/opentofu/nfpm).
+  # govulncheck FREED under #422 (installs via `go install ...@latest`); its
+  # entry is removed. semgrep stays floating (no entry).
+  scorecard:   {constraint: "==5.5.0",  inducing_release: null, deterministic: false, reason: "mechanism pin — scorecard release tarball + scorecard_checksums.txt URL embed the version; no rate-limit-safe latest resolution. Freeing deferred to the unified binary-tool build-time-expansion follow-up (with the #418 binary tools).", state: active, tracking_issue: null}
+  trivy:       {constraint: "==0.70.0", inducing_release: null, deterministic: false, reason: "mechanism pin — trivy release tarball + per-version checksums URL embed the version; no rate-limit-safe latest resolution. Freeing deferred to the unified binary-tool build-time-expansion follow-up (with the #418 binary tools).", state: active, tracking_issue: null}
