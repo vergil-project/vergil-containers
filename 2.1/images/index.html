@@ -548,6 +548,8 @@
       
         
       
+        
+      
     
     
     
@@ -600,6 +602,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.10/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.10
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1653,6 +1683,8 @@
       
         
       
+        
+      
     
     
     
@@ -1769,6 +1801,34 @@
     
   
     Package Hygiene
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/rollback/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image Rollback (Repoint)
   
 
     
@@ -1994,12 +2054,16 @@ runtimes and tools. Images are published as multi-architecture manifests
 <td>latest</td>
 <td>HTTP requests</td>
 </tr>
+<tr>
+<td>nfpm</td>
+<td>2.47.0</td>
+<td>Build <code>.deb</code>/<code>.rpm</code> packages</td>
+</tr>
 </tbody>
 </table>
 <p>The <code>dev-base</code> image includes the full common layer plus documentation
-tooling (MkDocs Material, mike, semgrep), OpenTofu for in-sandbox
-OpenTofu module validation, and nfpm for building <code>.deb</code>/<code>.rpm</code> packages
-from one declarative config. It is the fallback image for repos with no
+tooling (MkDocs Material, mike, semgrep) and OpenTofu for in-sandbox
+OpenTofu module validation. It is the fallback image for repos with no
 detected language.</p>
 <p>Non-Python images install Python, yamllint, ansible-lint, and uv via the
 <code>python-support</code> fragment. Python-based images (<code>dev-python</code>, <code>dev-base</code>)
@@ -2175,11 +2239,6 @@ plus documentation tooling. It is the fallback image used by
 <td>OpenTofu</td>
 <td>1.12.3</td>
 <td>OpenTofu module validation</td>
-</tr>
-<tr>
-<td>nfpm</td>
-<td>2.47.0</td>
-<td>Build <code>.deb</code>/<code>.rpm</code> packages</td>
 </tr>
 </tbody>
 </table>
