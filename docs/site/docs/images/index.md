@@ -24,11 +24,11 @@ All language images include:
 | git              | latest  | Repository operations          |
 | openssh-client   | latest  | SSH for git remote operations  |
 | curl             | latest  | HTTP requests                  |
+| nfpm             | 2.47.0  | Build `.deb`/`.rpm` packages   |
 
 The `dev-base` image includes the full common layer plus documentation
-tooling (MkDocs Material, mike, semgrep), OpenTofu for in-sandbox
-OpenTofu module validation, and nfpm for building `.deb`/`.rpm` packages
-from one declarative config. It is the fallback image for repos with no
+tooling (MkDocs Material, mike, semgrep) and OpenTofu for in-sandbox
+OpenTofu module validation. It is the fallback image for repos with no
 detected language.
 
 Non-Python images install Python, yamllint, ansible-lint, and uv via the
@@ -106,4 +106,3 @@ plus documentation tooling. It is the fallback image used by
 | semgrep         | latest  | Static analysis            |
 | pyyaml          | 6.0.3   | YAML parsing (MkDocs dep)  |
 | OpenTofu        | 1.12.3  | OpenTofu module validation |
-| nfpm            | 2.47.0  | Build `.deb`/`.rpm` packages |

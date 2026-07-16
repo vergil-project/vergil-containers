@@ -16,6 +16,7 @@ RUN apt-get update && \
 # @include common/github-cli.dockerfile
 # @include common/validation-tools.dockerfile
 # @include common/python-support.dockerfile
+# @include common/nfpm.dockerfile
 
 # --- Rust tools --------------------------------------------------------------
 RUN rustup component add clippy rustfmt llvm-tools

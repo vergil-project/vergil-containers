@@ -15,6 +15,7 @@ RUN apt-get update && \
 # @include common/node-markdownlint.dockerfile
 # @include common/github-cli.dockerfile
 # @include common/validation-tools.dockerfile
+# @include common/nfpm.dockerfile
 
 # --- Python tools via pip ----------------------------------------------------
 # Upgrade system pip past two advisories:
