@@ -9,6 +9,21 @@
 #   reason:           prose justification
 #   state:            active | under-evaluation | freed
 #   tracking_issue:   issue ref for under-evaluation pins (else null)
+#
+# WS2 audit (#418) outcome:
+#   - Package-manager tools (npm/pip/uv/go install/cargo) that float cleanly by
+#     dropping the version were FREED — their entries are gone and the install
+#     lines resolve latest. See the PR for the full free/keep table.
+#   - Binary release-tarball tools whose download URL requires an explicit
+#     version in the path (and per-version checksum file) are KEPT here as
+#     mechanism pins: they cannot float without adding an unauthenticated
+#     GitHub version-resolution round-trip to every image build, which is not a
+#     robust default. inducing_release stays null — these are not held because a
+#     release broke us (Tenet 6), only because the install idiom needs a version.
+#     FLAGGED for human decision (see PR notes).
+#   - Security scanners (trivy, scorecard, govulncheck) are deliberately left as
+#     seed entries here — their freeing is gated on WS3 rollback (task #422 / the
+#     silent-failure set), out of scope for #418.
 pins:
   go-test-coverage:
     constraint: "==2.18.3 on Go 1.25, else ==2.18.8"
@@ -17,29 +32,21 @@ pins:
     reason: "go-test-coverage >=2.18.4 requires Go >=1.26; fails on the Go 1.25 image."
     state: active
     tracking_issue: null
-  # SEED ENTRIES — every other current exact pin, pending Task 3 audit.
-  # Each starts inducing_release: null / reason: 'seed — unaudited' so the gate
-  # passes; Task 3 replaces each with a real justification OR frees the pin.
-  markdownlint-cli: {constraint: "==0.48.0", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  shellcheck:       {constraint: "==0.11.0", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  shfmt:            {constraint: "==3.13.1", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  actionlint:       {constraint: "==1.7.12", inducing_release: null, deterministic: false, reason: "seed — held pending upstream client-id support (vergil-containers#260)", state: active, tracking_issue: "vergil-project/vergil-containers#260"}
-  git-cliff:        {constraint: "==2.13.1", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  hadolint:         {constraint: "==2.14.0", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  scorecard:        {constraint: "==5.5.0",  inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  trivy:            {constraint: "==0.70.0", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  yamllint:         {constraint: "==1.38.0", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  ansible-lint:     {constraint: "==26.4.0", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  uv:               {constraint: "==0.11.14", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  opentofu:         {constraint: "==1.12.3", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  nfpm:             {constraint: "==2.47.0", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  mkdocs-material:  {constraint: "==9.7.6",  inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  mike:             {constraint: "==2.2.0",  inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  pyyaml:           {constraint: "==6.0.3",  inducing_release: null, deterministic: false, reason: "seed — suspected belt-and-suspenders; audit for freeing", state: active, tracking_issue: null}
-  golangci-lint:    {constraint: "==2.12.2", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  govulncheck:      {constraint: "==1.3.0",  inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  go-licenses:      {constraint: "==2.0.1",  inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  gocyclo:          {constraint: "==0.6.0",  inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  goimports:        {constraint: "==0.45.0", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  cargo-deny:       {constraint: "==0.19.6", inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
-  cargo-llvm-cov:   {constraint: "==0.8.6",  inducing_release: null, deterministic: false, reason: "seed — unaudited", state: active, tracking_issue: null}
+
+  # --- Mechanism pins (binary release tarballs; version required in URL) -------
+  # Not Tenet-6 break-avoidance pins. Kept because floating would require a
+  # per-build GitHub "latest" lookup (API rate-limited in CI, or a redirect
+  # parse) added to every image build — a brittle default we decline to ship
+  # without human sign-off. FLAGGED: #418 asks a human to decide float-vs-keep.
+  shellcheck:  {constraint: "==0.11.0", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release tarball URL embeds the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
+  shfmt:       {constraint: "==3.13.1", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release binary URL embeds the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
+  actionlint:  {constraint: "==1.7.12", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release tarball + per-version checksums URL embed the version. #260 wants a FORWARD bump once upstream client-id support lands; freeing (once the mechanism allows) would satisfy it. Flagged for human decision (#418).", state: active, tracking_issue: "vergil-project/vergil-containers#260"}
+  git-cliff:   {constraint: "==2.13.1", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release tarball + per-version sha512 URL embed the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
+  hadolint:    {constraint: "==2.14.0", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release binary + per-version sha256 URL embed the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
+  opentofu:    {constraint: "==1.12.3", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release tarball + per-version SHA256SUMS URL embed the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
+  nfpm:        {constraint: "==2.47.0", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release tarball + per-version checksums URL embed the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
+
+  # --- Security scanners — deferred to WS3-gated task #422 (NOT audited here) ---
+  scorecard:   {constraint: "==5.5.0",  inducing_release: null, deterministic: false, reason: "seed — unaudited; freeing gated on WS3 rollback (#422)", state: active, tracking_issue: null}
+  trivy:       {constraint: "==0.70.0", inducing_release: null, deterministic: false, reason: "seed — unaudited; freeing gated on WS3 rollback (#422)", state: active, tracking_issue: null}
+  govulncheck: {constraint: "==1.3.0",  inducing_release: null, deterministic: false, reason: "seed — unaudited; freeing gated on WS3 rollback (#422)", state: active, tracking_issue: null}

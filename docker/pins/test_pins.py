@@ -9,11 +9,24 @@ DOCKER = Path(__file__).resolve().parent.parent
 
 def test_extractor_finds_known_exact_pins():
     tools = {p.tool for p in extract_pins.extract(DOCKER)}
-    # exact-version pins that exist today (spec Appendix A)
+    # exact-version pins that survive the #418 audit: binary release-tarball
+    # tools kept as mechanism pins (shellcheck, hadolint, opentofu) and the
+    # security scanners deferred to #422 (trivy). These exercise every surviving
+    # install idiom (ARG tarball, ARG binary, security tarball).
     assert "shellcheck" in tools
+    assert "hadolint" in tools
+    assert "opentofu" in tools
     assert "trivy" in tools
-    assert "uv" in tools
-    assert "golangci-lint" in tools
+
+
+def test_extractor_drops_freed_package_manager_pins():
+    # #418 freed the package-manager tools (npm/pip/uv/go install/cargo) by
+    # dropping the version. They must no longer surface as exact pins, or
+    # check_pins would false-flag their (now-deleted) pins.yml entries.
+    tools = {p.tool for p in extract_pins.extract(DOCKER)}
+    for freed in ("uv", "golangci-lint", "markdownlint-cli", "yamllint",
+                  "cargo-deny", "mkdocs-material", "pyyaml"):
+        assert freed not in tools
 
 
 def test_extractor_excludes_major_only_matrix():
