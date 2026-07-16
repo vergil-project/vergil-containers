@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.10] - 2026-07-16
+
+### Documentation
+
+- document image repoint rollback procedure (#427)
+
+### Features
+
+- add pin data model, extractor, and CI justification gate (#423)
+- publish immutable datestamp image aliases alongside rolling tags (#424)
+- generate the pin catalog from Dockerfiles + pins.yml (#425)
+- reap datestamp image aliases on a sliding window (prod 30d / dev 7d) (#426)
+- audit pins; free loud-failure tools, justify survivors (#428)
+- add pin exposure report: due-for-re-evaluation + installed versions per image (#430)
+- free govulncheck; document trivy/scorecard as mechanism pins (#422) (#431)
+- add nfpm to all language images (#432)
+
 ## [2.1.9] - 2026-07-15
 
 ### Bug fixes
