@@ -6,11 +6,10 @@
 # and — only if something drifted — opens a reviewed bump PR. Nothing is
 # auto-merged: fleet policy keeps a human merge gate.
 #
-# CAVEAT: this PR is authored with the default GITHUB_TOKEN, and GitHub does not
-# fire `pull_request` workflows for token-authored PRs (loop-prevention). CI on
-# the bump therefore needs one manual nudge — close/reopen the PR, or push an
-# empty commit — until/unless this is switched to a GitHub App token. Documented
-# here rather than hidden; see the #435 PR notes.
+# The push and PR are authored by the GitHub App (APP_CLIENT_ID/APP_PRIVATE_KEY),
+# minted via actions/create-github-app-token — mirroring cd.yml. App-authored
+# PRs DO fire `pull_request` workflows (unlike the default GITHUB_TOKEN, which
+# GitHub recursion-suppresses), so CI validates every bump automatically.
 name: Bump tools
 
 on:
@@ -34,8 +33,19 @@ jobs:
     container:
       image: ghcr.io/vergil-project/prod-base:latest
     steps:
+      # Mint the App token first so checkout can use it — an App-authored push
+      # and PR trigger CI, which the default GITHUB_TOKEN cannot. Mirrors cd.yml.
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Mark workspace safe for git
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -59,7 +69,7 @@ jobs:
       - name: Open bump PR
         if: steps.drift.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
           branch="bot/bump-tools-${GITHUB_RUN_ID}"
@@ -80,6 +90,4 @@ jobs:
 
           \`\`\`
           $(git --no-pager show --stat --oneline HEAD | tail -n +2)
-          \`\`\`
-
-          NOTE: token-authored PRs do not auto-run CI — close/reopen or push an empty commit to trigger validation."
+          \`\`\`"
