@@ -7,8 +7,20 @@
 #   inducing_release: upstream release whose problem caused the pin (null if seed/unknown)
 #   deterministic:    is the problem reproducible/testable? (bool)
 #   reason:           prose justification
-#   state:            active | under-evaluation | freed
+#   state:            active | under-evaluation | freed | auto-managed
 #   tracking_issue:   issue ref for under-evaluation pins (else null)
+#
+# States:
+#   active         — Tenet-6 break-hold: a specific upstream release broke us.
+#   under-evaluation — held while a fix/decision is tracked (tracking_issue set).
+#   freed          — no longer pinned (entry removed once the pin is gone).
+#   auto-managed   — pinned in source for reproducibility, but floated to the
+#                    newest upstream release by the weekly bump-tools workflow
+#                    (#435). inducing_release is null (not a break-hold) and the
+#                    `constraint` is DESCRIPTIVE ("latest, auto-bumped weekly"),
+#                    never a hard-coded version — so pins.yml never drifts from
+#                    the template when the bumper rewrites the ARG. The
+#                    version-of-record comes from the template via extract_pins.
 #
 # WS2 audit (#418) outcome:
 #   - Package-manager tools (npm/pip/uv/go install/cargo) that float cleanly by
@@ -20,7 +32,9 @@
 #     GitHub version-resolution round-trip to every image build, which is not a
 #     robust default. inducing_release stays null — these are not held because a
 #     release broke us (Tenet 6), only because the install idiom needs a version.
-#     FLAGGED for human decision (see PR notes).
+#     FLAGGED for human decision (see PR notes). RESOLVED by #435: rather than
+#     free (per-build network) or hand-manage, these 9 tools are now AUTO-MANAGED
+#     — pinned in source, bumped weekly by the bump-tools workflow.
 #   - Security scanners were the silent-failure / fleet-gating set, deferred to
 #     WS3-gated task #422. WS3 repoint rollback now exists (#427), lifting that
 #     gate. Outcome of #422:
@@ -43,27 +57,22 @@ pins:
     state: active
     tracking_issue: null
 
-  # --- Mechanism pins (binary release tarballs; version required in URL) -------
-  # Not Tenet-6 break-avoidance pins. Kept because floating would require a
-  # per-build GitHub "latest" lookup (API rate-limited in CI, or a redirect
-  # parse) added to every image build — a brittle default we decline to ship
-  # without human sign-off. FLAGGED: #418 asks a human to decide float-vs-keep.
-  shellcheck:  {constraint: "==0.11.0", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release tarball URL embeds the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
-  shfmt:       {constraint: "==3.13.1", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release binary URL embeds the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
-  actionlint:  {constraint: "==1.7.12", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release tarball + per-version checksums URL embed the version. #260 wants a FORWARD bump once upstream client-id support lands; freeing (once the mechanism allows) would satisfy it. Flagged for human decision (#418).", state: active, tracking_issue: "vergil-project/vergil-containers#260"}
-  git-cliff:   {constraint: "==2.13.1", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release tarball + per-version sha512 URL embed the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
-  hadolint:    {constraint: "==2.14.0", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release binary + per-version sha256 URL embed the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
-  opentofu:    {constraint: "==1.12.3", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release tarball + per-version SHA256SUMS URL embed the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
-  nfpm:        {constraint: "==2.47.0", inducing_release: null, deterministic: false, reason: "mechanism pin — GitHub release tarball + per-version checksums URL embed the version; no rate-limit-safe latest resolution. Flagged for human decision (#418).", state: active, tracking_issue: null}
-
-  # --- Security scanners audited under #422 (WS3 rollback now exists) ----------
-  # trivy + scorecard are the same binary-download mechanism-pin class as the
-  # #418 tools above: their release-tarball URL and per-version checksum file
-  # embed the version, so they cannot float by dropping a token. Floating them
-  # requires a per-build GitHub "latest" resolution on every image build —
-  # deferred to the unified binary-tool build-time-expansion follow-up (the same
-  # bucket as shellcheck/shfmt/actionlint/git-cliff/hadolint/opentofu/nfpm).
-  # govulncheck FREED under #422 (installs via `go install ...@latest`); its
-  # entry is removed. semgrep stays floating (no entry).
-  scorecard:   {constraint: "==5.5.0",  inducing_release: null, deterministic: false, reason: "mechanism pin — scorecard release tarball + scorecard_checksums.txt URL embed the version; no rate-limit-safe latest resolution. Freeing deferred to the unified binary-tool build-time-expansion follow-up (with the #418 binary tools).", state: active, tracking_issue: null}
-  trivy:       {constraint: "==0.72.0", inducing_release: null, deterministic: false, reason: "mechanism pin — trivy release tarball + per-version checksums URL embed the version; no rate-limit-safe latest resolution. Freeing deferred to the unified binary-tool build-time-expansion follow-up (with the #418 binary tools). Bumped 0.70.0 → 0.72.0 to clear CVE-2026-54448 (Helm tar-bomb OOM) and CVE-2026-39831 via x/crypto 0.53.0 (#438).", state: active, tracking_issue: null}
+  # --- Auto-managed mechanism pins (binary release tarballs) -------------------
+  # The 9 binary-download tools (#418/#422) whose release-tarball URL + per-
+  # version checksum embed an explicit version, so they cannot float by dropping
+  # a token. #435 makes them AUTO-MANAGED: they stay pinned in source (hermetic,
+  # reproducible, revertible) while the weekly `bump-tools` workflow tracks the
+  # leading edge via the /releases/latest redirect and opens a reviewed bump PR.
+  # inducing_release is null (not a Tenet-6 break-hold) and the constraint is
+  # descriptive, not a hard-coded version — the version-of-record lives in the
+  # template (extract_pins reads it). govulncheck FREED under #422 (installs via
+  # `go install ...@latest`); its entry is removed. semgrep stays floating.
+  shellcheck:  {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball URL embeds the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
+  shfmt:       {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary URL embeds the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
+  actionlint:  {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version checksums embed the version; the weekly bump-tools workflow delivers the FORWARD bump #260 asked for once upstream ships it.", state: auto-managed, tracking_issue: null}
+  git-cliff:   {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version sha512 embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
+  hadolint:    {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary + per-version sha256 embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
+  opentofu:    {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version SHA256SUMS embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
+  nfpm:        {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version checksums embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
+  scorecard:   {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — scorecard release tarball + scorecard_checksums.txt embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
+  trivy:       {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — trivy release tarball + per-version checksums embed the version; floated to the leading edge by the weekly bump-tools workflow (weekly bumps also pick up CVE-fix releases, e.g. the 0.70.0 → 0.72.0 bump under #438).", state: auto-managed, tracking_issue: null}

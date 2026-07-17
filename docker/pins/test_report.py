@@ -23,6 +23,26 @@ def test_harvest_joins_into_report():
     assert "prod-go:1.26" in md and "golangci-lint: 2.12.2" in md
 
 
+def test_auto_managed_surfaced_as_own_category():
+    # #435: the report must distinguish auto-managed tools in a dedicated section,
+    # separate from the active-pin re-evaluation list. Uses the real pins.yml,
+    # where the 9 binary tools are now auto-managed.
+    md = r.render(DOCKER, latest={}, installed={})
+    assert "## Auto-managed" in md
+    section = md.split("## Auto-managed", 1)[1]
+    for tool in ("shellcheck", "shfmt", "actionlint", "git-cliff", "hadolint",
+                 "opentofu", "nfpm", "trivy", "scorecard"):
+        assert f"- {tool}:" in section
+
+
+def test_auto_managed_not_flagged_for_reevaluation():
+    # auto-managed pins carry no inducing_release and are not `active`, so they
+    # never appear in the due-for-re-evaluation list even when upstream moves.
+    pins = {"foo": {"inducing_release": None, "state": "auto-managed",
+                    "constraint": "latest", "reason": "x", "deterministic": False}}
+    assert r.due_for_reevaluation(pins, latest={"foo": "9.9.9"}) == []
+
+
 def test_harvest_parses_probe_output():
     def probe(image, tool):
         return "shellcheck 0.11.0" if tool == "shellcheck" else ""

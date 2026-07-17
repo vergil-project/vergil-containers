@@ -52,6 +52,13 @@ def render(root: Path, latest: dict[str, str], installed: dict[str, dict[str, st
         f"longer leading edge ({latest.get(t)}); re-evaluate per lifecycle."
         for t in due
     ] or ["- none\n"]
+    auto = sorted(t for t, m in pins.items() if m.get("state") == "auto-managed")
+    lines.append("\n## Auto-managed (leading edge, weekly bumper)\n")
+    lines.append(
+        "> Floated to the newest upstream release by the `bump-tools` workflow "
+        "(#435); the pin stays in source for reproducibility.\n"
+    )
+    lines += [f"- {t}: {pins[t]['constraint']}" for t in auto] or ["- none\n"]
     lines.append("\n## Installed tool versions per image\n")
     for image in sorted(installed):
         lines.append(f"### {image}")
