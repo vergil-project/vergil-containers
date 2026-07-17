@@ -1,0 +1,93 @@
+# Scheduled leading-edge bumper for the 9 binary-download mechanism tools (#435).
+#
+# Weekly (and on demand) it resolves each tool's newest release via the
+# /releases/latest redirect (docker/pins/resolve_latest.py), rewrites the
+# `ARG *_VERSION=` pins in docker/common/*, regenerates docker/pins/CATALOG.md,
+# and — only if something drifted — opens a reviewed bump PR. Nothing is
+# auto-merged: fleet policy keeps a human merge gate.
+#
+# The push and PR are authored by the GitHub App (APP_CLIENT_ID/APP_PRIVATE_KEY),
+# minted via actions/create-github-app-token — mirroring cd.yml. App-authored
+# PRs DO fire `pull_request` workflows (unlike the default GITHUB_TOKEN, which
+# GitHub recursion-suppresses), so CI validates every bump automatically.
+name: Bump tools
+
+on:
+  schedule:
+    # Mondays 06:30 UTC — after the nightly rebuild window, before the work week.
+    - cron: '30 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: bump-tools
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: "Resolve latest and open bump PR"
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/vergil-project/prod-base:latest
+    steps:
+      # Mint the App token first so checkout can use it — an App-authored push
+      # and PR trigger CI, which the default GITHUB_TOKEN cannot. Mirrors cd.yml.
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Mark workspace safe for git
+        run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+
+      - name: Resolve latest versions and rewrite pins
+        run: |
+          python3 docker/pins/resolve_latest.py --write
+          python3 docker/pins/generate_catalog.py
+
+      - name: Detect drift
+        id: drift
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+            echo "No tool versions drifted; nothing to bump."
+          else
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+            git --no-pager diff --stat
+          fi
+
+      - name: Open bump PR
+        if: steps.drift.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          branch="bot/bump-tools-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "${branch}"
+          git add -A
+          git commit -m "chore(deps): bump leading-edge binary tools to latest"
+          git push origin "${branch}"
+          gh pr create \
+            --base "${GITHUB_REF_NAME}" \
+            --head "${branch}" \
+            --title "chore(deps): bump leading-edge binary tools to latest" \
+            --body "Automated weekly leading-edge bump of the auto-managed binary tools (#435).
+
+          Resolved via the \`/releases/latest\` redirect by \`docker/pins/resolve_latest.py\`.
+          Versions stay pinned in source; a human reviews and merges (no auto-merge).
+
+          \`\`\`
+          $(git --no-pager show --stat --oneline HEAD | tail -n +2)
+          \`\`\`"
