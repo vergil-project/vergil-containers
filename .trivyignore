@@ -403,3 +403,66 @@ CVE-2026-53092
 CVE-2026-53246
 # CVE-2026-53277 — KVM arm64: take the SRCU lock for page-table walks.
 CVE-2026-53277
+
+# =============================================================================
+# 2026-07-16 batch (issue #438) — 4 HIGH CVEs that broke the v2.1.10 release
+# docker-publish gate (prod base/go/ruby and the dev images failed). All are
+# fixed upstream but the fix is not reachable in any installable tool release
+# yet — verified against each carrier's latest release. The one gate CVE that
+# DID have a reachable fix, CVE-2026-54448 (trivy 0.71.0+), is handled by the
+# companion trivy 0.70.0 → 0.72.0 bump (#438), not suppressed here. None of the
+# four below is exercised in the images' actual runtime usage.
+# =============================================================================
+
+# --- Go stdlib os.Root symlink-following (fix go1.25.12 / go1.26.5) -----------
+# CVE-2026-39822 flags every prebuilt Go tool binary in the base layer (gh,
+# actionlint, nfpm, shfmt, scorecard, tofu, trivy), each compiled upstream with
+# Go 1.25.9–1.26.4. No upstream release is yet rebuilt with the patched Go
+# (trivy 0.72.0, the newest of the set, is on go1.26.3). Same class as the Go
+# stdlib blocks above; these are static linters / known-host API clients
+# operating on local files — the os.Root symlink path is not exercised on
+# attacker-controlled trees. Remove once upstream ships binaries rebuilt with
+# go1.25.12+ / go1.26.5+.
+CVE-2026-39822
+
+# --- golang.org/x/crypto/ssh (fix 0.52.0) — scorecard only -------------------
+# CVE-2026-39831 flagged both trivy (x/crypto 0.50.0) and scorecard (0.48.0).
+# The trivy 0.72.0 bump (#438) ships x/crypto 0.53.0 and clears trivy's hit;
+# scorecard has no release past 5.5.0, so its copy remains. scorecard is a
+# read-only GitHub API auditor — it runs no SSH server and uses ssh only to
+# known hosts. Joins the existing x/crypto block. Remove once a scorecard
+# release rebuilt with x/crypto ≥0.52.0 ships.
+CVE-2026-39831
+
+# --- oras.land/oras-go/v2 credential forwarding (fix 2.6.1) — trivy + tofu ----
+# CVE-2026-50151 is embedded via oras-go in both the trivy binary and the tofu
+# (OpenTofu) binary (both use oras-go as their OCI registry client). oras-go
+# 2.6.1 shipped 2026-06-08, but trivy 0.72.0 (2026-06-30, the version we bump
+# to) still pins oras-go 2.6.0, and tofu likewise ships 2.6.0; neither bump
+# clears it. The baked trivy pulls only from known registries, and tofu is run
+# only for `tofu fmt -check` / `tofu validate` (no OCI registry pulls) — the
+# unvalidated-redirect path is not exercised. Remove once trivy and tofu
+# releases bundle oras-go ≥2.6.1.
+CVE-2026-50151
+
+# --- sigstore (npm, bundled with node's npm) — unauthorized certs (fix 4.1.1)-
+# CVE-2026-48815 flags the sigstore package (3.1.0) bundled inside the npm that
+# ships with Node.js 22 (NodeSource apt, floating). sigstore is used by npm
+# only for package provenance / `npm audit signatures`; the images never verify
+# sigstore-signed artifacts at runtime. Clears automatically once NodeSource
+# node 22 ships an npm bundling sigstore ≥4.1.1.
+CVE-2026-48815
+
+# --- mcp (Python SDK) MCP-server transport CVEs — semgrep, base only ---------
+# CVE-2026-52869 / -52870 / -59950 flag the `mcp` package (1.23.3) inside the
+# semgrep tool venv on dev-base. semgrep 1.170.0 (latest) hard-pins
+# `mcp==1.23.3`, so there is no upgrade we can apply without breaking semgrep —
+# the fix (mcp 1.27.2 / 1.28.1) is upstream semgrep's to ship. All three CVEs
+# require running the Semgrep MCP *server* (`semgrep mcp` — HTTP/WebSocket
+# transport auth, task-handler access control): the images invoke semgrep only
+# as a CLI SAST scanner and never start the MCP server, so the vulnerable
+# transports are not exercised. Remove once semgrep bumps its mcp pin to
+# ≥1.28.1. (These surfaced in the DB after the v2.1.10 release scan.)
+CVE-2026-52869
+CVE-2026-52870
+CVE-2026-59950
