@@ -69,6 +69,7 @@ nav:
           - Release Workflow: architecture/decisions/release-workflow.md
   - Operations:
       - Repository Standards: operations/repository-standards.md
+      - Tool Version Management: operations/version-management.md
       - Trivy CVE Triage: operations/trivy-triage.md
       - Package Hygiene: operations/package-hygiene.md
       - Image Rollback (Repoint): operations/rollback.md
