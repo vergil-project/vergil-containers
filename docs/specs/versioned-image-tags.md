@@ -1,11 +1,30 @@
 # Versioned image tags for dev container images
 
-**Status:** Draft — passed `paad:pushback` 2026-04-28
+**Status:** Superseded in direction — see note below.
 **Issue:** [#60](https://github.com/vergil-project/vergil-docker/issues/60)
 **Pushback review:**
 [`paad/pushback-reviews/2026-04-28-versioned-image-tags-pushback.md`](../../paad/pushback-reviews/2026-04-28-versioned-image-tags-pushback.md)
 **Author:** wphillipmoore
 **Last updated:** 2026-04-28
+
+!!! note "Realized by the immutable datestamp-alias approach (#416)"
+    This 2026-04 draft argued for immutable per-build tags to enable rollback and
+    to decouple image patches from the tooling release cycle. That direction was
+    **revived and realized differently** by the container-pinning epic
+    ([vergil-project/.github#155](https://github.com/vergil-project/.github/issues/155)):
+    instead of the semver `-v1.2.1` three-tier scheme designed here, each build
+    now publishes an **immutable datestamp alias** `{prefix}-{lang}:{version}-YYYYMMDD`
+    alongside the unchanged rolling tag ([#416]), and rollback is a registry-side
+    **repoint** of the rolling tag at a prior alias's digest — no rebuild. A
+    datestamp (not semver) was chosen because it enables age-based cleanup and
+    chronological bisection, retained on a sliding window (prod 30d / dev 7d).
+    See [Image Rollback (Repoint)](../site/docs/operations/rollback.md) and
+    [Tool Version Management](../site/docs/operations/version-management.md) for
+    the shipped design. The consumer-pinning and release-coordination portions of
+    this draft (the `_DOCKER_PIN` fleet mechanism) were **not** adopted; they are
+    retained here as historical context, not current design.
+
+    [#416]: https://github.com/vergil-project/vergil-containers/issues/416
 
 ## Purpose
 

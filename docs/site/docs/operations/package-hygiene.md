@@ -58,6 +58,39 @@ retains its platform children after the run.
 **Policy:** untagged-only. Tagged versions — `latest`, the language-version
 tags, and the `cache-*` tags — are never deleted.
 
+## Datestamp-alias retention (sliding window)
+
+Alongside the untagged prune, the same
+[`package-cleanup.yml`](https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/package-cleanup.yml)
+workflow runs a second job, `reap-aliases`, added in
+[#419](https://github.com/vergil-project/vergil-containers/issues/419).
+
+Every build publishes an **immutable datestamp alias** at the same digest as the
+rolling tag — `{prefix}-{lang}:{version}-YYYYMMDD` (and
+`{prefix}-base:latest-YYYYMMDD`). These aliases are what
+[Image Rollback (Repoint)](rollback.md) repoints to when a bad float ships, so
+they must be retained long enough to recover from — but not forever, or they
+accumulate without bound.
+
+The reaper enforces a **sliding retention window**: it deletes only the
+`*-YYYYMMDD` aliases once they age past the window, keeping recent builds
+addressable while old ones stop piling up.
+
+- **prod aliases: 30 days** — the consumer rollback and bisection range.
+- **dev aliases: 7 days** — the churning canary needs a shorter tail.
+
+The window is chosen for recovery, not storage: a successful build is not proven
+good until a downstream consumer exercises it, which can lag by days, so
+rollback needs a *window* of history to bisect through — not just the previous
+build. This is the recovery path's retention SLA: **you can only repoint to an
+alias still inside the window.**
+
+The reaper deletes **only** tags matching `…-YYYYMMDD` (an 8-digit datestamp as
+the whole trailing segment). Rolling tags (`latest`, `3.14`, `1.26`, `17`,
+`21`), `cache-*` tags, and pre-promotion `*-candidate` tags carry no such suffix
+and are explicitly excluded — they are never reaped by this job. Untagged
+pruning remains the `cleanup` job's remit.
+
 ### Arming it
 
 The workflow ships in **dry-run by default** so the first runs only log what
