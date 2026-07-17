@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../v2.0.3/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../v2.0.1/">
+        <link rel="next" href="../v2.1.10/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>2.0.2 - Vergil Containers</title>
+        <title>2.1.11 - Vergil Containers</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#release-202-2026-05-13" class="md-skip">
+        <a href="#release-2111-2026-07-17" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              2.0.2
+              2.1.11
             
           </span>
         </div>
@@ -620,10 +620,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../v2.1.11/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.11
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -639,6 +666,37 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#bug-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bug fixes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1264,19 +1322,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../v2.0.2/" class="md-nav__link">
         
   
   
@@ -1292,7 +1341,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -1795,6 +1843,25 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#bug-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bug fixes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1810,7 +1877,20 @@
 
 
 
-<h1 id="release-202-2026-05-13">Release 2.0.2 (2026-05-13)<a class="headerlink" href="#release-202-2026-05-13" title="Permanent link">&para;</a></h1>
+<h1 id="release-2111-2026-07-17">Release 2.1.11 (2026-07-17)<a class="headerlink" href="#release-2111-2026-07-17" title="Permanent link">&para;</a></h1>
+<h2 id="bug-fixes">Bug fixes<a class="headerlink" href="#bug-fixes" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>bump trivy to 0.72.0 and triage 7 HIGH CVEs blocking docker-publish (#439)</strong></li>
+<li>fix(security): bump trivy 0.70.0 -&gt; 0.72.0 to clear CVE-2026-54448</li>
+</ul>
+<p>Trivy 0.70.0 fails the docker-publish gate on CVE-2026-54448 (Helm chart
+tar-bomb OOM, fixed in 0.71.0). Bump the baked trivy and the CI scanner
+image to 0.72.0. This also clears CVE-2026-39831 in the trivy binary
+(x/crypto 0.53.0 &gt;= 0.52.0). Verified locally: dev-base built with 0.72.0
+no longer reports either CVE.</p>
+<p>pins.yml constraint, CATALOG.md, and the CLAUDE.md tool inventory are
+updated to match. The remaining gate CVEs (no reachable fix) are handled
+by the companion .trivyignore suppression PR.</p>
 
 
 
