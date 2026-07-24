@@ -29,7 +29,6 @@ jobs:
     uses: vergil-project/vergil-actions/.github/workflows/cd-release.yml@v2.1
     with:
       container-suffix: base
-    secrets: inherit
     permissions:
       # This job-level block replaces the top-level permissions, so the
       # actions:read granted there does not carry over — cd-release.yml@v2.1's
