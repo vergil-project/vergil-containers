@@ -80,11 +80,17 @@ jobs:
           # `cond && a || b` to avoid the Actions falsy-fall-through pitfall,
           # where an unchecked box (inputs.dry_run == false) would otherwise
           # fall through to the scheduled branch.
+          #
+          # Folded-scalar rule: every continuation line below MUST stay at the
+          # SAME indentation as the `${{` line. A `>-` scalar preserves newlines
+          # on more-indented lines, and a newline *inside* ${{ }} makes GitHub
+          # reject the whole file at startup (startup_failure, issue #449) —
+          # actionlint tokenizes expressions loosely and will not catch it.
           dry-run: >-
             ${{ !(
-                  (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-                  || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
-                ) }}
+            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
+            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
+            ) }}
 
   reap-aliases:
     name: "reap: ${{ matrix.package }} (older than ${{ matrix.older_than }})"
@@ -148,8 +154,12 @@ jobs:
           # explicitly unchecks "Preview only", or a scheduled run has the repo
           # variable PACKAGE_CLEANUP_DRY_RUN set to 'false'. !(armed) form
           # avoids the Actions falsy-fall-through pitfall.
+          #
+          # Folded-scalar rule (see `cleanup` above): keep every continuation
+          # line at the SAME indentation as the `${{` line — a newline inside
+          # ${{ }} is a startup_failure (issue #449).
           dry-run: >-
             ${{ !(
-                  (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-                  || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
-                ) }}
+            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
+            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
+            ) }}
