@@ -14,3 +14,12 @@ docs = true
 
 [dependencies]
 vergil = "v2.1"
+
+[actions]
+# The package-cleanup workflow uses the third-party dataaxiom/ghcr-cleanup-action,
+# which is outside the org's base allowed-actions policy (actions/*, docker/*,
+# github/*, vergil-project/*). This per-repo override (vergil-tooling#2524) unions
+# the specific action into this repo's allowed-actions so the workflow can start.
+# Least-privilege: the named action at any version (@*), not dataaxiom/*.
+# SHA-pinning the uses: ref is tracked separately (vergil-project/.github#165).
+extra-allowed-patterns = ["dataaxiom/ghcr-cleanup-action@*"]
