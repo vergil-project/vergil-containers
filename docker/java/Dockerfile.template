@@ -17,6 +17,7 @@ RUN apt-get update && \
 # @include common/validation-tools.dockerfile
 # @include common/python-support.dockerfile
 # @include common/nfpm.dockerfile
+# @include common/pandoc.dockerfile
 
 # Maven wrapper self-bootstraps from consuming repos.
 
