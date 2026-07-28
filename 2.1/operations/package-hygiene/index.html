@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -552,6 +552,8 @@
       
         
       
+        
+      
     
     
     
@@ -604,6 +606,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.12/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.12
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1593,6 +1623,8 @@
       
         
       
+        
+      
     
     
     
@@ -1656,6 +1688,34 @@
     
   
     Repository Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../version-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tool Version Management
   
 
     
@@ -1794,7 +1854,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Org retention (automated)">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#datestamp-alias-retention-sliding-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Datestamp-alias retention (sliding window)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Datestamp-alias retention (sliding window)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1925,7 +1996,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Org retention (automated)">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#datestamp-alias-retention-sliding-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Datestamp-alias retention (sliding window)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Datestamp-alias retention (sliding window)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2019,6 +2101,34 @@ still references, and <code>validate: true</code> re-checks that every multi-arc
 retains its platform children after the run.</p>
 <p><strong>Policy:</strong> untagged-only. Tagged versions — <code>latest</code>, the language-version
 tags, and the <code>cache-*</code> tags — are never deleted.</p>
+<h2 id="datestamp-alias-retention-sliding-window">Datestamp-alias retention (sliding window)<a class="headerlink" href="#datestamp-alias-retention-sliding-window" title="Permanent link">&para;</a></h2>
+<p>Alongside the untagged prune, the same
+<a href="https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/package-cleanup.yml"><code>package-cleanup.yml</code></a>
+workflow runs a second job, <code>reap-aliases</code>, added in
+<a href="https://github.com/vergil-project/vergil-containers/issues/419">#419</a>.</p>
+<p>Every build publishes an <strong>immutable datestamp alias</strong> at the same digest as the
+rolling tag — <code>{prefix}-{lang}:{version}-YYYYMMDD</code> (and
+<code>{prefix}-base:latest-YYYYMMDD</code>). These aliases are what
+<a href="../rollback/">Image Rollback (Repoint)</a> repoints to when a bad float ships, so
+they must be retained long enough to recover from — but not forever, or they
+accumulate without bound.</p>
+<p>The reaper enforces a <strong>sliding retention window</strong>: it deletes only the
+<code>*-YYYYMMDD</code> aliases once they age past the window, keeping recent builds
+addressable while old ones stop piling up.</p>
+<ul>
+<li><strong>prod aliases: 30 days</strong> — the consumer rollback and bisection range.</li>
+<li><strong>dev aliases: 7 days</strong> — the churning canary needs a shorter tail.</li>
+</ul>
+<p>The window is chosen for recovery, not storage: a successful build is not proven
+good until a downstream consumer exercises it, which can lag by days, so
+rollback needs a <em>window</em> of history to bisect through — not just the previous
+build. This is the recovery path's retention SLA: <strong>you can only repoint to an
+alias still inside the window.</strong></p>
+<p>The reaper deletes <strong>only</strong> tags matching <code>…-YYYYMMDD</code> (an 8-digit datestamp as
+the whole trailing segment). Rolling tags (<code>latest</code>, <code>3.14</code>, <code>1.26</code>, <code>17</code>,
+<code>21</code>), <code>cache-*</code> tags, and pre-promotion <code>*-candidate</code> tags carry no such suffix
+and are explicitly excluded — they are never reaped by this job. Untagged
+pruning remains the <code>cleanup</code> job's remit.</p>
 <h3 id="arming-it">Arming it<a class="headerlink" href="#arming-it" title="Permanent link">&para;</a></h3>
 <p>The workflow ships in <strong>dry-run by default</strong> so the first runs only log what
 they <em>would</em> delete:</p>
@@ -2096,7 +2206,7 @@ workflow prefers it when present and falls back to <code>GITHUB_TOKEN</code> oth
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
