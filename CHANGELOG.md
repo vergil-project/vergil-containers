@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.12] - 2026-07-28
+
+### Bug fixes
+
+- drop secrets: inherit from cd.yml (no publish, needs no secrets) (#448)
+- package-cleanup startup_failure — newline inside ${{ }} (#449) (#450)
+- allow dataaxiom/ghcr-cleanup-action via [actions] override (#452)
+- drop reap-aliases exclude-tags rejected by the ReDoS guard (#454)
+
+### Documentation
+
+- reflect epic #155 pinning model across containers docs (#414) (#444)
+
+### Features
+
+- auto-manage 9 binary tools via weekly leading-edge bumper (#443)
+- add pandoc to base + language images (#457)
+
 ## [2.1.11] - 2026-07-17
 
 ### Bug fixes

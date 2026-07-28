@@ -4,27 +4,38 @@ Every image shares a common tooling layer and adds language-specific
 runtimes and tools. Images are published as multi-architecture manifests
 (amd64 + arm64) to `ghcr.io/vergil-project/dev-<language>:<version>`.
 
+!!! info "Tool versions are managed, not hand-listed here"
+    This page is the **inventory** — what each image includes. It deliberately
+    does not assert specific tool versions: most tools float on their leading
+    edge, a handful of binary tools are auto-bumped weekly, and only a few are
+    pinned with a written justification. The always-current version-of-record is
+    the generated catalog,
+    [`docker/pins/CATALOG.md`](https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md).
+    For how versions are chosen and managed, see
+    [Tool Version Management](../operations/version-management.md).
+
 ## Common Layer
 
 All language images include:
 
-| Tool             | Version | Purpose                        |
-| ---------------- | ------- | ------------------------------ |
-| Node.js          | 22      | Runtime for markdownlint-cli   |
-| markdownlint-cli | 0.47.0  | Markdown linting               |
-| gh (GitHub CLI)  | latest  | GitHub API and workflows       |
-| shellcheck       | 0.11.0  | Shell script linting           |
-| shfmt            | 3.12.0  | Shell script formatting        |
-| actionlint       | 1.7.11  | GitHub Actions linting         |
-| git-cliff        | 2.8.0   | Changelog generation           |
-| hadolint         | 2.14.0  | Dockerfile linting             |
-| uv               | 0.7.12  | Python package manager         |
-| yamllint         | 1.38.0  | YAML linting                   |
-| ansible-lint     | 26.4.0  | Ansible playbook/role linting  |
-| git              | latest  | Repository operations          |
-| openssh-client   | latest  | SSH for git remote operations  |
-| curl             | latest  | HTTP requests                  |
-| nfpm             | 2.47.0  | Build `.deb`/`.rpm` packages   |
+| Tool             | Purpose                        |
+| ---------------- | ------------------------------ |
+| Node.js 22       | Runtime for markdownlint-cli   |
+| markdownlint-cli | Markdown linting               |
+| gh (GitHub CLI)  | GitHub API and workflows       |
+| shellcheck       | Shell script linting           |
+| shfmt            | Shell script formatting        |
+| actionlint       | GitHub Actions linting         |
+| git-cliff        | Changelog generation           |
+| hadolint         | Dockerfile linting             |
+| uv               | Python package manager         |
+| yamllint         | YAML linting                   |
+| ansible-lint     | Ansible playbook/role linting  |
+| nfpm             | Build `.deb`/`.rpm` packages   |
+| pandoc           | Convert Markdown to docx/HTML  |
+| git              | Repository operations          |
+| openssh-client   | SSH for git remote operations  |
+| curl             | HTTP requests                  |
 
 The `dev-base` image includes the full common layer plus documentation
 tooling (MkDocs Material, mike, semgrep) and OpenTofu for in-sandbox
@@ -40,9 +51,9 @@ install them directly via pip.
 **Base**: `python:<version>-slim`
 **Versions**: 3.12, 3.13, 3.14
 
-| Tool | Version | Purpose                |
-| ---- | ------- | ---------------------- |
-| uv   | 0.7.12  | Python package manager |
+| Tool | Purpose                |
+| ---- | ---------------------- |
+| uv   | Python package manager |
 
 ## Ruby
 
@@ -59,14 +70,18 @@ install them directly via pip.
 **Base**: `golang:<version>`
 **Versions**: 1.25, 1.26
 
-| Tool             | Version | Purpose               |
-| ---------------- | ------- | --------------------- |
-| golangci-lint    | 2.10.1  | Go linter aggregator  |
-| govulncheck      | 1.1.4   | Vulnerability scanner |
-| go-licenses      | 2.0.1   | License checker       |
-| gocyclo          | 0.6.0   | Cyclomatic complexity |
-| goimports        | 0.42.0  | Import formatter      |
-| go-test-coverage | 2.18.3  | Coverage thresholds   |
+| Tool             | Purpose               |
+| ---------------- | --------------------- |
+| golangci-lint    | Go linter aggregator  |
+| govulncheck      | Vulnerability scanner |
+| go-licenses      | License checker       |
+| gocyclo          | Cyclomatic complexity |
+| goimports        | Import formatter      |
+| go-test-coverage | Coverage thresholds   |
+
+`go-test-coverage` is version-pinned per Go version (a live Tenet-6 example — it
+is held because newer releases require a newer Go than the `1.25` image ships).
+See its entry in [the catalog](https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md).
 
 ## Java
 
@@ -82,13 +97,13 @@ are pre-installed.
 **Base**: `rust:<version>-slim`
 **Versions**: 1.92, 1.93
 
-| Tool           | Version          | Purpose                     |
+| Tool           | Source           | Purpose                     |
 | -------------- | ---------------- | --------------------------- |
 | clippy         | rustup component | Rust linter                 |
 | rustfmt        | rustup component | Code formatter              |
 | llvm-tools     | rustup component | Coverage instrumentation    |
-| cargo-deny     | 0.19.0           | Dependency security checker |
-| cargo-llvm-cov | 0.6.16           | Code coverage               |
+| cargo-deny     | cargo            | Dependency security checker |
+| cargo-llvm-cov | cargo            | Code coverage               |
 
 ## Base
 
@@ -97,12 +112,12 @@ are pre-installed.
 
 The base image includes the full common layer (all tools listed above)
 plus documentation tooling. It is the fallback image used by
-`vrg-docker-run` when no language is detected.
+`vrg-container-run` when no language is detected.
 
-| Tool            | Version | Purpose                    |
-| --------------- | ------- | -------------------------- |
-| MkDocs Material | 9.6.12  | Documentation site builder |
-| mike            | 2.1.3   | Versioned doc deployment   |
-| semgrep         | latest  | Static analysis            |
-| pyyaml          | 6.0.3   | YAML parsing (MkDocs dep)  |
-| OpenTofu        | 1.12.3  | OpenTofu module validation |
+| Tool            | Purpose                    |
+| --------------- | -------------------------- |
+| MkDocs Material | Documentation site builder |
+| mike            | Versioned doc deployment   |
+| semgrep         | Static analysis            |
+| pyyaml          | YAML parsing (MkDocs dep)  |
+| OpenTofu        | OpenTofu module validation |

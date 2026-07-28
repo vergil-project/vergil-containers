@@ -57,6 +57,34 @@ def test_check_fails_on_undocumented_pin(tmp_path):
     assert check_pins.main(tmp_path) == 1
 
 
+def _write_fixture(tmp_path, state):
+    (tmp_path / "common").mkdir()
+    (tmp_path / "common" / "x.dockerfile").write_text("ARG FOO_VERSION=1.2.3\n")
+    (tmp_path / "pins").mkdir()
+    (tmp_path / "pins" / "pins.yml").write_text(
+        "pins:\n"
+        f"  foo: {{constraint: latest, inducing_release: null, "
+        f"deterministic: false, reason: r, state: {state}, tracking_issue: null}}\n"
+    )
+
+
+def test_check_accepts_auto_managed_state(tmp_path):
+    # auto-managed (#435) is a legitimately pinned state; the gate must pass it.
+    _write_fixture(tmp_path, "auto-managed")
+    assert check_pins.main(tmp_path) == 0
+
+
+def test_check_fails_on_unknown_state(tmp_path):
+    # A typo'd or unmodelled state must fail loud — the reconciliation makes the
+    # gate state-aware rather than silently accepting anything.
+    _write_fixture(tmp_path, "bogus")
+    assert check_pins.main(tmp_path) == 1
+
+
+def test_auto_managed_is_a_valid_state():
+    assert "auto-managed" in check_pins.VALID_STATES
+
+
 def test_catalog_lists_every_documented_pin():
     md = generate_catalog.render(DOCKER)
     assert "| go-test-coverage |" in md

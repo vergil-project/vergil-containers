@@ -177,29 +177,44 @@ directives. `generate.sh` expands these to produce the final `Dockerfile`
 
 Every image includes (installed via shared fragments in `docker/common/`):
 
-- **Node.js 22** (via NodeSource apt repository)
-- **markdownlint-cli** (`0.48.0`)
-- **ShellCheck** (`0.11.0`)
-- **shfmt** (`3.13.1`)
-- **actionlint** (`1.7.12`)
-- **git-cliff** (`2.13.1`)
-- **hadolint** (`2.14.0`)
-- **scorecard** (`5.5.0`)
-- **trivy** (`0.72.0`)
+- **Node.js 22** (via NodeSource apt repository) — runtime for markdownlint-cli
+- **markdownlint-cli**, **yamllint**, **ansible-lint** — linters
+- **ShellCheck**, **shfmt** — shell lint/format
+- **actionlint** — GitHub Actions linting
+- **git-cliff** — changelog generation
+- **hadolint** — Dockerfile linting
+- **scorecard**, **trivy** — supply-chain / vulnerability scanning
 - **gh** (GitHub CLI, via official apt repository)
-- **uv** (`0.11.13`)
-- **yamllint** (`1.38.0`)
-- **ansible-lint** (`26.4.0`)
-- **nfpm** (`2.47.0`) for building `.deb`/`.rpm` packages from one
-  declarative config
+- **uv** — Python package manager
+- **nfpm** — build `.deb`/`.rpm` packages from one declarative config
+- **pandoc** — convert Markdown to `.docx`/HTML (no TeX; PDF is opt-in)
 - **jq**, git, curl, openssh-client
 - Language-specific package manager and linting tools
 
 The `dev-base` image includes additional documentation tooling (MkDocs
-Material, mike, semgrep) and **OpenTofu** (`1.12.3`) for in-sandbox
+Material, mike, semgrep) and **OpenTofu** for in-sandbox
 `tofu fmt -check` / `tofu validate` of OpenTofu modules. See the
 [images documentation](https://vergil-project.github.io/vergil-containers/images/)
 for the full inventory.
+
+#### Tool version management
+
+Tool **versions are not hardcoded here** — that hand-maintained list was the
+source of the drift this repo now guards against. The model (epic
+[vergil-project/.github#155](https://github.com/vergil-project/.github/issues/155)):
+
+- **Default is unpinned** — most tools float on their leading edge.
+- **Nine binary-download tools are auto-managed** — pinned in source for
+  reproducibility but bumped to the leading edge weekly by
+  `.github/workflows/bump-tools.yml` (opens a reviewed PR; no auto-merge).
+- **A few tools stay pinned** with a written justification (an `inducing_release`
+  and reason) recorded in `docker/pins/pins.yml`; a CI gate blocks any
+  undocumented pin.
+
+The generated, always-current source of truth for what is pinned and why is
+[`docker/pins/CATALOG.md`](docker/pins/CATALOG.md). The operator-facing doctrine
+and pin-lifecycle guidance live in the site docs under
+[Tool Version Management](docs/site/docs/operations/version-management.md).
 
 ### GHCR Publishing
 

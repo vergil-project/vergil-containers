@@ -80,11 +80,17 @@ jobs:
           # `cond && a || b` to avoid the Actions falsy-fall-through pitfall,
           # where an unchecked box (inputs.dry_run == false) would otherwise
           # fall through to the scheduled branch.
+          #
+          # Folded-scalar rule: every continuation line below MUST stay at the
+          # SAME indentation as the `${{` line. A `>-` scalar preserves newlines
+          # on more-indented lines, and a newline *inside* ${{ }} makes GitHub
+          # reject the whole file at startup (startup_failure, issue #449) —
+          # actionlint tokenizes expressions loosely and will not catch it.
           dry-run: >-
             ${{ !(
-                  (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-                  || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
-                ) }}
+            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
+            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
+            ) }}
 
   reap-aliases:
     name: "reap: ${{ matrix.package }} (older than ${{ matrix.older_than }})"
@@ -134,12 +140,15 @@ jobs:
           # latest-20260716. Rolling tags (latest, 3.14, 1.26, 17, 21),
           # cache-* tags, and *-candidate tags carry no such suffix and never
           # match. Anchored so the datestamp is the whole trailing segment.
+          #
+          # This rule is the SOLE selector — precise enough that no exclude-tags
+          # net is needed. Verified across all 12 packages: no rolling / version
+          # / cache / candidate tag ends in -YYYYMMDD, so nothing else can match.
+          # An earlier exclude-tags pattern was removed because the action's
+          # ReDoS guard rejected its nested quantifier (\d+(\.\d+)*); the delete
+          # rule's precision plus the DRY-RUN-by-default arming make it moot
+          # (issue #453).
           delete-tags: '^.+-\d{8}$'
-          # Belt-and-suspenders: never delete a rolling version tag, a build
-          # cache tag, or a pre-promotion candidate tag, regardless of the
-          # delete rule. Anchored so a datestamp alias (…-YYYYMMDD) is NOT
-          # matched here — excluding it would neuter the reaper.
-          exclude-tags: '^(latest|cache-.*|.*-candidate|\d+(\.\d+)*)$'
           # delete-untagged is left unset (defaults off because a delete rule
           # is present): untagged pruning is the `cleanup` job's remit, not
           # this one's.
@@ -148,8 +157,12 @@ jobs:
           # explicitly unchecks "Preview only", or a scheduled run has the repo
           # variable PACKAGE_CLEANUP_DRY_RUN set to 'false'. !(armed) form
           # avoids the Actions falsy-fall-through pitfall.
+          #
+          # Folded-scalar rule (see `cleanup` above): keep every continuation
+          # line at the SAME indentation as the `${{` line — a newline inside
+          # ${{ }} is a startup_failure (issue #449).
           dry-run: >-
             ${{ !(
-                  (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-                  || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
-                ) }}
+            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
+            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
+            ) }}
