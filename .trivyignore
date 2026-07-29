@@ -466,3 +466,49 @@ CVE-2026-48815
 CVE-2026-52869
 CVE-2026-52870
 CVE-2026-59950
+
+# =============================================================================
+# 2026-07-29 batch (issue #461) — residual fixed HIGH/CRITICAL gating the
+# v2.1.12 publish. The companion fix in this PR upgrades the NodeSource-bundled
+# npm to the latest, which clears the node-tar CVEs (CVE-2026-59873 CRITICAL /
+# CVE-2026-59874) and brace-expansion CVE-2026-13149 at source. The entries
+# below are the remainder: fixed upstream but not reachable in any installable
+# release the images can pull today, and none exercised in the images' actual
+# runtime usage. (x/text and grpc newly entered the Trivy DB the day after the
+# v2.1.12 release scan, so they were not in that run.)
+# =============================================================================
+
+# brace-expansion (npm-bundled) — DoS via crafted brace expansion. The npm
+# upgrade in this PR vendors brace-expansion 5.0.7, which clears CVE-2026-13149
+# but not this one (fixed only in 5.0.8; the latest npm still bundles 5.0.7).
+# Exercised only on lockfile / CLI-bounded glob patterns, never on
+# attacker-controlled input. Present on all images. Remove once npm bundles
+# brace-expansion ≥ 5.0.8.
+CVE-2026-14257
+
+# golang.org/x/text — norm.Iter infinite-loop DoS on crafted input, fixed in
+# 0.39.0. A transitive dependency embedded in the prebuilt Go tool binaries
+# (gh, actionlint, shfmt, nfpm; plus scorecard, trivy, and tofu on dev-base),
+# each compiled upstream against x/text 0.28.0–0.38.0. These are static linters
+# and known-host API clients — they do not normalize attacker-controlled text.
+# No carrier has shipped a binary rebuilt with x/text 0.39.0 yet. Present on all
+# images. Remove once upstream rebuilds land.
+CVE-2026-56852
+
+# google.golang.org/grpc — DoS, fixed in 1.82.1. A transitive dependency
+# embedded in the prebuilt Go tool binaries (same carrier set as x/text above),
+# compiled against grpc 1.79–1.81. The baked tools use gRPC only as clients to
+# known hosts (GitHub, ghcr); they expose no gRPC service to untrusted peers.
+# No carrier release rebuilt with grpc 1.82.1 exists yet. Present on all images.
+# Remove once upstream rebuilds land.
+GHSA-hrxh-6v49-42gf
+
+# golang.org/x/image — TIFF decoder unbounded-allocation DoS (CVE-2026-46602)
+# and the related CVE-2026-46604, both fixed in 0.43.0. A transitive dependency
+# of the go-image linters installed via `go install ...@latest` (golangci-lint,
+# go-licenses, goimports, gocyclo, govulncheck); the latest releases still pull
+# x/image 0.38.0. The vulnerable TIFF decode path is never exercised by
+# license / lint tooling. Present on the go image only. Remove once an upstream
+# tool ships with x/image ≥ 0.43.0.
+CVE-2026-46602
+CVE-2026-46604
