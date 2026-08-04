@@ -29,7 +29,10 @@ RUN apt-get update && \
 #     pip <= 26.1.1; 26.1.2 is the fix. Issue #344.
 # The >=26.1.2 lower bound covers both; a plain >=26.1 floats to a still-
 # vulnerable pip.
-RUN pip install --no-cache-dir --upgrade 'pip>=26.1.2' && \
+# Also upgrade setuptools past CVE-2025-47273 (PackageIndex path traversal):
+# python:3.x-slim ships setuptools 70.3.0 in this environment; 78.1.1 is the
+# fix. Issue #474.
+RUN pip install --no-cache-dir --upgrade 'pip>=26.1.2' 'setuptools>=78.1.1' && \
     pip install --no-cache-dir yamllint ansible-lint uv
 
 # --- MkDocs ------------------------------------------------------------------

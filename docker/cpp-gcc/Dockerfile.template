@@ -1,0 +1,58 @@
+# Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
+# Canonical source: https://github.com/vergil-project/vergil-containers
+# dev-cpp-gcc — C++ dev image, GCC compiler family.
+#
+# The compiler is a prebuilt stable binary from the Debian trixie apt channel
+# (the same base-image distro the other language images use) — never built from
+# source (spec vergil-project/.github#207 §3.5). GCC_VERSION is the
+# compiler-major matrix axis (see docker/build.sh and the version discovery
+# record in this directory's README.md). The shared, compiler-agnostic analysis
+# toolset is composed in via common/cpp-analysis.
+ARG GCC_VERSION=14
+FROM debian:trixie-slim
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# --- System packages ---------------------------------------------------------
+# The GCC compiler (installed below) supplies its own GNU libstdc++
+# headers/runtime, GCC's native standard library (spec §3.3: stdlib =
+# libstdc++), so no separate stdlib package is needed here.
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+      git curl jq openssh-client pkg-config xz-utils gnupg ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# @include common/path-defaults.dockerfile
+# @include common/node-markdownlint.dockerfile
+# @include common/github-cli.dockerfile
+# @include common/validation-tools.dockerfile
+# @include common/python-support.dockerfile
+# @include common/cpp-analysis.dockerfile
+# @include common/nfpm.dockerfile
+# @include common/pandoc.dockerfile
+
+# --- GCC compiler (prebuilt, Debian trixie apt) ------------------------------
+# Install this compiler major's gcc/g++ from Debian's own channel (prebuilt
+# stable binaries — never built from source, spec §3.5). update-alternatives
+# exposes unversioned gcc/g++/gcov so CMake, Conan profile detection, and gcovr
+# resolve them without a version suffix. gcov is GCC's coverage tool, which
+# gcovr drives by default.
+ARG GCC_VERSION
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      "gcc-${GCC_VERSION}" \
+      "g++-${GCC_VERSION}" && \
+    update-alternatives --install /usr/bin/gcc gcc \
+      "/usr/bin/gcc-${GCC_VERSION}" 100 && \
+    update-alternatives --install /usr/bin/g++ g++ \
+      "/usr/bin/g++-${GCC_VERSION}" 100 && \
+    update-alternatives --install /usr/bin/gcov gcov \
+      "/usr/bin/gcov-${GCC_VERSION}" 100 && \
+    rm -rf /var/lib/apt/lists/*
+
+# CC/CXX default to GCC so CMake, Conan profile detection, and
+# vrg-container-run pick the right compiler out of the box.
+ENV CC=gcc \
+    CXX=g++
+
+WORKDIR /workspace
