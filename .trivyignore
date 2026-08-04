@@ -512,3 +512,39 @@ GHSA-hrxh-6v49-42gf
 # tool ships with x/image ≥ 0.43.0.
 CVE-2026-46602
 CVE-2026-46604
+
+# =============================================================================
+# 2026-08-04 batch (issue #474) — 3 residual HIGH gating the v2.1.14 publish
+# (all 13 prod images and the dev images failed). The companion setuptools bump
+# in this PR clears the 4th gate CVE (CVE-2025-47273, setuptools 70.3.0 →
+# 78.1.1) at source, so it is not suppressed here. Each of the three below is
+# fixed upstream but not reachable in any installable carrier the images can
+# pull today — verified against each carrier's latest release — and none is
+# exercised in the images' actual runtime usage.
+# =============================================================================
+
+# msgpack (Python) — out-of-bounds read / crash decoding untrusted msgpack,
+# fixed in 1.2.1. This is pip's VENDORED copy (pip/_vendor/msgpack, pulled by
+# the vendored CacheControl), not a direct dependency of anything we install,
+# so an explicit `pip install msgpack` cannot clear the copy Trivy flags. The
+# latest RELEASED pip (26.2) still vendors msgpack 1.1.2; only pip `main` has
+# bumped to 1.2.1. pip only unpacks its own HTTP cache, never attacker-
+# controlled data. Present on base + python images. Remove once a released pip
+# vendors msgpack ≥ 1.2.1.
+GHSA-6v7p-g79w-8964
+
+# brace-expansion (npm-bundled) — ReDoS via crafted brace expansion, fixed in
+# 5.0.9. Pinned inside npm's own bundled dependency tree (minimatch/glob):
+# verified that npm@latest (12.0.2) still bundles 5.0.7, so `npm install -g
+# npm@latest` cannot reach the fix. Exercised only on lockfile / CLI-bounded
+# glob patterns, never on attacker-controlled input. Present on all images.
+# Joins the existing brace-expansion entries (CVE-2026-14257). Remove once npm
+# bundles brace-expansion ≥ 5.0.9.
+CVE-2026-69152
+
+# ip-address (npm-bundled) — parsing vulnerability, fixed in 10.3.1. Pulled by
+# `socks` inside npm's bundled tree; npm@latest (12.0.2) still bundles 10.2.0,
+# so no npm bump reaches it. The socks/ip-address path is exercised only when
+# npm routes through a SOCKS proxy, which these images never do. Present on all
+# images. Remove once npm bundles ip-address ≥ 10.3.1.
+CVE-2026-69192
