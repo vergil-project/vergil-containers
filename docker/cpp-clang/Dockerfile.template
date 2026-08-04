@@ -1,0 +1,62 @@
+# Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
+# Canonical source: https://github.com/vergil-project/vergil-containers
+# dev-cpp-clang — C++ dev image, Clang/LLVM compiler family.
+#
+# The compiler is a prebuilt stable binary from the official LLVM apt channel
+# (apt.llvm.org) — never built from source (spec vergil-project/.github#207
+# §3.5). CLANG_VERSION is the compiler-major matrix axis (see docker/build.sh
+# and the version discovery record in this directory's README.md). The shared,
+# compiler-agnostic analysis toolset is composed in via common/cpp-analysis.
+ARG CLANG_VERSION=20
+FROM debian:trixie-slim
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# --- System packages ---------------------------------------------------------
+# g++ supplies the GNU libstdc++ headers/runtime that Clang targets as its
+# default standard library (spec §3.3: stdlib = libstdc++).
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+      git curl jq openssh-client pkg-config xz-utils gnupg ca-certificates \
+      g++ && \
+    rm -rf /var/lib/apt/lists/*
+
+# @include common/path-defaults.dockerfile
+# @include common/node-markdownlint.dockerfile
+# @include common/github-cli.dockerfile
+# @include common/validation-tools.dockerfile
+# @include common/python-support.dockerfile
+# @include common/cpp-analysis.dockerfile
+# @include common/nfpm.dockerfile
+# @include common/pandoc.dockerfile
+
+# --- Clang/LLVM compiler (prebuilt, apt.llvm.org) ----------------------------
+# The LLVM apt key + tools channel are already configured by the cpp-analysis
+# fragment; add this compiler major's channel (a no-op line when it matches the
+# tools major) and install the compiler, its matching sanitizer runtime
+# (ASan/UBSan), the linker, and llvm-cov (coverage via `gcovr --gcov-executable
+# 'llvm-cov gcov'`). update-alternatives exposes unversioned clang/clang++/
+# llvm-cov so CMake and gcovr resolve them without a version suffix.
+ARG CLANG_VERSION
+RUN echo "deb http://apt.llvm.org/trixie/ llvm-toolchain-trixie-${CLANG_VERSION} main" \
+      > "/etc/apt/sources.list.d/llvm-toolchain-${CLANG_VERSION}.list" && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+      "clang-${CLANG_VERSION}" \
+      "lld-${CLANG_VERSION}" \
+      "llvm-${CLANG_VERSION}" \
+      "libclang-rt-${CLANG_VERSION}-dev" && \
+    update-alternatives --install /usr/bin/clang clang \
+      "/usr/bin/clang-${CLANG_VERSION}" 100 && \
+    update-alternatives --install /usr/bin/clang++ clang++ \
+      "/usr/bin/clang++-${CLANG_VERSION}" 100 && \
+    update-alternatives --install /usr/bin/llvm-cov llvm-cov \
+      "/usr/bin/llvm-cov-${CLANG_VERSION}" 100 && \
+    rm -rf /var/lib/apt/lists/*
+
+# CC/CXX default to Clang so CMake, Conan profile detection, and
+# vrg-container-run pick the right compiler out of the box.
+ENV CC=clang \
+    CXX=clang++
+
+WORKDIR /workspace
