@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../">
+        <link rel="prev" href="../v2.1.14/">
       
       
         <link rel="next" href="../v2.1.12/">
@@ -563,6 +563,8 @@
       
         
       
+        
+      
     
     
     
@@ -618,6 +620,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.14/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.14
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1974,6 +2004,7 @@
 <li>fix(images): upgrade bundled npm to latest to clear node-tar/brace-expansion CVEs</li>
 </ul>
 <p>NodeSource node 22 ships an older npm whose vendored deps carry HIGH/CRITICAL CVEs that break the docker-publish Trivy gate: node-tar CVE-2026-59873 (CRITICAL, gzip-bomb DoS) / CVE-2026-59874 (HIGH), and brace-expansion CVE-2026-13149 (HIGH). Upgrading the global npm to latest before installing markdownlint-cli vendors the patched tar (&gt;= 7.5.19) and brace-expansion (&gt;= 5.0.7), clearing all three across every image. Build-time-only change; npm is not used at container runtime.</p>
+<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.13/v2.1.13-ci-evidence.tar.gz">Download →</a></p>
 
 
 
