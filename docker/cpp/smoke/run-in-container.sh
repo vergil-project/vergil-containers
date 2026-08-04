@@ -4,7 +4,10 @@
 # Runs inside a built dev-cpp-* image with the smoke fixture mounted read-only
 # at /smoke. Copies the fixture to a writable dir, resolves the fmt dependency
 # with Conan 2, configures + builds with CMake against the image's default
-# compiler, runs the binary, and asserts its output. Any failure exits non-zero.
+# compiler, runs the binary, and asserts its output. It also confirms the shared
+# compiler-agnostic analysis toolset is present and runnable — so every C++
+# image (both the Clang and GCC families) is verified to carry it. Any failure
+# exits non-zero.
 set -euo pipefail
 
 work="$(mktemp -d)"
@@ -16,6 +19,18 @@ cd "${work}"
 echo "--- compiler ---"
 echo "CC=${CC:-<unset>} CXX=${CXX:-<unset>}"
 "${CXX:-c++}" --version | head -1
+
+echo "--- analysis toolset (shared, compiler-agnostic) ---"
+# Every C++ image carries the same analysis tools (common/cpp-analysis.dockerfile);
+# confirm each is present on PATH and runnable regardless of compiler family.
+for tool in clang-format clang-tidy cppcheck gcovr; do
+  if ! command -v "${tool}" >/dev/null 2>&1; then
+    echo "SMOKE FAIL: analysis tool '${tool}' not found on PATH" >&2
+    exit 1
+  fi
+  echo -n "${tool}: "
+  "${tool}" --version | head -1
+done
 
 echo "--- conan install (resolves + builds deps) ---"
 conan profile detect --force
