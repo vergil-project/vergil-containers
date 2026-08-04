@@ -29,11 +29,18 @@ RUN apt-get update && \
 #     pip <= 26.1.1; 26.1.2 is the fix. Issue #344.
 # The >=26.1.2 lower bound covers both; a plain >=26.1 floats to a still-
 # vulnerable pip.
-# Also upgrade setuptools past CVE-2025-47273 (PackageIndex path traversal):
-# python:3.x-slim ships setuptools 70.3.0 in this environment; 78.1.1 is the
-# fix. Issue #474.
+# Also upgrade the system setuptools past CVE-2025-47273 (PackageIndex path
+# traversal): python:3.x-slim ships 70.3.0, 78.1.1 is the fix. This hardens the
+# real installed setuptools. Issue #474.
+# Then delete pip's bundled CycloneDX SBOM (pip/_vendor/bom.cdx.json). pip 26.x
+# ships it to describe pip's *vendored* dependencies; Trivy ingests the SBOM and
+# reports those vendored packages (setuptools 70.3.0, msgpack 1.1.2, ...) as
+# image CVEs even though they are pip's internals, not the image's runtime
+# attack surface. Removing the SBOM clears that whole false-positive class at
+# the source. Issue #481.
 RUN pip install --no-cache-dir --upgrade 'pip>=26.1.2' 'setuptools>=78.1.1' && \
-    pip install --no-cache-dir yamllint ansible-lint uv
+    pip install --no-cache-dir yamllint ansible-lint uv && \
+    find /usr/local/lib/python*/site-packages/pip/_vendor -name bom.cdx.json -delete
 
 # --- MkDocs ------------------------------------------------------------------
 RUN pip install --no-cache-dir \

@@ -246,7 +246,8 @@ explicitly grant this repository write access because the packages were
 originally created by the `vergil-tooling` repository.
 
 Per-package setup (one-time, for each of `dev-base`, `dev-python`, `dev-java`,
-`dev-go`, `dev-ruby`, `dev-rust`, and the corresponding `prod-` packages):
+`dev-go`, `dev-ruby`, `dev-rust`, `dev-cpp-clang`, `dev-cpp-gcc`, and the
+corresponding `prod-` packages):
 
 1. Navigate to the package settings page on GHCR.
 2. Under **Manage Actions access**, click **Add Repository**.
@@ -262,6 +263,8 @@ Per-package setup (one-time, for each of `dev-base`, `dev-python`, `dev-java`,
 | Java     | 17, 21           |
 | Go       | 1.25, 1.26       |
 | Rust     | 1.92, 1.93       |
+| C++ (Clang) | 20, 19        |
+| C++ (GCC)   | 14, 13        |
 
 To trigger a rebuild manually: Actions > CD > Run workflow.
 

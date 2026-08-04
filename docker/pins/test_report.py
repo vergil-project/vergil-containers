@@ -43,6 +43,15 @@ def test_auto_managed_not_flagged_for_reevaluation():
     assert r.due_for_reevaluation(pins, latest={"foo": "9.9.9"}) == []
 
 
+def test_matrix_includes_cpp_images():
+    # #480: the exposure matrix must cover the published C++ images so their
+    # installed tool versions are harvested alongside the other languages.
+    images = r._image_matrix("prod")
+    for image in ("prod-cpp-clang:20", "prod-cpp-clang:19",
+                  "prod-cpp-gcc:14", "prod-cpp-gcc:13"):
+        assert image in images
+
+
 def test_harvest_parses_probe_output():
     def probe(image, tool):
         return "shellcheck 0.11.0" if tool == "shellcheck" else ""

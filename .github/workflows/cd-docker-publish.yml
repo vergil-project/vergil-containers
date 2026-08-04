@@ -84,6 +84,18 @@ jobs:
           - language: rust
             version: "1.93"
             build-arg: RUST_VERSION
+          - language: cpp-clang
+            version: "20"
+            build-arg: CLANG_VERSION
+          - language: cpp-clang
+            version: "19"
+            build-arg: CLANG_VERSION
+          - language: cpp-gcc
+            version: "14"
+            build-arg: GCC_VERSION
+          - language: cpp-gcc
+            version: "13"
+            build-arg: GCC_VERSION
 
     env:
       IMAGE: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"

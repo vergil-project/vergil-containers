@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.16] - 2026-08-04
+
+### Bug fixes
+
+- stop Trivy flagging pip-vendored CVEs via pip's bundled SBOM (#483)
+
+### CI
+
+- publish C++ images to GHCR (#482)
+
 ## [2.1.15] - 2026-08-04
 
 ### Bug fixes
