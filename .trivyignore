@@ -514,24 +514,17 @@ CVE-2026-46602
 CVE-2026-46604
 
 # =============================================================================
-# 2026-08-04 batch (issue #474) — 3 residual HIGH gating the v2.1.14 publish
-# (all 13 prod images and the dev images failed). The companion setuptools bump
-# in this PR clears the 4th gate CVE (CVE-2025-47273, setuptools 70.3.0 →
-# 78.1.1) at source, so it is not suppressed here. Each of the three below is
+# 2026-08-04 batch (issue #474) — HIGH CVEs gating the v2.1.14 publish (all 13
+# prod images and the dev images failed). The two npm-bundled entries below are
 # fixed upstream but not reachable in any installable carrier the images can
-# pull today — verified against each carrier's latest release — and none is
-# exercised in the images' actual runtime usage.
+# pull today — verified against each carrier's latest release — and neither is
+# exercised in the images' runtime usage.
+#
+# The setuptools (CVE-2025-47273) and msgpack (GHSA-6v7p-g79w-8964) gate CVEs
+# from this same wave are deliberately NOT suppressed: both came from pip's
+# vendored CycloneDX SBOM (pip/_vendor/bom.cdx.json), and are cleared at the
+# source by removing that SBOM in the base + python templates (issue #481).
 # =============================================================================
-
-# msgpack (Python) — out-of-bounds read / crash decoding untrusted msgpack,
-# fixed in 1.2.1. This is pip's VENDORED copy (pip/_vendor/msgpack, pulled by
-# the vendored CacheControl), not a direct dependency of anything we install,
-# so an explicit `pip install msgpack` cannot clear the copy Trivy flags. The
-# latest RELEASED pip (26.2) still vendors msgpack 1.1.2; only pip `main` has
-# bumped to 1.2.1. pip only unpacks its own HTTP cache, never attacker-
-# controlled data. Present on base + python images. Remove once a released pip
-# vendors msgpack ≥ 1.2.1.
-GHSA-6v7p-g79w-8964
 
 # brace-expansion (npm-bundled) — ReDoS via crafted brace expansion, fixed in
 # 5.0.9. Pinned inside npm's own bundled dependency tree (minimatch/glob):
