@@ -74,10 +74,18 @@ build rust   RUST_VERSION   1.93
 build cpp-clang CLANG_VERSION 20
 build cpp-clang CLANG_VERSION 19
 
+# C++ GCC family (prebuilt-only majors; see docker/cpp-gcc/README.md).
+# GCC_VERSION is the compiler-major matrix axis.
+build cpp-gcc GCC_VERSION 14
+build cpp-gcc GCC_VERSION 13
+
 # Build-time smoke check: a trivial CMake + Conan 2 project compiles, links, and
-# runs under each Clang image (spec vergil-project/.github#207 T1).
+# runs under each C++ image (spec vergil-project/.github#207 T1/T2). The shared
+# smoke check also confirms the analysis toolset is present in each image.
 "${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:20" "$runtime"
 "${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:19" "$runtime"
+"${script_dir}/cpp/smoke-test.sh" "dev-cpp-gcc:14" "$runtime"
+"${script_dir}/cpp/smoke-test.sh" "dev-cpp-gcc:13" "$runtime"
 
 "${script_dir}/generate.sh" base
 echo "Building dev-base:latest ..."
