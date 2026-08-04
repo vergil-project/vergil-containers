@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.15] - 2026-08-04
+
+### Bug fixes
+
+- clear v2.1.14 docker-publish Trivy gate (setuptools + 3 suppressions) (#476)
+
+### Features
+
+- gcc dev/prod images on shared C++ base (#475)
+
 ## [2.1.14] - 2026-08-04
 
 ### Features
