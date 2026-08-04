@@ -69,6 +69,16 @@ build go     GO_VERSION     1.26
 build rust   RUST_VERSION   1.92
 build rust   RUST_VERSION   1.93
 
+# C++ Clang family (prebuilt-only majors; see docker/cpp-clang/README.md).
+# CLANG_VERSION is the compiler-major matrix axis.
+build cpp-clang CLANG_VERSION 20
+build cpp-clang CLANG_VERSION 19
+
+# Build-time smoke check: a trivial CMake + Conan 2 project compiles, links, and
+# runs under each Clang image (spec vergil-project/.github#207 T1).
+"${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:20" "$runtime"
+"${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:19" "$runtime"
+
 "${script_dir}/generate.sh" base
 echo "Building dev-base:latest ..."
 "$runtime" build -t "dev-base:latest" "${script_dir}/base"
