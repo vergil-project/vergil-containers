@@ -16,11 +16,22 @@
 #     scan output; they simply do not fail the gate.
 #   - ignore-policy: drops linux-libc-dev kernel-header findings categorically
 #     (always false positives for containers — see the policy file).
+#   - scan.skip-files: excludes pip's bundled CycloneDX SBOM
+#     (pip/_vendor/bom.cdx.json). pip 26.x ships it to describe pip's vendored
+#     dependencies; Trivy would otherwise ingest it and report those internals
+#     (setuptools, msgpack, …) as image CVEs. Skipping it here covers both the
+#     amd64 (shared action) and arm64 (inline) scans, and replaces the per-image
+#     `rm` that base/python previously carried. The shared action carries the
+#     same skip for other consumers (vergil-actions#798). Issue #498.
 #
 # Fixed, un-suppressed, real CVEs still gate. Explicit per-CVE suppressions for
 # fixed findings continue to live in .trivyignore.
 
 vulnerability:
   ignore-unfixed: true
+
+scan:
+  skip-files:
+    - "**/pip/_vendor/bom.cdx.json"
 
 ignore-policy: .trivy/ignore-policy.rego
