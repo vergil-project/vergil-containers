@@ -52,8 +52,9 @@ carries the full analysis toolset too, verified by the smoke check.
   `GCC_VERSION` compiler and sets `CC=gcc` / `CXX=g++` with libstdc++ (GCC's
   native standard library).
 - **`common/cpp-analysis.dockerfile`** — the shared, compiler-agnostic analysis
-  toolset every C++ image carries (`clang-format`, `clang-tidy`, `cppcheck`,
-  `gcovr`, CMake, Conan 2). Reused verbatim from T1 — **not** duplicated for
+  toolset every C++ image carries (`clang-format`, `clang-tidy`, the unversioned
+  `run-clang-tidy` LINT driver, `cppcheck`, `gcovr`, `osv-scanner` for AUDIT,
+  CMake, Conan 2). Reused verbatim from T1 — **not** duplicated for
   GCC; the GCC template `@include`s the same fragment the Clang template does.
 - **`docker/cpp/smoke/`** + **`docker/cpp/smoke-test.sh`** — the trivial
   CMake + Conan 2 project used as the build-time smoke check, shared across the

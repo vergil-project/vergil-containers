@@ -26,12 +26,13 @@ def test_harvest_joins_into_report():
 def test_auto_managed_surfaced_as_own_category():
     # #435: the report must distinguish auto-managed tools in a dedicated section,
     # separate from the active-pin re-evaluation list. Uses the real pins.yml,
-    # where the 9 binary tools are now auto-managed.
+    # where the binary tools (the #418/#422 set plus osv-scanner, #487) are
+    # auto-managed.
     md = r.render(DOCKER, latest={}, installed={})
     assert "## Auto-managed" in md
     section = md.split("## Auto-managed", 1)[1]
     for tool in ("shellcheck", "shfmt", "actionlint", "git-cliff", "hadolint",
-                 "opentofu", "nfpm", "trivy", "scorecard"):
+                 "opentofu", "nfpm", "trivy", "scorecard", "osv-scanner"):
         assert f"- {tool}:" in section
 
 

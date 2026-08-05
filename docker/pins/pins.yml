@@ -58,9 +58,10 @@ pins:
     tracking_issue: null
 
   # --- Auto-managed mechanism pins (binary release tarballs) -------------------
-  # The 9 binary-download tools (#418/#422) whose release-tarball URL + per-
-  # version checksum embed an explicit version, so they cannot float by dropping
-  # a token. #435 makes them AUTO-MANAGED: they stay pinned in source (hermetic,
+  # The binary-download tools (the #418/#422 set, plus osv-scanner added under
+  # #487) whose release-asset URL + per-version checksum embed an explicit
+  # version, so they cannot float by dropping a token. #435 makes them
+  # AUTO-MANAGED: they stay pinned in source (hermetic,
   # reproducible, revertible) while the weekly `bump-tools` workflow tracks the
   # leading edge via the /releases/latest redirect and opens a reviewed bump PR.
   # inducing_release is null (not a Tenet-6 break-hold) and the constraint is
@@ -76,3 +77,4 @@ pins:
   nfpm:        {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version checksums embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
   scorecard:   {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — scorecard release tarball + scorecard_checksums.txt embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
   trivy:       {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — trivy release tarball + per-version checksums embed the version; floated to the leading edge by the weekly bump-tools workflow (weekly bumps also pick up CVE-fix releases, e.g. the 0.70.0 → 0.72.0 bump under #438).", state: auto-managed, tracking_issue: null}
+  osv-scanner: {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary whose /releases/download/vX.Y.Z/ URL + osv-scanner_SHA256SUMS embed the version; the C++ AUDIT tool (replaces conan audit, #209) added under #487 and floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
