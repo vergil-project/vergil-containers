@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.17] - 2026-08-05
+
+### Bug fixes
+
+- close C++ image gaps found by T11 (Conan profile, run-clang-tidy, llvm-cov gcov, osv-scanner) (#488)
+
 ## [2.1.16] - 2026-08-04
 
 ### Bug fixes
