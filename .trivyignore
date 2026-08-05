@@ -444,6 +444,14 @@ CVE-2026-39831
 # unvalidated-redirect path is not exercised. Remove once trivy and tofu
 # releases bundle oras-go ≥2.6.1.
 CVE-2026-50151
+# CVE-2026-50163 (oras-go information disclosure / arbitrary file write, fix
+# 2.6.2) — same two base-only carriers (the trivy and tofu binaries). OpenTofu
+# 1.12.5 ships oras-go 2.6.2, but the latest trivy (0.73.0) still ships only
+# 2.6.1, so no trivy release clears it yet. Same non-exploitability rationale as
+# above (OCI client to known registries only; tofu runs fmt/validate, no OCI
+# pulls). Both are auto-managed pins bumped weekly; remove once a trivy release
+# bundles oras-go ≥2.6.2. (v2.1.17 gate; issue #492.)
+CVE-2026-50163
 
 # --- sigstore (npm, bundled with node's npm) — unauthorized certs (fix 4.1.1)-
 # CVE-2026-48815 flags the sigstore package (3.1.0) bundled inside the npm that
