@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../">
+        <link rel="prev" href="../v2.1.19/">
       
       
         <link rel="next" href="../v2.1.17/">
@@ -573,6 +573,8 @@
       
         
       
+        
+      
     
     
     
@@ -628,6 +630,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.19/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.19
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2124,6 +2154,7 @@
 The v2.1.17 docker-publish gate failed on base with one fixed CVE: oras.land/oras-go/v2 CVE-2026-50163 (v2.6.0 -&gt; 2.6.2). It is embedded in two base-only Go binaries, the tofu and trivy binaries. OpenTofu 1.12.5 ships oras-go 2.6.2, but the latest trivy (0.73.0) still ships only 2.6.1, so no trivy release clears it yet -- it cannot be fixed by a bump and is suppressed, joining the sibling CVE-2026-50151 entry.</li>
 </ul>
 <p>The gate loads trivy.yaml (ignore-unfixed: true), so only fixed CVEs block; the ~39 Debian status=affected/no-fix findings seen in a raw local scan are non-gating by policy and not triaged here.</p>
+<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.18/v2.1.18-ci-evidence.tar.gz">Download →</a></p>
 
 
 
