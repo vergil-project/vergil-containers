@@ -6,7 +6,7 @@ import resolve_latest as rl
 
 TOOLS = {
     "shellcheck", "shfmt", "actionlint", "git-cliff", "hadolint",
-    "opentofu", "nfpm", "trivy", "scorecard", "osv-scanner",
+    "opentofu", "nfpm", "trivy", "scorecard",
 }
 
 

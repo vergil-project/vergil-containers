@@ -10,11 +10,8 @@
 # vergil-project/.github#155). cmake/cppcheck are fixed by the Debian release of
 # the base image; clang-format/clang-tidy are fixed by the LLVM apt channel
 # major (CLANG_TOOLS_VERSION); conan/gcovr float on their leading edge like
-# every other uv-installed tool — none of those is an exact x.y.z pin. osv-scanner
-# is the one exception: it installs from a GitHub release binary whose download
-# URL embeds an explicit version, so it is an EXACT (x.y.z) pin and carries a
-# docker/pins/pins.yml entry (auto-managed by the weekly bump-tools workflow,
-# exactly like nfpm/trivy — see #435).
+# every other uv-installed tool — none of those is an exact x.y.z pin, so this
+# fragment carries no docker/pins/pins.yml entry.
 ARG CLANG_TOOLS_VERSION=20
 
 # clang-format / clang-tidy come from the official LLVM apt channel so the
@@ -57,22 +54,3 @@ RUN uv tool install conan && \
 # so a profile under ~/.conan2 would be invisible in one context or the other;
 # pinning CONAN_HOME makes `conan install` resolve the same baked profile in both.
 ENV CONAN_HOME=/opt/conan2
-
-# osv-scanner — the AUDIT tool (replaces `conan audit`; epic decision #209). It is
-# a prebuilt release binary from the official GitHub releases (prebuilt-only rule,
-# spec §3.5 — never built from source). The Linux asset is a raw executable whose
-# name carries no version, so the version lives only in the release-tag URL path;
-# that makes it an EXACT pin, auto-managed by the weekly bump-tools workflow (#435).
-# osv-scanner's SHA256SUMS lists one line per asset (two spaces, no `*` prefix), so
-# we select the exact line by filename field (awk) and let `sha256sum -c` fail loud
-# on any mismatch, mirroring common/nfpm.dockerfile.
-ARG TARGETARCH
-ARG OSV_SCANNER_VERSION=2.4.0
-# hadolint ignore=DL3003
-RUN OSV_BIN="osv-scanner_linux_${TARGETARCH}" && \
-    curl -fsSL "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/${OSV_BIN}" \
-      -o "/tmp/${OSV_BIN}" && \
-    curl -fsSL "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_SHA256SUMS" \
-      | awk -v f="${OSV_BIN}" '$2 == f' | (cd /tmp && sha256sum -c) && \
-    install -m 0755 "/tmp/${OSV_BIN}" /usr/local/bin/osv-scanner && \
-    rm "/tmp/${OSV_BIN}"
