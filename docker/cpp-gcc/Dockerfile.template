@@ -55,4 +55,12 @@ RUN apt-get update && \
 ENV CC=gcc \
     CXX=g++
 
+# Bake a default Conan profile so `conan install` works cold — without the caller
+# first running `conan profile detect` (issue #487). Detection runs here, after the
+# compiler and CC/CXX are in place, so the profile records GCC; it lands in the
+# fixed CONAN_HOME (common/cpp-analysis.dockerfile) so it is found at runtime under
+# any HOME. build_type is left at Conan's default (Release); the tooling INSTALL
+# command passes the correct `-s build_type` explicitly per invocation.
+RUN conan profile detect
+
 WORKDIR /workspace

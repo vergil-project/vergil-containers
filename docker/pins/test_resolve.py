@@ -4,9 +4,9 @@ import pytest
 
 import resolve_latest as rl
 
-NINE = {
+TOOLS = {
     "shellcheck", "shfmt", "actionlint", "git-cliff", "hadolint",
-    "opentofu", "nfpm", "trivy", "scorecard",
+    "opentofu", "nfpm", "trivy", "scorecard", "osv-scanner",
 }
 
 
@@ -17,9 +17,9 @@ def _fetch(mapping):
     return fetch
 
 
-def test_map_covers_exactly_the_nine_tools():
-    assert set(rl.TOOL_REPOS) == NINE
-    assert set(rl.TOOL_ARGS) == NINE
+def test_map_covers_exactly_the_expected_tools():
+    assert set(rl.TOOL_REPOS) == TOOLS
+    assert set(rl.TOOL_ARGS) == TOOLS
 
 
 def test_resolve_parses_tag_and_strips_v_prefix():
@@ -37,7 +37,7 @@ def test_resolve_all_covers_every_tool():
     fetch = _fetch({repo: f"https://github.com/{repo}/releases/tag/v9.9.9"
                     for repo in rl.TOOL_REPOS.values()})
     got = rl.resolve_all(fetch=fetch)
-    assert set(got) == NINE
+    assert set(got) == TOOLS
     assert all(v == "9.9.9" for v in got.values())
 
 
