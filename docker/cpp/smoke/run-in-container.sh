@@ -23,7 +23,7 @@ echo "CC=${CC:-<unset>} CXX=${CXX:-<unset>}"
 echo "--- analysis toolset (shared, compiler-agnostic) ---"
 # Every C++ image carries the same analysis tools (common/cpp-analysis.dockerfile);
 # confirm each is present on PATH and runnable regardless of compiler family.
-for tool in clang-format clang-tidy cppcheck gcovr osv-scanner; do
+for tool in clang-format clang-tidy cppcheck gcovr; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
     echo "SMOKE FAIL: analysis tool '${tool}' not found on PATH" >&2
     exit 1

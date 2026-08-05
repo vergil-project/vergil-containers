@@ -41,8 +41,8 @@ a prebuilt stable binary** on this channel (§3.5). The version axis lives in
   `CXX=clang++` with libstdc++ as the standard library.
 - **`common/cpp-analysis.dockerfile`** — the shared, compiler-agnostic analysis
   toolset every C++ image carries (`clang-format`, `clang-tidy`, the unversioned
-  `run-clang-tidy` LINT driver, `cppcheck`, `gcovr`, `osv-scanner` for AUDIT,
-  CMake, Conan 2). This is plan T1's "shared base layer", expressed as
+  `run-clang-tidy` LINT driver, `cppcheck`, `gcovr`, CMake, Conan 2). This is
+  plan T1's "shared base layer", expressed as
   an `@include` fragment because language images in this repo compose fragments
   rather than `FROM`-chaining a locally-built base image. The future GCC family
   (T2) includes the same fragment.
