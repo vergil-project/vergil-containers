@@ -1,4 +1,4 @@
-"""Leading-edge resolver for the 9 binary-download mechanism tools (#435).
+"""Leading-edge resolver for the binary-download mechanism tools (#435, #487).
 
 For each tool, resolve the newest release version from its GitHub repo via the
 `/releases/latest` **redirect** — `curl -fsSLI https://github.com/OWNER/REPO/
@@ -24,9 +24,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-# tool → GitHub release repo (OWNER/REPO). The 9 binary-download mechanism tools
-# kept as pins by #418/#422; this map is the single source of truth for the
-# bumper. Keyed by the pins.yml / catalog tool name.
+# tool → GitHub release repo (OWNER/REPO). The binary-download mechanism tools
+# kept as pins by #418/#422 (plus osv-scanner, the C++ AUDIT tool added under
+# #487); this map is the single source of truth for the bumper. Keyed by the
+# pins.yml / catalog tool name.
 TOOL_REPOS = {
     "shellcheck": "koalaman/shellcheck",
     "shfmt": "mvdan/sh",
@@ -37,12 +38,13 @@ TOOL_REPOS = {
     "nfpm": "goreleaser/nfpm",
     "trivy": "aquasecurity/trivy",
     "scorecard": "ossf/scorecard",
+    "osv-scanner": "google/osv-scanner",
 }
 
 # tool → the ARG name carrying its pinned version in a docker/common fragment.
 # Every one of these ARGs stores a bare `x.y.z` (no `v` prefix); the fragment's
-# download URL re-adds the `v`. So normalization for all 9 is "strip a leading
-# v" — see normalize_version.
+# download URL re-adds the `v`. So normalization for all of them is "strip a
+# leading v" — see normalize_version.
 TOOL_ARGS = {
     "shellcheck": "SHELLCHECK_VERSION",
     "shfmt": "SHFMT_VERSION",
@@ -53,6 +55,7 @@ TOOL_ARGS = {
     "nfpm": "NFPM_VERSION",
     "trivy": "TRIVY_VERSION",
     "scorecard": "SCORECARD_VERSION",
+    "osv-scanner": "OSV_SCANNER_VERSION",
 }
 
 _TAG_IN_LOCATION = re.compile(r"/releases/tag/(?P<tag>[^/\s]+)\s*$")
@@ -96,8 +99,8 @@ def parse_tag_from_location(location: str) -> str:
 
 
 def normalize_version(tag: str) -> str:
-    """Normalize a release tag to the ARG convention (bare `x.y.z`). All 9 tools
-    store a bare version, so this strips an optional leading `v` and asserts the
+    """Normalize a release tag to the ARG convention (bare `x.y.z`). Every tool
+    stores a bare version, so this strips an optional leading `v` and asserts the
     result is a three-component semver. Raises on anything else (fail loud)."""
     match = _SEMVER.match(tag)
     if not match:

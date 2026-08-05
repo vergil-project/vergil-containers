@@ -59,4 +59,22 @@ RUN echo "deb http://apt.llvm.org/trixie/ llvm-toolchain-trixie-${CLANG_VERSION}
 ENV CC=clang \
     CXX=clang++
 
+# gcov shim → llvm-cov: Clang emits GCC-incompatible coverage notes that only
+# `llvm-cov gcov` can read, but gcovr (and the compiler-agnostic coverage command)
+# invoke a bare `gcov`. Ship a `gcov` on PATH that dispatches to `llvm-cov gcov` so
+# coverage works in the Clang family without a compiler dimension in the tooling
+# registry (issue #487). /usr/local/bin precedes /usr/bin on PATH, and the Clang
+# image ships no native gcov, so this shim is the sole `gcov`. The GCC images keep
+# their native gcov (via update-alternatives) and are deliberately left untouched.
+RUN printf '#!/bin/sh\nexec llvm-cov gcov "$@"\n' > /usr/local/bin/gcov && \
+    chmod +x /usr/local/bin/gcov
+
+# Bake a default Conan profile so `conan install` works cold — without the caller
+# first running `conan profile detect` (issue #487). Detection runs here, after the
+# compiler and CC/CXX are in place, so the profile records Clang; it lands in the
+# fixed CONAN_HOME (common/cpp-analysis.dockerfile) so it is found at runtime under
+# any HOME. build_type is left at Conan's default (Release); the tooling INSTALL
+# command passes the correct `-s build_type` explicitly per invocation.
+RUN conan profile detect
+
 WORKDIR /workspace
