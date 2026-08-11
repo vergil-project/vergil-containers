@@ -549,3 +549,22 @@ CVE-2026-69152
 # npm routes through a SOCKS proxy, which these images never do. Present on all
 # images. Remove once npm bundles ip-address ≥ 10.3.1.
 CVE-2026-69192
+
+# =============================================================================
+# 2026-08-11 (issue #526) — go-git worktree symlink escape gating the CD publish
+# (nfpm bundles go-git; the CRITICAL/HIGH gate failed on every dev image). No
+# fixed carrier is installable: nfpm latest (2.47.0, the current pin) still
+# vendors go-git v5.19.1 — verified against nfpm's releases — and go-git 5.19.2
+# is not reachable via any nfpm bump today.
+# =============================================================================
+
+# go-git (bundled in /usr/local/bin/nfpm) — CVE-2026-71556, HIGH (CVSS 7.1):
+# worktree operations (checkout/status/add) resolve symlinks without confining
+# them to the worktree boundary, so cloning a maliciously crafted repository and
+# running worktree operations can read/write files outside the working dir.
+# Fixed in go-git 5.19.2. nfpm is a build-time packaging tool that assembles
+# .deb/.rpm from local project files; it does not clone untrusted repositories,
+# so the vulnerable clone-then-worktree path is not exercised in these images.
+# Present on all images (nfpm is in the common layer). Remove once nfpm vendors
+# go-git ≥ 5.19.2.
+CVE-2026-71556
