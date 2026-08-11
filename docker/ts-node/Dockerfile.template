@@ -1,0 +1,54 @@
+# Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
+# Canonical source: https://github.com/vergil-project/vergil-containers
+# dev-ts-node — TypeScript dev image, Node.js runtime family.
+#
+# The runtime is a prebuilt stable official Node binary from the NodeSource apt
+# channel (deb.nodesource.com) — never built from source (epic
+# vergil-project/.github#284 §3.5, "prebuilt stable toolchains only"). NODE_MAJOR
+# is the runtime-major matrix axis (see docker/build.sh and the version discovery
+# record in this directory's README.md): node-24 is the primary (T1); node-22 is
+# the second image (T2). The shared, runtime-agnostic TypeScript analysis toolset
+# is composed in via common/typescript-analysis.
+#
+# Unlike the C++ images, this image installs its own matrix-versioned Node rather
+# than composing common/node-markdownlint.dockerfile: here Node IS the runtime,
+# so it must be the pinned matrix major (24/22), not that fragment's fixed
+# markdownlint-only Node 22. This single Node install serves both the runtime and
+# the markdownlint-cli common check.
+ARG NODE_MAJOR=24
+FROM debian:trixie-slim
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# --- System packages ---------------------------------------------------------
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+      git curl jq openssh-client pkg-config xz-utils gnupg ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# @include common/path-defaults.dockerfile
+
+# --- Node.js runtime (prebuilt, NodeSource apt) ------------------------------
+# Install the matrix-major Node from NodeSource (prebuilt stable binary — never
+# built from source, spec §3.5). npm ships with Node. Then upgrade the
+# NodeSource-bundled npm to the latest release: older bundled npm vendors
+# node-tar / brace-expansion versions carrying HIGH/CRITICAL CVEs, and npm@latest
+# vendors the patched versions (issue #461). npm is build-time-only tooling.
+# markdownlint-cli is installed here (not via common/node-markdownlint) because
+# this image's own Node is the one it runs on.
+ARG NODE_MAJOR
+RUN curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    rm -rf /var/lib/apt/lists/*
+RUN npm install -g npm@latest && \
+    npm install -g markdownlint-cli && \
+    npm cache clean --force
+
+# @include common/github-cli.dockerfile
+# @include common/validation-tools.dockerfile
+# @include common/python-support.dockerfile
+# @include common/typescript-analysis.dockerfile
+# @include common/nfpm.dockerfile
+# @include common/pandoc.dockerfile
+
+WORKDIR /workspace
