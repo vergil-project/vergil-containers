@@ -96,6 +96,12 @@ jobs:
           - language: cpp-gcc
             version: "13"
             build-arg: GCC_VERSION
+          - language: ts-node
+            version: "24"
+            build-arg: NODE_MAJOR
+          - language: ts-node
+            version: "22"
+            build-arg: NODE_MAJOR
 
     env:
       IMAGE: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
