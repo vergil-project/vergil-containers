@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.23] - 2026-08-11
+
+### Bug fixes
+
+- pin container TypeScript to the stable 5.x line (#533)
+
+### Features
+
+- node-22 dev/prod images on shared TS base (#532)
+
 ## [2.1.22] - 2026-08-11
 
 ### Bug fixes
