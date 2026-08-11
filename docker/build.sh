@@ -79,6 +79,11 @@ build cpp-clang CLANG_VERSION 19
 build cpp-gcc GCC_VERSION 14
 build cpp-gcc GCC_VERSION 13
 
+# TypeScript (Node.js) family (prebuilt-only majors; see docker/ts-node/README.md).
+# NODE_MAJOR is the runtime-major matrix axis. node-24 is the primary (T1);
+# node-22 is added by T2.
+build ts-node NODE_MAJOR 24
+
 # Build-time smoke check: a trivial CMake + Conan 2 project compiles, links, and
 # runs under each C++ image (spec vergil-project/.github#207 T1/T2). The shared
 # smoke check also confirms the analysis toolset is present in each image.
@@ -86,6 +91,12 @@ build cpp-gcc GCC_VERSION 13
 "${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:19" "$runtime"
 "${script_dir}/cpp/smoke-test.sh" "dev-cpp-gcc:14" "$runtime"
 "${script_dir}/cpp/smoke-test.sh" "dev-cpp-gcc:13" "$runtime"
+
+# Build-time smoke check: a trivial package.json + tsconfig.json project installs
+# (npm ci), typechecks (tsc --noEmit), and runs one vitest test under each ts-node
+# image (epic vergil-project/.github#284 T1). The smoke check also confirms the
+# shared analysis toolset is present in the image.
+"${script_dir}/ts-node/smoke-test.sh" "dev-ts-node:24" "$runtime"
 
 "${script_dir}/generate.sh" base
 echo "Building dev-base:latest ..."

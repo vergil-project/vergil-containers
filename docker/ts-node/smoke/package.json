@@ -1,0 +1,16 @@
+{
+  "name": "ts-node-smoke",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Build-time smoke fixture for the ts-node dev images (epic .github#284 T1).",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0",
+    "@vitest/coverage-v8": "^3.2.0"
+  }
+}
