@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../v2.1.23/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../v2.1.21/">
+        <link rel="next" href="../v2.1.22/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>2.1.22 - Vergil Containers</title>
+        <title>2.1.23 - Vergil Containers</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#release-2122-2026-08-11" class="md-skip">
+        <a href="#release-2123-2026-08-11" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              2.1.22
+              2.1.23
             
           </span>
         </div>
@@ -644,34 +644,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../v2.1.23/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    2.1.23
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -691,7 +663,7 @@
   <span class="md-ellipsis">
     
   
-    2.1.22
+    2.1.23
   
 
     
@@ -709,7 +681,7 @@
   <span class="md-ellipsis">
     
   
-    2.1.22
+    2.1.23
   
 
     
@@ -745,10 +717,49 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.22/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.22
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2250,6 +2261,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2267,13 +2289,18 @@
 
 
 
-<h1 id="release-2122-2026-08-11">Release 2.1.22 (2026-08-11)<a class="headerlink" href="#release-2122-2026-08-11" title="Permanent link">&para;</a></h1>
+<h1 id="release-2123-2026-08-11">Release 2.1.23 (2026-08-11)<a class="headerlink" href="#release-2123-2026-08-11" title="Permanent link">&para;</a></h1>
 <h2 id="bug-fixes">Bug fixes<a class="headerlink" href="#bug-fixes" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>triage CVE-2026-71556 (go-git in nfpm) to unblock CD publish (#527)</strong>
-The Trivy CRITICAL,HIGH gate began failing on every dev image after the vulnerability DB picked up CVE-2026-71556 (HIGH, go-git v5.19.1, bundled in nfpm). No fixed carrier is installable — nfpm latest (2.47.0, the current pin) still vendors go-git v5.19.1 — so suppress the CVE with a justification per the established .trivyignore convention. The vulnerable clone-then-worktree path is not exercised: nfpm assembles packages from local files and does not clone untrusted repositories. Remove once nfpm vendors go-git &gt;= 5.19.2.</li>
+<li><strong>pin container TypeScript to the stable 5.x line (#533)</strong>
+T1 installed the shared-analysis <code>typescript</code> unpinned, which now resolves to the 7.0.2 native (Go) port line ("tsgo"). For v1 the epic standardizes on the stable TypeScript 5.x line; the native port is deferred to the follow-on brainstorm (#286). Constrain the global install to <code>typescript@5</code> so T4's strict tsconfig, its docs (T8), and end-to-end validation (T10) all target the same stable compiler.</li>
 </ul>
-<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.22/v2.1.22-ci-evidence.tar.gz">Download →</a></p>
+<p><code>@5</code> is a major-line constraint that floats within the 5.x major, so it stays a language-major choice under the float doctrine (epic #155), not an exact x.y.z reproducibility pin: extract_pins.py captures only three-component pins, so no docker/pins/pins.yml entry is required and the pins gate stays green. tsc now reports 5.9.3 in both ts-node:24 and ts-node:22; typescript-eslint@8.67.0 dedupes onto typescript@5.9.3 (no peer-range breakage); the T1 smoke test (npm ci + tsc --noEmit + vitest) passes on both images.</p>
+<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>node-22 dev/prod images on shared TS base (#532)</strong>
+Add the node-22 build line and its smoke invocation to docker/build.sh, mirroring the node-24 (T1) lines. Both majors reuse the same docker/ts-node/Dockerfile.template via the NODE_MAJOR build-arg and the shared common/typescript-analysis.dockerfile fragment, so no new Dockerfile is needed. T2 of epic vergil-project/.github#284.</li>
+</ul>
 
 
 
