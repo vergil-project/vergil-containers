@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../">
+        <link rel="prev" href="../v2.1.21/">
       
       
         <link rel="next" href="../v2.1.19/">
@@ -577,6 +577,8 @@
       
         
       
+        
+      
     
     
     
@@ -632,6 +634,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.21
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2184,6 +2214,7 @@
 osv-scanner was installed for the C++ AUDIT stage (#487), but that stage reverted to conan audit, leaving osv-scanner as unused cruft. Remove the prebuilt-binary install from common/cpp-analysis.dockerfile, the smoke presence probe, the auto-managed pins-registry entry (pins.yml, resolve_latest.py TOOL_REPOS/TOOL_ARGS, regenerated CATALOG.md), the pins tests that assert it, and the README toolset mentions.</li>
 </ul>
 <p>Historical CHANGELOG/release notes are left intact. conan audit (the current, correct auditor, living in the tooling not the image) is untouched. The image purge rides the next release.</p>
+<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.20/v2.1.20-ci-evidence.tar.gz">Download →</a></p>
 
 
 
