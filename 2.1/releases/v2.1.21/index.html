@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../">
+        <link rel="prev" href="../v2.1.22/">
       
       
         <link rel="next" href="../v2.1.20/">
@@ -579,6 +579,8 @@
       
         
       
+        
+      
     
     
     
@@ -634,6 +636,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.22/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.22
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2216,6 +2246,7 @@ Add the foundational TypeScript container support for epic vergil-project/.githu
 <p>New docker/ts-node image (prod-ts-node:24 / dev-ts-node:24) installs the pinned matrix Node major from the NodeSource prebuilt apt channel (never built from source): node-24 primary, discovered as v24.19.0 with npm 11.17.0 on debian:trixie-slim. node-22 (v22.23.2) is confirmed prebuilt and lands in T2 via the same NODE_MAJOR build-arg.</p>
 <p>The shared runtime-agnostic analysis toolset (typescript/tsc, eslint + typescript-eslint, prettier, vitest + @vitest/coverage-v8, license-checker) is the plan's Dockerfile.base 'shared base layer', expressed as common/typescript-analysis.dockerfile per this repo's @include-fragment idiom (mirroring common/cpp-analysis from epic #207). Tools float on the leading edge per the repo pinning doctrine (epic #155); no exact npm pins, so no docker/pins entry and the pins gate stays green.</p>
 <p>build.sh registers the node-24 build + a build-time smoke check (trivial package.json + tsconfig.json project: npm ci, tsc --noEmit, one vitest run) that also asserts the shared toolset is present. generate.sh registers ts-node. Ref vergil-project/.github#284.</p>
+<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.21/v2.1.21-ci-evidence.tar.gz">Download →</a></p>
 
 
 
