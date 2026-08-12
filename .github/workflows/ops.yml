@@ -28,6 +28,7 @@ jobs:
     with:
       image-prefix: dev
       no-cache: true
+      ref: develop
     permissions:
       packages: write
       contents: read
@@ -40,6 +41,7 @@ jobs:
     with:
       image-prefix: prod
       no-cache: true
+      ref: main
     permissions:
       packages: write
       contents: read

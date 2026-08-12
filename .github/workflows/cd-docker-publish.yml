@@ -12,6 +12,11 @@ on:
         type: boolean
         required: false
         default: false
+      ref:
+        description: "Git ref to build from (empty = the caller's triggering ref)"
+        type: string
+        required: false
+        default: ""
 
 permissions:
   packages: write
@@ -33,6 +38,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Generate Dockerfiles from templates
         run: docker/generate.sh
@@ -111,6 +118,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Generate Dockerfile from template
         run: docker/generate.sh ${{ matrix.language }}
@@ -251,6 +260,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Generate Dockerfile from template
         run: docker/generate.sh base
