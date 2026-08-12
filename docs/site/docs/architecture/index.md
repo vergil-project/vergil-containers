@@ -159,8 +159,11 @@ Image naming: `ghcr.io/vergil-project/{prefix}-{language}:{version}` where
 
 Pushes to `main` trigger the `cd-release.yml` reusable workflow, which
 generates a changelog (via git-cliff), creates a git tag and GitHub
-release, and opens a version-bump PR back to `develop`. The docker
-publish job runs after the release completes.
+release, and opens a version-bump PR back to `develop`. The release job
+also collects the CI-evidence bundle and runs an enforcing completeness
+gate: it hard-fails on incomplete or failed evidence, which blocks the
+downstream docker-publish job. The docker publish job runs after the
+release completes.
 
 ### Nightly rebuilds
 
