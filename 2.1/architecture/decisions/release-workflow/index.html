@@ -578,6 +578,8 @@
       
         
       
+        
+      
     
     
     
@@ -630,6 +632,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../releases/v2.1.25/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.25
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2544,7 +2574,11 @@ Trivy finds new vulnerabilities, the build fails and the team triages
 <p><code>cd.yml</code> is a thin shim that calls three reusable workflows:</p>
 <ul>
 <li><strong><code>cd-docs.yml</code></strong> — documentation deployment (all pushes)</li>
-<li><strong><code>cd-release.yml</code></strong> — changelog, tag, version-bump PR (main push only)</li>
+<li><strong><code>cd-release.yml</code></strong> — changelog, tag, version-bump PR, and CI-evidence
+  harvest (main push only). Beyond the changelog/tag/version-bump work, the
+  release job harvests the CI-evidence bundle and runs an <strong>enforcing</strong>
+  completeness gate: it fails the release if the per-version report payloads
+  are missing or incomplete.</li>
 <li><strong><code>cd-docker-publish.yml</code></strong> — image build, scan, and publish</li>
 </ul>
 <p>The docker-publish job depends on the release job:</p>
@@ -2552,7 +2586,10 @@ Trivy finds new vulnerabilities, the build fails and the team triages
 </code></pre></div>
 <p>This ensures docker-publish runs after a successful release (main) or
 when release is skipped (develop), but does <strong>not</strong> run if the release
-job fails. The <code>image-prefix</code> input is derived from the branch:</p>
+job fails. A failed CI-evidence completeness check is now one of the ways
+the release job fails — an incomplete or missing evidence bundle blocks
+docker-publish just as any other release failure does. The <code>image-prefix</code>
+input is derived from the branch:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">image-prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.ref == &#39;refs/heads/main&#39; &amp;&amp; &#39;prod&#39; || &#39;dev&#39; }}</span>
 </code></pre></div>
 <p><strong>Why a shim?</strong> Keeping the orchestration logic in one file makes the
