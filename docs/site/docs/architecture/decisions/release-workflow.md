@@ -51,7 +51,11 @@ Trivy finds new vulnerabilities, the build fails and the team triages
 `cd.yml` is a thin shim that calls three reusable workflows:
 
 - **`cd-docs.yml`** — documentation deployment (all pushes)
-- **`cd-release.yml`** — changelog, tag, version-bump PR (main push only)
+- **`cd-release.yml`** — changelog, tag, version-bump PR, and CI-evidence
+  harvest (main push only). Beyond the changelog/tag/version-bump work, the
+  release job harvests the CI-evidence bundle and runs an **enforcing**
+  completeness gate: it fails the release if the per-version report payloads
+  are missing or incomplete.
 - **`cd-docker-publish.yml`** — image build, scan, and publish
 
 The docker-publish job depends on the release job:
@@ -62,7 +66,10 @@ if: always() && (needs.release.result == 'success' || needs.release.result == 's
 
 This ensures docker-publish runs after a successful release (main) or
 when release is skipped (develop), but does **not** run if the release
-job fails. The `image-prefix` input is derived from the branch:
+job fails. A failed CI-evidence completeness check is now one of the ways
+the release job fails — an incomplete or missing evidence bundle blocks
+docker-publish just as any other release failure does. The `image-prefix`
+input is derived from the branch:
 
 ```yaml
 image-prefix: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
