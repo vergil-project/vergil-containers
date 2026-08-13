@@ -568,3 +568,23 @@ CVE-2026-69192
 # Present on all images (nfpm is in the common layer). Remove once nfpm vendors
 # go-git ≥ 5.19.2.
 CVE-2026-71556
+
+# =============================================================================
+# 2026-08-13 (issue #548) — golang.org/x/net DNS-parser panic gating the CD
+# publish (several bundled Go CLIs vendor x/net; the CRITICAL/HIGH gate failed
+# on every dev image since #544). No fixed carrier is installable: the affected
+# x/net is vendored inside third-party prebuilt Go binaries, so x/net ≥ 0.56.0
+# only arrives when each upstream tool re-vendors and releases (picked up by the
+# weekly bump-tools bump), not via any change we can make today.
+# =============================================================================
+
+# golang.org/x/net (vendored in several bundled Go CLIs, common layer) —
+# CVE-2026-46600, HIGH: parsing an invalid SVCB or HTTPS DNS resource record can
+# overflow the message buffer and panic (denial of service) in
+# golang.org/x/net/dns/dnsmessage. Fixed in x/net 0.56.0. The scan reports three
+# affected versions (v0.50.0, v0.54.0, v0.55.0), i.e. multiple prebuilt binaries
+# each carry their own copy. These are build-time lint/scan/CLI tools; none act
+# as a DNS resolver parsing attacker-controlled DNS responses, so the vulnerable
+# dnsmessage path is not exercised on untrusted input in these images. Present
+# on all images. Remove once the bundled tools vendor x/net ≥ 0.56.0.
+CVE-2026-46600
