@@ -2557,8 +2557,11 @@ changes.</p>
 <h3 id="release-workflow">Release workflow<a class="headerlink" href="#release-workflow" title="Permanent link">&para;</a></h3>
 <p>Pushes to <code>main</code> trigger the <code>cd-release.yml</code> reusable workflow, which
 generates a changelog (via git-cliff), creates a git tag and GitHub
-release, and opens a version-bump PR back to <code>develop</code>. The docker
-publish job runs after the release completes.</p>
+release, and opens a version-bump PR back to <code>develop</code>. The release job
+also collects the CI-evidence bundle and runs an enforcing completeness
+gate: it hard-fails on incomplete or failed evidence, which blocks the
+downstream docker-publish job. The docker publish job runs after the
+release completes.</p>
 <h3 id="nightly-rebuilds">Nightly rebuilds<a class="headerlink" href="#nightly-rebuilds" title="Permanent link">&para;</a></h3>
 <p>The <code>ops.yml</code> workflow runs daily at 06:15 UTC and rebuilds all <code>dev-</code>
 images. This ensures development images stay current with upstream
