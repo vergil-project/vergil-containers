@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.25] - 2026-08-13
+
+### Bug fixes
+
+- build nightly prod images from main, not develop (#544)
+- triage CVE-2026-46600 (x/net in bundled Go CLIs) to unblock CD publish (#549)
+
+### Documentation
+
+- add ts-node images to the Available Images catalog (#543)
+- capture OpenSSF Scorecard as dated snapshot doc (#546)
+- document the cd-release CI-evidence harvest and enforcing gate (#547)
+
 ## [2.1.24] - 2026-08-11
 
 ### Features
