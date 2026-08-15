@@ -1,679 +1,141 @@
 # Trivy ignore file for dev container images.
 #
-# These CVEs are either false positives for containers, unfixable
-# upstream issues, or awaiting base image rebuilds to pick up Debian
-# patches. Review periodically and remove entries when fixes land.
+# Every entry here is a *fixed* CVE that the publish gate would otherwise block
+# on but which is not exploitable in these images' actual usage. Entries are
+# grouped by carrier; each group documents the carrier, why the vulnerable path
+# is not exercised, and the condition under which the entry should be removed.
 #
-# Last audited: 2026-06-24 (issue #360).
+# NOT listed here, by design:
+#   - linux-libc-dev (kernel-header) findings — dropped categorically by
+#     .trivy/ignore-policy.rego (containers use the host kernel, not the baked-in
+#     headers). Do NOT re-add kernel CVEs here; the rego covers them permanently.
+#   - status=affected (no-fix) CVEs — ignore-unfixed (trivy.yaml) already keeps
+#     them from gating. Only fixed findings belong in this file.
+#
+# Last audited: 2026-08-15 (issue #561). Full rescan of all 19 published dev
+# images removed 137 stale entries; these 53 were retained as still-present.
+# When re-auditing, an entry is stale if it no longer appears in a fresh scan of
+# the current images (see the issue for the method).
 
-# Linux kernel CVEs — containers use the host kernel, not the kernel
-# headers/modules baked into the base image. False positives.
-
-CVE-2013-7445
-CVE-2019-19449
-CVE-2019-19814
-CVE-2021-3847
-CVE-2021-3864
-CVE-2024-21803
-CVE-2024-58015
-CVE-2024-58093
-CVE-2025-22104
-CVE-2025-38137
-CVE-2025-38187
-CVE-2025-38204
-CVE-2025-38206
-CVE-2025-38421
-CVE-2025-38636
-CVE-2025-39859
-CVE-2025-39862
-CVE-2025-39958
-CVE-2026-23102
-CVE-2026-23171
-CVE-2026-23208
-CVE-2026-23327
-CVE-2026-31493
-CVE-2026-31568
-CVE-2026-31663
-CVE-2026-31688
-CVE-2026-43198
-CVE-2026-43494
-CVE-2026-43503
-CVE-2026-45837
-CVE-2026-45991
-CVE-2026-46054
-CVE-2026-46090
-CVE-2026-46116
-CVE-2026-46117
-CVE-2026-46120
-CVE-2026-46125
-CVE-2026-46135
-CVE-2026-46145
-CVE-2026-46150
-CVE-2026-46152
-CVE-2026-46155
-CVE-2026-46166
-CVE-2026-46173
-CVE-2026-46176
-CVE-2026-46181
-CVE-2026-46189
-CVE-2026-46195
-CVE-2026-46209
-CVE-2026-46227
-CVE-2026-46244
-CVE-2026-46300
-CVE-2026-46333
-
-# Debian system cpython — present in non-Python images via Debian
-# packages. Fix available (3.13.5-2+deb13u1); will resolve on next
-# image rebuild.
-CVE-2025-13836
-
-# CVE-2026-6100 (python3.13) — use-after-free in decompression.
-# Fix available (3.13.5-2+deb13u2); will resolve on next image rebuild.
-CVE-2026-6100
-
-# CVE-2026-7210 (python3.13) — xml.parsers.expat vulnerability.
-# No Debian fix available (status=affected). Image does not parse
-# untrusted XML.
-CVE-2026-7210
-
-# GnuPG tpm2daemon — dev containers do not use TPM. Low practical risk.
-# No Debian fix available.
-CVE-2026-24882
-
-# Go stdlib CVEs in shfmt, actionlint, git-cliff, hadolint, scorecard,
-# and trivy binaries — none exercise the affected code paths (no DNS
-# resolution, no HTTP/2, no email parsing, no x509 cert handling). All
-# are static linters / changelog generators operating on local files
-# only. Awaiting upstream rebuilds with patched Go (1.25.10+ / 1.26.3+).
-
+# =============================================================================
+# Go stdlib in the prebuilt Go tool binaries (common layer: gh, actionlint,
+# nfpm, shfmt; plus scorecard, trivy, tofu on dev-base). Trivy scores Go stdlib
+# vulnerabilities by the toolchain version baked into each binary, with no
+# import-reachability analysis, so every stdlib CVE fixed in a Go release gates
+# all of these binaries until upstream re-releases them built with the patched
+# Go. They are static linters / known-host API clients operating on local files
+# and outbound HTTPS to GitHub/ghcr; the affected stdlib paths (crypto/x509
+# hostname check, encoding/asn1, encoding/xml, net/url, net/http h2c, crypto/tls,
+# html/template, os.Root, MIME header decode) are not exercised on untrusted
+# input. Remove each once the bundled tools ship binaries rebuilt with the Go
+# release that fixes it (weekly bump-tools).
+# =============================================================================
+CVE-2026-27145
 CVE-2026-32280
 CVE-2026-32281
 CVE-2026-32283
 CVE-2026-33810
 CVE-2026-33811
 CVE-2026-33814
+CVE-2026-33818
 CVE-2026-39820
-CVE-2026-39823
-CVE-2026-39825
-CVE-2026-39826
+CVE-2026-39822
 CVE-2026-39836
 CVE-2026-42499
-
-# CVE-2026-42504 (GO-2026-5038) — quadratic CPU use decoding
-# maliciously-crafted MIME headers (mime.WordDecoder.DecodeHeader).
-# Fixed in go1.25.11 / go1.26.4. Flags the prebuilt gh, actionlint,
-# shfmt, scorecard, and trivy binaries, which are compiled upstream
-# with older Go. None of them decode untrusted MIME headers — they
-# are local-file linters or API clients talking only to known hosts
-# (GitHub, ghcr). This gate failure blocks the image rebuild that
-# delivers the patched Go toolchain fleet-wide (issue #335). Remove
-# when upstream ships binaries rebuilt with go1.25.11+ / go1.26.4+.
 CVE-2026-42504
-
-# Scorecard 5.5.0 Go transitive dependencies — scorecard is a read-only
-# GitHub API auditor. It does not run Docker containers, does not use
-# go-git's file I/O for local repositories, and does not run BuildKit.
-# None of these code paths are exercised. Awaiting upstream scorecard
-# release with bumped dependencies.
-
-CVE-2026-33747
-CVE-2026-33748
-CVE-2026-34040
-CVE-2026-41567
-CVE-2026-42306
-CVE-2026-44973
-CVE-2026-45022
-CVE-2026-46680
-
-# npm transitive dependency from markdownlint-cli — picomatch ReDoS
-# via crafted extglob. Fix exists in picomatch 4.0.4 but
-# markdownlint-cli@0.48.0 transitively pins 4.0.3. picomatch is
-# exercised on .md files (lockfile-bounded user input), not on
-# attacker-controlled paths.
-CVE-2026-33671
-
-# libexpat1 (Debian trixie) — XML parsing vulnerabilities, including
-# large dynamic memory allocation DoS (CVE-2025-59375). No Debian
-# fix available (status=affected). Dev containers do not parse
-# untrusted XML.
-CVE-2025-59375
-CVE-2026-25210
-CVE-2026-45186
-
-# ncurses (Debian trixie) — buffer overflow in terminal handling.
-# No Debian fix available. Containers run non-interactively in CI;
-# ncurses code paths are not exercised.
-CVE-2025-69720
-
-# libnghttp2-14 (Debian trixie) — HTTP/2 vulnerability in curl.
-# Fix available (1.64.0-1.1+deb13u1); only present in Rust image
-# (older base). Will resolve on next image rebuild.
-CVE-2026-27135
-
-# openssh-client (Debian trixie) — three CVEs covering privilege
-# escalation, metacharacter injection, and authorized_keys bypass.
-# Fix available (1:10.0p1-7+deb13u3); only present in Rust image
-# (older base). Will resolve on next image rebuild. Image uses ssh
-# only for git remotes to known hosts (GitHub).
-CVE-2026-35385
-CVE-2026-35386
-CVE-2026-35414
-
-# Ruby default gems shipped with ruby:<ver>-slim base image — fix
-# requires bumping the bundled gem post-install. Not exercised on
-# attacker-controlled input by the image itself.
-
-# erb — arbitrary code execution via ERB#def_method.
-CVE-2026-41316
-
-# net-imap — STARTTLS stripping, command injection, and DoS.
-# Image does not use IMAP. Fix available upstream.
-CVE-2026-42245
-CVE-2026-42246
-CVE-2026-42257
-CVE-2026-42258
-
-# jq / libjq1 (Debian trixie) — DoS and potential code execution.
-# Fix available (1.7.1-6+deb13u2); only present in Rust image (older
-# base). Will resolve on next image rebuild. Used for JSON parsing in
-# CI workflows, not on untrusted input.
-CVE-2026-32316
-CVE-2026-40164
-
-# libcap2 (Debian trixie) — TOCTOU race in cap_set_file(). Fix
-# available (1:2.75-10+deb13u1); only present in Rust image (older
-# base). Containers run without CAP_SETFCAP by default.
-CVE-2026-4878
-
-# libgnutls30t64 (Debian trixie) — multiple TLS/DTLS vulnerabilities.
-# Fix available (3.8.9-3+deb13u4); only present in Rust image (older
-# base). Will resolve on next image rebuild. Curl uses GnuTLS for TLS
-# but only connects to known hosts (GitHub, PyPI, NodeSource).
-CVE-2026-3833
-CVE-2026-33845
-CVE-2026-33846
-CVE-2026-42009
-CVE-2026-42010
-
-# libgssapi-krb5-2 (Debian trixie) — MIT Kerberos DoS via integer
-# overflow. Fix available (1.21.3-5+deb13u1); will resolve on next
-# image rebuild. Dev containers do not run Kerberos services.
-CVE-2026-40356
-
-# libssh2-1t64 (Debian trixie) — security vulnerability in libssh2.
-# Used by git for SSH transport to known hosts (GitHub) only. No Debian
-# fix available (status=affected).
-CVE-2026-7598
-
-# curl / libcurl (Debian trixie) — SMB connection reuse and cookie
-# leak vulnerabilities. Images use curl only for HTTPS fetches from
-# known hosts; SMB and cookies are not used. No Debian fix available
-# (status=affected).
-CVE-2026-5773
-CVE-2026-6276
-
-# Perl (Debian trixie) — tar archive extraction, IO-Compress arbitrary
-# code execution via attacker-controlled output glob (CVE-2026-48962),
-# and related vulnerabilities. No Debian fix available (status=affected).
-# Dev containers do not extract untrusted tar archives or process
-# attacker-controlled Perl input.
-CVE-2026-42496
-CVE-2026-42497
-CVE-2026-8376
-CVE-2026-9538
-CVE-2026-48962
-
-# linux-libc-dev (Debian trixie) — kernel BPF tcx/netkit detach
-# permission check. No Debian fix available (status=affected).
-# Containers do not load or manage BPF programs.
-CVE-2026-45932
+CVE-2026-56853
+CVE-2026-56858
+CVE-2026-56859
+CVE-2026-56860
+CVE-2026-56862
 
 # =============================================================================
-# 2026-06-23 batch (issue #350) — 42 CVEs that newly broke the prod publish
-# gate for the 2.1.1 release. Grouped by class below. None is exploitable in
-# the images' actual runtime usage. Re-audit and remove the "fix available"
-# entries once the upstream language base images advance.
+# golang.org/x/net + x/idna vendored in the same prebuilt Go CLIs (common layer,
+# all images). DNS-message SVCB/HTTPS parsing panic, IDNA Punycode label
+# handling, and HTML/HTTP-parsing DoS. None of these tools acts as a DNS
+# resolver, IDNA-normalizes attacker-controlled hostnames, or parses untrusted
+# HTML. Remove once the bundled tools vendor the fixed x/net.
 # =============================================================================
+CVE-2026-39821
+CVE-2026-46600
 
-# --- linux-libc-dev kernel-header false positives ----------------------------
-# Same rationale as the kernel block at the top of this file: containers use
-# the host kernel, not the headers baked into the base image. Includes one
-# CRITICAL (CVE-2026-43185) — still a header-only false positive. Several have
-# a Debian fix and will drop off as the base advances; the rest are
-# status=affected with no fix. Present on the go / ruby / rust images.
-CVE-2025-22069
-CVE-2026-31536
-CVE-2026-43185
-CVE-2026-46162
-CVE-2026-46163
-CVE-2026-46180
-CVE-2026-46191
-CVE-2026-46203
-CVE-2026-46219
-CVE-2026-46234
-CVE-2026-46241
-CVE-2026-46243
-CVE-2026-46316
-CVE-2026-46319
-CVE-2026-46323
-CVE-2026-46330
-CVE-2026-46331
-
-# --- Go stdlib / module CVEs in prebuilt tool binaries -----------------------
-# Same rationale as the Go-stdlib and CVE-2026-42504 blocks above: these flag
-# the prebuilt gh, trivy, scorecard, actionlint, shfmt, and git-cliff binaries,
-# which are compiled upstream with older Go / module versions. They are static
-# linters and known-host API clients (GitHub, ghcr) — they do not run SSH
-# servers, parse untrusted HTML, decode untrusted MIME, or verify untrusted
-# x509 certs. Remove once upstream ships binaries rebuilt with the patched
-# toolchain and dependencies.
-#
-# stdlib — crypto/x509 (*Certificate).VerifyHostname (fix go1.25.11 / go1.26.4).
-CVE-2026-27145
-# golang.org/x/net — HTML/HTTP-parsing CPU-exhaustion DoS (fix 0.55.0).
-CVE-2026-25680
+# golang.org/x/net (go image only — go-install linters: golangci-lint, etc.).
+# HTML/HTTP-parsing CPU-exhaustion DoS subset still carried by tools that have
+# not yet re-vendored. Not run on attacker-controlled HTML. Remove once those
+# linters vendor the fixed x/net.
 CVE-2026-25681
 CVE-2026-27136
-CVE-2026-39821
-CVE-2026-42502
-CVE-2026-42506
-# golang.org/x/crypto — SSH server/client/knownhosts CVEs (fix 0.52.0). The
-# images use ssh only for git remotes to known hosts and run no SSH server.
-CVE-2026-39827
+
+# golang.org/x/text (prebuilt Go CLIs, all images). norm.Iter infinite-loop
+# DoS on crafted input; these tools do not normalize attacker-controlled text.
+# Remove once the bundled tools vendor x/text >= the fixed release.
+CVE-2026-56852
+
+# golang.org/x/image (go image only — go-install linters). TIFF-decoder
+# unbounded-allocation DoS; the license/lint tooling never decodes TIFF. Remove
+# once an upstream linter ships with the fixed x/image.
+CVE-2026-46602
+
+# =============================================================================
+# golang.org/x/crypto in the scorecard binary (dev-base only). ssh
+# server/client/knownhosts/agent CVEs. scorecard is a read-only GitHub API
+# auditor: it runs no SSH server and uses ssh only to known hosts. Remove once a
+# scorecard release rebuilt with the fixed x/crypto ships.
+# =============================================================================
 CVE-2026-39828
 CVE-2026-39829
 CVE-2026-39830
+CVE-2026-39831
+CVE-2026-39832
 CVE-2026-39835
 CVE-2026-42508
 CVE-2026-46595
 CVE-2026-46597
-# github.com/containerd/containerd — embedded in the trivy / scorecard
-# binaries. The images do not run containerd. CVE-2026-53492 has no fix yet.
+
+# =============================================================================
+# Other Go module CVEs embedded in the scorecard / trivy / tofu binaries
+# (dev-base only). These tools do not run containers or BuildKit, do not ingest
+# untrusted OCI/rekor content, and talk only to known registries/hosts, so the
+# vulnerable paths are not exercised. Remove each once the carrier binary is
+# rebuilt with the bumped dependency.
+# =============================================================================
+CVE-2026-46680
 CVE-2026-53488
-CVE-2026-53489
-CVE-2026-53492
-
-# github.com/cli/cli/v2 — gh CLI < 2.93.0 (fix 2.93.0). NOTE: this suppression
-# was removed in #326 on the premise that all rebuilds pull gh 2.93.0. It
-# recurs only on the stale-base images (ruby:3.2, rust:1.92, rust:1.93) whose
-# upstream *-slim base predates gh 2.93.0. Re-suppressed pending those bases
-# advancing; remove again once they do.
-CVE-2026-48501
-
-# --- Debian OS packages, no upstream fix -------------------------------------
-# status=affected, no Debian fix available. Not run on untrusted input.
-#
-# jq / libjq1 (Debian trixie) — DoS / potential code execution. Used for JSON
-# parsing in CI workflows, not on untrusted input. (Joins the existing jq
-# entries above.)
-CVE-2026-49839
-# libsqlite3-0 (Debian trixie) — memory corruption / heap overflow in SQLite
-# < 3.53.2. The images do not open untrusted SQLite databases.
-CVE-2026-11822
-CVE-2026-11824
-
-# --- Debian OS packages, fix available, clears on base refresh ---------------
-# Present only on the stale-base images (ruby:3.2, rust:1.92, rust:1.93) whose
-# upstream *-slim base ships an older Debian snapshot. Will resolve on the next
-# rebuild once those bases advance.
-#
-# libpython3.13-* (system cpython) — CVE-2026-3644 fix 3.13.5-2+deb13u2;
-# CVE-2026-4224 status=affected, no fix. Image does not run the affected paths
-# on untrusted input.
-CVE-2026-3644
-CVE-2026-4224
-# openssl / libssl3t64 (Debian trixie) — fix 3.5.6-1~deb13u2. TLS is used only
-# to connect to known hosts (GitHub, PyPI, NodeSource).
-CVE-2026-45447
-
-# =============================================================================
-# 2026-06-24 batch (issue #360) — 4 CVEs that newly broke the prod publish gate
-# for the 2.1.2 release (the release + docs jobs and the java images passed;
-# base/python/ruby/go/rust docker-publish failed). None is exploitable in the
-# images' actual runtime usage.
-# =============================================================================
-
-# go.opentelemetry.io/otel/sdk — CVE-2026-39883 (HIGH, fixed 1.43.0). An
-# OpenTelemetry SDK transitive dependency embedded in the prebuilt scorecard /
-# trivy binaries (base layer). The tools do not export OTel telemetry over an
-# attacker-controlled path; same rationale as the Go tool-binary block above.
-# Remove once upstream ships binaries rebuilt with the bumped dependency.
+CVE-2026-33747
+CVE-2026-33748
+CVE-2026-34040
+CVE-2026-44973
+CVE-2026-45022
 CVE-2026-39883
-
-# libssh2-1t64 (Debian trixie) — additional libssh2 vulnerability, all images.
-# No Debian fix (status=affected). Used by git for SSH transport to known hosts
-# (GitHub) only. Joins the existing libssh2 entry (CVE-2026-7598).
-CVE-2026-55200
-
-# linux-libc-dev (Debian trixie) — kernel-header false positives on the stale
-# base images (ruby:3.2, rust:1.92, rust:1.93). Containers use the host kernel,
-# not the baked-in headers. CVE-2026-52908 has a Debian fix (6.12.94-1) and
-# will drop off as the base advances; CVE-2026-52910 is status=affected, no fix.
-CVE-2026-52908
-CVE-2026-52910
-
-# =============================================================================
-# 2026-06-26 batch (issue #371) — 6 HIGH CVEs that broke the nightly ops
-# docker-publish gate. The base/ruby/rust/go images failed; java and python
-# passed. None is exploitable in the images' actual runtime usage. Grouped by
-# class below.
-# =============================================================================
-
-# --- linux-libc-dev kernel-header false positives ----------------------------
-# Same rationale as the kernel blocks above: containers use the host kernel,
-# not the headers baked into the base image. All status=affected with no Debian
-# fix. Present on the go / ruby / rust images.
-# CVE-2026-46130 — dm-verity-fec: reading parity bytes split across blocks.
-CVE-2026-46130
-# CVE-2026-53000 — netfilter nat: use kfree_rcu to release ops.
-CVE-2026-53000
-# CVE-2026-53009 — ice: double-free of tx_buf skb.
-CVE-2026-53009
-# CVE-2026-53091 — net: pull headers in qdisc_pkt_len_segs_init().
-CVE-2026-53091
-
-# --- Go module CVEs in prebuilt tool binaries (base image) -------------------
-# Same rationale as the Go tool-binary block above: these flag prebuilt tool
-# binaries compiled upstream with older module versions. Remove once upstream
-# ships binaries rebuilt with the bumped dependencies.
-#
-# golang.org/x/crypto — ssh/agent CVE (fix 0.52.0). Joins the existing x/crypto
-# block; the images run no SSH server and ssh only to known hosts (GitHub).
-CVE-2026-39832
-# github.com/sigstore/rekor — OOM via unbounded gzip (fix 1.5.2). Embedded in
-# the prebuilt scorecard / trivy binaries; the tools do not ingest untrusted
-# rekor entries.
-CVE-2026-48702
-
-# =============================================================================
-# 2026-06-27 batch (issue #376) — 5 HIGH CVEs that broke the v2.1.4 release
-# docker-publish gate (and the nightly ops run). All are linux-libc-dev
-# kernel-header false positives: containers use the host kernel, not the headers
-# baked into the base image. All status=affected with no Debian fix. Present on
-# the go / ruby / rust images; base, python, and java pass.
-# =============================================================================
-# CVE-2026-52991 — sched/psi: race between file release and reuse.
-CVE-2026-52991
-# CVE-2026-53090 — bpf: ld_{abs,ind} failure path analysis.
-CVE-2026-53090
-# CVE-2026-53092 — bpf: linked reg delta tracking when src_reg == dst_reg.
-CVE-2026-53092
-# CVE-2026-53246 — sctp: validate cached peer INIT chunk length.
-CVE-2026-53246
-# CVE-2026-53277 — KVM arm64: take the SRCU lock for page-table walks.
-CVE-2026-53277
-
-# =============================================================================
-# 2026-07-16 batch (issue #438) — 4 HIGH CVEs that broke the v2.1.10 release
-# docker-publish gate (prod base/go/ruby and the dev images failed). All are
-# fixed upstream but the fix is not reachable in any installable tool release
-# yet — verified against each carrier's latest release. The one gate CVE that
-# DID have a reachable fix, CVE-2026-54448 (trivy 0.71.0+), is handled by the
-# companion trivy 0.70.0 → 0.72.0 bump (#438), not suppressed here. None of the
-# four below is exercised in the images' actual runtime usage.
-# =============================================================================
-
-# --- Go stdlib os.Root symlink-following (fix go1.25.12 / go1.26.5) -----------
-# CVE-2026-39822 flags every prebuilt Go tool binary in the base layer (gh,
-# actionlint, nfpm, shfmt, scorecard, tofu, trivy), each compiled upstream with
-# Go 1.25.9–1.26.4. No upstream release is yet rebuilt with the patched Go
-# (trivy 0.72.0, the newest of the set, is on go1.26.3). Same class as the Go
-# stdlib blocks above; these are static linters / known-host API clients
-# operating on local files — the os.Root symlink path is not exercised on
-# attacker-controlled trees. Remove once upstream ships binaries rebuilt with
-# go1.25.12+ / go1.26.5+.
-CVE-2026-39822
-
-# --- golang.org/x/crypto/ssh (fix 0.52.0) — scorecard only -------------------
-# CVE-2026-39831 flagged both trivy (x/crypto 0.50.0) and scorecard (0.48.0).
-# The trivy 0.72.0 bump (#438) ships x/crypto 0.53.0 and clears trivy's hit;
-# scorecard has no release past 5.5.0, so its copy remains. scorecard is a
-# read-only GitHub API auditor — it runs no SSH server and uses ssh only to
-# known hosts. Joins the existing x/crypto block. Remove once a scorecard
-# release rebuilt with x/crypto ≥0.52.0 ships.
-CVE-2026-39831
-
-# --- oras.land/oras-go/v2 credential forwarding (fix 2.6.1) — trivy + tofu ----
-# CVE-2026-50151 is embedded via oras-go in both the trivy binary and the tofu
-# (OpenTofu) binary (both use oras-go as their OCI registry client). oras-go
-# 2.6.1 shipped 2026-06-08, but trivy 0.72.0 (2026-06-30, the version we bump
-# to) still pins oras-go 2.6.0, and tofu likewise ships 2.6.0; neither bump
-# clears it. The baked trivy pulls only from known registries, and tofu is run
-# only for `tofu fmt -check` / `tofu validate` (no OCI registry pulls) — the
-# unvalidated-redirect path is not exercised. Remove once trivy and tofu
-# releases bundle oras-go ≥2.6.1.
 CVE-2026-50151
-# CVE-2026-50163 (oras-go information disclosure / arbitrary file write, fix
-# 2.6.2) — same two base-only carriers (the trivy and tofu binaries). OpenTofu
-# 1.12.5 ships oras-go 2.6.2, but the latest trivy (0.73.0) still ships only
-# 2.6.1, so no trivy release clears it yet. Same non-exploitability rationale as
-# above (OCI client to known registries only; tofu runs fmt/validate, no OCI
-# pulls). Both are auto-managed pins bumped weekly; remove once a trivy release
-# bundles oras-go ≥2.6.2. (v2.1.17 gate; issue #492.)
 CVE-2026-50163
-
-# --- sigstore (npm, bundled with node's npm) — unauthorized certs (fix 4.1.1)-
-# CVE-2026-48815 flags the sigstore package (3.1.0) bundled inside the npm that
-# ships with Node.js 22 (NodeSource apt, floating). sigstore is used by npm
-# only for package provenance / `npm audit signatures`; the images never verify
-# sigstore-signed artifacts at runtime. Clears automatically once NodeSource
-# node 22 ships an npm bundling sigstore ≥4.1.1.
-CVE-2026-48815
-
-# --- mcp (Python SDK) MCP-server transport CVEs — semgrep, base only ---------
-# CVE-2026-52869 / -52870 / -59950 flag the `mcp` package (1.23.3) inside the
-# semgrep tool venv on dev-base. semgrep 1.170.0 (latest) hard-pins
-# `mcp==1.23.3`, so there is no upgrade we can apply without breaking semgrep —
-# the fix (mcp 1.27.2 / 1.28.1) is upstream semgrep's to ship. All three CVEs
-# require running the Semgrep MCP *server* (`semgrep mcp` — HTTP/WebSocket
-# transport auth, task-handler access control): the images invoke semgrep only
-# as a CLI SAST scanner and never start the MCP server, so the vulnerable
-# transports are not exercised. Remove once semgrep bumps its mcp pin to
-# ≥1.28.1. (These surfaced in the DB after the v2.1.10 release scan.)
-CVE-2026-52869
-CVE-2026-52870
-CVE-2026-59950
-
-# =============================================================================
-# 2026-07-29 batch (issue #461) — residual fixed HIGH/CRITICAL gating the
-# v2.1.12 publish. The companion fix in this PR upgrades the NodeSource-bundled
-# npm to the latest, which clears the node-tar CVEs (CVE-2026-59873 CRITICAL /
-# CVE-2026-59874) and brace-expansion CVE-2026-13149 at source. The entries
-# below are the remainder: fixed upstream but not reachable in any installable
-# release the images can pull today, and none exercised in the images' actual
-# runtime usage. (x/text and grpc newly entered the Trivy DB the day after the
-# v2.1.12 release scan, so they were not in that run.)
-# =============================================================================
-
-# brace-expansion (npm-bundled) — DoS via crafted brace expansion. The npm
-# upgrade in this PR vendors brace-expansion 5.0.7, which clears CVE-2026-13149
-# but not this one (fixed only in 5.0.8; the latest npm still bundles 5.0.7).
-# Exercised only on lockfile / CLI-bounded glob patterns, never on
-# attacker-controlled input. Present on all images. Remove once npm bundles
-# brace-expansion ≥ 5.0.8.
-CVE-2026-14257
-
-# golang.org/x/text — norm.Iter infinite-loop DoS on crafted input, fixed in
-# 0.39.0. A transitive dependency embedded in the prebuilt Go tool binaries
-# (gh, actionlint, shfmt, nfpm; plus scorecard, trivy, and tofu on dev-base),
-# each compiled upstream against x/text 0.28.0–0.38.0. These are static linters
-# and known-host API clients — they do not normalize attacker-controlled text.
-# No carrier has shipped a binary rebuilt with x/text 0.39.0 yet. Present on all
-# images. Remove once upstream rebuilds land.
-CVE-2026-56852
-
-# google.golang.org/grpc — DoS, fixed in 1.82.1. A transitive dependency
-# embedded in the prebuilt Go tool binaries (same carrier set as x/text above),
-# compiled against grpc 1.79–1.81. The baked tools use gRPC only as clients to
-# known hosts (GitHub, ghcr); they expose no gRPC service to untrusted peers.
-# No carrier release rebuilt with grpc 1.82.1 exists yet. Present on all images.
-# Remove once upstream rebuilds land.
 GHSA-hrxh-6v49-42gf
 
-# golang.org/x/image — TIFF decoder unbounded-allocation DoS (CVE-2026-46602)
-# and the related CVE-2026-46604, both fixed in 0.43.0. A transitive dependency
-# of the go-image linters installed via `go install ...@latest` (golangci-lint,
-# go-licenses, goimports, gocyclo, govulncheck); the latest releases still pull
-# x/image 0.38.0. The vulnerable TIFF decode path is never exercised by
-# license / lint tooling. Present on the go image only. Remove once an upstream
-# tool ships with x/image ≥ 0.43.0.
-CVE-2026-46602
-CVE-2026-46604
-
-# =============================================================================
-# 2026-08-04 batch (issue #474) — HIGH CVEs gating the v2.1.14 publish (all 13
-# prod images and the dev images failed). The two npm-bundled entries below are
-# fixed upstream but not reachable in any installable carrier the images can
-# pull today — verified against each carrier's latest release — and neither is
-# exercised in the images' runtime usage.
-#
-# The setuptools (CVE-2025-47273) and msgpack (GHSA-6v7p-g79w-8964) gate CVEs
-# from this same wave are deliberately NOT suppressed: both came from pip's
-# vendored CycloneDX SBOM (pip/_vendor/bom.cdx.json), and are cleared at the
-# source by removing that SBOM in the base + python templates (issue #481).
-# =============================================================================
-
-# brace-expansion (npm-bundled) — ReDoS via crafted brace expansion, fixed in
-# 5.0.9. Pinned inside npm's own bundled dependency tree (minimatch/glob):
-# verified that npm@latest (12.0.2) still bundles 5.0.7, so `npm install -g
-# npm@latest` cannot reach the fix. Exercised only on lockfile / CLI-bounded
-# glob patterns, never on attacker-controlled input. Present on all images.
-# Joins the existing brace-expansion entries (CVE-2026-14257). Remove once npm
-# bundles brace-expansion ≥ 5.0.9.
-CVE-2026-69152
-
-# ip-address (npm-bundled) — parsing vulnerability, fixed in 10.3.1. Pulled by
-# `socks` inside npm's bundled tree; npm@latest (12.0.2) still bundles 10.2.0,
-# so no npm bump reaches it. The socks/ip-address path is exercised only when
-# npm routes through a SOCKS proxy, which these images never do. Present on all
-# images. Remove once npm bundles ip-address ≥ 10.3.1.
-CVE-2026-69192
-
-# =============================================================================
-# 2026-08-11 (issue #526) — go-git worktree symlink escape gating the CD publish
-# (nfpm bundles go-git; the CRITICAL/HIGH gate failed on every dev image). No
-# fixed carrier is installable: nfpm latest (2.47.0, the current pin) still
-# vendors go-git v5.19.1 — verified against nfpm's releases — and go-git 5.19.2
-# is not reachable via any nfpm bump today.
-# =============================================================================
-
-# go-git (bundled in /usr/local/bin/nfpm) — CVE-2026-71556, HIGH (CVSS 7.1):
-# worktree operations (checkout/status/add) resolve symlinks without confining
-# them to the worktree boundary, so cloning a maliciously crafted repository and
-# running worktree operations can read/write files outside the working dir.
-# Fixed in go-git 5.19.2. nfpm is a build-time packaging tool that assembles
-# .deb/.rpm from local project files; it does not clone untrusted repositories,
-# so the vulnerable clone-then-worktree path is not exercised in these images.
-# Present on all images (nfpm is in the common layer). Remove once nfpm vendors
-# go-git ≥ 5.19.2.
+# go-git vendored in /usr/local/bin/nfpm (common layer, all images).
+# CVE-2026-71556: worktree symlink escape. nfpm is a build-time packaging tool
+# that assembles .deb/.rpm from local project files; it does not clone untrusted
+# repositories. Remove once nfpm vendors the fixed go-git.
 CVE-2026-71556
 
 # =============================================================================
-# 2026-08-13 (issue #548) — golang.org/x/net DNS-parser panic gating the CD
-# publish (several bundled Go CLIs vendor x/net; the CRITICAL/HIGH gate failed
-# on every dev image since #544). No fixed carrier is installable: the affected
-# x/net is vendored inside third-party prebuilt Go binaries, so x/net ≥ 0.56.0
-# only arrives when each upstream tool re-vendors and releases (picked up by the
-# weekly bump-tools bump), not via any change we can make today.
+# npm bundled inside Node.js 22 (NodeSource apt, all images). Vulnerable
+# dependencies inside npm's own bundled tree; exercised only on lockfile / CLI-
+# bounded glob patterns (brace-expansion) or when routing through a SOCKS proxy
+# (ip-address), neither on attacker-controlled input. Remove once npm bundles the
+# fixed versions.
 # =============================================================================
-
-# golang.org/x/net (vendored in several bundled Go CLIs, common layer) —
-# CVE-2026-46600, HIGH: parsing an invalid SVCB or HTTPS DNS resource record can
-# overflow the message buffer and panic (denial of service) in
-# golang.org/x/net/dns/dnsmessage. Fixed in x/net 0.56.0. The scan reports three
-# affected versions (v0.50.0, v0.54.0, v0.55.0), i.e. multiple prebuilt binaries
-# each carry their own copy. These are build-time lint/scan/CLI tools; none act
-# as a DNS resolver parsing attacker-controlled DNS responses, so the vulnerable
-# dnsmessage path is not exercised on untrusted input in these images. Present
-# on all images. Remove once the bundled tools vendor x/net ≥ 0.56.0.
-CVE-2026-46600
+CVE-2026-14257
+CVE-2026-69152
+CVE-2026-69192
 
 # =============================================================================
-# 2026-08-15 (issue #555) — Go encoding/asn1 DoS gating the nightly Ops publish.
-# Bundled Go CLIs carry the affected stdlib; the CRITICAL/HIGH gate failed on
-# the slowest-building images (rust ~45 min and dev-go:1.26) because the CVE
-# entered Trivy's vuln DB mid-run — prod-python:3.12 scanned the identical
-# binaries earlier and passed with 0 findings. No fixed carrier is installable:
-# the affected stdlib is baked into third-party prebuilt Go binaries, so
-# go1.25.13+/1.26.6+ only arrives when each upstream tool rebuilds and releases
-# (picked up by the weekly bump-tools bump), not via any change we can make
-# today.
+# Ruby default gems shipped with the ruby:<ver>-slim base image. erb code
+# execution via ERB#def_method; net-imap STARTTLS stripping / injection / DoS.
+# The images do not run ERB on untrusted templates or use IMAP. Remove once the
+# base bundles the fixed gems.
 # =============================================================================
-
-# golang stdlib encoding/asn1 (baked into several bundled Go CLIs, common layer)
-# — CVE-2026-33818, HIGH: parsing a maliciously crafted ASN.1/DER structure can
-# cause excessive resource consumption (denial of service) in encoding/asn1.
-# Fixed in go1.25.13 / go1.26.6 / go1.27.0-rc.3. The scan flags the prebuilt gh,
-# actionlint, nfpm, and shfmt binaries, each compiled upstream with Go
-# 1.26.1–1.26.5. These are static linters and known-host API clients (GitHub,
-# ghcr) operating on local files; none decodes attacker-controlled ASN.1/DER, so
-# the vulnerable encoding/asn1 path is not exercised on untrusted input. Present
-# on all images. Remove once the bundled tools ship binaries rebuilt with
-# go1.25.13+ / go1.26.6+.
-CVE-2026-33818
-
-# =============================================================================
-# 2026-08-15 (issue #557) — Go net/http DoS gating the CD publish, sibling of
-# CVE-2026-33818 (#555) from the same Go security release. It entered Trivy's
-# vuln DB after the nightly Ops run #555 diagnosed but before the post-merge CD
-# run, so #555 could not have caught it — the same-release CVEs propagated into
-# the DB in stages. Same carriers, same no-installable-fix rationale; remove
-# together with CVE-2026-33818.
-# =============================================================================
-
-# golang stdlib net/http (baked into several bundled Go CLIs, common layer) —
-# CVE-2026-56853, HIGH: net/http servers could be tricked into handling an
-# unencrypted HTTP/2 (h2c) connection as if it were secure. Fixed in go1.25.13 /
-# go1.26.6 / go1.27.0-rc.3. The scan flags the prebuilt gh, actionlint, nfpm,
-# and shfmt binaries (plus scorecard, trivy, and tofu on dev-base), each
-# compiled upstream with Go 1.26.1–1.26.5. These carriers make outbound HTTPS
-# calls to known hosts (GitHub, ghcr) only; none serves h2c or accepts untrusted
-# HTTP/2 connections, so the vulnerable server-side path is not exercised.
-# Present on all images. Remove once the bundled tools ship binaries rebuilt with
-# go1.25.13+ / go1.26.6+.
-CVE-2026-56853
-
-# =============================================================================
-# 2026-08-15 (issue #559) — remaining Go 1.26.6 / 1.25.13 stdlib CVEs (release
-# published 2026-08-13, 10 CVEs total). This closes out the batch that #555
-# (encoding/asn1) and #557 (net/http) suppressed one at a time as the release
-# propagated into Trivy's vuln DB in waves.
-#
-# Why a batch: Trivy flags Go *stdlib* vulnerabilities by the toolchain version
-# baked into each binary, with no import-reachability analysis. Every prebuilt Go
-# CLI in the common layer (gh, actionlint, nfpm, shfmt; plus scorecard, trivy,
-# tofu on dev-base) was compiled with Go 1.26.1–1.26.5, so each stdlib CVE fixed
-# in 1.26.6 is *guaranteed* to gate every one of those binaries the moment it
-# enters the DB — regardless of which packages the tool imports. Pre-empting the
-# rest of the release's stdlib CVEs is therefore evidence-based, not speculative.
-#
-# The two x/mod members of this release (CVE-2026-56864 sumdb, CVE-2026-56865
-# sumdb/tlog) are deliberately NOT suppressed: those are detected by the vendored
-# x/mod version per binary, not by toolchain version, and no carrier in these
-# images reports a vulnerable x/mod (verified against the failing CD scans). Add
-# them here only if a future publish actually gates on them.
-#
-# Source: https://www.openwall.com/lists/oss-security/2026/08/13/13
-# No installable fixed carrier exists yet — go1.25.13+/1.26.6+ only arrives when
-# each upstream tool rebuilds and releases (weekly bump-tools). Remove this block
-# together with the #555 and #557 entries once that lands.
-# =============================================================================
-
-# golang stdlib html/template — CVE-2026-56858, HIGH: incorrect JavaScript
-# regexp context tracking lets an early unescaped forward slash close a context,
-# enabling XSS in rendered templates. These carriers do not render html/template
-# output to browsers, so the vulnerable path is not exercised.
-CVE-2026-56858
-# golang stdlib encoding/xml — CVE-2026-56859, HIGH: missing recursion-depth
-# guard on decode allows stack exhaustion (DoS) via deeply nested XML. These
-# carriers do not decode untrusted XML.
-CVE-2026-56859
-# golang stdlib net/url — CVE-2026-56860, HIGH: quadratic complexity in
-# resolvePath (parent-directory resolution) enables CPU-exhaustion DoS on crafted
-# input. These carriers do not resolve attacker-controlled URLs.
-CVE-2026-56860
-# golang stdlib crypto/tls — CVE-2026-56862, HIGH: unbounded post-handshake
-# messages (e.g. KeyUpdate) allow a DoS. These carriers open outbound TLS to
-# known hosts only and terminate no untrusted TLS as a server.
-CVE-2026-56862
+CVE-2026-41316
+CVE-2026-42245
+CVE-2026-42246
+CVE-2026-42257
+CVE-2026-42258
