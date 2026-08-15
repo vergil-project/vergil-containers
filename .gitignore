@@ -1,24 +1,68 @@
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
+# Editor / OS
 *.swp
 *.swo
+*~
+*.bak
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Environment
 .env
 .env.*
 *.log
-trivy-out.json
 
-# Generated Dockerfiles — source of truth is Dockerfile.template
-docker/*/Dockerfile
-
-# Python caches from docker/pins/ scripts + tests
+# Python
+.venv/
+build/
+dist/
+*.egg-info/
 __pycache__/
 *.pyc
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+junit.xml
+pip-audit.json
+licenses.json
+quality-ruff.json
+quality-mypy.xml
+
+# Docs site build
+docs/site/site/
+
+# Node / JS
+node_modules/
+*.tsbuildinfo
+
+# Go
+*.test
+*.out
+
+# Ruby
+.bundle/
+vendor/bundle/
+
+# Compiled objects
+*.o
+*.obj
+*.a
+*.so
 
 # Parallel AI agent worktrees (see CLAUDE.md)
 .worktrees/
 
 # vergil-tooling per-worktree session artifacts (pr-workflow.json, logs)
 .vergil/
+.superpowers/
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
+
+# Repo-specific: Trivy scan output
+trivy-out.json
+
+# Generated Dockerfiles — source of truth is Dockerfile.template
+docker/*/Dockerfile
