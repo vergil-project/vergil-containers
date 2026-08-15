@@ -588,3 +588,27 @@ CVE-2026-71556
 # dnsmessage path is not exercised on untrusted input in these images. Present
 # on all images. Remove once the bundled tools vendor x/net ≥ 0.56.0.
 CVE-2026-46600
+
+# =============================================================================
+# 2026-08-15 (issue #555) — Go encoding/asn1 DoS gating the nightly Ops publish.
+# Bundled Go CLIs carry the affected stdlib; the CRITICAL/HIGH gate failed on
+# the slowest-building images (rust ~45 min and dev-go:1.26) because the CVE
+# entered Trivy's vuln DB mid-run — prod-python:3.12 scanned the identical
+# binaries earlier and passed with 0 findings. No fixed carrier is installable:
+# the affected stdlib is baked into third-party prebuilt Go binaries, so
+# go1.25.13+/1.26.6+ only arrives when each upstream tool rebuilds and releases
+# (picked up by the weekly bump-tools bump), not via any change we can make
+# today.
+# =============================================================================
+
+# golang stdlib encoding/asn1 (baked into several bundled Go CLIs, common layer)
+# — CVE-2026-33818, HIGH: parsing a maliciously crafted ASN.1/DER structure can
+# cause excessive resource consumption (denial of service) in encoding/asn1.
+# Fixed in go1.25.13 / go1.26.6 / go1.27.0-rc.3. The scan flags the prebuilt gh,
+# actionlint, nfpm, and shfmt binaries, each compiled upstream with Go
+# 1.26.1–1.26.5. These are static linters and known-host API clients (GitHub,
+# ghcr) operating on local files; none decodes attacker-controlled ASN.1/DER, so
+# the vulnerable encoding/asn1 path is not exercised on untrusted input. Present
+# on all images. Remove once the bundled tools ship binaries rebuilt with
+# go1.25.13+ / go1.26.6+.
+CVE-2026-33818
