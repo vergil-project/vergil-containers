@@ -612,3 +612,24 @@ CVE-2026-46600
 # on all images. Remove once the bundled tools ship binaries rebuilt with
 # go1.25.13+ / go1.26.6+.
 CVE-2026-33818
+
+# =============================================================================
+# 2026-08-15 (issue #557) — Go net/http DoS gating the CD publish, sibling of
+# CVE-2026-33818 (#555) from the same Go security release. It entered Trivy's
+# vuln DB after the nightly Ops run #555 diagnosed but before the post-merge CD
+# run, so #555 could not have caught it — the same-release CVEs propagated into
+# the DB in stages. Same carriers, same no-installable-fix rationale; remove
+# together with CVE-2026-33818.
+# =============================================================================
+
+# golang stdlib net/http (baked into several bundled Go CLIs, common layer) —
+# CVE-2026-56853, HIGH: net/http servers could be tricked into handling an
+# unencrypted HTTP/2 (h2c) connection as if it were secure. Fixed in go1.25.13 /
+# go1.26.6 / go1.27.0-rc.3. The scan flags the prebuilt gh, actionlint, nfpm,
+# and shfmt binaries (plus scorecard, trivy, and tofu on dev-base), each
+# compiled upstream with Go 1.26.1–1.26.5. These carriers make outbound HTTPS
+# calls to known hosts (GitHub, ghcr) only; none serves h2c or accepts untrusted
+# HTTP/2 connections, so the vulnerable server-side path is not exercised.
+# Present on all images. Remove once the bundled tools ship binaries rebuilt with
+# go1.25.13+ / go1.26.6+.
+CVE-2026-56853
