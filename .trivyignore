@@ -633,3 +633,47 @@ CVE-2026-33818
 # Present on all images. Remove once the bundled tools ship binaries rebuilt with
 # go1.25.13+ / go1.26.6+.
 CVE-2026-56853
+
+# =============================================================================
+# 2026-08-15 (issue #559) — remaining Go 1.26.6 / 1.25.13 stdlib CVEs (release
+# published 2026-08-13, 10 CVEs total). This closes out the batch that #555
+# (encoding/asn1) and #557 (net/http) suppressed one at a time as the release
+# propagated into Trivy's vuln DB in waves.
+#
+# Why a batch: Trivy flags Go *stdlib* vulnerabilities by the toolchain version
+# baked into each binary, with no import-reachability analysis. Every prebuilt Go
+# CLI in the common layer (gh, actionlint, nfpm, shfmt; plus scorecard, trivy,
+# tofu on dev-base) was compiled with Go 1.26.1–1.26.5, so each stdlib CVE fixed
+# in 1.26.6 is *guaranteed* to gate every one of those binaries the moment it
+# enters the DB — regardless of which packages the tool imports. Pre-empting the
+# rest of the release's stdlib CVEs is therefore evidence-based, not speculative.
+#
+# The two x/mod members of this release (CVE-2026-56864 sumdb, CVE-2026-56865
+# sumdb/tlog) are deliberately NOT suppressed: those are detected by the vendored
+# x/mod version per binary, not by toolchain version, and no carrier in these
+# images reports a vulnerable x/mod (verified against the failing CD scans). Add
+# them here only if a future publish actually gates on them.
+#
+# Source: https://www.openwall.com/lists/oss-security/2026/08/13/13
+# No installable fixed carrier exists yet — go1.25.13+/1.26.6+ only arrives when
+# each upstream tool rebuilds and releases (weekly bump-tools). Remove this block
+# together with the #555 and #557 entries once that lands.
+# =============================================================================
+
+# golang stdlib html/template — CVE-2026-56858, HIGH: incorrect JavaScript
+# regexp context tracking lets an early unescaped forward slash close a context,
+# enabling XSS in rendered templates. These carriers do not render html/template
+# output to browsers, so the vulnerable path is not exercised.
+CVE-2026-56858
+# golang stdlib encoding/xml — CVE-2026-56859, HIGH: missing recursion-depth
+# guard on decode allows stack exhaustion (DoS) via deeply nested XML. These
+# carriers do not decode untrusted XML.
+CVE-2026-56859
+# golang stdlib net/url — CVE-2026-56860, HIGH: quadratic complexity in
+# resolvePath (parent-directory resolution) enables CPU-exhaustion DoS on crafted
+# input. These carriers do not resolve attacker-controlled URLs.
+CVE-2026-56860
+# golang stdlib crypto/tls — CVE-2026-56862, HIGH: unbounded post-handshake
+# messages (e.g. KeyUpdate) allow a DoS. These carriers open outbound TLS to
+# known hosts only and terminate no untrusted TLS as a server.
+CVE-2026-56862
