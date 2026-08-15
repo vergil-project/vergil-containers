@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.26] - 2026-08-15
+
+### Chores
+
+- reconcile .gitignore to baseline + restagger ops.yml cron (#553) (#554)
+- suppress CVE-2026-33818 (encoding/asn1 DoS in bundled Go CLIs) (#555) (#556)
+- suppress CVE-2026-56853 (net/http unencrypted HTTP/2 in bundled Go CLIs) (#557) (#558)
+- suppress remaining Go 1.26.6/1.25.13 stdlib CVEs (release batch) (#559) (#560)
+- audit .trivyignore — remove 137 stale entries, keep 53 (#561) (#562)
+
 ## [2.1.25] - 2026-08-13
 
 ### Bug fixes
