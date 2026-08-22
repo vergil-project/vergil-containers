@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "issue": "573",
+  "branch": "feature/573-bumper-one-pr",
+  "base": "origin/develop",
+  "status": "ready",
+  "created_at": "2026-08-22T13:15:25Z",
+  "updated_at": "2026-08-22T13:15:25Z",
+  "git": {
+    "base_sha": "667d3b9cbe5bdb30230af747a6c3d416052248c9",
+    "head_sha": "b259e02277a06cf8685cd37b03e2329dde225b4b"
+  },
+  "pr_metadata": {
+    "title": "fix(ci): keep exactly one bump PR open instead of one per run",
+    "summary": "Refresh the waiting bump PR instead of stacking a new one every week",
+    "notes": "bump-tools branched on ${GITHUB_RUN_ID} and called 'gh pr create' unconditionally, never checking for an already-open bump PR. A missed review week opened another PR instead of refreshing the waiting one \u2014 five stacked since 2026-07-20, all the same work.\n\nEach run recomputes the bump from scratch on top of the base branch, so every PR is a full snapshot and the newest strictly supersedes the rest. Meanwhile trivy sat a month behind 0.74.0 \u2014 the release vendoring the golang.org/x/mod fix for CVE-2026-56864/-56865 \u2014 so a stalled bumper directly delays security fixes.\n\nNow: list open 'bot/bump-tools-*' PRs; none -> create as before; any -> adopt the OLDEST (its number, URL and review history survive), force-push the freshly resolved tree onto its branch, refresh the body, comment, and shut the rest as superseded. The force-push is correct because each run is a snapshot, and it clears any conflict the stale snapshot had picked up. Human merge gate unchanged.\n\nVerified by extracting this step's 'run' body from the YAML itself and running it against a stubbed gh + throwaway git remote across all three paths: 0 open -> new branch; 1 open -> force-updated in place, no new PR; 3 open -> adopts the oldest by number regardless of listing order, and shuts the other two with --delete-branch. actionlint/vrg-validate green.\n\nNOTE: after this merges, re-run Actions -> Bump tools -> Run workflow. It adopts the oldest waiting bump PR, force-pushes the current bump onto it, and retires the four superseded ones \u2014 draining the existing backlog. That run also picks up opentofu 1.12.6, released after the newest bump PR was cut.",
+    "linkage": "Ref"
+  },
+  "submitted": null
+}
