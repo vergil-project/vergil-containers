@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "issue": "574",
+  "branch": "feature/574-exposure-signal",
+  "base": "origin/develop",
+  "status": "ready",
+  "created_at": "2026-08-22T13:20:58Z",
+  "updated_at": "2026-08-22T13:20:58Z",
+  "git": {
+    "base_sha": "667d3b9cbe5bdb30230af747a6c3d416052248c9",
+    "head_sha": "de9ec14c59b58e86b92a90a6d051478408f38581"
+  },
+  "pr_metadata": {
+    "title": "fix(pins): give the exposure report an auto-managed drift signal and actually run it",
+    "summary": "Surface unmerged bump drift, and wire the pins tooling into workflows that run",
+    "notes": "The exposure report is documented as the daily morning-review observability view, but no workflow invoked it and it had no signal for the failure that actually happened: bump PRs stacking while trivy sat a month behind 0.74.0.\n\nAdds auto_managed_behind() as a SEPARATE signal rather than widening due_for_reevaluation. That list means 'a break-hold whose inducing_release went stale, so reconsider the hold' \u2014 which does not apply to auto-managed tools (no inducing_release, supposed to move). test_auto_managed_not_flagged_for_reevaluation asserts that invariant on purpose; the obvious-looking fix would have broken it.\n\nAlso: upstream lookup moved from api.github.com (60/hr unauthenticated, rejected by #435 for exactly this reason) to the unmetered /releases/latest redirect already used by resolve_latest.py, kept best-effort so a flaky lookup never fails a build; and a --no-probe flag so the report works without a Docker socket instead of emitting hundreds of warnings and harvesting nothing.\n\nWiring: a nightly non-gating ops job publishing to the step summary, plus the pins test suite added to the existing CI pins job.\n\nThat last part surfaced a regression I introduced. The suite was never run by CI, so it rotted silently \u2014 my earlier golangci-lint re-pin left test_pins.py asserting golangci-lint is unpinnable, and it has been red on develop since that merged with nothing to report it. Corrected here, and replaced with a positive assertion that the pin and its justification agree.\n\nVerified: 36 tests pass (7 new for the signal, 1 for the corrected assertion); the report against live upstream flags exactly hadolint 2.14.0/2.15.1, opentofu 1.12.3/1.12.6, trivy 0.72.0/0.74.0, matching a manual sweep; actionlint and vrg-validate green.",
+    "linkage": "Ref"
+  },
+  "submitted": null
+}
