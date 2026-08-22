@@ -2552,7 +2552,7 @@ a suppress-and-observe <code>under-evaluation</code> hold.</p>
 <li><strong>Registry credentials with write access</strong> to the target GHCR package. Log in
   with a token that can push to <code>ghcr.io/vergil-project/*</code>:</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$GHCR_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>docker<span class="w"> </span>login<span class="w"> </span>ghcr.io<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;<span class="w"> </span>--password-stdin
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$GHCR_TOKEN</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>docker<span class="w"> </span>login<span class="w"> </span>ghcr.io<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;<span class="w"> </span>--password-stdin
 </code></pre></div>
 <p><code>GHCR_TOKEN</code> needs <code>write:packages</code>. The repoint is a deliberate human action
   run with a human's credentials — it is intentionally not automated.</p>
@@ -2561,9 +2561,9 @@ a suppress-and-observe <code>under-evaluation</code> hold.</p>
 <p>Find the last-good <code>{version}-YYYYMMDD</code> alias for the affected image. List the
 package's tags via the GitHub API:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>vrg-gh<span class="w"> </span>api<span class="w"> </span>--paginate<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="s2">&quot;/orgs/vergil-project/packages/container/prod-&lt;lang&gt;/versions&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>--jq<span class="w"> </span><span class="s1">&#39;.[].metadata.container.tags[]&#39;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;^&lt;version&gt;-[0-9]{8}$&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="s2">"/orgs/vergil-project/packages/container/prod-&lt;lang&gt;/versions"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>--jq<span class="w"> </span><span class="s1">'.[].metadata.container.tags[]'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^&lt;version&gt;-[0-9]{8}$'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
 </code></pre></div>
 <p>For example, for <code>prod-go</code> at <code>1.26</code>, match <code>^1\.26-[0-9]{8}$</code>. The datestamp in
 the tag is the build's UTC date; pick the newest one that predates the bad build.
@@ -2584,9 +2584,9 @@ uses to promote a candidate to the rolling and immutable tags, so the rolling ta
 ends up at a digest that was already scanned, attested, and published.</p>
 <p>Confirm the rolling tag now resolves to the good alias's digest:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>buildx<span class="w"> </span>imagetools<span class="w"> </span>inspect<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>ghcr.io/vergil-project/prod-&lt;lang&gt;:&lt;version&gt;<span class="w"> </span>--format<span class="w"> </span><span class="s1">&#39;{{.Manifest.Digest}}&#39;</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>ghcr.io/vergil-project/prod-&lt;lang&gt;:&lt;version&gt;<span class="w"> </span>--format<span class="w"> </span><span class="s1">'{{.Manifest.Digest}}'</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>docker<span class="w"> </span>buildx<span class="w"> </span>imagetools<span class="w"> </span>inspect<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>ghcr.io/vergil-project/prod-&lt;lang&gt;:&lt;version&gt;-YYYYMMDD<span class="w"> </span>--format<span class="w"> </span><span class="s1">&#39;{{.Manifest.Digest}}&#39;</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>ghcr.io/vergil-project/prod-&lt;lang&gt;:&lt;version&gt;-YYYYMMDD<span class="w"> </span>--format<span class="w"> </span><span class="s1">'{{.Manifest.Digest}}'</span>
 </code></pre></div>
 <p>The two digests must match.</p>
 <h3 id="3-consumers-get-the-prior-build-immediately">3. Consumers get the prior build immediately<a class="headerlink" href="#3-consumers-get-the-prior-build-immediately" title="Permanent link">&para;</a></h3>
@@ -2599,8 +2599,8 @@ up the good image immediately.</p>
 <p>The repoint is temporary — the next scheduled build will re-float the bad version
 and undo it unless the root cause is fixed. Immediately open a tracking issue:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>vrg-gh<span class="w"> </span>issue<span class="w"> </span>create<span class="w"> </span>--repo<span class="w"> </span>vergil-project/vergil-containers<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--title<span class="w"> </span><span class="s2">&quot;Fix forward: &lt;lang&gt; &lt;version&gt; rolled back from &lt;bad-build&gt; to &lt;alias&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--body<span class="w"> </span><span class="s2">&quot;Repointed prod-&lt;lang&gt;:&lt;version&gt; at prod-&lt;lang&gt;:&lt;version&gt;-YYYYMMDD (digest &lt;sha256&gt;) on &lt;date&gt; because &lt;what broke&gt;. Fix forward before the alias is reaped (prod 30d / dev 7d).&quot;</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--title<span class="w"> </span><span class="s2">"Fix forward: &lt;lang&gt; &lt;version&gt; rolled back from &lt;bad-build&gt; to &lt;alias&gt;"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--body<span class="w"> </span><span class="s2">"Repointed prod-&lt;lang&gt;:&lt;version&gt; at prod-&lt;lang&gt;:&lt;version&gt;-YYYYMMDD (digest &lt;sha256&gt;) on &lt;date&gt; because &lt;what broke&gt;. Fix forward before the alias is reaped (prod 30d / dev 7d)."</span>
 </code></pre></div>
 <p>Record <strong>which alias you rolled to</strong> and <strong>why</strong> so the fix-forward work has the
 context, and so the eventual pin decision (§4.3) has the inducing release. Until
