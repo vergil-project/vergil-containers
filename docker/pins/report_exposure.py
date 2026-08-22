@@ -8,16 +8,65 @@ here. A tool whose latest version cannot be resolved is simply absent from
 `latest`, which means it is not flagged (unknowns never raise a false alarm)."""
 from __future__ import annotations
 
-import json
 import sys
-import urllib.error
-import urllib.request
 from pathlib import Path
 
 from packaging.version import InvalidVersion, Version
 
 import check_pins
+import extract_pins
 import harvest_installed
+import resolve_latest
+
+
+def source_pins(root: Path) -> dict[str, str]:
+    """Version-of-record per tool, read from the templates. For auto-managed
+    tools the source pin IS the current version (pins.yml carries only a
+    descriptive constraint), so this is what must be compared against upstream.
+    Where a tool is pinned per-image (a `case` on the runtime version, e.g.
+    go-test-coverage), the NEWEST pin wins — the older one is a deliberate
+    per-image hold, not drift."""
+    newest: dict[str, str] = {}
+    for pin in extract_pins.extract(root):
+        try:
+            candidate = Version(pin.version)
+        except InvalidVersion:
+            continue
+        current = newest.get(pin.tool)
+        if current is None or candidate > Version(current):
+            newest[pin.tool] = pin.version
+    return newest
+
+
+def auto_managed_behind(
+    pins: dict, pinned: dict[str, str], latest: dict[str, str]
+) -> list[tuple[str, str, str]]:
+    """Auto-managed tools whose source pin trails the newest upstream release.
+
+    This is a SEPARATE signal from `due_for_reevaluation`, deliberately. That
+    list means "a break-hold whose inducing_release is no longer leading edge,
+    so the reason for the hold must be reconsidered" — a question that does not
+    apply to auto-managed tools, which carry no inducing_release and are
+    *supposed* to move. Folding the two together would conflate "this pin's
+    justification may have expired" with "this pin is merely behind".
+
+    Behind means the weekly bumper's PR has not been merged (it is never
+    auto-merged — #435 keeps a human merge gate), so nothing has carried the new
+    version into the images. Unresolvable or unparseable versions are skipped:
+    unknowns never raise a false alarm. Returns (tool, pinned, latest)."""
+    out = []
+    for tool, meta in pins.items():
+        if meta.get("state") != "auto-managed":
+            continue
+        have, newest = pinned.get(tool), latest.get(tool)
+        if not have or not newest:
+            continue
+        try:
+            if Version(newest) > Version(have):
+                out.append((tool, have, newest))
+        except InvalidVersion:
+            continue
+    return sorted(out)
 
 
 def due_for_reevaluation(pins: dict, latest: dict[str, str]) -> list[str]:
@@ -41,6 +90,8 @@ def render(root: Path, latest: dict[str, str], installed: dict[str, dict[str, st
     pointer to the pin-lifecycle procedure (spec §4.3)."""
     pins = check_pins.load_pins(root)
     due = due_for_reevaluation(pins, latest)
+    pinned = source_pins(root)
+    behind = auto_managed_behind(pins, pinned, latest)
     lines = [
         "# Pin exposure report\n",
         "> Re-evaluation procedure: see the pin lifecycle (spec §4.3), published "
@@ -52,13 +103,27 @@ def render(root: Path, latest: dict[str, str], installed: dict[str, dict[str, st
         f"longer leading edge ({latest.get(t)}); re-evaluate per lifecycle."
         for t in due
     ] or ["- none\n"]
+    lines.append("\n## Auto-managed tools behind the leading edge\n")
+    lines.append(
+        "> These float via the weekly `bump-tools` workflow, which opens a PR "
+        "but never auto-merges (#435). Anything listed here means a bump PR is "
+        "waiting on a human — check for an open `bot/bump-tools-*` PR (#573).\n"
+    )
+    lines += [
+        f"- **{t}** — pinned {have}, upstream {newest}; the bump has not landed."
+        for t, have, newest in behind
+    ] or ["- none — every auto-managed tool is at its leading edge.\n"]
     auto = sorted(t for t, m in pins.items() if m.get("state") == "auto-managed")
     lines.append("\n## Auto-managed (leading edge, weekly bumper)\n")
     lines.append(
         "> Floated to the newest upstream release by the `bump-tools` workflow "
         "(#435); the pin stays in source for reproducibility.\n"
     )
-    lines += [f"- {t}: {pins[t]['constraint']}" for t in auto] or ["- none\n"]
+    lines += [
+        f"- {t}: {pins[t]['constraint']}"
+        f" [pinned {pinned.get(t, '?')}, upstream {latest.get(t, 'unknown')}]"
+        for t in auto
+    ] or ["- none\n"]
     lines.append("\n## Installed tool versions per image\n")
     for image in sorted(installed):
         lines.append(f"### {image}")
@@ -109,19 +174,24 @@ _MATRIX = {
 
 
 def _latest_from_github(repo: str) -> str | None:
-    """Best-effort latest x.y.z from a GitHub repo's latest release tag. On any
-    network/parse failure, warn (never swallow silently) and return None so the
-    tool is treated as unknown — not flagged."""
-    url = f"https://api.github.com/repos/{repo}/releases/latest"
-    req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})
+    """Best-effort latest x.y.z from a GitHub repo's latest release.
+
+    Uses the same `/releases/latest` **redirect** as `resolve_latest.py` rather
+    than `api.github.com`: #435 rejected the API here because its unauthenticated
+    limit is 60/hr and is easily exhausted, while the redirect is unmetered. That
+    mattered less while this report was only ever run by hand; it matters now
+    that it runs on a schedule (#574).
+
+    Best-effort by design, unlike the bumper: the resolver raises
+    ResolutionError, and this report downgrades that to a warning (never a silent
+    swallow) and returns None, so an unresolvable tool is reported as unknown
+    rather than flagged. The bumper must fail loud because it rewrites pins; a
+    read-only observability view must not fail a build over one bad lookup."""
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 (https only)
-            tag = json.load(resp).get("tag_name", "")
-    except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+        return resolve_latest.resolve(repo)
+    except resolve_latest.ResolutionError as exc:
         print(f"::warning::could not resolve latest for {repo}: {exc}", file=sys.stderr)
         return None
-    match = harvest_installed._VER.search(tag)
-    return match.group(1) if match else None
 
 
 def _build_latest(tools) -> dict[str, str]:
@@ -146,12 +216,22 @@ def _image_matrix(prefix: str) -> list[str]:
 
 def main(argv: list[str]) -> int:
     root = Path(__file__).resolve().parent.parent
-    prefix = argv[0] if argv else "prod"
+    # --no-probe skips the per-image Docker harvest. The drift signals need only
+    # pins.yml + the templates + one upstream lookup per tool, so the report
+    # stays useful anywhere without a Docker socket — including inside the
+    # prod-base container the CI/ops jobs run in, where probing every tool in
+    # every image would otherwise emit hundreds of ::warning:: lines and harvest
+    # nothing. Opting out explicitly beats a silent partial result.
+    args = [a for a in argv if a != "--no-probe"]
+    probe_images = "--no-probe" not in argv
+    prefix = args[0] if args else "prod"
     pins = check_pins.load_pins(root)
     latest = _build_latest(sorted(pins))
-    images = _image_matrix(prefix)
-    tools = sorted(pins)
-    installed = harvest_installed.harvest(images, tools)
+    installed = (
+        harvest_installed.harvest(_image_matrix(prefix), sorted(pins))
+        if probe_images
+        else {}
+    )
     print(render(root, latest=latest, installed=installed))
     return 0
 

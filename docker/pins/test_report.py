@@ -58,3 +58,63 @@ def test_harvest_parses_probe_output():
 
     got = harvest_installed.harvest(["prod-base:latest"], ["shellcheck"], probe=probe)
     assert got["prod-base:latest"]["shellcheck"] == "0.11.0"
+
+
+# --- #574: auto-managed drift is its own signal ----------------------------
+# The report had no way to say "an auto-managed tool is behind", which is how
+# five bump PRs stacked unnoticed for a month while trivy sat on 0.72.0.
+
+AUTO = {"state": "auto-managed", "inducing_release": None,
+        "constraint": "latest, auto-bumped weekly", "reason": "x",
+        "deterministic": False}
+
+
+def test_auto_managed_behind_flags_unmerged_bump():
+    pins = {"trivy": dict(AUTO)}
+    got = r.auto_managed_behind(pins, pinned={"trivy": "0.72.0"},
+                                latest={"trivy": "0.74.0"})
+    assert got == [("trivy", "0.72.0", "0.74.0")]
+
+
+def test_auto_managed_behind_silent_when_current():
+    pins = {"trivy": dict(AUTO)}
+    assert r.auto_managed_behind(pins, pinned={"trivy": "0.74.0"},
+                                 latest={"trivy": "0.74.0"}) == []
+
+
+def test_auto_managed_behind_ignores_non_auto_managed():
+    # An `active` break-hold is BEHIND on purpose — that is what a hold is.
+    # Flagging it here would duplicate (and contradict) due_for_reevaluation.
+    pins = {"go-test-coverage": {"state": "active", "inducing_release": "2.18.4",
+                                 "constraint": "==2.18.3 on Go 1.25", "reason": "x",
+                                 "deterministic": True}}
+    assert r.auto_managed_behind(pins, pinned={"go-test-coverage": "2.18.3"},
+                                 latest={"go-test-coverage": "2.19.0"}) == []
+
+
+def test_auto_managed_behind_skips_unknown_upstream():
+    # Unresolvable upstream must never raise a false alarm.
+    pins = {"trivy": dict(AUTO)}
+    assert r.auto_managed_behind(pins, pinned={"trivy": "0.72.0"}, latest={}) == []
+
+
+def test_two_signals_stay_separate():
+    # The whole point of #574: a behind auto-managed tool is NOT "due for
+    # re-evaluation", and vice versa. Regression guard on conflating them.
+    pins = {"trivy": dict(AUTO)}
+    assert r.due_for_reevaluation(pins, latest={"trivy": "0.74.0"}) == []
+    assert r.auto_managed_behind(pins, pinned={"trivy": "0.72.0"},
+                                 latest={"trivy": "0.74.0"})
+
+
+def test_source_pins_takes_newest_when_tool_pinned_per_image():
+    # go-test-coverage is pinned per Go version (v2.18.3 on 1.25). The
+    # version-of-record is the newest pin; the older one is a deliberate hold.
+    pinned = r.source_pins(DOCKER)
+    assert pinned["trivy"]
+    assert "." in pinned["trivy"]
+
+
+def test_report_renders_behind_section():
+    md = r.render(DOCKER, latest={}, installed={})
+    assert "## Auto-managed tools behind the leading edge" in md
