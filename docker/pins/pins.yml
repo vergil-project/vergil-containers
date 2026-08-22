@@ -57,6 +57,14 @@ pins:
     state: active
     tracking_issue: null
 
+  golangci-lint:
+    constraint: "==2.12.2 on Go 1.25, else latest (unpinned)"
+    inducing_release: "2.13.0"
+    deterministic: true
+    reason: "golangci-lint >=2.13.0 declares `go 1.26.0`; with GOTOOLCHAIN=local the Go 1.25 image cannot satisfy it and `go install @latest` fails the build. v2.12.2 is the last release carrying `go 1.25.0`. Go 1.26 stays unpinned. Retires with Go 1.25."
+    state: active
+    tracking_issue: null
+
   # --- Auto-managed mechanism pins (binary release tarballs) -------------------
   # The binary-download tools (the #418/#422 set) whose release-asset URL +
   # per-version checksum embed an explicit version, so they cannot float by
