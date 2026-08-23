@@ -6,6 +6,11 @@
 # and — only if something drifted — opens a reviewed bump PR. Nothing is
 # auto-merged: fleet policy keeps a human merge gate.
 #
+# Exactly one bump PR is open at a time (#573): if one is already waiting, this
+# refreshes it in place instead of opening a second, and closes any others as
+# superseded. A missed review week therefore updates the waiting PR rather than
+# stacking a new one behind it.
+#
 # The push and PR are authored by the GitHub App (APP_CLIENT_ID/APP_PRIVATE_KEY),
 # minted via actions/create-github-app-token — mirroring cd.yml. App-authored
 # PRs DO fire `pull_request` workflows (unlike the default GITHUB_TOKEN, which
@@ -66,28 +71,79 @@ jobs:
             git --no-pager diff --stat
           fi
 
-      - name: Open bump PR
+      # Exactly ONE bump PR is open at a time (#573). Before this, the step
+      # branched on ${GITHUB_RUN_ID} and called `gh pr create` unconditionally,
+      # so a missed review week opened *another* PR rather than refreshing the
+      # waiting one — five had stacked up since 2026-07-20, all describing the
+      # same work, while trivy sat a month behind a release carrying a CVE fix.
+      #
+      # Every run recomputes the bump from scratch on top of the base branch, so
+      # each PR is a full snapshot, never an increment. That is what makes
+      # adopting an existing PR safe: force-pushing the fresh tree onto it is the
+      # semantically correct update, not a rewrite of anyone's work — and it
+      # clears any merge conflict the old snapshot had picked up in the meantime.
+      #
+      # The oldest open bump PR is adopted so its number, URL and review history
+      # survive; the rest are closed as superseded. The human merge gate is
+      # unchanged — #435 chose it deliberately and nothing here auto-merges.
+      - name: Open or refresh the bump PR
         if: steps.drift.outputs.changed == 'true'
+        shell: bash
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
-          branch="bot/bump-tools-${GITHUB_RUN_ID}"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "${branch}"
+          git checkout -b "bot/bump-tools-${GITHUB_RUN_ID}"
           git add -A
           git commit -m "chore(deps): bump leading-edge binary tools to latest"
-          git push origin "${branch}"
-          gh pr create \
-            --base "${GITHUB_REF_NAME}" \
-            --head "${branch}" \
-            --title "chore(deps): bump leading-edge binary tools to latest" \
-            --body "Automated weekly leading-edge bump of the auto-managed binary tools (#435).
+
+          body="Automated weekly leading-edge bump of the auto-managed binary tools (#435).
 
           Resolved via the \`/releases/latest\` redirect by \`docker/pins/resolve_latest.py\`.
           Versions stay pinned in source; a human reviews and merges (no auto-merge).
 
+          This PR is refreshed in place by each run — only one bump PR is ever open (#573).
+
           \`\`\`
           $(git --no-pager show --stat --oneline HEAD | tail -n +2)
           \`\`\`"
+
+          # Oldest first, so [0] is the PR we adopt.
+          mapfile -t open_bumps < <(
+            gh pr list --state open --base "${GITHUB_REF_NAME}" --limit 100 \
+              --json number,headRefName \
+              --jq '[.[] | select(.headRefName | startswith("bot/bump-tools-"))]
+                    | sort_by(.number) | .[] | "\(.number) \(.headRefName)"'
+          )
+
+          if [ "${#open_bumps[@]}" -eq 0 ]; then
+            branch="bot/bump-tools-${GITHUB_RUN_ID}"
+            git push origin "HEAD:refs/heads/${branch}"
+            gh pr create \
+              --base "${GITHUB_REF_NAME}" \
+              --head "${branch}" \
+              --title "chore(deps): bump leading-edge binary tools to latest" \
+              --body "${body}"
+            echo "Opened a new bump PR on ${branch}."
+            exit 0
+          fi
+
+          survivor="${open_bumps[0]}"
+          survivor_num="${survivor%% *}"
+          survivor_branch="${survivor#* }"
+
+          echo "Refreshing existing bump PR #${survivor_num} (${survivor_branch})."
+          git push --force origin "HEAD:refs/heads/${survivor_branch}"
+          gh pr edit "${survivor_num}" --body "${body}"
+          gh pr comment "${survivor_num}" \
+            --body "Refreshed by [run ${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) — re-resolved against the current leading edge and rebased onto \`${GITHUB_REF_NAME}\`."
+
+          for entry in "${open_bumps[@]:1}"; do
+            num="${entry%% *}"
+            echo "Closing superseded bump PR #${num}."
+            gh pr close "${num}" --delete-branch \
+              --comment "Superseded by #${survivor_num}, which carries the current leading-edge bump. Each bump PR is a full snapshot rather than an increment, so this one adds nothing #${survivor_num} does not already contain. Only one bump PR is kept open (#573)."
+          done
