@@ -14,6 +14,33 @@ permissions:
   id-token: write
 
 jobs:
+  # The pin exposure report was documented as "the internal-state observability
+  # view for a daily morning-review ritual" but no workflow ever invoked it, so
+  # nothing surfaced that trivy had sat a month behind a release carrying a CVE
+  # fix while five unmerged bump PRs stacked up (#574).
+  #
+  # --no-probe skips the per-image Docker harvest: this job runs inside the
+  # prod-base container with no Docker socket, and the drift signals need only
+  # pins.yml, the templates, and one unmetered /releases/latest redirect per
+  # tool. continue-on-error because this is an observability signal, never a
+  # gate — a flaky upstream lookup must not fail the nightly.
+  pin-exposure:
+    name: "pin exposure report"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+    container:
+      image: ghcr.io/vergil-project/prod-base:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Report pin exposure
+        working-directory: docker/pins
+        run: |
+          python3 report_exposure.py --no-probe | tee -a "${GITHUB_STEP_SUMMARY}"
+
   github-config:
     uses: vergil-project/vergil-actions/.github/workflows/ops-github-config.yml@v2.1
     permissions:

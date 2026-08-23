@@ -23,10 +23,24 @@ def test_extractor_drops_freed_package_manager_pins():
     # #418 freed the package-manager tools (npm/pip/uv/go install/cargo) by
     # dropping the version. They must no longer surface as exact pins, or
     # check_pins would false-flag their (now-deleted) pins.yml entries.
+    #
+    # golangci-lint was in this list until #569: it is now a REAL pin again
+    # (v2.13.0 raised its Go floor to 1.26, so the Go 1.25 image must hold
+    # v2.12.2). It is documented in pins.yml as `active`, so check_pins accepts
+    # it — being freed by #418 does not make a tool permanently unpinnable when
+    # upstream later forces a hold. See test_golangci_lint_is_a_documented_pin.
     tools = {p.tool for p in extract_pins.extract(DOCKER)}
-    for freed in ("uv", "golangci-lint", "markdownlint-cli", "yamllint",
+    for freed in ("uv", "markdownlint-cli", "yamllint",
                   "cargo-deny", "mkdocs-material", "pyyaml"):
         assert freed not in tools
+
+
+def test_golangci_lint_is_a_documented_pin():
+    # #569: re-pinned for Go 1.25 only. Guards the pairing this suite exists to
+    # protect — an extracted pin with a matching pins.yml justification.
+    pins = {p.tool: p.version for p in extract_pins.extract(DOCKER)}
+    assert pins.get("golangci-lint") == "2.12.2"
+    assert check_pins.load_pins(DOCKER)["golangci-lint"]["state"] == "active"
 
 
 def test_extractor_excludes_major_only_matrix():
