@@ -50,10 +50,18 @@
 #         version) — no entry needed.
 pins:
   go-test-coverage:
-    constraint: "==2.18.3 on Go 1.25, else ==2.18.8"
+    constraint: "==2.18.3 on Go 1.25, else latest (unpinned)"
     inducing_release: "2.18.4"
     deterministic: true
-    reason: "go-test-coverage >=2.18.4 requires Go >=1.26; fails on the Go 1.25 image."
+    reason: "go-test-coverage >=2.18.4 requires Go >=1.26; fails on the Go 1.25 image. Only that branch is held — the Go 1.26 branch floated back to latest in #571, since nothing constrains it and a hand-written version there is drift, not policy. Retires with Go 1.25."
+    state: active
+    tracking_issue: null
+
+  golangci-lint:
+    constraint: "==2.12.2 on Go 1.25, else latest (unpinned)"
+    inducing_release: "2.13.0"
+    deterministic: true
+    reason: "golangci-lint >=2.13.0 declares `go 1.26.0`; with GOTOOLCHAIN=local the Go 1.25 image cannot satisfy it and `go install @latest` fails the build. v2.12.2 is the last release carrying `go 1.25.0`. Go 1.26 stays unpinned. Retires with Go 1.25."
     state: active
     tracking_issue: null
 

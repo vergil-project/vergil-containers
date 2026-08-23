@@ -20,14 +20,26 @@ RUN apt-get update && \
 # @include common/pandoc.dockerfile
 
 # --- Go tools ----------------------------------------------------------------
-# go-test-coverage v2.18.4+ requires Go >= 1.26; pin v2.18.3 for Go 1.25.
-RUN GTC_VERSION="v2.18.8" && \
-    case "$(go env GOVERSION)" in go1.25*) GTC_VERSION="v2.18.3" ;; esac && \
-    go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest && \
+# Two tools have raised their Go floor past 1.25 and must be version-selected
+# per image; everything else in this block still installs @latest.
+#   go-test-coverage v2.18.4+  requires Go >= 1.26 -> v2.18.3 on Go 1.25.
+#   golangci-lint    v2.13.0+  requires Go >= 1.26 -> v2.12.2 on Go 1.25
+#     (the last release carrying `go 1.25.0`). The image builds with
+#     GOTOOLCHAIN=local, so the 1.25 toolchain cannot pull a 1.26 toolchain to
+#     satisfy the requirement — an unpinned @latest fails the build outright.
+#     Issue #569.
+# Both float on Go 1.26: only the Go 1.25 branch is constrained, so holding the
+# other branch at a hand-written version is drift, not policy (#571).
+RUN GTC_VERSION="latest" && \
+    GOLANGCI_LINT_VERSION="latest" && \
+    case "$(go env GOVERSION)" in \
+      go1.25*) GTC_VERSION="v2.18.3"; GOLANGCI_LINT_VERSION="v2.12.2" ;; \
+    esac && \
+    go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@"${GOLANGCI_LINT_VERSION}" && \
     go install golang.org/x/vuln/cmd/govulncheck@latest && \
     go install github.com/google/go-licenses/v2@latest && \
     go install github.com/fzipp/gocyclo/cmd/gocyclo@latest && \
     go install golang.org/x/tools/cmd/goimports@latest && \
-    go install github.com/vladopajic/go-test-coverage/v2@${GTC_VERSION}
+    go install github.com/vladopajic/go-test-coverage/v2@"${GTC_VERSION}"
 
 WORKDIR /workspace

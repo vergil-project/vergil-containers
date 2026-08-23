@@ -50,6 +50,14 @@ jobs:
       - name: CATALOG.md is up to date
         run: python3 docker/pins/generate_catalog.py --check
 
+      # The pins tooling shipped with a test suite that nothing ever ran, so it
+      # rotted silently: #569 legitimately re-pinned golangci-lint and left
+      # test_pins.py asserting the opposite, red on develop with no signal.
+      # Offline and hermetic — every test injects its fetch/probe (#574).
+      - name: Pins tooling tests
+        working-directory: docker/pins
+        run: uv run --with pytest --with packaging --with pyyaml python -m pytest -q
+
   quality:
     uses: vergil-project/vergil-actions/.github/workflows/ci-quality.yml@v2.1
     with:
