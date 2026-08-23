@@ -582,6 +582,8 @@
       
         
       
+        
+      
     
     
     
@@ -634,6 +636,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../releases/v2.1.27/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.27
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2612,7 +2642,7 @@ Trivy finds new vulnerabilities, the build fails and the team triages
 <li><strong><code>cd-docker-publish.yml</code></strong> — image build, scan, and publish</li>
 </ul>
 <p>The docker-publish job depends on the release job:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">always() &amp;&amp; (needs.release.result == &#39;success&#39; || needs.release.result == &#39;skipped&#39;)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">always() &amp;&amp; (needs.release.result == 'success' || needs.release.result == 'skipped')</span>
 </code></pre></div>
 <p>This ensures docker-publish runs after a successful release (main) or
 when release is skipped (develop), but does <strong>not</strong> run if the release
@@ -2620,7 +2650,7 @@ job fails. A failed CI-evidence completeness check is now one of the ways
 the release job fails — an incomplete or missing evidence bundle blocks
 docker-publish just as any other release failure does. The <code>image-prefix</code>
 input is derived from the branch:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">image-prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.ref == &#39;refs/heads/main&#39; &amp;&amp; &#39;prod&#39; || &#39;dev&#39; }}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">image-prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.ref == 'refs/heads/main' &amp;&amp; 'prod' || 'dev' }}</span>
 </code></pre></div>
 <p><strong>Why a shim?</strong> Keeping the orchestration logic in one file makes the
 build flow readable at a glance. The reusable workflows contain the
@@ -2649,7 +2679,7 @@ without proportional value at current scale.</p>
 The image prefix defaults to <code>prod-</code> and can be overridden per-repo
 in <code>vergil.toml</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">[docker]</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">image-prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;dev&quot;</span><span class="w">   </span><span class="c1"># default: &quot;prod&quot;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">image-prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"dev"</span><span class="w">   </span><span class="c1"># default: "prod"</span>
 </code></pre></div>
 <p>This allows a single consuming repo to temporarily use <code>dev-</code> images
 for validating in-progress image changes without affecting the rest of
