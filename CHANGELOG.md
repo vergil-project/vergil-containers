@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.27] - 2026-08-23
+
+### Bug fixes
+
+- pin golangci-lint to v2.12.2 on Go 1.25 (#569) (#570)
+- keep exactly one bump PR open instead of one per run (#573) (#576)
+- give the exposure report an auto-managed drift signal and actually run it (#574) (#577)
+
+### Chores
+
+- suppress x/mod sumdb pair + node-tar DoS blocking every nightly publish (#567) (#568)
+- float go-test-coverage on Go 1.26; keep only the Go 1.25 hold (#571) (#572)
+
 ## [2.1.26] - 2026-08-15
 
 ### Chores
