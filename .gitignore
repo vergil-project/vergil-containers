@@ -66,3 +66,17 @@ trivy-out.json
 
 # Generated Dockerfiles — source of truth is Dockerfile.template
 docker/*/Dockerfile
+
+# --- Vergil baseline sync (vergil-project/.github#322): lines added to match gitignore.baseline ---
+build-sanitize/
+CMakePresets.json
+CMakeUserPresets.json
+cmakedeps_macros.cmake
+conan_toolchain.cmake
+conandeps_legacy.cmake
+conanbuild*.sh
+conanrun*.sh
+conanbuildenv-*.sh
+conanrunenv-*.sh
+deactivate_conanbuild*.sh
+deactivate_conanrun*.sh
