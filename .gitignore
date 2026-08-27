@@ -1,4 +1,4 @@
-# Editor / OS
+# >>> vergil-managed: base (managed by vrg-gitignore-sync; do not edit) >>>
 *.swp
 *.swo
 *~
@@ -7,76 +7,44 @@
 .vscode/
 .DS_Store
 Thumbs.db
-
-# Environment
 .env
 .env.*
 *.log
-
-# Python
 .venv/
-build/
-dist/
-*.egg-info/
-__pycache__/
-*.pyc
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-coverage.xml
-junit.xml
-pip-audit.json
-licenses.json
-quality-ruff.json
-quality-mypy.xml
-
-# Docs site build
-docs/site/site/
-
-# Node / JS
-node_modules/
-*.tsbuildinfo
-
-# Go
-*.test
-*.out
-
-# Ruby
-.bundle/
-vendor/bundle/
-
-# Compiled objects
-*.o
-*.obj
-*.a
-*.so
-
-# Parallel AI agent worktrees (see CLAUDE.md)
 .worktrees/
-
-# vergil-tooling per-worktree session artifacts (pr-workflow.json, logs)
 .vergil/
 .superpowers/
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
+build/
+dist/
+coverage.xml
+junit.xml
+licenses.json
+docs/site/site/
+node_modules/
+# <<< vergil-managed <<<
+
+# Editor / OS
+
+# Environment
+
+# Python
+
+# Docs site build
+
+# Node / JS
+
+# Go
+
+# Compiled objects
+
+# Parallel AI agent worktrees (see CLAUDE.md)
+
+# vergil-tooling per-worktree session artifacts (pr-workflow.json, logs)
 
 # Repo-specific: Trivy scan output
 trivy-out.json
 
 # Generated Dockerfiles — source of truth is Dockerfile.template
 docker/*/Dockerfile
-
-# --- Vergil baseline sync (vergil-project/.github#322): lines added to match gitignore.baseline ---
-build-sanitize/
-CMakePresets.json
-CMakeUserPresets.json
-cmakedeps_macros.cmake
-conan_toolchain.cmake
-conandeps_legacy.cmake
-conanbuild*.sh
-conanrun*.sh
-conanbuildenv-*.sh
-conanrunenv-*.sh
-deactivate_conanbuild*.sh
-deactivate_conanrun*.sh
