@@ -48,3 +48,8 @@ trivy-out.json
 
 # Generated Dockerfiles — source of truth is Dockerfile.template
 docker/*/Dockerfile
+
+# Repo-specific: the Docker build tooling under docker/pins/ runs Python and
+# writes bytecode caches. This repo is not python-primary, so the managed base
+# block does not ignore these — keep them out of the tree here.
+__pycache__/
