@@ -2652,8 +2652,18 @@ install them directly via pip.</p>
 <td>uv</td>
 <td>Python package manager</td>
 </tr>
+<tr>
+<td>pytest-xdist</td>
+<td>Parallel pytest execution</td>
+</tr>
 </tbody>
 </table>
+<p><code>pytest-xdist</code> is installed into the image's system Python so the shared
+vergil-tooling validation gate's Python TEST command can fan the suite across
+cores (<code>-n auto --dist worksteal</code>) fleet-wide without every consuming repo
+declaring it as a dev dependency. Consuming repos get parallel test execution
+by default — when <code>pytest-xdist</code> resolves (as it does in this image) and their
+<code>[test].parallel</code> setting is on (the default).</p>
 <h2 id="ruby">Ruby<a class="headerlink" href="#ruby" title="Permanent link">&para;</a></h2>
 <p><strong>Base</strong>: <code>ruby:&lt;version&gt;-slim</code>
 <strong>Versions</strong>: 3.2, 3.3, 3.4</p>
