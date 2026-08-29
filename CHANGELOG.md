@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.28] - 2026-08-29
+
+### Chores
+
+- sync .gitignore to the canonical baseline (#582)
+- sync the vergil-managed .gitignore block (#584)
+- re-add __pycache__/ as a repo-local ignore (#586)
+
+### Features
+
+- add pytest-xdist to the Python dev image (#588) (#589)
+
 ## [2.1.27] - 2026-08-23
 
 ### Bug fixes
