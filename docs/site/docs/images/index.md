@@ -51,9 +51,17 @@ install them directly via pip.
 **Base**: `python:<version>-slim`
 **Versions**: 3.12, 3.13, 3.14
 
-| Tool | Purpose                |
-| ---- | ---------------------- |
-| uv   | Python package manager |
+| Tool         | Purpose                        |
+| ------------ | ------------------------------ |
+| uv           | Python package manager         |
+| pytest-xdist | Parallel pytest execution      |
+
+`pytest-xdist` is installed into the image's system Python so the shared
+vergil-tooling validation gate's Python TEST command can fan the suite across
+cores (`-n auto --dist worksteal`) fleet-wide without every consuming repo
+declaring it as a dev dependency. Consuming repos get parallel test execution
+by default — when `pytest-xdist` resolves (as it does in this image) and their
+`[test].parallel` setting is on (the default).
 
 ## Ruby
 
