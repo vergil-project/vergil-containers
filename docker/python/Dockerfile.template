@@ -32,7 +32,12 @@ RUN apt-get update && \
 # (pip's bundled CycloneDX SBOM, pip/_vendor/bom.cdx.json, is a Trivy
 # false-positive source — excluded centrally via trivy.yaml scan.skip-files,
 # not by deleting it here. Issue #498.)
+#
+# pytest-xdist is installed into the image's system Python so the shared
+# `-n auto --dist worksteal` gate command (vergil-tooling languages.py)
+# resolves fleet-wide without every consumer repo declaring the dev dep.
+# Verified via `python -c "import xdist"`. Issue #588 (epic .github#333).
 RUN pip install --no-cache-dir --upgrade 'pip>=26.1.2' 'setuptools>=78.1.1' && \
-    pip install --no-cache-dir yamllint ansible-lint uv
+    pip install --no-cache-dir yamllint ansible-lint uv pytest-xdist
 
 WORKDIR /workspace
