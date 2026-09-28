@@ -4,7 +4,7 @@
 # credentials). OpenTofu's release artifacts name the architecture exactly as
 # TARGETARCH (linux_amd64 / linux_arm64), so no arch translation is needed.
 ARG TARGETARCH
-ARG OPENTOFU_VERSION=1.12.3
+ARG OPENTOFU_VERSION=1.12.6
 
 # hadolint ignore=DL3003
 RUN TOFU_TARBALL="tofu_${OPENTOFU_VERSION}_linux_${TARGETARCH}.tar.gz" && \
