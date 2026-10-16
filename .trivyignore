@@ -12,10 +12,17 @@
 #   - status=affected (no-fix) CVEs — ignore-unfixed (trivy.yaml) already keeps
 #     them from gating. Only fixed findings belong in this file.
 #
-# Last audited: 2026-08-15 (issue #561). Full rescan of all 19 published dev
-# images removed 137 stale entries; these 53 were retained as still-present.
+# Last audited: 2026-10-16 (issue #605). Fresh local arm64 builds of 17 of the
+# 19 dev images were scanned without this file or the rego (ignore-unfixed and
+# skip-files only), using Trivy 0.72.0 as in the CD arm64 step. 25 entries
+# absent from every scan were removed. dev-go 1.25 / 1.26 do not currently
+# build (go-install @latest linters need a newer Go), so the go-image-only
+# entries were checked against the last published dev-go images instead and are
+# kept because their go-install carriers still show them. Six new entries were
+# added below, each marked with issue #605.
+# Previous audit: 2026-08-15 (issue #561), which removed 137 stale entries.
 # When re-auditing, an entry is stale if it no longer appears in a fresh scan of
-# the current images (see the issue for the method).
+# the current images (see issue #561 for the method).
 
 # =============================================================================
 # Go stdlib in the prebuilt Go tool binaries (common layer: gh, actionlint,
@@ -29,6 +36,10 @@
 # html/template, os.Root, MIME header decode) are not exercised on untrusted
 # input. Remove each once the bundled tools ship binaries rebuilt with the Go
 # release that fixes it (weekly bump-tools).
+#
+# As of the 2026-10-16 audit (issue #605), the entries in this block are
+# carried only by actionlint 1.7.12 (go1.26.1, the newest release). The other
+# binaries have been rebuilt with a newer Go.
 # =============================================================================
 CVE-2026-27145
 CVE-2026-32280
@@ -49,12 +60,53 @@ CVE-2026-56859
 CVE-2026-56860
 CVE-2026-56862
 
+# Go 1.26.9 / 1.27.2 batch (issue #605). Fixed in Go 1.26.9 / 1.27.2, but the
+# newest upstream release of each of these carriers is still built with an
+# older Go:
+#   - gh 2.102.0, go1.27.1 (GitHub CLI apt repo; all images)
+#   - actionlint 1.7.12, go1.26.1 (all images)
+#   - shfmt 3.14.1, go1.27.1 (all images)
+#   - tofu 1.13.1, go1.27.1 (dev-base)
+#   - /usr/bin/pebble, go1.26.7 (dev-java only): Canonical's Pebble service
+#     manager, shipped outside dpkg in the Ubuntu 26.04 base of eclipse-temurin
+#     (ubuntu:26.04 itself carries the same build). It is never started; the
+#     image entrypoint is Temurin's /__cacert_entrypoint.sh.
+# nfpm and trivy carried the same three CVEs. The nfpm 2.48.0 and trivy 0.76.0
+# bumps fix them (both are built with go1.27.2), so those carriers are not
+# ignored.
+#
+# CVE-2026-78667 — net/http: CPU exhaustion parsing Range headers in
+#   FileServer / ServeContent / ServeFile. Server-side only. None of these
+#   binaries serves files over HTTP.
+# CVE-2026-97031 — crypto/tls: memory exhaustion from repeated ECH outer
+#   extension references in a ClientHello. Server-side handshake only. None of
+#   these binaries accepts TLS connections.
+# CVE-2026-78669 — net/http HTTP/2: CPU exhaustion from repeated
+#   SETTINGS_INITIAL_WINDOW_SIZE frames. Also carried as golang.org/x/net/http2
+#   < 0.60.0 in gh (v0.58.0) and tofu (v0.57.0). Unlike the two above, this
+#   one affects HTTP/2 clients too, and gh (api.github.com) and tofu (provider
+#   and module registries) are HTTP/2 clients. Triggering it requires the
+#   TLS-authenticated server itself to be malicious, and the impact is CPU
+#   exhaustion of a short-lived, user-invoked CLI process, with no
+#   confidentiality or integrity impact. actionlint and shfmt make no network
+#   connections, and pebble never runs.
+#
+# Remove each once gh, actionlint, shfmt, tofu and the temurin base's pebble all
+# ship builds with Go >= 1.26.9 / 1.27.2 (and x/net >= 0.60.0 for gh and tofu).
+# The weekly bump-tools PR and the nightly rebuild pick these up.
+CVE-2026-78667
+CVE-2026-78669
+CVE-2026-97031
+
 # =============================================================================
 # golang.org/x/net + x/idna vendored in the same prebuilt Go CLIs (common layer,
 # all images). DNS-message SVCB/HTTPS parsing panic, IDNA Punycode label
 # handling, and HTML/HTTP-parsing DoS. None of these tools acts as a DNS
 # resolver, IDNA-normalizes attacker-controlled hostnames, or parses untrusted
 # HTML. Remove once the bundled tools vendor the fixed x/net.
+#
+# As of the 2026-10-16 audit (issue #605), the carriers are actionlint 1.7.12
+# (all images) and go-licenses (go image).
 # =============================================================================
 CVE-2026-39821
 CVE-2026-46600
@@ -66,9 +118,11 @@ CVE-2026-46600
 CVE-2026-25681
 CVE-2026-27136
 
-# golang.org/x/text (prebuilt Go CLIs, all images). norm.Iter infinite-loop
-# DoS on crafted input; these tools do not normalize attacker-controlled text.
-# Remove once the bundled tools vendor x/text >= the fixed release.
+# golang.org/x/text (go image only, as of the 2026-10-16 audit: golangci-lint
+# and go-licenses; the common-layer CLIs no longer carry it). norm.Iter
+# infinite-loop DoS on crafted input; these tools do not normalize
+# attacker-controlled text. Remove once those linters vendor x/text >= the
+# fixed release.
 CVE-2026-56852
 
 # golang.org/x/image (go image only — go-install linters). TIFF-decoder
@@ -97,77 +151,21 @@ CVE-2026-46602
 #
 # Remove per carrier as each upstream re-releases with x/mod >= 0.40.0; watch
 # gh, scorecard, tofu and the go-install linters on the weekly bump.
+#
+# As of the 2026-10-16 audit (issue #605), gh and scorecard no longer carry a
+# vulnerable x/mod. The remaining carriers are tofu 1.13.1 (x/mod v0.39.0,
+# dev-base) and goimports, golangci-lint, go-licenses and govulncheck (go
+# image).
 # =============================================================================
 CVE-2026-56864
 CVE-2026-56865
 
-# =============================================================================
-# golang.org/x/crypto in the scorecard binary (dev-base only). ssh
-# server/client/knownhosts/agent CVEs. scorecard is a read-only GitHub API
-# auditor: it runs no SSH server and uses ssh only to known hosts. Remove once a
-# scorecard release rebuilt with the fixed x/crypto ships.
-# =============================================================================
-CVE-2026-39828
-CVE-2026-39829
-CVE-2026-39830
-CVE-2026-39831
-CVE-2026-39832
-CVE-2026-39835
-CVE-2026-42508
-CVE-2026-46595
-CVE-2026-46597
-
-# =============================================================================
-# Other Go module CVEs embedded in the scorecard / trivy / tofu binaries
-# (dev-base only). These tools do not run containers or BuildKit, do not ingest
-# untrusted OCI/rekor content, and talk only to known registries/hosts, so the
-# vulnerable paths are not exercised. Remove each once the carrier binary is
-# rebuilt with the bumped dependency.
-# =============================================================================
-CVE-2026-46680
-CVE-2026-53488
-CVE-2026-33747
-CVE-2026-33748
-CVE-2026-34040
-CVE-2026-44973
-CVE-2026-45022
-CVE-2026-39883
-CVE-2026-50151
-CVE-2026-50163
-GHSA-hrxh-6v49-42gf
-
-# go-git vendored in /usr/local/bin/nfpm (common layer, all images).
-# CVE-2026-71556: worktree symlink escape. nfpm is a build-time packaging tool
-# that assembles .deb/.rpm from local project files; it does not clone untrusted
-# repositories. Remove once nfpm vendors the fixed go-git.
-CVE-2026-71556
-
-# =============================================================================
-# npm bundled inside Node.js 22 (NodeSource apt, all images). Vulnerable
-# dependencies inside npm's own bundled tree; exercised only on lockfile / CLI-
-# bounded glob patterns (brace-expansion) or when routing through a SOCKS proxy
-# (ip-address), neither on attacker-controlled input. Remove once npm bundles the
-# fixed versions.
-# =============================================================================
-CVE-2026-14257
-CVE-2026-69152
-CVE-2026-69192
-
-# node-tar 7.5.19 in the same npm bundled tree (all images). CVE-2026-73566:
-# uncontrolled recursion in mapHas/filesFilter, an uncatchable stack-overflow
-# DoS on a crafted long-path tar — but only when a non-empty member-selection
-# list (`files`) is passed. npm extracts registry tarballs without one, and npm
-# is build-time-only tooling here (never invoked at container runtime).
-#
-# Not fixable by bumping: node-markdownlint.dockerfile already installs
-# npm@latest, and npm 12.0.2 declares `tar: ^7.5.19` but BUNDLES 7.5.19 — its
-# dependency tree is vendored and lockfile-pinned at publish time, so the caret
-# range does not float. Verified by direct inspection: exactly one vendored tar
-# exists in the image, /usr/local/lib/node_modules/npm/node_modules/tar @
-# 7.5.19; markdownlint-cli contributes none.
-#
-# Remove once npm bundles tar >= 7.5.21. Issue #567.
-CVE-2026-73566
+# google.golang.org/grpc v1.83.1 in /usr/local/bin/tofu 1.13.1 (dev-base),
+# fixed in 1.83.2. Issue #605. CVE-2026-84445: a gRPC-Go server built with
+# xds.NewGRPCServer panics on a request that has neither :authority nor Host.
+# tofu uses gRPC only as the client of its provider plugins (go-plugin); it
+# runs no xDS gRPC server. Remove once a tofu release ships grpc >= 1.83.2.
+CVE-2026-84445
 
 # =============================================================================
 # Ruby default gems shipped with the ruby:<ver>-slim base image. erb code
@@ -180,3 +178,27 @@ CVE-2026-42245
 CVE-2026-42246
 CVE-2026-42257
 CVE-2026-42258
+
+# resolv default gem: 0.2.3 (dev-ruby:3.2) and 0.3.1 (dev-ruby:3.3), fixed in
+# 0.3.2 / 0.7.2. Issue #605. CVE-2026-80212: decoding a crafted DNS response
+# in Resolv::DNS registers a new class for every unknown record type,
+# permanently (memory-growth DoS). Requires an attacker who controls DNS
+# responses. In these images nothing resolves names through Resolv::DNS: Ruby,
+# RubyGems and Bundler reference Resolv only for the IPv4/IPv6 literal regexes
+# in net/http, host lookups go through libc getaddrinfo, and resolv-replace is
+# never loaded. ruby 3.3.12 (the newest 3.3 release) still bundles 0.3.1, and
+# no 0.2.x fix exists for ruby 3.2. Remove once ruby:3.3-slim bundles resolv
+# >= 0.3.2 and the 3.2 image has been retired or bundles a fixed resolv.
+CVE-2026-80212
+
+# =============================================================================
+# rubyzip 2.4.1, installed as a dependency of license_finder (dev-ruby, every
+# version). Issue #605. CVE-2026-85396: path traversal in Zip::Entry#extract
+# (fixed in 3.4.0). Not fixable by bumping: license_finder 7.2.1, the newest
+# release, requires rubyzip >= 1, < 3. license_finder only reads archive
+# entries into memory (Zip::File#read, #glob, Entry#get_input_stream) to find
+# .nuspec and license/notice files; it never calls extract, so the vulnerable
+# file-write path is not exercised. Remove once a license_finder release
+# accepts rubyzip >= 3.4.0.
+# =============================================================================
+CVE-2026-85396
