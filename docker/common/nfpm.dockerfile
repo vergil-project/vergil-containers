@@ -8,7 +8,7 @@
 # field (awk) rather than a substring grep, which would match both. sha256sum -c
 # fails loud on any mismatch, so a wrong pin can't slip through silently.
 ARG TARGETARCH
-ARG NFPM_VERSION=2.47.0
+ARG NFPM_VERSION=2.48.0
 
 # hadolint ignore=DL3003
 RUN NFPM_ARCH="$([ "${TARGETARCH}" = "amd64" ] && echo x86_64 || echo "${TARGETARCH}")" && \
