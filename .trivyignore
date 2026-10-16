@@ -111,10 +111,12 @@ CVE-2026-97031
 CVE-2026-39821
 CVE-2026-46600
 
-# golang.org/x/net (go image only — go-install linters: golangci-lint, etc.).
-# HTML/HTTP-parsing CPU-exhaustion DoS subset still carried by tools that have
-# not yet re-vendored. Not run on attacker-controlled HTML. Remove once those
-# linters vendor the fixed x/net.
+# golang.org/x/net/html (go image only). Both CVEs are in the HTML parser
+# (DOCTYPE character references, duplicate attributes). As of issue #606 the
+# only carrier is go-licenses v2.0.1 (x/net v0.43.0, the newest release, on both
+# Go images). x/net/html is not linked into that binary (`go tool nm` shows no
+# x/net/html symbols), and go-licenses never parses HTML. Remove once
+# go-licenses vendors x/net >= 0.55.0.
 CVE-2026-25681
 CVE-2026-27136
 
@@ -125,10 +127,21 @@ CVE-2026-27136
 # fixed release.
 CVE-2026-56852
 
-# golang.org/x/image (go image only — go-install linters). TIFF-decoder
-# unbounded-allocation DoS; the license/lint tooling never decodes TIFF. Remove
-# once an upstream linter ships with the fixed x/image.
+# golang.org/x/image (go image only). The carrier is go-test-coverage, which
+# pulls x/image in through its coverage-badge renderer: x/image v0.18.0 in
+# v2.18.3 (Go 1.25) and v0.41.0 in v2.19.0 (Go 1.26). Issue #606.
+# CVE-2026-46602 — x/image/tiff decoder DoS (fixed in 0.43.0).
+# CVE-2026-46603 — x/image/vp8l (WebP lossless) excessive allocation (fixed in
+#   0.45.0).
+# Neither vulnerable package is in the binary: the only x/image packages linked
+# into go-test-coverage in either image are x/image/font and x/image/math/fixed
+# (`go tool nm` shows no x/image/tiff, vp8l or webp symbols), so the TIFF and
+# VP8L decoders cannot run.
+# Not fixable by bumping: the newest release, v2.20.0, still requires x/image
+# v0.41.0 (and Go 1.27). Remove once a go-test-coverage release that builds on
+# the image's Go requires x/image >= 0.45.0 (>= 0.43.0 for CVE-2026-46602).
 CVE-2026-46602
+CVE-2026-46603
 
 # =============================================================================
 # golang.org/x/mod < 0.40.0 vendored in the prebuilt Go CLIs. The deferred pair

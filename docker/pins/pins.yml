@@ -39,7 +39,8 @@
 #     WS3-gated task #422. WS3 repoint rollback now exists (#427), lifting that
 #     gate. Outcome of #422:
 #       * govulncheck floats — it installs via `go install ...@latest`, so it
-#         frees by dropping the version token (entry removed).
+#         frees by dropping the version token (entry removed). #606 re-pinned it
+#         on the Go 1.25 image only, as a Tenet-6 break-hold (see its entry).
 #       * trivy and scorecard are KEPT as mechanism pins — they install via
 #         binary release-tarball download whose URL + per-version checksum embed
 #         the version, the same class as the #418 binary tools above. Floating
@@ -50,10 +51,26 @@
 #         version) — no entry needed.
 pins:
   go-test-coverage:
-    constraint: "==2.18.3 on Go 1.25, else latest (unpinned)"
-    inducing_release: "2.18.4"
+    constraint: "==2.18.3 on Go 1.25, ==2.19.0 on Go 1.26, else latest (unpinned)"
+    inducing_release: "2.20.0"
     deterministic: true
-    reason: "go-test-coverage >=2.18.4 requires Go >=1.26; fails on the Go 1.25 image. Only that branch is held — the Go 1.26 branch floated back to latest in #571, since nothing constrains it and a hand-written version there is drift, not policy. Retires with Go 1.25."
+    reason: "go-test-coverage >=2.18.4 requires Go >=1.26, and >=2.20.0 requires Go >=1.27. With GOTOOLCHAIN=local, `go install @latest` fails the build on an image whose Go is older, so each image holds the newest release that builds there: v2.18.3 on Go 1.25 and v2.19.0 (`go 1.26`) on Go 1.26 (#606). inducing_release is the newest break (2.20.0, Go 1.26); the Go 1.25 hold was induced by 2.18.4. Each hold retires with its Go version; a Go version newer than 1.26 floats on latest."
+    state: active
+    tracking_issue: null
+
+  govulncheck:
+    constraint: "==1.7.0 on Go 1.25, else latest (unpinned)"
+    inducing_release: "1.8.0"
+    deterministic: true
+    reason: "golang.org/x/vuln >=1.8.0 declares `go 1.26.0`; with GOTOOLCHAIN=local the Go 1.25 image cannot satisfy it and `go install @latest` fails the build. v1.7.0 is the last release carrying `go 1.25.0` (#606). Go 1.26 stays unpinned. Retires with Go 1.25."
+    state: active
+    tracking_issue: null
+
+  goimports:
+    constraint: "==0.49.0 (golang.org/x/tools) on Go 1.25, else latest (unpinned)"
+    inducing_release: "0.50.0"
+    deterministic: true
+    reason: "goimports ships in golang.org/x/tools, which declares `go 1.26.0` from v0.50.0; with GOTOOLCHAIN=local the Go 1.25 image cannot satisfy it and `go install @latest` fails the build. v0.49.0 is the last release carrying `go 1.25.0` (#606). Go 1.26 stays unpinned. Retires with Go 1.25."
     state: active
     tracking_issue: null
 
@@ -75,7 +92,8 @@ pins:
   # inducing_release is null (not a Tenet-6 break-hold) and the constraint is
   # descriptive, not a hard-coded version — the version-of-record lives in the
   # template (extract_pins reads it). govulncheck FREED under #422 (installs via
-  # `go install ...@latest`); its entry is removed. semgrep stays floating.
+  # `go install ...@latest`); #606 re-pinned it on Go 1.25 only, as an active
+  # break-hold above. semgrep stays floating.
   shellcheck:  {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball URL embeds the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
   shfmt:       {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary URL embeds the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
   actionlint:  {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version checksums embed the version; the weekly bump-tools workflow delivers the FORWARD bump #260 asked for once upstream ships it.", state: auto-managed, tracking_issue: null}

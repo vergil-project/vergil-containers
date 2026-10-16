@@ -87,9 +87,12 @@ by default — when `pytest-xdist` resolves (as it does in this image) and their
 | goimports        | Import formatter      |
 | go-test-coverage | Coverage thresholds   |
 
-`go-test-coverage` is version-pinned per Go version (a live Tenet-6 example — it
-is held because newer releases require a newer Go than the `1.25` image ships).
-See its entry in [the catalog](https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md).
+Some of these tools are version-pinned per Go version (live Tenet-6 examples —
+their newer releases require a newer Go than the image ships, and the images
+build with `GOTOOLCHAIN=local`). On `1.25`, `golangci-lint`, `govulncheck`,
+`goimports` and `go-test-coverage` are held; on `1.26`, only
+`go-test-coverage` is. See their entries in
+[the catalog](https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md).
 
 ## Java
 
