@@ -149,6 +149,12 @@ jobs:
           cache-to: type=registry,ref=${{ env.CACHE_TAG }},mode=max
           push: true
 
+      # Provides vrg-sarif-filter, which the trivy action uses to strip
+      # accepted-suppressed results from the copy uploaded to code scanning
+      # (vergil-actions#920). trivy-results.sarif itself stays unfiltered.
+      - name: Install vergil-tooling
+        uses: vergil-project/vergil-actions/actions/shared/setup/vergil@v2.1
+
       - name: Trivy scan (amd64)
         id: trivy-amd64
         continue-on-error: true
@@ -289,6 +295,12 @@ jobs:
           cache-from: type=registry,ref=${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.CACHE_TAG }},mode=max
           push: true
+
+      # Provides vrg-sarif-filter, which the trivy action uses to strip
+      # accepted-suppressed results from the copy uploaded to code scanning
+      # (vergil-actions#920). trivy-results.sarif itself stays unfiltered.
+      - name: Install vergil-tooling
+        uses: vergil-project/vergil-actions/actions/shared/setup/vergil@v2.1
 
       - name: Trivy scan (amd64)
         id: trivy-amd64
