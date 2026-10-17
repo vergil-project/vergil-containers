@@ -108,7 +108,7 @@ def test_two_signals_stay_separate():
 
 
 def test_source_pins_takes_newest_when_tool_pinned_per_image():
-    # go-test-coverage is pinned per Go version (v2.18.3 on 1.25). The
+    # go-test-coverage can be pinned per Go version (e.g. one hold per image). The
     # version-of-record is the newest pin; the older one is a deliberate hold.
     pinned = r.source_pins(DOCKER)
     assert pinned["trivy"]
