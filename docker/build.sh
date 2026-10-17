@@ -64,7 +64,6 @@ build ruby   RUBY_VERSION   3.3
 build ruby   RUBY_VERSION   3.4
 build java   JDK_VERSION    17
 build java   JDK_VERSION    21
-build go     GO_VERSION     1.25
 build go     GO_VERSION     1.26
 build rust   RUST_VERSION   1.92
 build rust   RUST_VERSION   1.93

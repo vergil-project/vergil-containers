@@ -24,23 +24,24 @@ def test_extractor_drops_freed_package_manager_pins():
     # dropping the version. They must no longer surface as exact pins, or
     # check_pins would false-flag their (now-deleted) pins.yml entries.
     #
-    # golangci-lint was in this list until #569: it is now a REAL pin again
-    # (v2.13.0 raised its Go floor to 1.26, so the Go 1.25 image must hold
-    # v2.12.2). It is documented in pins.yml as `active`, so check_pins accepts
-    # it — being freed by #418 does not make a tool permanently unpinnable when
-    # upstream later forces a hold. See test_golangci_lint_is_a_documented_pin.
+    # golangci-lint was re-pinned for the Go 1.25 image by #569 and freed again
+    # when #606 retired Go 1.25 (follow-up vergil-project/.github#403); a hold
+    # lives exactly as long as the image that needs it. govulncheck and
+    # goimports float on the remaining image too.
     tools = {p.tool for p in extract_pins.extract(DOCKER)}
     for freed in ("uv", "markdownlint-cli", "yamllint",
-                  "cargo-deny", "mkdocs-material", "pyyaml"):
+                  "cargo-deny", "mkdocs-material", "pyyaml",
+                  "golangci-lint", "govulncheck", "goimports"):
         assert freed not in tools
 
 
-def test_golangci_lint_is_a_documented_pin():
-    # #569: re-pinned for Go 1.25 only. Guards the pairing this suite exists to
-    # protect — an extracted pin with a matching pins.yml justification.
+def test_go_test_coverage_is_a_documented_pin():
+    # #606: held at v2.19.0 on Go 1.26 (v2.20.0 needs Go 1.27). Guards the
+    # pairing this suite exists to protect — an extracted pin with a matching
+    # pins.yml justification.
     pins = {p.tool: p.version for p in extract_pins.extract(DOCKER)}
-    assert pins.get("golangci-lint") == "2.12.2"
-    assert check_pins.load_pins(DOCKER)["golangci-lint"]["state"] == "active"
+    assert pins.get("go-test-coverage") == "2.19.0"
+    assert check_pins.load_pins(DOCKER)["go-test-coverage"]["state"] == "active"
 
 
 def test_extractor_excludes_major_only_matrix():

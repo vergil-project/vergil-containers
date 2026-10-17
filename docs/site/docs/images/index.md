@@ -76,7 +76,7 @@ by default — when `pytest-xdist` resolves (as it does in this image) and their
 ## Go
 
 **Base**: `golang:<version>`
-**Versions**: 1.25, 1.26
+**Versions**: 1.26
 
 | Tool             | Purpose               |
 | ---------------- | --------------------- |
@@ -88,8 +88,16 @@ by default — when `pytest-xdist` resolves (as it does in this image) and their
 | go-test-coverage | Coverage thresholds   |
 
 `go-test-coverage` is version-pinned per Go version (a live Tenet-6 example — it
-is held because newer releases require a newer Go than the `1.25` image ships).
+is held because newer releases require a newer Go than the `1.26` image ships,
+and the image builds with `GOTOOLCHAIN=local`).
 See its entry in [the catalog](https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md).
+
+Go `1.25` was retired in
+[#606](https://github.com/vergil-project/vergil-containers/issues/606): it is
+out of upstream support and its standard library carries HIGH CVEs that no Go
+1.25 release will fix. Already-published
+`dev-go:1.25` tags remain in GHCR but are no longer rebuilt. Follow-up:
+[vergil-project/.github#403](https://github.com/vergil-project/.github/issues/403).
 
 ## Java
 

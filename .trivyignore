@@ -19,7 +19,8 @@
 # build (go-install @latest linters need a newer Go), so the go-image-only
 # entries were checked against the last published dev-go images instead and are
 # kept because their go-install carriers still show them. Six new entries were
-# added below, each marked with issue #605.
+# added below, each marked with issue #605. Issue #606 then rebuilt dev-go 1.26
+# locally, re-checked the go-image-only entries against it, and retired Go 1.25.
 # Previous audit: 2026-08-15 (issue #561), which removed 137 stale entries.
 # When re-auditing, an entry is stale if it no longer appears in a fresh scan of
 # the current images (see issue #561 for the method).
@@ -71,6 +72,9 @@ CVE-2026-56862
 #     manager, shipped outside dpkg in the Ubuntu 26.04 base of eclipse-temurin
 #     (ubuntu:26.04 itself carries the same build). It is never started; the
 #     image entrypoint is Temurin's /__cacert_entrypoint.sh.
+#   - go-licenses v2.0.1 (dev-go only), CVE-2026-78669 only, via
+#     golang.org/x/net v0.43.0. It is built with the image's go1.26.9, so its
+#     stdlib is fixed. Issue #606.
 # nfpm and trivy carried the same three CVEs. The nfpm 2.48.0 and trivy 0.76.0
 # bumps fix them (both are built with go1.27.2), so those carriers are not
 # ignored.
@@ -89,10 +93,14 @@ CVE-2026-56862
 #   TLS-authenticated server itself to be malicious, and the impact is CPU
 #   exhaustion of a short-lived, user-invoked CLI process, with no
 #   confidentiality or integrity impact. actionlint and shfmt make no network
-#   connections, and pebble never runs.
+#   connections, and pebble never runs. In go-licenses the vulnerable
+#   x/net/http2 package is not linked: the only x/net/http2 code in the binary
+#   is x/net/http2/hpack (`go tool nm`), so its x/net copy cannot run the
+#   HTTP/2 flow-control path at all.
 #
 # Remove each once gh, actionlint, shfmt, tofu and the temurin base's pebble all
-# ship builds with Go >= 1.26.9 / 1.27.2 (and x/net >= 0.60.0 for gh and tofu).
+# ship builds with Go >= 1.26.9 / 1.27.2 (and x/net >= 0.60.0 for gh, tofu and
+# go-licenses).
 # The weekly bump-tools PR and the nightly rebuild pick these up.
 CVE-2026-78667
 CVE-2026-78669
@@ -111,10 +119,12 @@ CVE-2026-97031
 CVE-2026-39821
 CVE-2026-46600
 
-# golang.org/x/net (go image only — go-install linters: golangci-lint, etc.).
-# HTML/HTTP-parsing CPU-exhaustion DoS subset still carried by tools that have
-# not yet re-vendored. Not run on attacker-controlled HTML. Remove once those
-# linters vendor the fixed x/net.
+# golang.org/x/net/html (go image only). Both CVEs are in the HTML parser
+# (DOCTYPE character references, duplicate attributes). As of issue #606 the
+# only carrier is go-licenses v2.0.1 (x/net v0.43.0, the newest release, on both
+# Go images). x/net/html is not linked into that binary (`go tool nm` shows no
+# x/net/html symbols), and go-licenses never parses HTML. Remove once
+# go-licenses vendors x/net >= 0.55.0.
 CVE-2026-25681
 CVE-2026-27136
 
@@ -125,10 +135,21 @@ CVE-2026-27136
 # fixed release.
 CVE-2026-56852
 
-# golang.org/x/image (go image only — go-install linters). TIFF-decoder
-# unbounded-allocation DoS; the license/lint tooling never decodes TIFF. Remove
-# once an upstream linter ships with the fixed x/image.
+# golang.org/x/image (go image only). The carrier is go-test-coverage v2.19.0,
+# which pulls x/image v0.41.0 in through its coverage-badge renderer. Issue
+# #606.
+# CVE-2026-46602 — x/image/tiff decoder DoS (fixed in 0.43.0).
+# CVE-2026-46603 — x/image/vp8l (WebP lossless) excessive allocation (fixed in
+#   0.45.0).
+# Neither vulnerable package is in the binary: the only x/image packages linked
+# into go-test-coverage are x/image/font and x/image/math/fixed
+# (`go tool nm` shows no x/image/tiff, vp8l or webp symbols), so the TIFF and
+# VP8L decoders cannot run.
+# Not fixable by bumping: the newest release, v2.20.0, still requires x/image
+# v0.41.0 (and Go 1.27). Remove once a go-test-coverage release that builds on
+# the image's Go requires x/image >= 0.45.0 (>= 0.43.0 for CVE-2026-46602).
 CVE-2026-46602
+CVE-2026-46603
 
 # =============================================================================
 # golang.org/x/mod < 0.40.0 vendored in the prebuilt Go CLIs. The deferred pair
@@ -154,8 +175,9 @@ CVE-2026-46602
 #
 # As of the 2026-10-16 audit (issue #605), gh and scorecard no longer carry a
 # vulnerable x/mod. The remaining carriers are tofu 1.13.1 (x/mod v0.39.0,
-# dev-base) and goimports, golangci-lint, go-licenses and govulncheck (go
-# image).
+# dev-base) and go-licenses v2.0.1 (x/mod v0.27.0, go image). goimports,
+# golangci-lint and govulncheck carried it only in their Go 1.25 builds, which
+# went away when issue #606 retired that image.
 # =============================================================================
 CVE-2026-56864
 CVE-2026-56865

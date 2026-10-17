@@ -261,7 +261,7 @@ corresponding `prod-` packages):
 | Ruby     | 3.2, 3.3, 3.4    |
 | Python   | 3.12, 3.13, 3.14 |
 | Java     | 17, 21           |
-| Go       | 1.25, 1.26       |
+| Go       | 1.26             |
 | Rust     | 1.92, 1.93       |
 | C++ (Clang) | 20, 19        |
 | C++ (GCC)   | 14, 13        |
