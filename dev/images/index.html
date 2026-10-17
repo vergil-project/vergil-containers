@@ -2690,7 +2690,7 @@ by default — when <code>pytest-xdist</code> resolves (as it does in this image
 </table>
 <h2 id="go">Go<a class="headerlink" href="#go" title="Permanent link">&para;</a></h2>
 <p><strong>Base</strong>: <code>golang:&lt;version&gt;</code>
-<strong>Versions</strong>: 1.25, 1.26</p>
+<strong>Versions</strong>: 1.26</p>
 <table>
 <thead>
 <tr>
@@ -2726,8 +2726,15 @@ by default — when <code>pytest-xdist</code> resolves (as it does in this image
 </tbody>
 </table>
 <p><code>go-test-coverage</code> is version-pinned per Go version (a live Tenet-6 example — it
-is held because newer releases require a newer Go than the <code>1.25</code> image ships).
+is held because newer releases require a newer Go than the <code>1.26</code> image ships,
+and the image builds with <code>GOTOOLCHAIN=local</code>).
 See its entry in <a href="https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md">the catalog</a>.</p>
+<p>Go <code>1.25</code> was retired in
+<a href="https://github.com/vergil-project/vergil-containers/issues/606">#606</a>: it is
+out of upstream support and its standard library carries HIGH CVEs that no Go
+1.25 release will fix. Already-published
+<code>dev-go:1.25</code> tags remain in GHCR but are no longer rebuilt. Follow-up:
+<a href="https://github.com/vergil-project/.github/issues/403">vergil-project/.github#403</a>.</p>
 <h2 id="java">Java<a class="headerlink" href="#java" title="Permanent link">&para;</a></h2>
 <p><strong>Base</strong>: <code>eclipse-temurin:&lt;version&gt;-jdk</code>
 <strong>Versions</strong>: 17, 21</p>
