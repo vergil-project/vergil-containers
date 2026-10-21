@@ -18,6 +18,7 @@ TagExists = Callable[[str, str], bool]
 
 class PythonAdapter:
     key = "python"
+    evidence_url = "https://endoflife.date/python"
     product = "python"
     image = "python"
 

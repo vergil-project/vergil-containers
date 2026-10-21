@@ -9,9 +9,11 @@ from __future__ import annotations
 import json
 from datetime import date
 
-from lifecycle.core import CHANGE_KINDS, Change, FamilyResult
+from lifecycle.core import CHANGE_KINDS, Change, FamilyResult, TargetVersion, UpstreamRelease
 
-JSON_SCHEMA = 1
+# Schema 2 adds each family's upstream `releases` and `target` window, which the
+# add/drop PRs need for their GA and EOL dates.
+JSON_SCHEMA = 2
 
 
 def family_status(result: FamilyResult) -> str:
@@ -43,6 +45,24 @@ def render_markdown(results: list[FamilyResult], today: date) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _date_out(d: date | None) -> str | None:
+    return d.isoformat() if d is not None else None
+
+
+def _date_in(value: object) -> date | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError(f"lifecycle results: date {value!r} must be an ISO string or null")
+    return date.fromisoformat(value)
+
+
+def _bool_in(value: object) -> bool:
+    if not isinstance(value, bool):
+        raise ValueError(f"lifecycle results: {value!r} must be true or false")
+    return value
+
+
 def results_to_json(results: list[FamilyResult], today: date) -> str:
     doc = {
         "schema": JSON_SCHEMA,
@@ -54,6 +74,20 @@ def results_to_json(results: list[FamilyResult], today: date) -> str:
                 "changes": [
                     {"family": c.family, "kind": c.kind, "version": c.version, "detail": c.detail}
                     for c in r.changes
+                ],
+                "releases": [
+                    {
+                        "version": u.version,
+                        "ga": _date_out(u.ga),
+                        "eol": _date_out(u.eol),
+                        "lts": u.lts,
+                        "lts_since": _date_out(u.lts_since),
+                    }
+                    for u in r.releases
+                ],
+                "target": [
+                    {"version": t.version, "ga": _date_out(t.ga), "eol": _date_out(t.eol), "installable": t.installable}
+                    for t in r.target
                 ],
             }
             for r in results
@@ -78,7 +112,18 @@ def results_from_json(text: str) -> list[FamilyResult]:
                 if c["kind"] not in CHANGE_KINDS:
                     raise ValueError(f"lifecycle results: unknown change kind {c['kind']!r}")
                 changes.append(Change(c["family"], c["kind"], c["version"], c["detail"]))
-            results.append(FamilyResult(raw["family"], tuple(changes), raw["error"]))
+            releases = tuple(
+                UpstreamRelease(
+                    u["version"], _date_in(u["ga"]), _date_in(u["eol"]), _bool_in(u["lts"]), _date_in(u["lts_since"])
+                )
+                for u in raw["releases"]
+            )
+            target = tuple(
+                TargetVersion(t["version"], _date_in(t["ga"]), _date_in(t["eol"]), _bool_in(t["installable"]))
+                for t in raw["target"]
+            )
+            results.append(FamilyResult(raw["family"], tuple(changes), raw["error"], releases, target))
     except (KeyError, TypeError) as exc:
         raise ValueError(f"lifecycle results: malformed entry: {exc!r}") from exc
     return results
+

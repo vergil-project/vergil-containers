@@ -95,6 +95,7 @@ def parse_supported(html: str) -> set[str]:
 
 class GccAdapter:
     key = "cpp-gcc"
+    evidence_url = RELEASES_URL
 
     def __init__(self, fetch: Fetch = fetch_url, packaged: Packaged | None = None) -> None:
         self._fetch = fetch

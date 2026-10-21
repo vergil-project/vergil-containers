@@ -45,12 +45,18 @@ jobs:
   # spec §6.2). Every family's adapter reads upstream release metadata; the
   # report covers every family on every run, and publish.py makes the open
   # `language-lifecycle` issues match it: one per change on a report-only
-  # family, one per family whose check failed (closed on recovery). So no PR
-  # and no open issue reliably means "in sync".
+  # family, one per family whose check failed (closed on recovery). For the
+  # `pr` families (python, go) `publish.py --prs` opens or refreshes one
+  # add/drop PR per change instead. So no PR and no open issue reliably means
+  # "in sync".
   #
   # Unlike pin-exposure, NO continue-on-error: a check that cannot reach or
   # parse upstream (a Docker Hub or GitHub API rate limit included) fails this
   # job loudly, and still publishes its failure issue first.
+  # The add/drop branches and PRs are written with the GitHub App token, not
+  # this job's GITHUB_TOKEN, so it needs no contents/pull-requests write here:
+  # the App's installation grants them (contents: write, pull-requests: write,
+  # exactly what bump-tools.yml already uses). App-authored PRs fire CI.
   language-lifecycle:
     name: "language lifecycle check"
     runs-on: ubuntu-latest
@@ -67,7 +73,8 @@ jobs:
     steps:
       # The App token authenticates the GitHub releases API reads (the LLVM
       # adapter), which unauthenticated get only 60 requests an hour per runner
-      # IP. Minted exactly as bump-tools.yml does.
+      # IP, and the add/drop branch pushes and PRs. Minted exactly as
+      # bump-tools.yml does.
       - name: Generate app token
         id: app-token
         uses: actions/create-github-app-token@v3
@@ -75,8 +82,15 @@ jobs:
           app-id: ${{ secrets.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
+      # Checked out with the App token so the add/drop branch pushes are
+      # App-authored (and so trigger CI), as in bump-tools.yml.
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Mark workspace safe for git
+        run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
       # Exits 1 when any family's check failed, after writing both outputs. The
       # step fails with it (nothing masks the exit code), so the job is red;
@@ -115,6 +129,26 @@ jobs:
         run: |
           set -euo pipefail
           python3 docker/versions/lifecycle/publish.py \
+            --results "${OUT}/results.json" \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+      # One PR per add/drop on a `pr` family, on lifecycle/<family>-<kind>-<v>,
+      # rebuilt from this checkout as one commit and force-pushed only when it
+      # changed; a rerun refreshes the same PR, never a second one. Nothing
+      # auto-merges, and add PRs carry the hold that keeps them unmerged until
+      # the first-adds validation task (vergil-containers#622). Only from the
+      # default branch: the checkout is the PRs' base.
+      - name: Open, refresh and close add/drop PRs
+        if: >-
+          ${{ !cancelled() && hashFiles('lifecycle-out/results.json') != ''
+          && github.ref_name == github.event.repository.default_branch }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          python3 docker/versions/lifecycle/publish.py --prs --base "${BASE}" \
             --results "${OUT}/results.json" \
             --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 

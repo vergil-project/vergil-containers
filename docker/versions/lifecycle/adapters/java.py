@@ -19,6 +19,7 @@ TagExists = Callable[[str, str], bool]
 
 class JavaAdapter:
     key = "java"
+    evidence_url = "https://endoflife.date/eclipse-temurin"
     product = "eclipse-temurin"
     image = "eclipse-temurin"
 
