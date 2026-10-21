@@ -23,7 +23,6 @@ docker/
 │   └── validation-tools.dockerfile
 ├── base/Dockerfile.template
 ├── python/Dockerfile.template
-├── ruby/Dockerfile.template
 ├── go/Dockerfile.template
 ├── java/Dockerfile.template
 └── rust/Dockerfile.template
@@ -184,7 +183,7 @@ repository write access. The packages were originally created by the
 This repo does not, unless manually configured.
 
 Per-package setup (one-time, for each of `dev-base`, `dev-python`,
-`dev-java`, `dev-go`, `dev-ruby`, `dev-rust`, and the corresponding
+`dev-java`, `dev-go`, `dev-rust`, and the corresponding
 `prod-` packages):
 
 1. Navigate to the package settings page on GHCR.

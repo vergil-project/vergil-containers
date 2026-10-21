@@ -25,12 +25,11 @@ All images are published to GitHub Container Registry at
 | Image           | Language   | Versions         | Base                      |
 | --------------- | ---------- | ---------------- | ------------------------- |
 | `dev-python`    | python     | 3.14, 3.13, 3.12 | `python:<v>-slim`         |
-| `dev-ruby`      | ruby       | 3.4, 3.3, 3.2    | `ruby:<v>-slim`           |
 | `dev-java`      | java       | 21, 17           | `eclipse-temurin:<v>-jdk` |
 | `dev-go`        | go         | 1.26             | `golang:<v>`              |
 | `dev-rust`      | rust       | 1.93, 1.92       | `rust:<v>-slim`           |
 | `dev-cpp-clang` | cpp        | 20, 19           | `debian:trixie-slim`      |
-| `dev-cpp-gcc`   | cpp        | 14, 13           | `debian:trixie-slim`      |
+| `dev-cpp-gcc`   | cpp        | 14               | `debian:trixie-slim`      |
 | `dev-ts-node`   | typescript | 24, 22           | `debian:trixie-slim`      |
 | `dev-base`      | —          | latest           | `python:3.14-slim`        |
 <!-- END generated: versions -->
@@ -150,8 +149,8 @@ the `vergil-tooling` repository:
 2. Under **Manage Actions access**, click **Add Repository**.
 3. Select `vergil-containers` and set the role to **Write**.
 
-This applies to: `dev-python`, `dev-java`, `dev-go`, `dev-ruby`,
-`dev-rust`, `dev-ts-node`, `dev-base`.
+This applies to: `dev-python`, `dev-java`, `dev-go`, `dev-rust`,
+`dev-ts-node`, `dev-base`.
 
 ## Migration Note
 

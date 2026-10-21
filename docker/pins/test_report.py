@@ -48,7 +48,7 @@ def test_matrix_includes_cpp_images():
     # installed tool versions are harvested alongside the other languages.
     images = r._image_matrix("prod", DOCKER)
     for image in ("prod-cpp-clang:20", "prod-cpp-clang:19",
-                  "prod-cpp-gcc:14", "prod-cpp-gcc:13"):
+                  "prod-cpp-gcc:14"):
         assert image in images
 
 
@@ -125,5 +125,5 @@ def test_image_matrix_is_read_from_the_version_manifest():
     assert images[0] == "prod-base:latest"
     # Every family in the manifest appears, including those the old hand-kept
     # list missed (ts-node).
-    assert {"prod-python:3.14", "prod-cpp-gcc:13", "prod-ts-node:24"} <= set(images)
+    assert {"prod-python:3.14", "prod-cpp-gcc:14", "prod-ts-node:24"} <= set(images)
     assert len(images) == len(set(images))

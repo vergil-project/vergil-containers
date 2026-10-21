@@ -16,21 +16,6 @@
       "build-arg": "PYTHON_VERSION"
     },
     {
-      "language": "ruby",
-      "version": "3.4",
-      "build-arg": "RUBY_VERSION"
-    },
-    {
-      "language": "ruby",
-      "version": "3.3",
-      "build-arg": "RUBY_VERSION"
-    },
-    {
-      "language": "ruby",
-      "version": "3.2",
-      "build-arg": "RUBY_VERSION"
-    },
-    {
       "language": "java",
       "version": "21",
       "build-arg": "JDK_VERSION"
@@ -68,11 +53,6 @@
     {
       "language": "cpp-gcc",
       "version": "14",
-      "build-arg": "GCC_VERSION"
-    },
-    {
-      "language": "cpp-gcc",
-      "version": "13",
       "build-arg": "GCC_VERSION"
     },
     {

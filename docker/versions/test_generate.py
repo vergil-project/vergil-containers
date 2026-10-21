@@ -50,7 +50,6 @@ def test_render_build_sh_block():
         '"${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:20" "$runtime"',
         '"${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:19" "$runtime"',
         '"${script_dir}/cpp/smoke-test.sh" "dev-cpp-gcc:14" "$runtime"',
-        '"${script_dir}/cpp/smoke-test.sh" "dev-cpp-gcc:13" "$runtime"',
         '"${script_dir}/ts-node/smoke-test.sh" "dev-ts-node:24" "$runtime"',
         '"${script_dir}/ts-node/smoke-test.sh" "dev-ts-node:22" "$runtime"',
     ]
@@ -149,7 +148,25 @@ def test_window_json_covers_every_family_newest_first():
     assert [f["key"] for f in families] == [f.key for f in seed.families]
     for fam, family in zip(families, seed.families):
         assert [v["version"] for v in fam["versions"]] == [v.version for v in family.versions]
-    assert "ruby" in data["languages"]
+
+
+def _committed_window() -> dict:
+    return json.loads((ROOT / g.WINDOW_JSON).read_text())
+
+
+def _window_families(window: dict) -> dict:
+    return {fam["key"]: [v["version"] for v in fam["versions"]]
+            for lang in window["languages"].values() for fam in lang["families"]}
+
+
+def test_window_has_no_ruby():
+    window = _committed_window()
+    assert "ruby" not in window["languages"]
+    assert "ruby" not in _window_families(window)
+
+
+def test_cpp_gcc_window_is_14_only():
+    assert _window_families(_committed_window())["cpp-gcc"] == ["14"]
 
 
 def test_committed_files_are_up_to_date(capsys):

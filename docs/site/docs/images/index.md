@@ -24,12 +24,11 @@ The table is generated from `docker/versions/manifest.yml` by
 | Image           | Language   | Versions         | Base                      |
 | --------------- | ---------- | ---------------- | ------------------------- |
 | `dev-python`    | python     | 3.14, 3.13, 3.12 | `python:<v>-slim`         |
-| `dev-ruby`      | ruby       | 3.4, 3.3, 3.2    | `ruby:<v>-slim`           |
 | `dev-java`      | java       | 21, 17           | `eclipse-temurin:<v>-jdk` |
 | `dev-go`        | go         | 1.26             | `golang:<v>`              |
 | `dev-rust`      | rust       | 1.93, 1.92       | `rust:<v>-slim`           |
 | `dev-cpp-clang` | cpp        | 20, 19           | `debian:trixie-slim`      |
-| `dev-cpp-gcc`   | cpp        | 14, 13           | `debian:trixie-slim`      |
+| `dev-cpp-gcc`   | cpp        | 14               | `debian:trixie-slim`      |
 | `dev-ts-node`   | typescript | 24, 22           | `debian:trixie-slim`      |
 | `dev-base`      | —          | latest           | `python:3.14-slim`        |
 <!-- END generated: versions -->
@@ -81,15 +80,6 @@ cores (`-n auto --dist worksteal`) fleet-wide without every consuming repo
 declaring it as a dev dependency. Consuming repos get parallel test execution
 by default — when `pytest-xdist` resolves (as it does in this image) and their
 `[test].parallel` setting is on (the default).
-
-## Ruby
-
-**Base**: `ruby:<version>-slim`
-
-| Tool           | Source     | Purpose                 |
-| -------------- | ---------- | ----------------------- |
-| bundler        | system gem | Ruby dependency manager |
-| license_finder | gem        | License auditing        |
 
 ## Go
 

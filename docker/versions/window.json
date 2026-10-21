@@ -29,34 +29,6 @@
         }
       ]
     },
-    "ruby": {
-      "families": [
-        {
-          "key": "ruby",
-          "token_prefix": "",
-          "versions": [
-            {
-              "version": "3.4",
-              "eol": null,
-              "in_policy": true,
-              "runtime_published": null
-            },
-            {
-              "version": "3.3",
-              "eol": null,
-              "in_policy": true,
-              "runtime_published": null
-            },
-            {
-              "version": "3.2",
-              "eol": null,
-              "in_policy": true,
-              "runtime_published": null
-            }
-          ]
-        }
-      ]
-    },
     "java": {
       "families": [
         {
@@ -143,12 +115,6 @@
           "versions": [
             {
               "version": "14",
-              "eol": null,
-              "in_policy": true,
-              "runtime_published": null
-            },
-            {
-              "version": "13",
               "eol": null,
               "in_policy": true,
               "runtime_published": null
