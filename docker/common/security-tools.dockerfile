@@ -1,7 +1,7 @@
 # --- Security tools -----------------------------------------------------------
 ARG TARGETARCH
 ARG SCORECARD_VERSION=5.6.0
-ARG TRIVY_VERSION=0.76.0
+ARG TRIVY_VERSION=0.76.1
 
 # hadolint ignore=DL3003
 RUN SC_TARBALL="scorecard_${SCORECARD_VERSION}_linux_${TARGETARCH}.tar.gz" && \
