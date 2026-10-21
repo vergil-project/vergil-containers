@@ -9,12 +9,10 @@ import manifest as mf
 HERE = Path(__file__).resolve().parent
 MANIFEST = HERE / "manifest.yml"
 
-# The literal publish matrix in cd-docker-publish.yml (its `include:` list) at
-# the start of the manifest work, as (image suffix, version, build-arg) triples.
+# The publish matrix (image suffix, version, build-arg) the manifest must seed:
+# the `include:` list cd-docker-publish.yml carried at the start of the manifest
+# work, less Ruby and GCC 13 (dropped in #619).
 CURRENT_MATRIX = [
-    ("ruby", "3.2", "RUBY_VERSION"),
-    ("ruby", "3.3", "RUBY_VERSION"),
-    ("ruby", "3.4", "RUBY_VERSION"),
     ("python", "3.12", "PYTHON_VERSION"),
     ("python", "3.13", "PYTHON_VERSION"),
     ("python", "3.14", "PYTHON_VERSION"),
@@ -26,7 +24,6 @@ CURRENT_MATRIX = [
     ("cpp-clang", "20", "CLANG_VERSION"),
     ("cpp-clang", "19", "CLANG_VERSION"),
     ("cpp-gcc", "14", "GCC_VERSION"),
-    ("cpp-gcc", "13", "GCC_VERSION"),
     ("ts-node", "24", "NODE_MAJOR"),
     ("ts-node", "22", "NODE_MAJOR"),
 ]

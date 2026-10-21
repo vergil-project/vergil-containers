@@ -36,7 +36,7 @@ generate() {
 }
 
 if [[ $# -eq 0 ]]; then
-  langs=(python go rust java ruby cpp-clang cpp-gcc ts-node base)
+  langs=(python go rust java cpp-clang cpp-gcc ts-node base)
 else
   langs=("$@")
 fi

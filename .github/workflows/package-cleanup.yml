@@ -56,7 +56,6 @@ jobs:
           # BEGIN generated: versions (cleanup)
           - dev-base
           - dev-python
-          - dev-ruby
           - dev-java
           - dev-go
           - dev-rust
@@ -65,7 +64,6 @@ jobs:
           - dev-ts-node
           - prod-base
           - prod-python
-          - prod-ruby
           - prod-java
           - prod-go
           - prod-rust
@@ -115,8 +113,6 @@ jobs:
             older_than: "30 days"
           - package: prod-python
             older_than: "30 days"
-          - package: prod-ruby
-            older_than: "30 days"
           - package: prod-java
             older_than: "30 days"
           - package: prod-go
@@ -132,8 +128,6 @@ jobs:
           - package: dev-base
             older_than: "7 days"
           - package: dev-python
-            older_than: "7 days"
-          - package: dev-ruby
             older_than: "7 days"
           - package: dev-java
             older_than: "7 days"

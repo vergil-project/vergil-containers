@@ -29,27 +29,6 @@ families:
         eol: null
         in_policy: true
         runtime_published: false
-  - key: "ruby"
-    language: "ruby"
-    token_prefix: ""
-    build_arg: "RUBY_VERSION"
-    automation: "report"
-    versions:
-      - version: "3.4"
-        ga: null
-        eol: null
-        in_policy: true
-        runtime_published: null
-      - version: "3.3"
-        ga: null
-        eol: null
-        in_policy: true
-        runtime_published: null
-      - version: "3.2"
-        ga: null
-        eol: null
-        in_policy: true
-        runtime_published: null
   - key: "java"
     language: "java"
     token_prefix: ""
@@ -116,11 +95,6 @@ families:
     automation: "report"
     versions:
       - version: "14"
-        ga: null
-        eol: null
-        in_policy: true
-        runtime_published: null
-      - version: "13"
         ga: null
         eol: null
         in_policy: true
