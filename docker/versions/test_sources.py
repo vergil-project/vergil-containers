@@ -168,3 +168,122 @@ def test_tag_exists_other_failure_is_loud():
 def test_tag_exists_unexpected_body_is_loud(body):
     with pytest.raises(SourceError, match=r"img:3\.15"):
         sources.docker_hub_tag_exists("img", "3.15", lambda url: body)
+
+
+def _not_found(url):
+    raise NotFoundError(f"{url}: HTTP 404")
+
+
+def _unavailable(url):
+    raise SourceError(f"{url}: HTTP 503")
+
+
+# --- url_exists ------------------------------------------------------------------
+
+
+def test_url_exists_true_false_and_loud():
+    assert sources.url_exists("https://example.invalid/a", lambda url: b"") is True
+    assert sources.url_exists("https://example.invalid/a", _not_found) is False
+    with pytest.raises(SourceError, match="503"):
+        sources.url_exists("https://example.invalid/a", _unavailable)
+
+
+# --- index_links -----------------------------------------------------------------
+
+
+def test_index_links_reads_relative_entries_only():
+    page = (
+        b'<a href="../">../</a><a href="suite-a/">suite-a/</a><a href="suite-b">b</a>'
+        b'<a href="/abs/">x</a><a href="https://elsewhere/">y</a><a href="?C=M">sort</a>'
+    )
+    assert sources.index_links("https://example.invalid/dists/", lambda url: page) == {"suite-a", "suite-b"}
+
+
+@pytest.mark.parametrize("body, needle", [(b"<pre></pre>", "lists no entries"), (b"\xff\xfe", "not UTF-8")])
+def test_index_links_rejects_empty_or_undecodable(body, needle):
+    with pytest.raises(SourceError, match=needle):
+        sources.index_links("https://example.invalid/dists/", lambda url: body)
+
+
+# --- github_releases -------------------------------------------------------------
+
+
+def _release(tag, published="2026-08-25T10:00:00Z", draft=False, prerelease=False):
+    return {"tag_name": tag, "draft": draft, "prerelease": prerelease, "published_at": published}
+
+
+def test_github_releases_keeps_final_releases_only():
+    fetch = _fetch_json(
+        [
+            _release("v2.1.0", "2026-10-20T13:03:13Z"),
+            _release("v3.0.0-rc1", prerelease=True),
+            _release("v2.2.0", draft=True),
+            _release("v2.0.0", "2026-02-24T08:06:08Z"),
+        ]
+    )
+    assert sources.github_releases("owner/repo", fetch) == [
+        ("v2.1.0", date(2026, 10, 20)),
+        ("v2.0.0", date(2026, 2, 24)),
+    ]
+    assert fetch.calls == ["https://api.github.com/repos/owner/repo/releases?per_page=100"]
+
+
+@pytest.mark.parametrize(
+    "data, needle",
+    [
+        ({"message": "API rate limit exceeded"}, "not a JSON list"),
+        (["x"], "entry 0 is not an object"),
+        ([{"tag_name": "v1", "draft": False, "prerelease": False}], "no 'published_at' field"),
+        ([_release(None)], "malformed tag or date"),
+        ([_release("v1", "yesterday")], "is not a date"),
+        ([_release("v1-rc1", prerelease=True)], "no final release"),
+        ([], "no final release"),
+    ],
+)
+def test_github_releases_fails_loud(data, needle):
+    with pytest.raises(SourceError, match=needle):
+        sources.github_releases("owner/repo", _fetch_json(data))
+
+
+def test_github_releases_rejects_non_json():
+    with pytest.raises(SourceError, match="not valid JSON"):
+        sources.github_releases("owner/repo", lambda url: b"<html>")
+
+
+# --- debian_source_in_suite -------------------------------------------------------
+
+
+def _debian(*suites_per_version):
+    return {"package": "pkg", "versions": [{"version": "1", "suites": list(s)} for s in suites_per_version]}
+
+
+def test_debian_source_in_suite_matches_the_exact_suite():
+    fetch = _fetch_json(_debian(["sid"], ["forky", "sid"], ["trixie", "trixie-backports"]))
+    assert sources.debian_source_in_suite("pkg", "trixie", fetch) is True
+    assert fetch.calls == ["https://sources.debian.org/api/src/pkg/"]
+    assert sources.debian_source_in_suite("pkg", "trixie", _fetch_json(_debian(["trixie-backports"], ["sid"]))) is False
+
+
+def test_debian_source_unknown_package_is_no():
+    assert sources.debian_source_in_suite("pkg", "trixie", _fetch_json({"error": 404})) is False
+    assert sources.debian_source_in_suite("pkg", "trixie", _not_found) is False
+
+
+@pytest.mark.parametrize(
+    "body, needle",
+    [
+        (b"oops", "not valid JSON"),
+        (json.dumps({"error": 500}).encode(), "lists no versions"),
+        (json.dumps({"versions": []}).encode(), "lists no versions"),
+        (json.dumps([]).encode(), "lists no versions"),
+        (json.dumps({"versions": [{"version": "1"}]}).encode(), "without a `suites` list"),
+    ],
+)
+def test_debian_source_fails_loud(body, needle):
+    with pytest.raises(SourceError, match=needle):
+        sources.debian_source_in_suite("pkg", "trixie", lambda url: body)
+
+
+def test_debian_source_unreachable_is_loud():
+    with pytest.raises(SourceError, match="503"):
+        sources.debian_source_in_suite("pkg", "trixie", _unavailable)
