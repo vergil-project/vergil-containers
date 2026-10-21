@@ -68,9 +68,6 @@ build() {
 build python PYTHON_VERSION 3.14
 build python PYTHON_VERSION 3.13
 build python PYTHON_VERSION 3.12
-build ruby RUBY_VERSION 3.4
-build ruby RUBY_VERSION 3.3
-build ruby RUBY_VERSION 3.2
 build java JDK_VERSION 21
 build java JDK_VERSION 17
 build go GO_VERSION 1.26
@@ -79,13 +76,11 @@ build rust RUST_VERSION 1.92
 build cpp-clang CLANG_VERSION 20
 build cpp-clang CLANG_VERSION 19
 build cpp-gcc GCC_VERSION 14
-build cpp-gcc GCC_VERSION 13
 build ts-node NODE_MAJOR 24
 build ts-node NODE_MAJOR 22
 "${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:20" "$runtime"
 "${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:19" "$runtime"
 "${script_dir}/cpp/smoke-test.sh" "dev-cpp-gcc:14" "$runtime"
-"${script_dir}/cpp/smoke-test.sh" "dev-cpp-gcc:13" "$runtime"
 "${script_dir}/ts-node/smoke-test.sh" "dev-ts-node:24" "$runtime"
 "${script_dir}/ts-node/smoke-test.sh" "dev-ts-node:22" "$runtime"
 # END generated: versions

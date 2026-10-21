@@ -188,39 +188,3 @@ CVE-2026-56865
 # tofu uses gRPC only as the client of its provider plugins (go-plugin); it
 # runs no xDS gRPC server. Remove once a tofu release ships grpc >= 1.83.2.
 CVE-2026-84445
-
-# =============================================================================
-# Ruby default gems shipped with the ruby:<ver>-slim base image. erb code
-# execution via ERB#def_method; net-imap STARTTLS stripping / injection / DoS.
-# The images do not run ERB on untrusted templates or use IMAP. Remove once the
-# base bundles the fixed gems.
-# =============================================================================
-CVE-2026-41316
-CVE-2026-42245
-CVE-2026-42246
-CVE-2026-42257
-CVE-2026-42258
-
-# resolv default gem: 0.2.3 (dev-ruby:3.2) and 0.3.1 (dev-ruby:3.3), fixed in
-# 0.3.2 / 0.7.2. Issue #605. CVE-2026-80212: decoding a crafted DNS response
-# in Resolv::DNS registers a new class for every unknown record type,
-# permanently (memory-growth DoS). Requires an attacker who controls DNS
-# responses. In these images nothing resolves names through Resolv::DNS: Ruby,
-# RubyGems and Bundler reference Resolv only for the IPv4/IPv6 literal regexes
-# in net/http, host lookups go through libc getaddrinfo, and resolv-replace is
-# never loaded. ruby 3.3.12 (the newest 3.3 release) still bundles 0.3.1, and
-# no 0.2.x fix exists for ruby 3.2. Remove once ruby:3.3-slim bundles resolv
-# >= 0.3.2 and the 3.2 image has been retired or bundles a fixed resolv.
-CVE-2026-80212
-
-# =============================================================================
-# rubyzip 2.4.1, installed as a dependency of license_finder (dev-ruby, every
-# version). Issue #605. CVE-2026-85396: path traversal in Zip::Entry#extract
-# (fixed in 3.4.0). Not fixable by bumping: license_finder 7.2.1, the newest
-# release, requires rubyzip >= 1, < 3. license_finder only reads archive
-# entries into memory (Zip::File#read, #glob, Entry#get_input_stream) to find
-# .nuspec and license/notice files; it never calls extract, so the vulnerable
-# file-write path is not exercised. Remove once a license_finder release
-# accepts rubyzip >= 3.4.0.
-# =============================================================================
-CVE-2026-85396
