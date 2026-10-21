@@ -2622,8 +2622,7 @@ system package manager or download the binaries.</p>
 the <code>vrg-git</code> / <code>vrg-gh</code> wrappers.</p>
 <h2 id="commit-and-pr-scripts">Commit and PR Scripts<a class="headerlink" href="#commit-and-pr-scripts" title="Permanent link">&para;</a></h2>
 <p>AI agents and contributors use wrapper scripts for commits and PR
-submission. These enforce formatting standards and co-authorship
-attribution.</p>
+submission. These enforce formatting standards.</p>
 <h3 id="committing">Committing<a class="headerlink" href="#committing" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>vrg-commit<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>--type<span class="w"> </span>TYPE<span class="w"> </span>--scope<span class="w"> </span>SCOPE<span class="w"> </span>--message<span class="w"> </span>MESSAGE<span class="w"> </span><span class="se">\</span>
@@ -2635,8 +2634,9 @@ attribution.</p>
 <li><code>--message</code> (required): commit description</li>
 <li><code>--body</code> (optional): detailed commit body</li>
 </ul>
-<p>The script resolves the correct <code>Co-Authored-By</code> identity from
-<code>vergil.toml</code> and the git hooks validate the result.</p>
+<p>Commits carry no AI co-author trailer; Claude Code attribution is turned
+off in <code>.claude/settings.json</code> (vergil-project/vergil-tooling#3200). The
+git hooks validate the result.</p>
 <h3 id="submitting-prs">Submitting PRs<a class="headerlink" href="#submitting-prs" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>vrg-submit-pr<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--issue<span class="w"> </span>NUMBER<span class="w"> </span>--summary<span class="w"> </span>TEXT<span class="w"> </span><span class="se">\</span>
