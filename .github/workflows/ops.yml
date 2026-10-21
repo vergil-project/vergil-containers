@@ -41,6 +41,83 @@ jobs:
         run: |
           python3 report_exposure.py --no-probe | tee -a "${GITHUB_STEP_SUMMARY}"
 
+  # The language version lifecycle check (epic vergil-project/.github#407,
+  # spec §6.2). Every family's adapter reads upstream release metadata; the
+  # report covers every family on every run, and publish.py makes the open
+  # `language-lifecycle` issues match it: one per change on a report-only
+  # family, one per family whose check failed (closed on recovery). So no PR
+  # and no open issue reliably means "in sync".
+  #
+  # Unlike pin-exposure, NO continue-on-error: a check that cannot reach or
+  # parse upstream (a Docker Hub or GitHub API rate limit included) fails this
+  # job loudly, and still publishes its failure issue first.
+  language-lifecycle:
+    name: "language lifecycle check"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    concurrency:
+      group: language-lifecycle
+      cancel-in-progress: false
+    container:
+      image: ghcr.io/vergil-project/prod-base:latest
+    env:
+      OUT: lifecycle-out
+    steps:
+      # The App token authenticates the GitHub releases API reads (the LLVM
+      # adapter), which unauthenticated get only 60 requests an hour per runner
+      # IP. Minted exactly as bump-tools.yml does.
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Exits 1 when any family's check failed, after writing both outputs. The
+      # step fails with it (nothing masks the exit code), so the job is red;
+      # the steps below still run on failure to summarise and publish it.
+      - name: Run lifecycle check
+        id: check
+        shell: bash
+        env:
+          LIFECYCLE_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${OUT}"
+          python3 docker/versions/lifecycle/check.py \
+            --report "${OUT}/report.md" --json "${OUT}/results.json"
+
+      - name: Job summary
+        if: ${{ !cancelled() && hashFiles('lifecycle-out/report.md') != '' }}
+        shell: bash
+        run: cat "${OUT}/report.md" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload report
+        if: ${{ !cancelled() && hashFiles('lifecycle-out/results.json') != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: language-lifecycle-report
+          path: lifecycle-out/
+          if-no-files-found: error
+
+      # Issues are written with the job's GITHUB_TOKEN (issues: write); the
+      # App token is only for the upstream API reads above.
+      - name: Open, refresh and close lifecycle issues
+        if: ${{ !cancelled() && hashFiles('lifecycle-out/results.json') != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 docker/versions/lifecycle/publish.py \
+            --results "${OUT}/results.json" \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
   github-config:
     uses: vergil-project/vergil-actions/.github/workflows/ops-github-config.yml@v2.1
     permissions:

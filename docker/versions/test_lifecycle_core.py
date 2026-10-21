@@ -298,7 +298,7 @@ def test_registry_covers_python_and_go():
 # --- principle 7: no language branches in shared code ------------------------------
 
 LANGUAGE_WORDS = re.compile(r"\b(python|go|golang|rust|java|clang|gcc|node|ruby)\b", re.IGNORECASE)
-SHARED = ["core.py", "sources.py", "report.py"]
+SHARED = ["core.py", "sources.py", "report.py", "publish.py"]
 
 
 @pytest.mark.parametrize("name", SHARED)

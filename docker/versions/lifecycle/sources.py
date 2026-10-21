@@ -8,6 +8,7 @@ nothing here returns an empty or partial result on failure.
 from __future__ import annotations
 
 import json
+import os
 import re
 import urllib.error
 import urllib.request
@@ -27,10 +28,35 @@ DOCKER_HUB_TAG_URL = "https://hub.docker.com/v2/namespaces/library/repositories/
 _CYCLE_RE = re.compile(r"^\d+(\.\d+)?$")
 
 
+# The GitHub REST API allows 60 unauthenticated requests an hour per IP, which a
+# shared CI runner can exhaust before this job runs. When this variable is set
+# (the scheduled job sets it to a GitHub App token), API requests carry it.
+GITHUB_API = "https://api.github.com/"
+GITHUB_TOKEN_ENV = "LIFECYCLE_GITHUB_TOKEN"
+
+
+def request_headers(url: str) -> dict[str, str]:
+    """The headers for a GET of `url`: always the User-Agent, plus a bearer
+    token for the GitHub API when $LIFECYCLE_GITHUB_TOKEN is set.
+
+    A variable that is set but empty raises SourceError: it means the token
+    step produced nothing, and that must not quietly fall back to the
+    unauthenticated rate limit."""
+    headers = {"User-Agent": USER_AGENT}
+    if url.startswith(GITHUB_API) and GITHUB_TOKEN_ENV in os.environ:
+        token = os.environ[GITHUB_TOKEN_ENV].strip()
+        if not token:
+            raise SourceError(f"{url}: ${GITHUB_TOKEN_ENV} is set but empty")
+        headers["Authorization"] = f"Bearer {token}"
+        headers["Accept"] = "application/vnd.github+json"
+    return headers
+
+
 def fetch_url(url: str) -> bytes:
     """GET `url` and return the body. HTTP 404 raises NotFoundError; any other
-    HTTP, network or timeout failure raises SourceError naming the URL."""
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    HTTP failure (a 403 or 429 rate limit included), network or timeout failure
+    raises SourceError naming the URL."""
+    request = urllib.request.Request(url, headers=request_headers(url))
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
             return response.read()
