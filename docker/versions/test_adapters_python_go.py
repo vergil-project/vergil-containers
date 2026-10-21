@@ -8,11 +8,17 @@ from lifecycle import core
 from lifecycle.adapters.go import GoAdapter
 from lifecycle.adapters.python import PythonAdapter
 from lifecycle.core import Change, NotFoundError, SourceError
+from lifecycle.runtime import AptIndex
 
 HERE = Path(__file__).resolve().parent
 FIXTURES = HERE / "fixtures"
 TODAY = date(2026, 10, 21)
 SEED = mf.load_manifest(HERE / "manifest.yml")
+
+
+def RUNTIME_314():
+    """A vergil apt index publishing only the 3.14 runtime, as live today."""
+    return AptIndex({("noble", "amd64"): frozenset({"vergil-python3.14"})})
 
 
 def _family(key):
@@ -49,7 +55,7 @@ def _kinds(changes):
 
 def test_python_target_from_fixture():
     tags = Tags()
-    adapter = PythonAdapter(fetch=_fixture_fetch("python"), tag_exists=tags)
+    adapter = PythonAdapter(fetch=_fixture_fetch("python"), tag_exists=tags, runtime_index=RUNTIME_314)
     target = adapter.target(adapter.fetch(), TODAY)
     assert [t.version for t in target] == ["3.15", "3.14", "3.13", "3.12", "3.11"]
     assert all(t.installable for t in target)
@@ -59,13 +65,15 @@ def test_python_target_from_fixture():
 
 
 def test_python_classify_against_seed_is_add_315():
-    adapter = PythonAdapter(fetch=_fixture_fetch("python"), tag_exists=Tags())
+    adapter = PythonAdapter(fetch=_fixture_fetch("python"), tag_exists=Tags(), runtime_index=RUNTIME_314)
     changes = core.classify(_family("python"), adapter.target(adapter.fetch(), TODAY), TODAY, 90)
     assert _kinds(changes) == [("add", "3.15")]
 
 
 def test_python_missing_slim_tag_is_blocked():
-    adapter = PythonAdapter(fetch=_fixture_fetch("python"), tag_exists=Tags(missing={("python", "3.15-slim")}))
+    adapter = PythonAdapter(
+        fetch=_fixture_fetch("python"), tag_exists=Tags(missing={("python", "3.15-slim")}), runtime_index=RUNTIME_314
+    )
     changes = core.classify(_family("python"), adapter.target(adapter.fetch(), TODAY), TODAY, 90)
     assert _kinds(changes) == [("blocked", "3.15")]
 
@@ -80,7 +88,7 @@ def test_python_default_tag_check_uses_docker_hub_through_the_fetcher():
             raise NotFoundError(f"{url}: HTTP 404")
         return ('{"name": "%s"}' % tag).encode()
 
-    adapter = PythonAdapter(fetch=fetch)
+    adapter = PythonAdapter(fetch=fetch, runtime_index=RUNTIME_314)
     target = adapter.target(adapter.fetch(), TODAY)
     assert {t.version: t.installable for t in target}["3.11"] is False
     assert {t.version: t.installable for t in target}["3.15"] is True
@@ -175,7 +183,7 @@ def test_go_fetch_failure_becomes_family_error():
 
     m = mf.Manifest(families=(_family("python"), _family("go")))
     adapters = {
-        "python": PythonAdapter(fetch=_fixture_fetch("python"), tag_exists=Tags()),
+        "python": PythonAdapter(fetch=_fixture_fetch("python"), tag_exists=Tags(), runtime_index=RUNTIME_314),
         "go": GoAdapter(fetch=fetch, tag_exists=Tags()),
     }
     python, go = core.run(m, adapters, TODAY)

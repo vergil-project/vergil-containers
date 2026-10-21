@@ -12,8 +12,9 @@ from datetime import date
 from lifecycle.core import CHANGE_KINDS, Change, FamilyResult, TargetVersion, UpstreamRelease
 
 # Schema 2 adds each family's upstream `releases` and `target` window, which the
-# add/drop PRs need for their GA and EOL dates.
-JSON_SCHEMA = 2
+# add/drop PRs need for their GA and EOL dates. Schema 3 adds each target
+# version's `runtime_published` evidence, which a runtime PR records.
+JSON_SCHEMA = 3
 
 
 def family_status(result: FamilyResult) -> str:
@@ -86,7 +87,13 @@ def results_to_json(results: list[FamilyResult], today: date) -> str:
                     for u in r.releases
                 ],
                 "target": [
-                    {"version": t.version, "ga": _date_out(t.ga), "eol": _date_out(t.eol), "installable": t.installable}
+                    {
+                        "version": t.version,
+                        "ga": _date_out(t.ga),
+                        "eol": _date_out(t.eol),
+                        "installable": t.installable,
+                        "runtime_published": t.runtime_published,
+                    }
                     for t in r.target
                 ],
             }
@@ -119,7 +126,13 @@ def results_from_json(text: str) -> list[FamilyResult]:
                 for u in raw["releases"]
             )
             target = tuple(
-                TargetVersion(t["version"], _date_in(t["ga"]), _date_in(t["eol"]), _bool_in(t["installable"]))
+                TargetVersion(
+                    t["version"],
+                    _date_in(t["ga"]),
+                    _date_in(t["eol"]),
+                    _bool_in(t["installable"]),
+                    None if t["runtime_published"] is None else _bool_in(t["runtime_published"]),
+                )
                 for t in raw["target"]
             )
             results.append(FamilyResult(raw["family"], tuple(changes), raw["error"], releases, target))

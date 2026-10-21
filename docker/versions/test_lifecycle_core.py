@@ -251,17 +251,21 @@ def test_report_json_roundtrip():
     "doc",
     [
         {"schema": 1, "results": []},
-        {"schema": 2},
-        {"schema": 2, "results": [{"family": "a"}]},
-        {"schema": 2, "results": [{"family": "a", "error": None, "changes": [{"kind": "nope"}]}]},
-        {"schema": 2, "results": [{"family": "a", "error": None, "changes": [dict(family="a", kind="bad", version="1", detail="")]}]},
-        {"schema": 2, "results": [{"family": "a", "error": None, "changes": [], "releases": []}]},
-        {"schema": 2, "results": [{"family": "a", "error": None, "changes": [], "releases": [], "target": [
-            {"version": "1", "ga": "not a date", "eol": None, "installable": True}]}]},
-        {"schema": 2, "results": [{"family": "a", "error": None, "changes": [], "releases": [], "target": [
-            {"version": "1", "ga": 20261009, "eol": None, "installable": True}]}]},
-        {"schema": 2, "results": [{"family": "a", "error": None, "changes": [], "releases": [], "target": [
-            {"version": "1", "ga": None, "eol": None, "installable": "yes"}]}]},
+        {"schema": 3},
+        {"schema": 3, "results": [{"family": "a"}]},
+        {"schema": 3, "results": [{"family": "a", "error": None, "changes": [{"kind": "nope"}]}]},
+        {"schema": 3, "results": [{"family": "a", "error": None, "changes": [dict(family="a", kind="bad", version="1", detail="")]}]},
+        {"schema": 3, "results": [{"family": "a", "error": None, "changes": [], "releases": []}]},
+        {"schema": 3, "results": [{"family": "a", "error": None, "changes": [], "releases": [], "target": [
+            {"version": "1", "ga": "not a date", "eol": None, "installable": True, "runtime_published": None}]}]},
+        {"schema": 3, "results": [{"family": "a", "error": None, "changes": [], "releases": [], "target": [
+            {"version": "1", "ga": 20261009, "eol": None, "installable": True, "runtime_published": None}]}]},
+        {"schema": 3, "results": [{"family": "a", "error": None, "changes": [], "releases": [], "target": [
+            {"version": "1", "ga": None, "eol": None, "installable": "yes", "runtime_published": None}]}]},
+        {"schema": 3, "results": [{"family": "a", "error": None, "changes": [], "releases": [], "target": [
+            {"version": "1", "ga": None, "eol": None, "installable": True, "runtime_published": "yes"}]}]},
+        {"schema": 3, "results": [{"family": "a", "error": None, "changes": [], "releases": [], "target": [
+            {"version": "1", "ga": None, "eol": None, "installable": True}]}]},
     ],
 )
 def test_report_json_rejects_malformed(doc):
@@ -328,7 +332,7 @@ def test_registry_covers_python_and_go():
 # --- principle 7: no language branches in shared code ------------------------------
 
 LANGUAGE_WORDS = re.compile(r"\b(python|go|golang|rust|java|clang|gcc|node|ruby)\b", re.IGNORECASE)
-SHARED = ["core.py", "sources.py", "report.py", "publish.py", "apply.py"]
+SHARED = ["core.py", "sources.py", "report.py", "publish.py", "apply.py", "runtime.py"]
 
 
 @pytest.mark.parametrize("name", SHARED)

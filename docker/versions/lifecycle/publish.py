@@ -11,7 +11,7 @@ no PR" reliably means "in sync".
 Issues:
 
 - one issue per change on a `report` family, and per change on a `pr` family
-  that no PR can carry (`blocked`, `eol_soon`), titled
+  that no PR can carry (`blocked`, `eol_soon`, `runtime_missing`), titled
   `language lifecycle: <family> <kind> <version>`;
 - one issue per family whose check failed, titled
   `lifecycle check failing for <family>`, with the error text as its body.
@@ -22,7 +22,7 @@ checks cleanly, and closes a change issue that is no longer reported. Every
 issue this script manages carries the `language-lifecycle` label; it only ever
 touches open issues with that label and one of the two titles.
 
-PRs (`--prs`): one PR per `add` or `drop` on a `pr` family, on the branch
+PRs (`--prs`): one PR per `add`, `drop` or `runtime` on a `pr` family, on the branch
 `lifecycle/<family>-<kind>-<version>`. Each run rebuilds the branch from the
 base as one commit (the manifest edit plus every regenerated file), pushes it
 only when that commit differs from the branch, and refreshes the open PR's
@@ -57,13 +57,13 @@ from lifecycle.apply import (  # noqa: E402
     PR_KINDS,
     ApplyError,
     branch_name,
-    has_runtime,
     parse_branch,
     pr_title,
     render_change,
 )
-from lifecycle.core import Adapter, Change, FamilyResult, SourceError  # noqa: E402
+from lifecycle.core import Adapter, Change, FamilyResult, SourceError, has_runtime  # noqa: E402
 from lifecycle.report import results_from_json  # noqa: E402
+from lifecycle.runtime import APT_URL  # noqa: E402
 from manifest import Family, Manifest, ManifestError, load_manifest  # noqa: E402
 
 MANIFEST = Path(__file__).resolve().parent.parent / "manifest.yml"
@@ -238,6 +238,10 @@ def _closing_comment(title: str, by_family: Mapping[str, FamilyResult], run_url:
 ADD_HOLD_REPO = "vergil-project/vergil-containers"
 ADD_HOLD_ISSUE = 622
 
+# The upstream evidence a PR cites, for the kinds whose evidence is not the
+# family's release metadata: a runtime flip is read from the package index.
+EVIDENCE_URLS: dict[str, str] = {"runtime": APT_URL}
+
 
 @dataclass(frozen=True)
 class OpenPr:
@@ -310,6 +314,11 @@ def pr_body(
             "add must not merge until consumers resolve their versions from the published "
             "window; that validation task merges this PR as part of its procedure. While "
             "the hold is open, the automation turns auto-merge off again if anyone enables it."
+        )
+    if change.kind == "runtime":
+        lines.append(
+            "- Merging records `runtime_published: true` for this version, so packaged "
+            "consumers may resolve to it on their next build (spec §7)."
         )
     if runtime_pending:
         lines.append(
@@ -420,7 +429,7 @@ def _publish_change(
     title = pr_title(change, _eol_of(change, result, manifest))
     body = pr_body(
         change,
-        evidence_url=adapter.evidence_url,
+        evidence_url=EVIDENCE_URLS.get(change.kind, adapter.evidence_url),
         files=list(files),
         follow_ups=adapter.extra_changes(change),
         run_url=run_url,
