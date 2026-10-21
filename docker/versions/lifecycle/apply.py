@@ -10,8 +10,7 @@ already listed, a drop of a version that is not, an add with no installable
 target) raises ApplyError. Nothing is ever skipped silently.
 
 Only the kinds in `APPLIERS` get a pull request; every other kind is reported
-as an issue. A new kind (for example a runtime-published flip) is one more
-entry in `APPLIERS` and `TITLES`.
+as an issue. A new kind is one more entry in `APPLIERS` and `TITLES`.
 """
 from __future__ import annotations
 
@@ -22,7 +21,7 @@ from datetime import date
 from pathlib import Path
 
 import generate
-from lifecycle.core import EOL_DATE_UNKNOWN, Change, TargetVersion
+from lifecycle.core import EOL_DATE_UNKNOWN, Change, TargetVersion, has_runtime
 from manifest import Family, Manifest, ManifestVersion, dump_manifest, version_sort_key
 
 BRANCH_PREFIX = "lifecycle/"
@@ -31,14 +30,6 @@ MANIFEST = generate.MANIFEST  # repo-relative
 
 class ApplyError(ValueError):
     """A change cannot be applied to the manifest exactly as reported."""
-
-
-def has_runtime(family: Family) -> bool:
-    """Whether the family's versions track a published runtime package.
-
-    Read from the data: a family whose versions record `runtime_published`
-    (true or false, not null) has one."""
-    return any(v.runtime_published is not None for v in family.versions)
 
 
 def _add(family: Family, change: Change, target: TargetVersion | None) -> Family:
@@ -72,10 +63,34 @@ def _drop(family: Family, change: Change, target: TargetVersion | None) -> Famil
     return replace(family, versions=versions)
 
 
+def _runtime(family: Family, change: Change, target: TargetVersion | None) -> Family:
+    """Record that `change.version`'s runtime package is now published."""
+    if target is None or target.version != change.version or target.runtime_published is not True:
+        raise ApplyError(
+            f"{change.family}: runtime {change.version} needs a target version whose runtime is published, "
+            f"got {target!r}"
+        )
+    if not has_runtime(family):
+        raise ApplyError(f"{change.family}: runtime {change.version}: the family records no runtime package")
+    versions = []
+    for v in family.versions:
+        if v.version == change.version:
+            if v.runtime_published is not False:
+                raise ApplyError(
+                    f"{change.family}: runtime {change.version}: the manifest records "
+                    f"runtime_published: {v.runtime_published}, not false"
+                )
+            v = replace(v, runtime_published=True)
+        versions.append(v)
+    if versions == list(family.versions):
+        raise ApplyError(f"{change.family}: runtime {change.version}: the manifest does not list it")
+    return replace(family, versions=tuple(versions))
+
+
 Applier = Callable[[Family, Change, "TargetVersion | None"], Family]
 
 # The change kinds that become a pull request, and what each does to the family.
-APPLIERS: dict[str, Applier] = {"add": _add, "drop": _drop}
+APPLIERS: dict[str, Applier] = {"add": _add, "drop": _drop, "runtime": _runtime}
 PR_KINDS: tuple[str, ...] = tuple(APPLIERS)
 
 
@@ -138,6 +153,7 @@ def _eol_text(eol: date | None) -> str:
 TITLES: dict[str, Callable[[Change, "date | None"], str]] = {
     "add": lambda c, eol: f"feat(versions): add {c.family} {c.version}",
     "drop": lambda c, eol: f"feat(versions): drop {c.family} {c.version} (EOL {_eol_text(eol)})",
+    "runtime": lambda c, eol: f"feat(versions): record the published {c.family} {c.version} runtime",
 }
 
 

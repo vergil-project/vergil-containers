@@ -52,6 +52,9 @@ class TargetVersion:
     ga: date | None
     eol: date | None
     installable: bool  # the base image or package for it exists
+    # Whether the family's runtime package is published for this version: None
+    # for a family with no runtime package (spec §6.1, plan Task 13b).
+    runtime_published: bool | None = None
 
 
 class Adapter(Protocol):
@@ -71,8 +74,12 @@ class Adapter(Protocol):
         ...
 
 
-ChangeKind = Literal["add", "drop", "eol_soon", "blocked", "out_of_policy"]
-CHANGE_KINDS: tuple[ChangeKind, ...] = ("add", "drop", "eol_soon", "blocked", "out_of_policy")
+# `runtime`: a version recorded without a published runtime package now has one.
+# `runtime_missing`: a version recorded with one no longer has it.
+ChangeKind = Literal["add", "drop", "eol_soon", "blocked", "out_of_policy", "runtime", "runtime_missing"]
+CHANGE_KINDS: tuple[ChangeKind, ...] = (
+    "add", "drop", "eol_soon", "blocked", "out_of_policy", "runtime", "runtime_missing"
+)
 
 
 @dataclass(frozen=True)
@@ -135,6 +142,14 @@ def lts_only(rs: list[UpstreamRelease], today: date) -> list[UpstreamRelease]:
 # --- Classification ----------------------------------------------------------
 
 
+def has_runtime(family: Family) -> bool:
+    """Whether the family's versions track a published runtime package.
+
+    Read from the data: a family whose versions record `runtime_published`
+    (true or false, not null) has one."""
+    return any(v.runtime_published is not None for v in family.versions)
+
+
 def _dates(ga: date | None, eol: date | None) -> str:
     def fmt(d: date | None, none: str) -> str:
         if d is None:
@@ -151,7 +166,11 @@ def classify(
 
     The order is stable: adds and blocked versions newest first, then drops
     (or out-of-policy versions) and EOL warnings, newest first.
-    Raises SourceError for an empty or duplicated target."""
+    Runtime changes come last: for a family with a runtime package, each kept
+    version whose recorded `runtime_published` disagrees with the target's.
+
+    Raises SourceError for an empty or duplicated target, and for a GA target
+    whose runtime evidence does not match whether the family has a runtime."""
     if not target:
         raise SourceError(
             f"family {family.key!r}: upstream gave an empty target window; "
@@ -173,6 +192,18 @@ def classify(
             f"family {family.key!r}: no GA target version at or above the oldest "
             "manifest version; refusing to read that as 'drop every version'"
         )
+    runtime = has_runtime(family)
+    for t in ga_window:
+        if runtime and t.runtime_published is None:
+            raise SourceError(
+                f"family {family.key!r}: the manifest records a runtime package, but the target "
+                f"gives no runtime evidence for {t.version}"
+            )
+        if not runtime and t.runtime_published is not None:
+            raise SourceError(
+                f"family {family.key!r}: the target gives runtime evidence for {t.version}, but the "
+                "manifest records no runtime package"
+            )
     by_version = {t.version: t for t in window}
     in_manifest = {v.version for v in family.versions}
 
@@ -187,6 +218,7 @@ def classify(
 
     drop_kind: ChangeKind = "out_of_policy" if family.automation == "report" else "drop"
     horizon = today + timedelta(days=lookahead_days)
+    kept: list[tuple[str, bool | None, TargetVersion]] = []
     for v in family.versions:  # newest first
         t = by_version.get(v.version)
         eol = t.eol if t is not None and t.eol is not None else v.eol
@@ -194,10 +226,30 @@ def classify(
             changes.append(Change(family.key, drop_kind, v.version, "not in the upstream support window"))
         elif is_eol(eol, today):
             changes.append(Change(family.key, drop_kind, v.version, f"EOL reached ({_dates(t.ga, eol)})"))
-        elif eol is not None and eol <= horizon:
-            changes.append(
-                Change(family.key, "eol_soon", v.version, f"EOL {eol.isoformat()}, within {lookahead_days} days")
-            )
+        else:
+            kept.append((v.version, v.runtime_published, t))
+            if eol is not None and eol <= horizon:
+                changes.append(
+                    Change(family.key, "eol_soon", v.version, f"EOL {eol.isoformat()}, within {lookahead_days} days")
+                )
+
+    # A version being dropped gets no runtime change: the drop removes it. A
+    # target that is not GA carries no checked evidence, so it is left alone.
+    if runtime:
+        for version, recorded, t in kept:
+            if not is_ga(t, today) or t.runtime_published is None or t.runtime_published == recorded:
+                continue
+            if t.runtime_published:
+                changes.append(Change(family.key, "runtime", version, "runtime package published"))
+            else:
+                changes.append(
+                    Change(
+                        family.key,
+                        "runtime_missing",
+                        version,
+                        "the manifest records a published runtime package, but the package index does not list it",
+                    )
+                )
     return changes
 
 

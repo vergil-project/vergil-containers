@@ -6,5 +6,6 @@ classifies the changes; `report.py` renders them; `check.py` is the CLI;
 `publish.py` turns the results into GitHub issues for the scheduled job.
 
 Language specifics live only in `adapters/<language>.py`. The shared modules
-(`core.py`, `sources.py`, `report.py`, `publish.py`) contain no language names.
+(`core.py`, `sources.py`, `report.py`, `apply.py`, `publish.py`, `runtime.py`)
+contain no language names.
 """

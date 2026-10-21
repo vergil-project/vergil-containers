@@ -15,6 +15,7 @@ from lifecycle.apply import ApplyError, apply_change, branch_name, parse_branch,
 from lifecycle.core import Change, FamilyResult, TargetVersion
 from lifecycle.publish import ADD_HOLD_ISSUE, ADD_HOLD_REPO, GhCli, GitCli, OpenPr, PublishError, sync_prs
 from lifecycle.report import results_to_json
+from lifecycle.runtime import AptIndex
 from test_generate import repo  # noqa: F401  (fixture: a copy of every generated file)
 
 HERE = Path(__file__).resolve().parent
@@ -22,6 +23,11 @@ ROOT = HERE.parent.parent
 FIXTURES = HERE / "fixtures"
 TODAY = date(2026, 10, 21)
 SEED = mf.load_manifest(HERE / "manifest.yml")
+
+
+def RUNTIME_314():
+    """A vergil apt index publishing only the 3.14 runtime, as live today."""
+    return AptIndex({("noble", "amd64"): frozenset({"vergil-python3.14"})})
 RUN1 = "https://github.com/o/r/actions/runs/1"
 RUN2 = "https://github.com/o/r/actions/runs/2"
 
@@ -41,7 +47,9 @@ def _fixture_fetch(product, extra=()):
 
 def _adapters(go_extra=()):
     return {
-        "python": PythonAdapter(fetch=_fixture_fetch("python"), tag_exists=lambda image, tag: True),
+        "python": PythonAdapter(
+            fetch=_fixture_fetch("python"), tag_exists=lambda image, tag: True, runtime_index=RUNTIME_314
+        ),
         "go": GoAdapter(fetch=_fixture_fetch("go", go_extra), tag_exists=lambda image, tag: True),
     }
 

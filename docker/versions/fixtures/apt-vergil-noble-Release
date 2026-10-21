@@ -1,0 +1,12 @@
+Origin: vergil
+Label: vergil
+Suite: noble
+Codename: noble
+Date: Wed, 21 Oct 2026 18:43:36 GMT
+Architectures: amd64 arm64
+Components: main
+SHA256:
+ 2f8ffbf25a660a681eb44f160efd2e7db30c0e837cc0e9f78ccbc9c658df9f04       2634 main/binary-amd64/Packages
+ 0682bddbee6769b5f776ccc5d8678e9c636acd02a80dbe3a84e702700e8b75e8        762 main/binary-amd64/Packages.gz
+ 3fe70c7772898710fce58bdcc9ec1bab1e68482bc62f65f830470bae0d36033c       2634 main/binary-arm64/Packages
+ c1093b933fceb67ced8546dacc0fec10a659351da331e1fb121eebf3767c06ed        760 main/binary-arm64/Packages.gz
