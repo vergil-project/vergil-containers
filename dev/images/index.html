@@ -1926,6 +1926,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#common-layer" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2446,6 +2457,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#common-layer" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2554,6 +2576,79 @@ the generated catalog,
 For how versions are chosen and managed, see
 <a href="../operations/version-management/">Tool Version Management</a>.</p>
 </div>
+<h2 id="versions">Versions<a class="headerlink" href="#versions" title="Permanent link">&para;</a></h2>
+<p>Every image and the language versions it is published for.
+The table is generated from <code>docker/versions/manifest.yml</code> by
+<code>docker/versions/generate.py</code>; edit the manifest, not the table.</p>
+<!-- BEGIN generated: versions -->
+<table>
+<thead>
+<tr>
+<th>Image</th>
+<th>Language</th>
+<th>Versions</th>
+<th>Base</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dev-python</code></td>
+<td>python</td>
+<td>3.14, 3.13, 3.12</td>
+<td><code>python:&lt;v&gt;-slim</code></td>
+</tr>
+<tr>
+<td><code>dev-ruby</code></td>
+<td>ruby</td>
+<td>3.4, 3.3, 3.2</td>
+<td><code>ruby:&lt;v&gt;-slim</code></td>
+</tr>
+<tr>
+<td><code>dev-java</code></td>
+<td>java</td>
+<td>21, 17</td>
+<td><code>eclipse-temurin:&lt;v&gt;-jdk</code></td>
+</tr>
+<tr>
+<td><code>dev-go</code></td>
+<td>go</td>
+<td>1.26</td>
+<td><code>golang:&lt;v&gt;</code></td>
+</tr>
+<tr>
+<td><code>dev-rust</code></td>
+<td>rust</td>
+<td>1.93, 1.92</td>
+<td><code>rust:&lt;v&gt;-slim</code></td>
+</tr>
+<tr>
+<td><code>dev-cpp-clang</code></td>
+<td>cpp</td>
+<td>20, 19</td>
+<td><code>debian:trixie-slim</code></td>
+</tr>
+<tr>
+<td><code>dev-cpp-gcc</code></td>
+<td>cpp</td>
+<td>14, 13</td>
+<td><code>debian:trixie-slim</code></td>
+</tr>
+<tr>
+<td><code>dev-ts-node</code></td>
+<td>typescript</td>
+<td>24, 22</td>
+<td><code>debian:trixie-slim</code></td>
+</tr>
+<tr>
+<td><code>dev-base</code></td>
+<td>—</td>
+<td>latest</td>
+<td><code>python:3.14-slim</code></td>
+</tr>
+</tbody>
+</table>
+<!-- END generated: versions -->
+
 <h2 id="common-layer">Common Layer<a class="headerlink" href="#common-layer" title="Permanent link">&para;</a></h2>
 <p>All language images include:</p>
 <table>
@@ -2638,8 +2733,7 @@ detected language.</p>
 <code>python-support</code> fragment. Python-based images (<code>dev-python</code>, <code>dev-base</code>)
 install them directly via pip.</p>
 <h2 id="python">Python<a class="headerlink" href="#python" title="Permanent link">&para;</a></h2>
-<p><strong>Base</strong>: <code>python:&lt;version&gt;-slim</code>
-<strong>Versions</strong>: 3.12, 3.13, 3.14</p>
+<p><strong>Base</strong>: <code>python:&lt;version&gt;-slim</code></p>
 <table>
 <thead>
 <tr>
@@ -2665,8 +2759,7 @@ declaring it as a dev dependency. Consuming repos get parallel test execution
 by default — when <code>pytest-xdist</code> resolves (as it does in this image) and their
 <code>[test].parallel</code> setting is on (the default).</p>
 <h2 id="ruby">Ruby<a class="headerlink" href="#ruby" title="Permanent link">&para;</a></h2>
-<p><strong>Base</strong>: <code>ruby:&lt;version&gt;-slim</code>
-<strong>Versions</strong>: 3.2, 3.3, 3.4</p>
+<p><strong>Base</strong>: <code>ruby:&lt;version&gt;-slim</code></p>
 <table>
 <thead>
 <tr>
@@ -2689,8 +2782,7 @@ by default — when <code>pytest-xdist</code> resolves (as it does in this image
 </tbody>
 </table>
 <h2 id="go">Go<a class="headerlink" href="#go" title="Permanent link">&para;</a></h2>
-<p><strong>Base</strong>: <code>golang:&lt;version&gt;</code>
-<strong>Versions</strong>: 1.26</p>
+<p><strong>Base</strong>: <code>golang:&lt;version&gt;</code></p>
 <table>
 <thead>
 <tr>
@@ -2736,14 +2828,12 @@ out of upstream support and its standard library carries HIGH CVEs that no Go
 <code>dev-go:1.25</code> tags remain in GHCR but are no longer rebuilt. Follow-up:
 <a href="https://github.com/vergil-project/.github/issues/403">vergil-project/.github#403</a>.</p>
 <h2 id="java">Java<a class="headerlink" href="#java" title="Permanent link">&para;</a></h2>
-<p><strong>Base</strong>: <code>eclipse-temurin:&lt;version&gt;-jdk</code>
-<strong>Versions</strong>: 17, 21</p>
+<p><strong>Base</strong>: <code>eclipse-temurin:&lt;version&gt;-jdk</code></p>
 <p>Java images rely on the consuming repository's Maven wrapper (<code>mvnw</code>) to
 bootstrap Maven at container startup. No additional Java-specific tools
 are pre-installed.</p>
 <h2 id="rust">Rust<a class="headerlink" href="#rust" title="Permanent link">&para;</a></h2>
-<p><strong>Base</strong>: <code>rust:&lt;version&gt;-slim</code>
-<strong>Versions</strong>: 1.92, 1.93</p>
+<p><strong>Base</strong>: <code>rust:&lt;version&gt;-slim</code></p>
 <table>
 <thead>
 <tr>

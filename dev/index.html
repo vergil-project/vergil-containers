@@ -2540,47 +2540,75 @@ share the same environment.</p>
 <h2 id="images">Images<a class="headerlink" href="#images" title="Permanent link">&para;</a></h2>
 <p>All images are published to
 <code>ghcr.io/vergil-project/dev-&lt;language&gt;:&lt;version&gt;</code>.</p>
+<!-- BEGIN generated: versions -->
 <table>
 <thead>
 <tr>
+<th>Image</th>
 <th>Language</th>
 <th>Versions</th>
-<th>Image</th>
+<th>Base</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Python</td>
-<td>3.12, 3.13, 3.14</td>
 <td><code>dev-python</code></td>
+<td>python</td>
+<td>3.14, 3.13, 3.12</td>
+<td><code>python:&lt;v&gt;-slim</code></td>
 </tr>
 <tr>
-<td>Ruby</td>
-<td>3.2, 3.3, 3.4</td>
 <td><code>dev-ruby</code></td>
+<td>ruby</td>
+<td>3.4, 3.3, 3.2</td>
+<td><code>ruby:&lt;v&gt;-slim</code></td>
 </tr>
 <tr>
-<td>Go</td>
-<td>1.26</td>
-<td><code>dev-go</code></td>
-</tr>
-<tr>
-<td>Java</td>
-<td>17, 21</td>
 <td><code>dev-java</code></td>
+<td>java</td>
+<td>21, 17</td>
+<td><code>eclipse-temurin:&lt;v&gt;-jdk</code></td>
 </tr>
 <tr>
-<td>Rust</td>
-<td>1.92, 1.93</td>
+<td><code>dev-go</code></td>
+<td>go</td>
+<td>1.26</td>
+<td><code>golang:&lt;v&gt;</code></td>
+</tr>
+<tr>
 <td><code>dev-rust</code></td>
+<td>rust</td>
+<td>1.93, 1.92</td>
+<td><code>rust:&lt;v&gt;-slim</code></td>
 </tr>
 <tr>
-<td>Base</td>
-<td>latest</td>
+<td><code>dev-cpp-clang</code></td>
+<td>cpp</td>
+<td>20, 19</td>
+<td><code>debian:trixie-slim</code></td>
+</tr>
+<tr>
+<td><code>dev-cpp-gcc</code></td>
+<td>cpp</td>
+<td>14, 13</td>
+<td><code>debian:trixie-slim</code></td>
+</tr>
+<tr>
+<td><code>dev-ts-node</code></td>
+<td>typescript</td>
+<td>24, 22</td>
+<td><code>debian:trixie-slim</code></td>
+</tr>
+<tr>
 <td><code>dev-base</code></td>
+<td>—</td>
+<td>latest</td>
+<td><code>python:3.14-slim</code></td>
 </tr>
 </tbody>
 </table>
+<!-- END generated: versions -->
+
 <p>See <a href="images/">Images</a> for per-language tool details.</p>
 <h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <h3 id="pull-from-ghcr">Pull from GHCR<a class="headerlink" href="#pull-from-ghcr" title="Permanent link">&para;</a></h3>
