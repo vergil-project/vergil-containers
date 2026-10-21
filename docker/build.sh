@@ -65,6 +65,7 @@ build() {
 # The block below is generated: edit the manifest and run
 # docker/versions/generate.py, never the lines themselves.
 # BEGIN generated: versions
+build python PYTHON_VERSION 3.15
 build python PYTHON_VERSION 3.14
 build python PYTHON_VERSION 3.13
 build python PYTHON_VERSION 3.12
