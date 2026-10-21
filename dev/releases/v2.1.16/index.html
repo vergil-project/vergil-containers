@@ -615,6 +615,8 @@
       
         
       
+        
+      
     
     
     
@@ -670,6 +672,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.29/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.29
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2777,7 +2807,7 @@ The v2.1.15 docker-publish gate failed on base + python with setuptools 70.3.0 (
 <ul>
 <li>
 <p><strong>publish C++ images to GHCR (#482)</strong>
-Wire the four C++ images into the GHCR publish pipeline so prod-cpp-<em> / dev-cpp-</em> are actually published. The merged T1/T2 (#467/#468) registered them only for the local builder (docker/build.sh, docker/generate.sh); the publish matrix had no C++ entries, so every C++ tag returned 403 on GHCR.</p>
+Wire the four C++ images into the GHCR publish pipeline so prod-cpp-* / dev-cpp-* are actually published. The merged T1/T2 (#467/#468) registered them only for the local builder (docker/build.sh, docker/generate.sh); the publish matrix had no C++ entries, so every C++ tag returned 403 on GHCR.</p>
 </li>
 <li>
 <p>cd-docker-publish.yml: add cpp-clang {20,19} (CLANG_VERSION) and cpp-gcc {14,13} (GCC_VERSION) to the build-scan-push matrix, mirroring the local builder's language/build-arg/version mapping and image names (prod-/dev-cpp-clang, prod-/dev-cpp-gcc).</p>
