@@ -5,7 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [2.1.28] - 2026-08-29
+## [2.1.29] - 2026-10-21
+
+### Bug fixes
+
+- verify hadolint against checksums.sha256 (#603)
+- install vergil-tooling before the image Trivy scans (#607)
+- clear the image publish Trivy gate (ten fixed HIGH CVEs) (#608)
+- fix the dev-go 1.26 build and retire the Go 1.25 image (#609)
+- clear the image publish Trivy gate (Go stdlib CVE-2026-111943, x/text CVE-2026-56851) (#626)
+
+### Chores
+
+- bump leading-edge binary tools to latest (#445)
+- turn off Claude Code co-author attribution (#612)
+
+### Documentation
+
+- note dev-python image ships pytest-xdist for parallel tests (#594)
+- add the per-language support policies (#627)
+
+### Features
+
+- generate every version list from one manifest (#623)
+- drop Ruby and GCC 13 from the image matrix (#625)
+- add the lifecycle check core with the Python and Go adapters (#628)
+
+### Refactoring
+
+- drop the hardcoded matrix inputs from ci.yml (#596)
+
+## [2.1.28] - 2026-08-28
 
 ### Chores
 
