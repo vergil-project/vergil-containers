@@ -165,7 +165,6 @@ docker/
   python/Dockerfile.template  # Python dev image with uv
   java/Dockerfile.template    # Java dev image, Eclipse Temurin
   go/Dockerfile.template      # Go dev image with linters
-  ruby/Dockerfile.template    # Ruby dev image with bundler
   rust/Dockerfile.template    # Rust dev image with cargo tools
 ```
 
@@ -246,7 +245,7 @@ explicitly grant this repository write access because the packages were
 originally created by the `vergil-tooling` repository.
 
 Per-package setup (one-time, for each of `dev-base`, `dev-python`, `dev-java`,
-`dev-go`, `dev-ruby`, `dev-rust`, `dev-cpp-clang`, `dev-cpp-gcc`, and the
+`dev-go`, `dev-rust`, `dev-cpp-clang`, `dev-cpp-gcc`, and the
 corresponding `prod-` packages):
 
 1. Navigate to the package settings page on GHCR.
@@ -256,15 +255,18 @@ corresponding `prod-` packages):
 
 ### Version Matrix
 
-| Language | Versions         |
-| -------- | ---------------- |
-| Ruby     | 3.2, 3.3, 3.4    |
-| Python   | 3.12, 3.13, 3.14 |
-| Java     | 17, 21           |
-| Go       | 1.25, 1.26       |
-| Rust     | 1.92, 1.93       |
-| C++ (Clang) | 20, 19        |
-| C++ (GCC)   | 14, 13        |
+<!-- BEGIN generated: versions -->
+| Image           | Language   | Versions         | Base                      |
+| --------------- | ---------- | ---------------- | ------------------------- |
+| `dev-python`    | python     | 3.14, 3.13, 3.12 | `python:<v>-slim`         |
+| `dev-java`      | java       | 21, 17           | `eclipse-temurin:<v>-jdk` |
+| `dev-go`        | go         | 1.26             | `golang:<v>`              |
+| `dev-rust`      | rust       | 1.93, 1.92       | `rust:<v>-slim`           |
+| `dev-cpp-clang` | cpp        | 20, 19           | `debian:trixie-slim`      |
+| `dev-cpp-gcc`   | cpp        | 14               | `debian:trixie-slim`      |
+| `dev-ts-node`   | typescript | 24, 22           | `debian:trixie-slim`      |
+| `dev-base`      | —          | latest           | `python:3.14-slim`        |
+<!-- END generated: versions -->
 
 To trigger a rebuild manually: Actions > CD > Run workflow.
 

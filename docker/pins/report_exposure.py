@@ -18,6 +18,11 @@ import extract_pins
 import harvest_installed
 import resolve_latest
 
+# The image matrix comes from the version manifest in the sibling
+# docker/versions/ directory (epic vergil-project/.github#407).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "versions"))
+import manifest  # noqa: E402
+
 
 def source_pins(root: Path) -> dict[str, str]:
     """Version-of-record per tool, read from the templates. For auto-managed
@@ -160,17 +165,16 @@ _GITHUB_REPOS = {
     "go-test-coverage": "vladopajic/go-test-coverage",
 }
 
-# Image matrix (mirrors CLAUDE.md's version matrix); base carries no runtime.
-_MATRIX = {
-    "base": ["latest"],
-    "python": ["3.12", "3.13", "3.14"],
-    "java": ["17", "21"],
-    "go": ["1.25", "1.26"],
-    "ruby": ["3.2", "3.3", "3.4"],
-    "rust": ["1.92", "1.93"],
-    "cpp-clang": ["20", "19"],
-    "cpp-gcc": ["14", "13"],
-}
+def _matrix(root: Path) -> dict[str, list[str]]:
+    """Image matrix read from docker/versions/manifest.yml (`root` is docker/).
+
+    Base carries no runtime and is not a manifest family, so it is added here.
+    A manifest that cannot be loaded raises ManifestError: never a stale list."""
+    m = manifest.load_manifest(root / "versions" / "manifest.yml")
+    matrix = {"base": ["latest"]}
+    for family in m.families:
+        matrix[family.key] = [v.version for v in family.versions]
+    return matrix
 
 
 def _latest_from_github(repo: str) -> str | None:
@@ -206,9 +210,9 @@ def _build_latest(tools) -> dict[str, str]:
     return latest
 
 
-def _image_matrix(prefix: str) -> list[str]:
+def _image_matrix(prefix: str, root: Path) -> list[str]:
     images = []
-    for lang, versions in _MATRIX.items():
+    for lang, versions in _matrix(root).items():
         for version in versions:
             images.append(f"{prefix}-{lang}:{version}")
     return images
@@ -228,7 +232,7 @@ def main(argv: list[str]) -> int:
     pins = check_pins.load_pins(root)
     latest = _build_latest(sorted(pins))
     installed = (
-        harvest_installed.harvest(_image_matrix(prefix), sorted(pins))
+        harvest_installed.harvest(_image_matrix(prefix, root), sorted(pins))
         if probe_images
         else {}
     )

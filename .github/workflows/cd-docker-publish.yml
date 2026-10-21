@@ -47,68 +47,37 @@ jobs:
       - name: Run Hadolint
         run: hadolint docker/*/Dockerfile
 
+  # The build matrix is generated from docker/versions/manifest.yml into
+  # docker/versions/matrix.json (docker/versions/generate.py); CI fails if the
+  # committed matrix.json is out of date with the manifest.
+  versions:
+    name: Read the version matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.read.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Read docker/versions/matrix.json
+        id: read
+        run: |
+          set -euo pipefail
+          # Fail loud on a missing, malformed or empty matrix: an empty build
+          # list would read as a successful publish of nothing.
+          jq -e '.include | length > 0' docker/versions/matrix.json > /dev/null
+          matrix="$(jq -c . docker/versions/matrix.json)"
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+
   build-scan-push:
     name: "publish: ${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
-    needs: [hadolint]
+    needs: [hadolint, versions]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - language: ruby
-            version: "3.2"
-            build-arg: RUBY_VERSION
-          - language: ruby
-            version: "3.3"
-            build-arg: RUBY_VERSION
-          - language: ruby
-            version: "3.4"
-            build-arg: RUBY_VERSION
-          - language: python
-            version: "3.12"
-            build-arg: PYTHON_VERSION
-          - language: python
-            version: "3.13"
-            build-arg: PYTHON_VERSION
-          - language: python
-            version: "3.14"
-            build-arg: PYTHON_VERSION
-          - language: java
-            version: "17"
-            build-arg: JDK_VERSION
-          - language: java
-            version: "21"
-            build-arg: JDK_VERSION
-          - language: go
-            version: "1.25"
-            build-arg: GO_VERSION
-          - language: go
-            version: "1.26"
-            build-arg: GO_VERSION
-          - language: rust
-            version: "1.92"
-            build-arg: RUST_VERSION
-          - language: rust
-            version: "1.93"
-            build-arg: RUST_VERSION
-          - language: cpp-clang
-            version: "20"
-            build-arg: CLANG_VERSION
-          - language: cpp-clang
-            version: "19"
-            build-arg: CLANG_VERSION
-          - language: cpp-gcc
-            version: "14"
-            build-arg: GCC_VERSION
-          - language: cpp-gcc
-            version: "13"
-            build-arg: GCC_VERSION
-          - language: ts-node
-            version: "24"
-            build-arg: NODE_MAJOR
-          - language: ts-node
-            version: "22"
-            build-arg: NODE_MAJOR
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix) }}
 
     env:
       IMAGE: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
@@ -148,6 +117,12 @@ jobs:
           cache-from: type=registry,ref=${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.CACHE_TAG }},mode=max
           push: true
+
+      # Provides vrg-sarif-filter, which the trivy action uses to strip
+      # accepted-suppressed results from the copy uploaded to code scanning
+      # (vergil-actions#920). trivy-results.sarif itself stays unfiltered.
+      - name: Install vergil-tooling
+        uses: vergil-project/vergil-actions/actions/shared/setup/vergil@v2.1
 
       - name: Trivy scan (amd64)
         id: trivy-amd64
@@ -289,6 +264,12 @@ jobs:
           cache-from: type=registry,ref=${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.CACHE_TAG }},mode=max
           push: true
+
+      # Provides vrg-sarif-filter, which the trivy action uses to strip
+      # accepted-suppressed results from the copy uploaded to code scanning
+      # (vergil-actions#920). trivy-results.sarif itself stays unfiltered.
+      - name: Install vergil-tooling
+        uses: vergil-project/vergil-actions/actions/shared/setup/vergil@v2.1
 
       - name: Trivy scan (amd64)
         id: trivy-amd64

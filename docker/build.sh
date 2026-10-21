@@ -56,50 +56,34 @@ build() {
     "${script_dir}/${lang}"
 }
 
-build python PYTHON_VERSION 3.12
-build python PYTHON_VERSION 3.13
+# One build per family version in docker/versions/manifest.yml, then the
+# build-time smoke checks for each family that has one: docker/<family>/ or
+# docker/<language>/smoke-test.sh. The C++ check compiles, links and runs a
+# trivial CMake + Conan 2 project (spec vergil-project/.github#207); the
+# TypeScript check installs, typechecks and runs one vitest test (epic
+# vergil-project/.github#284). Both also confirm the shared analysis toolset.
+# The block below is generated: edit the manifest and run
+# docker/versions/generate.py, never the lines themselves.
+# BEGIN generated: versions
 build python PYTHON_VERSION 3.14
-build ruby   RUBY_VERSION   3.2
-build ruby   RUBY_VERSION   3.3
-build ruby   RUBY_VERSION   3.4
-build java   JDK_VERSION    17
-build java   JDK_VERSION    21
-build go     GO_VERSION     1.25
-build go     GO_VERSION     1.26
-build rust   RUST_VERSION   1.92
-build rust   RUST_VERSION   1.93
-
-# C++ Clang family (prebuilt-only majors; see docker/cpp-clang/README.md).
-# CLANG_VERSION is the compiler-major matrix axis.
+build python PYTHON_VERSION 3.13
+build python PYTHON_VERSION 3.12
+build java JDK_VERSION 21
+build java JDK_VERSION 17
+build go GO_VERSION 1.26
+build rust RUST_VERSION 1.93
+build rust RUST_VERSION 1.92
 build cpp-clang CLANG_VERSION 20
 build cpp-clang CLANG_VERSION 19
-
-# C++ GCC family (prebuilt-only majors; see docker/cpp-gcc/README.md).
-# GCC_VERSION is the compiler-major matrix axis.
 build cpp-gcc GCC_VERSION 14
-build cpp-gcc GCC_VERSION 13
-
-# TypeScript (Node.js) family (prebuilt-only majors; see docker/ts-node/README.md).
-# NODE_MAJOR is the runtime-major matrix axis. node-24 is the primary (T1);
-# node-22 is the second image (T2). Both reuse the same Dockerfile.template via
-# the NODE_MAJOR build-arg.
 build ts-node NODE_MAJOR 24
 build ts-node NODE_MAJOR 22
-
-# Build-time smoke check: a trivial CMake + Conan 2 project compiles, links, and
-# runs under each C++ image (spec vergil-project/.github#207 T1/T2). The shared
-# smoke check also confirms the analysis toolset is present in each image.
 "${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:20" "$runtime"
 "${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:19" "$runtime"
 "${script_dir}/cpp/smoke-test.sh" "dev-cpp-gcc:14" "$runtime"
-"${script_dir}/cpp/smoke-test.sh" "dev-cpp-gcc:13" "$runtime"
-
-# Build-time smoke check: a trivial package.json + tsconfig.json project installs
-# (npm ci), typechecks (tsc --noEmit), and runs one vitest test under each ts-node
-# image (epic vergil-project/.github#284 T1/T2). The smoke check also confirms the
-# shared analysis toolset is present in each image.
 "${script_dir}/ts-node/smoke-test.sh" "dev-ts-node:24" "$runtime"
 "${script_dir}/ts-node/smoke-test.sh" "dev-ts-node:22" "$runtime"
+# END generated: versions
 
 "${script_dir}/generate.sh" base
 echo "Building dev-base:latest ..."

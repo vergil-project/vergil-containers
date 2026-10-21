@@ -38,8 +38,7 @@ the `vrg-git` / `vrg-gh` wrappers.
 ## Commit and PR Scripts
 
 AI agents and contributors use wrapper scripts for commits and PR
-submission. These enforce formatting standards and co-authorship
-attribution.
+submission. These enforce formatting standards.
 
 ### Committing
 
@@ -54,8 +53,9 @@ vrg-commit \
 - `--message` (required): commit description
 - `--body` (optional): detailed commit body
 
-The script resolves the correct `Co-Authored-By` identity from
-`vergil.toml` and the git hooks validate the result.
+Commits carry no AI co-author trailer; Claude Code attribution is turned
+off in `.claude/settings.json` (vergil-project/vergil-tooling#3200). The
+git hooks validate the result.
 
 ### Submitting PRs
 

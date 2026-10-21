@@ -62,6 +62,15 @@ nav:
       - Release Notes:
           - releases/index.md
   - Images: images/index.md
+  - Languages:
+      - Version Lifecycle: languages/lifecycle.md
+      - Python: languages/python.md
+      - Go: languages/go.md
+      - Rust: languages/rust.md
+      - Java: languages/java.md
+      - TypeScript / Node.js: languages/ts-node.md
+      - C++ / Clang: languages/cpp-clang.md
+      - C++ / GCC: languages/cpp-gcc.md
   - Architecture:
       - architecture/index.md
       - Design Decisions:

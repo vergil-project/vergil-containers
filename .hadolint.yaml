@@ -1,6 +1,5 @@
 ignored:
   - DL3008  # pin versions in apt-get install — impractical for dev images
-  - DL3028  # pin versions in gem install — impractical for dev images
   - DL3059  # multiple consecutive RUN instructions — intentional for clarity
   # The pinning doctrine (epic vergil-project/.github#155) makes floating the
   # default; version management lives in docker/pins/ (justified pins + CI gate

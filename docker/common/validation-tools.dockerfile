@@ -4,11 +4,16 @@
 ARG TARGETARCH
 
 ARG SHELLCHECK_VERSION=0.11.0
-ARG SHFMT_VERSION=3.13.1
+ARG SHFMT_VERSION=3.14.1
 ARG ACTIONLINT_VERSION=1.7.12
-ARG GIT_CLIFF_VERSION=2.13.1
-ARG HADOLINT_VERSION=2.14.0
+ARG GIT_CLIFF_VERSION=2.14.2
+ARG HADOLINT_VERSION=2.15.1
 
+# hadolint >= 2.15.1 publishes a single checksums.sha256 (`<sha> *<asset>`)
+# instead of a per-binary .sha256 (issue #602). The grep is anchored on the
+# whole line (-x) so only the exact `hadolint-${HL_ARCH}` asset is selected;
+# no match fails the build (grep exits 1 under pipefail, and `sha256sum -c`
+# also exits 1 on empty input), so verification is never silently skipped.
 # hadolint ignore=DL3003
 RUN case "${TARGETARCH}" in \
       amd64) \
@@ -45,6 +50,7 @@ RUN case "${TARGETARCH}" in \
     rm "/tmp/${GC_TARBALL}" && \
     curl -fsSL "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-${HL_ARCH}" \
       -o "/tmp/hadolint-${HL_ARCH}" && \
-    curl -fsSL "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-${HL_ARCH}.sha256" \
+    curl -fsSL "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/checksums.sha256" \
+      | grep -x -E "[0-9a-f]{64} [ *]hadolint-${HL_ARCH}" \
       | (cd /tmp && sha256sum -c) && \
     mv "/tmp/hadolint-${HL_ARCH}" /usr/local/bin/hadolint && chmod +x /usr/local/bin/hadolint

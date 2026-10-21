@@ -50,18 +50,10 @@
 #         version) — no entry needed.
 pins:
   go-test-coverage:
-    constraint: "==2.18.3 on Go 1.25, else latest (unpinned)"
-    inducing_release: "2.18.4"
+    constraint: "==2.19.0 on Go 1.26, else latest (unpinned)"
+    inducing_release: "2.20.0"
     deterministic: true
-    reason: "go-test-coverage >=2.18.4 requires Go >=1.26; fails on the Go 1.25 image. Only that branch is held — the Go 1.26 branch floated back to latest in #571, since nothing constrains it and a hand-written version there is drift, not policy. Retires with Go 1.25."
-    state: active
-    tracking_issue: null
-
-  golangci-lint:
-    constraint: "==2.12.2 on Go 1.25, else latest (unpinned)"
-    inducing_release: "2.13.0"
-    deterministic: true
-    reason: "golangci-lint >=2.13.0 declares `go 1.26.0`; with GOTOOLCHAIN=local the Go 1.25 image cannot satisfy it and `go install @latest` fails the build. v2.12.2 is the last release carrying `go 1.25.0`. Go 1.26 stays unpinned. Retires with Go 1.25."
+    reason: "go-test-coverage >=2.20.0 declares `go 1.27`; with GOTOOLCHAIN=local the Go 1.26 image cannot satisfy it and `go install @latest` fails the build. v2.19.0 is the last release carrying `go 1.26` (#606). Retires with Go 1.26. The earlier v2.18.3 hold for Go 1.25, and the Go 1.25-only golangci-lint hold (#569), went away when #606 retired the Go 1.25 image (follow-up vergil-project/.github#403)."
     state: active
     tracking_issue: null
 
@@ -80,7 +72,7 @@ pins:
   shfmt:       {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary URL embeds the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
   actionlint:  {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version checksums embed the version; the weekly bump-tools workflow delivers the FORWARD bump #260 asked for once upstream ships it.", state: auto-managed, tracking_issue: null}
   git-cliff:   {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version sha512 embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
-  hadolint:    {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary + per-version sha256 embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
+  hadolint:    {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary + per-version checksums.sha256 (exact asset line) embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
   opentofu:    {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version SHA256SUMS embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
   nfpm:        {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version checksums embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
   scorecard:   {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — scorecard release tarball + scorecard_checksums.txt embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
