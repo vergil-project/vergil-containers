@@ -17,14 +17,19 @@ share the same environment.
 All images are published to
 `ghcr.io/vergil-project/dev-<language>:<version>`.
 
-| Language | Versions         | Image        |
-| -------- | ---------------- | ------------ |
-| Python   | 3.12, 3.13, 3.14 | `dev-python` |
-| Ruby     | 3.2, 3.3, 3.4    | `dev-ruby`   |
-| Go       | 1.26             | `dev-go`     |
-| Java     | 17, 21           | `dev-java`   |
-| Rust     | 1.92, 1.93       | `dev-rust`   |
-| Base     | latest           | `dev-base`   |
+<!-- BEGIN generated: versions -->
+| Image           | Language   | Versions         | Base                      |
+| --------------- | ---------- | ---------------- | ------------------------- |
+| `dev-python`    | python     | 3.14, 3.13, 3.12 | `python:<v>-slim`         |
+| `dev-ruby`      | ruby       | 3.4, 3.3, 3.2    | `ruby:<v>-slim`           |
+| `dev-java`      | java       | 21, 17           | `eclipse-temurin:<v>-jdk` |
+| `dev-go`        | go         | 1.26             | `golang:<v>`              |
+| `dev-rust`      | rust       | 1.93, 1.92       | `rust:<v>-slim`           |
+| `dev-cpp-clang` | cpp        | 20, 19           | `debian:trixie-slim`      |
+| `dev-cpp-gcc`   | cpp        | 14, 13           | `debian:trixie-slim`      |
+| `dev-ts-node`   | typescript | 24, 22           | `debian:trixie-slim`      |
+| `dev-base`      | —          | latest           | `python:3.14-slim`        |
+<!-- END generated: versions -->
 
 See [Images](images/index.md) for per-language tool details.
 

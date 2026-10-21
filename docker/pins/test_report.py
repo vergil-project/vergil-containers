@@ -46,7 +46,7 @@ def test_auto_managed_not_flagged_for_reevaluation():
 def test_matrix_includes_cpp_images():
     # #480: the exposure matrix must cover the published C++ images so their
     # installed tool versions are harvested alongside the other languages.
-    images = r._image_matrix("prod")
+    images = r._image_matrix("prod", DOCKER)
     for image in ("prod-cpp-clang:20", "prod-cpp-clang:19",
                   "prod-cpp-gcc:14", "prod-cpp-gcc:13"):
         assert image in images
@@ -118,3 +118,12 @@ def test_source_pins_takes_newest_when_tool_pinned_per_image():
 def test_report_renders_behind_section():
     md = r.render(DOCKER, latest={}, installed={})
     assert "## Auto-managed tools behind the leading edge" in md
+
+
+def test_image_matrix_is_read_from_the_version_manifest():
+    images = r._image_matrix("prod", DOCKER)
+    assert images[0] == "prod-base:latest"
+    # Every family in the manifest appears, including those the old hand-kept
+    # list missed (ts-node).
+    assert {"prod-python:3.14", "prod-cpp-gcc:13", "prod-ts-node:24"} <= set(images)
+    assert len(images) == len(set(images))

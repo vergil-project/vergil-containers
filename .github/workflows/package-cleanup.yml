@@ -52,18 +52,27 @@ jobs:
       fail-fast: false
       matrix:
         package:
+          # Generated from docker/versions/manifest.yml by docker/versions/generate.py.
+          # BEGIN generated: versions (cleanup)
           - dev-base
-          - dev-ruby
           - dev-python
+          - dev-ruby
           - dev-java
           - dev-go
           - dev-rust
+          - dev-cpp-clang
+          - dev-cpp-gcc
+          - dev-ts-node
           - prod-base
-          - prod-ruby
           - prod-python
+          - prod-ruby
           - prod-java
           - prod-go
           - prod-rust
+          - prod-cpp-clang
+          - prod-cpp-gcc
+          - prod-ts-node
+          # END generated: versions (cleanup)
     steps:
       - name: Prune untagged versions
         uses: dataaxiom/ghcr-cleanup-action@v1.2.2
@@ -100,11 +109,13 @@ jobs:
       matrix:
         # prod aliases live 30 days, dev aliases 7 (spec §9 capacity windows).
         include:
+          # Generated from docker/versions/manifest.yml by docker/versions/generate.py.
+          # BEGIN generated: versions (reap)
           - package: prod-base
             older_than: "30 days"
-          - package: prod-ruby
-            older_than: "30 days"
           - package: prod-python
+            older_than: "30 days"
+          - package: prod-ruby
             older_than: "30 days"
           - package: prod-java
             older_than: "30 days"
@@ -112,11 +123,17 @@ jobs:
             older_than: "30 days"
           - package: prod-rust
             older_than: "30 days"
+          - package: prod-cpp-clang
+            older_than: "30 days"
+          - package: prod-cpp-gcc
+            older_than: "30 days"
+          - package: prod-ts-node
+            older_than: "30 days"
           - package: dev-base
             older_than: "7 days"
-          - package: dev-ruby
-            older_than: "7 days"
           - package: dev-python
+            older_than: "7 days"
+          - package: dev-ruby
             older_than: "7 days"
           - package: dev-java
             older_than: "7 days"
@@ -124,6 +141,13 @@ jobs:
             older_than: "7 days"
           - package: dev-rust
             older_than: "7 days"
+          - package: dev-cpp-clang
+            older_than: "7 days"
+          - package: dev-cpp-gcc
+            older_than: "7 days"
+          - package: dev-ts-node
+            older_than: "7 days"
+            # END generated: versions (reap)
     steps:
       - name: Reap datestamp aliases past the retention window
         uses: dataaxiom/ghcr-cleanup-action@v1.2.2
@@ -142,7 +166,7 @@ jobs:
           # match. Anchored so the datestamp is the whole trailing segment.
           #
           # This rule is the SOLE selector — precise enough that no exclude-tags
-          # net is needed. Verified across all 12 packages: no rolling / version
+          # net is needed. Verified across every package: no rolling / version
           # / cache / candidate tag ends in -YYYYMMDD, so nothing else can match.
           # An earlier exclude-tags pattern was removed because the action's
           # ReDoS guard rejected its nested quantifier (\d+(\.\d+)*); the delete
