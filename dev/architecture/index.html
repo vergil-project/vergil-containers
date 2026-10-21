@@ -2534,10 +2534,9 @@
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│   └── validation-tools.dockerfile
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── base/Dockerfile.template
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── python/Dockerfile.template
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── ruby/Dockerfile.template
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── go/Dockerfile.template
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>├── java/Dockerfile.template
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>└── rust/Dockerfile.template
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── go/Dockerfile.template
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── java/Dockerfile.template
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>└── rust/Dockerfile.template
 </code></pre></div>
 <h3 id="templating">Templating<a class="headerlink" href="#templating" title="Permanent link">&para;</a></h3>
 <p>Each <code>Dockerfile.template</code> contains standard Dockerfile instructions plus
@@ -2695,7 +2694,7 @@ repository write access. The packages were originally created by the
 <code>vergil-tooling</code> repository, so that repo has implicit write access.
 This repo does not, unless manually configured.</p>
 <p>Per-package setup (one-time, for each of <code>dev-base</code>, <code>dev-python</code>,
-<code>dev-java</code>, <code>dev-go</code>, <code>dev-ruby</code>, <code>dev-rust</code>, and the corresponding
+<code>dev-java</code>, <code>dev-go</code>, <code>dev-rust</code>, and the corresponding
 <code>prod-</code> packages):</p>
 <ol>
 <li>Navigate to the package settings page on GHCR.</li>

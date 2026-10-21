@@ -1959,17 +1959,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ruby" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ruby
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#go" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2490,17 +2479,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ruby" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ruby
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#go" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2598,12 +2576,6 @@ The table is generated from <code>docker/versions/manifest.yml</code> by
 <td><code>python:&lt;v&gt;-slim</code></td>
 </tr>
 <tr>
-<td><code>dev-ruby</code></td>
-<td>ruby</td>
-<td>3.4, 3.3, 3.2</td>
-<td><code>ruby:&lt;v&gt;-slim</code></td>
-</tr>
-<tr>
 <td><code>dev-java</code></td>
 <td>java</td>
 <td>21, 17</td>
@@ -2630,7 +2602,7 @@ The table is generated from <code>docker/versions/manifest.yml</code> by
 <tr>
 <td><code>dev-cpp-gcc</code></td>
 <td>cpp</td>
-<td>14, 13</td>
+<td>14</td>
 <td><code>debian:trixie-slim</code></td>
 </tr>
 <tr>
@@ -2758,29 +2730,6 @@ cores (<code>-n auto --dist worksteal</code>) fleet-wide without every consuming
 declaring it as a dev dependency. Consuming repos get parallel test execution
 by default — when <code>pytest-xdist</code> resolves (as it does in this image) and their
 <code>[test].parallel</code> setting is on (the default).</p>
-<h2 id="ruby">Ruby<a class="headerlink" href="#ruby" title="Permanent link">&para;</a></h2>
-<p><strong>Base</strong>: <code>ruby:&lt;version&gt;-slim</code></p>
-<table>
-<thead>
-<tr>
-<th>Tool</th>
-<th>Source</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>bundler</td>
-<td>system gem</td>
-<td>Ruby dependency manager</td>
-</tr>
-<tr>
-<td>license_finder</td>
-<td>gem</td>
-<td>License auditing</td>
-</tr>
-</tbody>
-</table>
 <h2 id="go">Go<a class="headerlink" href="#go" title="Permanent link">&para;</a></h2>
 <p><strong>Base</strong>: <code>golang:&lt;version&gt;</code></p>
 <table>
