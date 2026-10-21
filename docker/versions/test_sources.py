@@ -108,6 +108,56 @@ def test_endoflife_http_error_raises(monkeypatch):
 # --- fetch_url -----------------------------------------------------------------
 
 
+def _capture_headers(monkeypatch):
+    seen = {}
+
+    def urlopen(request, timeout):
+        seen.update({k.lower(): v for k, v in request.header_items()})
+        return io.BytesIO(b"[]")
+
+    monkeypatch.setattr(sources.urllib.request, "urlopen", urlopen)
+    return seen
+
+
+def test_fetch_url_authenticates_github_api_when_token_set(monkeypatch):
+    monkeypatch.setenv(sources.GITHUB_TOKEN_ENV, "tok123\n")
+    seen = _capture_headers(monkeypatch)
+    sources.fetch_url("https://api.github.com/repos/o/r/releases")
+    assert seen["authorization"] == "Bearer tok123"
+
+
+def test_fetch_url_never_sends_token_to_other_hosts(monkeypatch):
+    monkeypatch.setenv(sources.GITHUB_TOKEN_ENV, "tok123")
+    seen = _capture_headers(monkeypatch)
+    sources.fetch_url("https://hub.docker.com/v2/x")
+    assert "authorization" not in seen
+
+
+def test_fetch_url_github_api_unauthenticated_without_token(monkeypatch):
+    monkeypatch.delenv(sources.GITHUB_TOKEN_ENV, raising=False)
+    seen = _capture_headers(monkeypatch)
+    sources.fetch_url("https://api.github.com/repos/o/r/releases")
+    assert "authorization" not in seen
+
+
+def test_fetch_url_empty_token_is_an_error(monkeypatch):
+    monkeypatch.setenv(sources.GITHUB_TOKEN_ENV, "  ")
+    _capture_headers(monkeypatch)
+    with pytest.raises(SourceError, match="set but empty"):
+        sources.fetch_url("https://api.github.com/repos/o/r/releases")
+
+
+@pytest.mark.parametrize("code", [403, 429])
+def test_fetch_url_rate_limit_is_an_error(monkeypatch, code):
+    def urlopen(request, timeout):
+        raise urllib.error.HTTPError(request.full_url, code, "rate limited", None, None)
+
+    monkeypatch.setattr(sources.urllib.request, "urlopen", urlopen)
+    with pytest.raises(SourceError, match=f"HTTP {code}") as info:
+        sources.fetch_url("https://hub.docker.com/v2/x")
+    assert not isinstance(info.value, NotFoundError)
+
+
 def test_fetch_url_returns_body_and_sends_user_agent(monkeypatch):
     seen = {}
 
