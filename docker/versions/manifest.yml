@@ -56,6 +56,11 @@ families:
     build_arg: "GO_VERSION"
     automation: "pr"
     versions:
+      - version: "1.27"
+        ga: 2026-08-19
+        eol: null
+        in_policy: true
+        runtime_published: null
       - version: "1.26"
         ga: null
         eol: null
