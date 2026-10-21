@@ -56,6 +56,7 @@ class TargetVersion:
 
 class Adapter(Protocol):
     key: str  # manifest family key
+    evidence_url: str  # the human-readable upstream page the window is read from
 
     def fetch(self) -> list[UpstreamRelease]:
         """Read upstream release metadata. Raises SourceError."""
@@ -87,6 +88,11 @@ class FamilyResult:
     family: str
     changes: tuple[Change, ...]
     error: str | None
+    # What upstream said and the adapter's window, so the publishing step can
+    # build an add/drop PR (GA and EOL dates) without asking upstream again.
+    # Both are empty when `error` is set.
+    releases: tuple[UpstreamRelease, ...] = ()
+    target: tuple[TargetVersion, ...] = ()
 
 
 # --- Generic window helpers, composed by adapters ---------------------------
@@ -213,10 +219,11 @@ def run(
             )
             continue
         try:
-            target = adapter.target(adapter.fetch(), today)
+            releases = adapter.fetch()
+            target = adapter.target(releases, today)
             changes = classify(family, target, today, lookahead_days)
         except (SourceError, ValueError) as exc:
             results.append(FamilyResult(family.key, (), f"{type(exc).__name__}: {exc}"))
             continue
-        results.append(FamilyResult(family.key, tuple(changes), None))
+        results.append(FamilyResult(family.key, tuple(changes), None, tuple(releases), tuple(target)))
     return results

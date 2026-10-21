@@ -24,6 +24,7 @@ TagExists = Callable[[str, str], bool]
 
 class RustAdapter:
     key = "rust"
+    evidence_url = "https://endoflife.date/rust"
     product = "rust"
     image = "rust"
     window = 2

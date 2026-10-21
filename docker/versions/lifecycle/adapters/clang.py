@@ -31,6 +31,7 @@ _TAG_RE = re.compile(r"^llvmorg-(\d+)\.\d+\.\d+$")
 
 class ClangAdapter:
     key = "cpp-clang"
+    evidence_url = "https://github.com/llvm/llvm-project/releases"
     window = 2
 
     def __init__(self, fetch: Fetch = fetch_url, index: Index | None = None) -> None:

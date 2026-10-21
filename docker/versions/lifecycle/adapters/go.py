@@ -30,6 +30,7 @@ PINS = Path("docker/pins/pins.yml")
 
 class GoAdapter:
     key = "go"
+    evidence_url = "https://endoflife.date/go"
     product = "go"
     image = "golang"
     window = 2

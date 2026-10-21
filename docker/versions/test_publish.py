@@ -121,6 +121,16 @@ def test_pr_family_changes_open_no_issue():
     assert gh.issues == {}
 
 
+def test_pr_family_change_no_pr_can_carry_opens_issue():
+    """A blocked or EOL-soon version on a `pr` family gets no PR, so it needs an issue."""
+    gh = FakeGh()
+    _sync(gh, [_result("python", ("add", "3.15"), ("blocked", "3.16"), ("eol_soon", "3.12"))])
+    assert gh.open_titles() == [
+        "language lifecycle: python blocked 3.16",
+        "language lifecycle: python eol_soon 3.12",
+    ]
+
+
 # --- Edges -----------------------------------------------------------------------
 
 

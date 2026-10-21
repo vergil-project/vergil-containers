@@ -170,6 +170,19 @@ def _manifest(*families):
     return mf.Manifest(families=families)
 
 
+def test_run_records_releases_and_target():
+    releases = [UpstreamRelease("3.15", date(2026, 10, 9), None, False)]
+
+    class Adapter(FakeAdapter):
+        def fetch(self):
+            return releases
+
+    target = [_t("3.15"), _t("3.14"), _t("3.13"), _t("3.12")]
+    (result,) = core.run(_manifest(_family(key="fam")), {"fam": Adapter("fam", target=target)}, TODAY)
+    assert result.releases == tuple(releases)
+    assert result.target == tuple(target)
+
+
 def test_run_records_adapter_error_and_continues():
     m = _manifest(_family(key="first"), _family(key="second"))
     adapters = {
@@ -203,7 +216,17 @@ def test_run_does_not_swallow_unexpected_exceptions():
 
 
 RESULTS = [
-    FamilyResult("a", (Change("a", "add", "3.15", "GA 2026-10-09, EOL 2031-10-31"),), None),
+    FamilyResult(
+        "a",
+        (Change("a", "add", "3.15", "GA 2026-10-09, EOL 2031-10-31"),),
+        None,
+        (
+            UpstreamRelease("3.15", date(2026, 10, 9), date(2031, 10, 31), False),
+            UpstreamRelease("3.9", date(2020, 10, 5), core.EOL_DATE_UNKNOWN, True, date(2021, 1, 1)),
+            UpstreamRelease("3.16", None, None, False),
+        ),
+        (TargetVersion("3.15", date(2026, 10, 9), date(2031, 10, 31), True), TargetVersion("3.16", None, None, False)),
+    ),
     FamilyResult("b", (), None),
     FamilyResult("c", (), "SourceError: upstream down"),
 ]
@@ -227,11 +250,18 @@ def test_report_json_roundtrip():
 @pytest.mark.parametrize(
     "doc",
     [
-        {"schema": 2, "results": []},
-        {"schema": 1},
-        {"schema": 1, "results": [{"family": "a"}]},
-        {"schema": 1, "results": [{"family": "a", "error": None, "changes": [{"kind": "nope"}]}]},
-        {"schema": 1, "results": [{"family": "a", "error": None, "changes": [dict(family="a", kind="bad", version="1", detail="")]}]},
+        {"schema": 1, "results": []},
+        {"schema": 2},
+        {"schema": 2, "results": [{"family": "a"}]},
+        {"schema": 2, "results": [{"family": "a", "error": None, "changes": [{"kind": "nope"}]}]},
+        {"schema": 2, "results": [{"family": "a", "error": None, "changes": [dict(family="a", kind="bad", version="1", detail="")]}]},
+        {"schema": 2, "results": [{"family": "a", "error": None, "changes": [], "releases": []}]},
+        {"schema": 2, "results": [{"family": "a", "error": None, "changes": [], "releases": [], "target": [
+            {"version": "1", "ga": "not a date", "eol": None, "installable": True}]}]},
+        {"schema": 2, "results": [{"family": "a", "error": None, "changes": [], "releases": [], "target": [
+            {"version": "1", "ga": 20261009, "eol": None, "installable": True}]}]},
+        {"schema": 2, "results": [{"family": "a", "error": None, "changes": [], "releases": [], "target": [
+            {"version": "1", "ga": None, "eol": None, "installable": "yes"}]}]},
     ],
 )
 def test_report_json_rejects_malformed(doc):
@@ -298,7 +328,7 @@ def test_registry_covers_python_and_go():
 # --- principle 7: no language branches in shared code ------------------------------
 
 LANGUAGE_WORDS = re.compile(r"\b(python|go|golang|rust|java|clang|gcc|node|ruby)\b", re.IGNORECASE)
-SHARED = ["core.py", "sources.py", "report.py", "publish.py"]
+SHARED = ["core.py", "sources.py", "report.py", "publish.py", "apply.py"]
 
 
 @pytest.mark.parametrize("name", SHARED)

@@ -31,6 +31,7 @@ VM_PIN_FOLLOW_UP = (
 
 class NodeAdapter:
     key = "ts-node"
+    evidence_url = "https://endoflife.date/nodejs"
     product = "nodejs"
 
     def __init__(self, fetch: Fetch = fetch_url, setup_exists: UrlExists | None = None) -> None:
