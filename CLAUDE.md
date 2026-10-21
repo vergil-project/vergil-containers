@@ -256,15 +256,19 @@ corresponding `prod-` packages):
 
 ### Version Matrix
 
-| Language | Versions         |
-| -------- | ---------------- |
-| Ruby     | 3.2, 3.3, 3.4    |
-| Python   | 3.12, 3.13, 3.14 |
-| Java     | 17, 21           |
-| Go       | 1.26             |
-| Rust     | 1.92, 1.93       |
-| C++ (Clang) | 20, 19        |
-| C++ (GCC)   | 14, 13        |
+<!-- BEGIN generated: versions -->
+| Image           | Language   | Versions         | Base                      |
+| --------------- | ---------- | ---------------- | ------------------------- |
+| `dev-python`    | python     | 3.14, 3.13, 3.12 | `python:<v>-slim`         |
+| `dev-ruby`      | ruby       | 3.4, 3.3, 3.2    | `ruby:<v>-slim`           |
+| `dev-java`      | java       | 21, 17           | `eclipse-temurin:<v>-jdk` |
+| `dev-go`        | go         | 1.26             | `golang:<v>`              |
+| `dev-rust`      | rust       | 1.93, 1.92       | `rust:<v>-slim`           |
+| `dev-cpp-clang` | cpp        | 20, 19           | `debian:trixie-slim`      |
+| `dev-cpp-gcc`   | cpp        | 14, 13           | `debian:trixie-slim`      |
+| `dev-ts-node`   | typescript | 24, 22           | `debian:trixie-slim`      |
+| `dev-base`      | —          | latest           | `python:3.14-slim`        |
+<!-- END generated: versions -->
 
 To trigger a rebuild manually: Actions > CD > Run workflow.
 

@@ -58,6 +58,16 @@ jobs:
         working-directory: docker/pins
         run: uv run --with pytest --with packaging --with pyyaml python -m pytest -q
 
+      # Every version list (publish matrix, build.sh, package cleanup, Dockerfile
+      # ARG defaults, docs tables, the published window.json) is generated from
+      # docker/versions/manifest.yml (epic vergil-project/.github#407).
+      - name: Versions are up to date
+        run: python3 docker/versions/generate.py --check
+
+      - name: Versions tooling tests
+        working-directory: docker/versions
+        run: uv run --with pytest --with pyyaml python -m pytest -q
+
   quality:
     uses: vergil-project/vergil-actions/.github/workflows/ci-quality.yml@v2.1
     with:

@@ -14,6 +14,26 @@ runtimes and tools. Images are published as multi-architecture manifests
     For how versions are chosen and managed, see
     [Tool Version Management](../operations/version-management.md).
 
+## Versions
+
+Every image and the language versions it is published for.
+The table is generated from `docker/versions/manifest.yml` by
+`docker/versions/generate.py`; edit the manifest, not the table.
+
+<!-- BEGIN generated: versions -->
+| Image           | Language   | Versions         | Base                      |
+| --------------- | ---------- | ---------------- | ------------------------- |
+| `dev-python`    | python     | 3.14, 3.13, 3.12 | `python:<v>-slim`         |
+| `dev-ruby`      | ruby       | 3.4, 3.3, 3.2    | `ruby:<v>-slim`           |
+| `dev-java`      | java       | 21, 17           | `eclipse-temurin:<v>-jdk` |
+| `dev-go`        | go         | 1.26             | `golang:<v>`              |
+| `dev-rust`      | rust       | 1.93, 1.92       | `rust:<v>-slim`           |
+| `dev-cpp-clang` | cpp        | 20, 19           | `debian:trixie-slim`      |
+| `dev-cpp-gcc`   | cpp        | 14, 13           | `debian:trixie-slim`      |
+| `dev-ts-node`   | typescript | 24, 22           | `debian:trixie-slim`      |
+| `dev-base`      | —          | latest           | `python:3.14-slim`        |
+<!-- END generated: versions -->
+
 ## Common Layer
 
 All language images include:
@@ -49,7 +69,6 @@ install them directly via pip.
 ## Python
 
 **Base**: `python:<version>-slim`
-**Versions**: 3.12, 3.13, 3.14
 
 | Tool         | Purpose                        |
 | ------------ | ------------------------------ |
@@ -66,7 +85,6 @@ by default — when `pytest-xdist` resolves (as it does in this image) and their
 ## Ruby
 
 **Base**: `ruby:<version>-slim`
-**Versions**: 3.2, 3.3, 3.4
 
 | Tool           | Source     | Purpose                 |
 | -------------- | ---------- | ----------------------- |
@@ -76,7 +94,6 @@ by default — when `pytest-xdist` resolves (as it does in this image) and their
 ## Go
 
 **Base**: `golang:<version>`
-**Versions**: 1.26
 
 | Tool             | Purpose               |
 | ---------------- | --------------------- |
@@ -102,7 +119,6 @@ out of upstream support and its standard library carries HIGH CVEs that no Go
 ## Java
 
 **Base**: `eclipse-temurin:<version>-jdk`
-**Versions**: 17, 21
 
 Java images rely on the consuming repository's Maven wrapper (`mvnw`) to
 bootstrap Maven at container startup. No additional Java-specific tools
@@ -111,7 +127,6 @@ are pre-installed.
 ## Rust
 
 **Base**: `rust:<version>-slim`
-**Versions**: 1.92, 1.93
 
 | Tool           | Source           | Purpose                     |
 | -------------- | ---------------- | --------------------------- |
