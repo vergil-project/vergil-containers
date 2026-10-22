@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.30] - 2026-10-22
+
+### Bug fixes
+
+- run the lifecycle tests on a frozen manifest, not the live one (#658)
+
+### Chores
+
+- re-audit .trivyignore against fresh scans of the current image matrix (#634)
+
+### Features
+
+- add the report-only language adapters (#633)
+- run the language lifecycle check nightly with issues for gaps and failures (#635)
+- open add and drop PRs for Python and Go (#636)
+- record the published vergil-python runtime from the apt index (#638)
+- add python 3.15 (#650)
+- add go 1.27 (#651)
+
 ## [2.1.29] - 2026-10-21
 
 ### Bug fixes
