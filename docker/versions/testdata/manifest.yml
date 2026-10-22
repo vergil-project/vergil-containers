@@ -1,7 +1,8 @@
 # FROZEN TEST FIXTURE. This is not the version manifest.
 #
-# The lifecycle and generator tests run against this file instead of the live
-# docker/versions/manifest.yml (vergil-containers#654), so that adding or
+# The lifecycle and generator tests (vergil-containers#654) and the pins report
+# tests in docker/pins/test_report.py (vergil-containers#656) run against this
+# file instead of the live docker/versions/manifest.yml, so that adding or
 # dropping a real version never breaks them. It is a snapshot of the live
 # manifest on 2026-10-22, and the tests' expected values are written against it.
 #
