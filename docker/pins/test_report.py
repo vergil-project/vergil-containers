@@ -1,9 +1,22 @@
+import sys
 from pathlib import Path
 
 import harvest_installed
 import report_exposure as r
 
 DOCKER = Path(__file__).resolve().parent.parent
+
+# The image-matrix tests name specific images (prod-python:3.14,
+# prod-cpp-gcc:14, ...). They read the frozen test manifest from
+# vergil-containers#654, not the live docker/versions/manifest.yml, so a
+# lifecycle PR that adds or drops a real version cannot break them (#656).
+sys.path.insert(0, str(DOCKER / "versions"))
+import frozen  # noqa: E402
+
+
+def _frozen_image_matrix() -> list[str]:
+    """The prod image matrix of the frozen repo tree (built once per run)."""
+    return r._image_matrix("prod", frozen.root() / "docker")
 
 
 def test_flags_pin_when_leading_edge_moved_past_inducer():
@@ -46,7 +59,7 @@ def test_auto_managed_not_flagged_for_reevaluation():
 def test_matrix_includes_cpp_images():
     # #480: the exposure matrix must cover the published C++ images so their
     # installed tool versions are harvested alongside the other languages.
-    images = r._image_matrix("prod", DOCKER)
+    images = _frozen_image_matrix()
     for image in ("prod-cpp-clang:20", "prod-cpp-clang:19",
                   "prod-cpp-gcc:14"):
         assert image in images
@@ -121,7 +134,7 @@ def test_report_renders_behind_section():
 
 
 def test_image_matrix_is_read_from_the_version_manifest():
-    images = r._image_matrix("prod", DOCKER)
+    images = _frozen_image_matrix()
     assert images[0] == "prod-base:latest"
     # Every family in the manifest appears, including those the old hand-kept
     # list missed (ts-node).

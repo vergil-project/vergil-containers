@@ -4,7 +4,9 @@ The tests assert exact version lists ("add 3.15 gives 3.15, 3.14, 3.13, 3.12").
 They used to read the live `docker/versions/manifest.yml`, so every add or drop
 PR the lifecycle automation opened broke its own CI. They now read
 `testdata/manifest.yml`, a snapshot that does not change when the real manifest
-does, and a repo tree whose generated files match it.
+does, and a repo tree whose generated files match it. The pins report tests
+(`docker/pins/test_report.py`, vergil-containers#656) read their image matrix
+from the same frozen tree.
 
 The one check on the real manifest (it loads, is canonical, and the generated
 files are up to date) is `test_generate.test_real_manifest_is_valid`; it asserts
