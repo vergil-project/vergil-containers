@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+import frozen
 import manifest as mf
 from lifecycle import core
 from lifecycle.adapters.go import GoAdapter
@@ -13,7 +14,7 @@ from lifecycle.runtime import AptIndex
 HERE = Path(__file__).resolve().parent
 FIXTURES = HERE / "fixtures"
 TODAY = date(2026, 10, 21)
-SEED = mf.load_manifest(HERE / "manifest.yml")
+SEED = frozen.SEED  # the frozen test manifest, not the live one (#654)
 
 
 def RUNTIME_314():

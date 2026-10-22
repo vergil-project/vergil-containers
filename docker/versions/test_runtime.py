@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+import frozen
 import generate as g
 import manifest as mf
 from lifecycle import core, runtime
@@ -19,10 +20,10 @@ from lifecycle.report import results_from_json, results_to_json
 from lifecycle.runtime import APT_URL, read_index, runtime_published
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent.parent
+ROOT = frozen.root()  # a repo tree whose generated files match SEED
 FIXTURES = HERE / "fixtures"
 TODAY = date(2026, 10, 21)
-SEED = mf.load_manifest(HERE / "manifest.yml")
+SEED = frozen.SEED  # the frozen test manifest, not the live one (#654)
 RUN = "https://github.com/o/r/actions/runs/1"
 RELEASE = (FIXTURES / "apt-vergil-noble-Release").read_text()
 PACKAGES = (FIXTURES / "apt-vergil-noble-amd64-Packages").read_text()

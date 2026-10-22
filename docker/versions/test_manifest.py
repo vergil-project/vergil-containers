@@ -1,17 +1,18 @@
 from datetime import date
-from pathlib import Path
 
 import pytest
 import yaml
 
+import frozen
 import manifest as mf
 
-HERE = Path(__file__).resolve().parent
-MANIFEST = HERE / "manifest.yml"
+# The frozen test manifest (#654), not the live one: these tests must not break
+# when a lifecycle PR adds or drops a real version.
+MANIFEST = frozen.MANIFEST
 
-# The publish matrix (image suffix, version, build-arg) the manifest must seed:
-# the `include:` list cd-docker-publish.yml carried at the start of the manifest
-# work, less Ruby and GCC 13 (dropped in #619).
+# The publish matrix (image suffix, version, build-arg) the frozen manifest
+# seeds: the `include:` list cd-docker-publish.yml carried at the start of the
+# manifest work, less Ruby and GCC 13 (dropped in #619).
 CURRENT_MATRIX = [
     ("python", "3.12", "PYTHON_VERSION"),
     ("python", "3.13", "PYTHON_VERSION"),
@@ -78,13 +79,6 @@ def test_seed_runtime_published_and_policy():
     assert prefixes["cpp-gcc"] == "gcc-"
     assert prefixes["ts-node"] == "node-"
     assert prefixes["python"] == ""
-
-
-def test_committed_manifest_is_canonical():
-    # The committed manifest is exactly what dump_manifest emits, so automated
-    # edits (which go through dump_manifest) never reformat the whole file.
-    text = MANIFEST.read_text()
-    assert mf.dump_manifest(mf.load_manifest(MANIFEST)) == text
 
 
 def test_load_manifest_rejects_unknown_key(tmp_path):
