@@ -1,32 +1,29 @@
 import json
-import shutil
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
 import pytest
 
+import frozen
 import generate as g
 import manifest as mf
 from test_manifest import CURRENT_MATRIX
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+# The live checkout: only `test_real_manifest_is_valid` reads it. Every other
+# test runs on the frozen manifest and tree (`frozen.py`, #654).
+LIVE_ROOT = frozen.LIVE_ROOT
 
 
 def _seed() -> mf.Manifest:
-    return mf.load_manifest(ROOT / g.MANIFEST)
+    return frozen.SEED
 
 
 @pytest.fixture
 def repo(tmp_path):
-    """A copy of every file the generator reads or writes."""
-    rels = {g.MANIFEST, g.MATRIX_JSON, g.WINDOW_JSON, g.BUILD_SH, g.PACKAGE_CLEANUP, *g.DOC_TABLES}
-    rels |= {Path("docker") / d / "Dockerfile.template" for d in ("base", *(f.key for f in _seed().families))}
-    rels |= {p.relative_to(ROOT) for p in (ROOT / "docker").glob("*/smoke-test.sh")}
-    for rel in rels:
-        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ROOT / rel, tmp_path / rel)
-    return tmp_path
+    """A writable copy of every file the generator reads or writes, on the
+    frozen manifest."""
+    return frozen.make_repo(tmp_path)
 
 
 def test_render_matrix_json_equals_current_include_list():
@@ -39,7 +36,7 @@ def test_render_matrix_json_equals_current_include_list():
 
 
 def test_render_build_sh_block():
-    text = g.render_build_sh(_seed(), ROOT)
+    text = g.render_build_sh(_seed(), frozen.root())
     block = text.split("# BEGIN generated: versions\n")[1].split("# END generated: versions")[0]
     lines = block.splitlines()
     builds = [tuple(line.split()[1:]) for line in lines if line.startswith("build ")]
@@ -78,7 +75,7 @@ def test_render_arg_default_requires_one_anchor(repo):
 
 
 def test_render_package_cleanup_includes_all_families():
-    text = g.render_package_cleanup(_seed(), ROOT)
+    text = g.render_package_cleanup(_seed(), frozen.root())
     keys = ["base"] + [f.key for f in _seed().families]
     cleanup = text.split("# BEGIN generated: versions (cleanup)\n")[1].split("# END")[0]
     assert [line.strip() for line in cleanup.splitlines() if line.strip()] == (
@@ -151,7 +148,8 @@ def test_window_json_covers_every_family_newest_first():
 
 
 def _committed_window() -> dict:
-    return json.loads((ROOT / g.WINDOW_JSON).read_text())
+    """window.json as generated from the frozen manifest."""
+    return json.loads((frozen.root() / g.WINDOW_JSON).read_text())
 
 
 def _window_families(window: dict) -> dict:
@@ -169,8 +167,17 @@ def test_cpp_gcc_window_is_14_only():
     assert _window_families(_committed_window())["cpp-gcc"] == ["14"]
 
 
-def test_committed_files_are_up_to_date(capsys):
-    assert g.main(["--check", "--root", str(ROOT)]) == 0
+def test_real_manifest_is_valid(capsys):
+    # The one test on the live docker/versions/manifest.yml (#654). It must
+    # never assert which versions the manifest lists: lifecycle add and drop
+    # PRs change those, and must not break their own CI.
+    real = LIVE_ROOT / g.MANIFEST
+    m = mf.load_manifest(real)
+    # Canonical: automated edits go through dump_manifest, so they never
+    # reformat the whole file.
+    assert mf.dump_manifest(m) == real.read_text()
+    # Every generated file is up to date with it.
+    assert g.main(["--check", "--root", str(LIVE_ROOT)]) == 0
 
 
 def test_check_mode_reports_drift(repo, capsys):

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import frozen
 import generate as g
 import manifest as mf
 from lifecycle import core, publish
@@ -19,10 +20,10 @@ from lifecycle.runtime import AptIndex
 from test_generate import repo  # noqa: F401  (fixture: a copy of every generated file)
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent.parent
+ROOT = frozen.root()  # a repo tree whose generated files match SEED
 FIXTURES = HERE / "fixtures"
 TODAY = date(2026, 10, 21)
-SEED = mf.load_manifest(HERE / "manifest.yml")
+SEED = frozen.SEED  # the frozen test manifest, not the live one (#654)
 
 
 def RUNTIME_314():
@@ -434,11 +435,17 @@ def test_sync_prs_add_without_target_fails_loud():
 # --- main --prs -------------------------------------------------------------------------------------
 
 
+def _prs_argv(results):
+    """`--prs` on the frozen manifest and the repo tree that matches it (#654)."""
+    return ["--results", str(results), "--run-url", RUN1, "--prs",
+            "--manifest", str(frozen.MANIFEST), "--root", str(ROOT)]
+
+
 def test_main_prs_mode(tmp_path):
     path = tmp_path / "results.json"
     path.write_text(results_to_json(_pr_results(), TODAY))
     gh, git = FakeGh(), FakeGit()
-    rc = publish.main(["--results", str(path), "--run-url", RUN1, "--prs"], gh=gh, git=git, adapters=_adapters())
+    rc = publish.main(_prs_argv(path), gh=gh, git=git, adapters=_adapters())
     assert rc == 0
     assert sorted(gh.open_prs()) == ["lifecycle/go-add-1.27", "lifecycle/python-add-3.15"]
 
@@ -459,7 +466,7 @@ def test_main_prs_failure_exits_1(tmp_path, capsys):
         def publish_branch(self, branch, files, message):
             raise PublishError("git push failed (exit 1): permission denied")
 
-    rc = publish.main(["--results", str(path), "--run-url", RUN1, "--prs"], gh=FakeGh(), git=BrokenGit(), adapters=_adapters())
+    rc = publish.main(_prs_argv(path), gh=FakeGh(), git=BrokenGit(), adapters=_adapters())
     assert rc == 1
     assert "permission denied" in capsys.readouterr().err
 
@@ -481,7 +488,8 @@ def test_main_prs_default_clients(tmp_path, monkeypatch):
     monkeypatch.setattr(publish, "GitCli", Git)
     path = tmp_path / "results.json"
     path.write_text(results_to_json([FamilyResult(f.key, (), None) for f in SEED.families], TODAY))
-    rc = publish.main(["--results", str(path), "--run-url", RUN1, "--prs", "--repo", "o/r", "--base", "develop"])
+    rc = publish.main(["--results", str(path), "--run-url", RUN1, "--prs", "--repo", "o/r", "--base", "develop",
+                      "--manifest", str(frozen.MANIFEST)])
     assert rc == 0
     assert built == {"gh": ("o/r", "develop"), "git": publish.REPO_ROOT}
 
