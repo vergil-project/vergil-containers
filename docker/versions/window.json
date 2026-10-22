@@ -8,6 +8,12 @@
           "token_prefix": "",
           "versions": [
             {
+              "version": "3.15",
+              "eol": "2031-10-31",
+              "in_policy": true,
+              "runtime_published": false
+            },
+            {
               "version": "3.14",
               "eol": null,
               "in_policy": true,
@@ -57,6 +63,12 @@
           "key": "go",
           "token_prefix": "",
           "versions": [
+            {
+              "version": "1.27",
+              "eol": null,
+              "in_policy": true,
+              "runtime_published": null
+            },
             {
               "version": "1.26",
               "eol": null,

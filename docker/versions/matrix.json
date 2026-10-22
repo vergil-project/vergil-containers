@@ -2,6 +2,11 @@
   "include": [
     {
       "language": "python",
+      "version": "3.15",
+      "build-arg": "PYTHON_VERSION"
+    },
+    {
+      "language": "python",
       "version": "3.14",
       "build-arg": "PYTHON_VERSION"
     },
@@ -24,6 +29,11 @@
       "language": "java",
       "version": "17",
       "build-arg": "JDK_VERSION"
+    },
+    {
+      "language": "go",
+      "version": "1.27",
+      "build-arg": "GO_VERSION"
     },
     {
       "language": "go",

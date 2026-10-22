@@ -14,6 +14,11 @@ families:
     build_arg: "PYTHON_VERSION"
     automation: "pr"
     versions:
+      - version: "3.15"
+        ga: 2026-10-09
+        eol: 2031-10-31
+        in_policy: true
+        runtime_published: false
       - version: "3.14"
         ga: null
         eol: null
@@ -51,6 +56,11 @@ families:
     build_arg: "GO_VERSION"
     automation: "pr"
     versions:
+      - version: "1.27"
+        ga: 2026-08-19
+        eol: null
+        in_policy: true
+        runtime_published: null
       - version: "1.26"
         ga: null
         eol: null

@@ -1,0 +1,74 @@
+Package: vergil-archive-keyring
+Version: 1.1.1-1
+Section:
+Priority: optional
+Architecture: all
+Maintainer: vergil packages <packages@vergil.invalid>
+Installed-Size: 3
+Description: Signing key and repository configuration for the vergil-project package repository
+Filename: pool/vergil-archive-keyring/vergil-archive-keyring_1.1.1-1_all.deb
+Size: 4376
+SHA256: db5acb95cafb1c7f86204eafc9ce96ae22f3a5832f39dd320590f2c4af498ea7
+
+Package: vergil-python3.14
+Version: 3.14.8+20261013-1
+Section:
+Priority: optional
+Architecture: amd64
+Maintainer: vergil packages <packages@vergil.invalid>
+Installed-Size: 99571
+Description: Pinned CPython 3.14.8 (python-build-standalone 20261013) for vergil products
+Filename: pool/vergil-python3.14/vergil-python3.14_3.14.8+20261013-1_amd64.deb
+Size: 36360374
+SHA256: ff6f1d240060fa5e914367d5dff995b841305223f4ad3b71596de60d29ae58b4
+
+Package: vergil-python3.14.8
+Version: 3.14.8+20261003-1
+Section:
+Priority: optional
+Architecture: amd64
+Maintainer: vergil packages <packages@vergil.invalid>
+Installed-Size: 99542
+Description: Pinned CPython 3.14.8 (python-build-standalone 20261003) for vergil products
+Filename: pool/vergil-python3.14.8/vergil-python3.14.8_3.14.8+20261003-1_amd64.deb
+Size: 36330728
+SHA256: 82d121c33afbb693e66ca76969a21ca5d1910060a1151cbf78b437da8129e73e
+
+Package: vergil-tooling
+Version: 2.1.249-1
+Section:
+Priority: optional
+Architecture: amd64
+Maintainer: vergil packages <packages@vergil.invalid>
+Installed-Size: 22763
+Depends: vergil-python3.14.8 (>= 3.14.8+20261003)
+Description: Shared development tooling for Vergil-managed repositories
+Filename: pool/vergil-tooling/vergil-tooling_2.1.249-1_amd64.deb
+Size: 7488762
+SHA256: dab09343a5d01f5383e5981069ab74c17a0c427278b62051513c4ece1ccd302b
+
+Package: vergil-tooling
+Version: 2.1.250-1
+Section:
+Priority: optional
+Architecture: amd64
+Maintainer: vergil packages <packages@vergil.invalid>
+Installed-Size: 22810
+Depends: vergil-python3.14.8 (>= 3.14.8+20261003)
+Description: Shared development tooling for Vergil-managed repositories
+Filename: pool/vergil-tooling/vergil-tooling_2.1.250-1_amd64.deb
+Size: 7508048
+SHA256: f8e1ff31b98f09a5f47b1c5ae217ddcc81dc2f6f560d572ad8f93d289ebdeb80
+
+Package: vergil-tooling
+Version: 2.1.251-1
+Section:
+Priority: optional
+Architecture: amd64
+Maintainer: vergil packages <packages@vergil.invalid>
+Installed-Size: 22813
+Depends: vergil-python3.14.8 (>= 3.14.8+20261003)
+Description: Shared development tooling for Vergil-managed repositories
+Filename: pool/vergil-tooling/vergil-tooling_2.1.251-1_amd64.deb
+Size: 7508466
+SHA256: 4efc46245f5a4bb328136ea25fc42029fdc6f053400b65f69e1c12810acd9c27

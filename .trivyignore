@@ -12,35 +12,52 @@
 #   - status=affected (no-fix) CVEs — ignore-unfixed (trivy.yaml) already keeps
 #     them from gating. Only fixed findings belong in this file.
 #
-# Last audited: 2026-10-16 (issue #605). Fresh local arm64 builds of 17 of the
-# 19 dev images were scanned without this file or the rego (ignore-unfixed and
-# skip-files only), using Trivy 0.72.0 as in the CD arm64 step. 25 entries
-# absent from every scan were removed. dev-go 1.25 / 1.26 do not currently
-# build (go-install @latest linters need a newer Go), so the go-image-only
-# entries were checked against the last published dev-go images instead and are
-# kept because their go-install carriers still show them. Six new entries were
-# added below, each marked with issue #605. Issue #606 then rebuilt dev-go 1.26
-# locally, re-checked the go-image-only entries against it, and retired Go 1.25.
-# Previous audit: 2026-08-15 (issue #561), which removed 137 stale entries.
+# Last audited: 2026-10-21 (issue #629). All 14 images in the current publish
+# set were built locally from scratch (--no-cache) on arm64: the 13 entries of
+# docker/versions/matrix.json plus dev-base. Each was scanned with Trivy 0.72.0
+# (as in the CD arm64 step) without this file or the rego, keeping only
+# ignore-unfixed and skip-files from trivy.yaml. Every entry below appeared in
+# at least one of those scans, so none was removed. The audit corrected the
+# carrier notes: gh (2.103.0, go1.27.3, x/net v0.60.0, x/mod v0.41.0) no longer
+# carries any entry, the temurin base's pebble is built with go1.27.1, the
+# image's Go is 1.26.10, and golangci-lint no longer carries CVE-2026-56852. No
+# carrier had a newer upstream release to bump to. With this file and the rego,
+# all 14 images scan clean (0 HIGH/CRITICAL).
+# Previous audits: 2026-10-16 (issue #605), which removed 25 stale entries, and
+# 2026-08-15 (issue #561), which removed 137.
 # When re-auditing, an entry is stale if it no longer appears in a fresh scan of
 # the current images (see issue #561 for the method).
+#
+# go-licenses notes below refer to the binary that `go install
+# github.com/google/go-licenses/v2@latest` (v2.0.1) produces with the image's
+# go1.26.10. `go tool nm` on that binary (issue #629) shows that the only
+# packages it links from its own module requirements are
+# golang.org/x/net/context/ctxhttp, golang.org/x/mod/semver and
+# golang.org/x/text/{cases,internal,language,transform,unicode/norm}. The
+# x/net/http2/hpack, x/net/idna, x/net/dns/dnsmessage and x/net/http packages it
+# also contains are the Go standard library's vendored copies
+# (vendor/golang.org/x/net/...), which come from the patched go1.26.10.
 
 # =============================================================================
-# Go stdlib in the prebuilt Go tool binaries (common layer: gh, actionlint,
-# nfpm, shfmt; plus scorecard, trivy, tofu on dev-base). Trivy scores Go stdlib
+# Go stdlib in actionlint 1.7.12 (all images). actionlint is the newest release
+# (2026-03-30) and is built with go1.26.1. Trivy scores Go stdlib
 # vulnerabilities by the toolchain version baked into each binary, with no
-# import-reachability analysis, so every stdlib CVE fixed in a Go release gates
-# all of these binaries until upstream re-releases them built with the patched
-# Go. They are static linters / known-host API clients operating on local files
-# and outbound HTTPS to GitHub/ghcr; the affected stdlib paths (crypto/x509
-# hostname check, encoding/asn1, encoding/xml, net/url, net/http h2c, crypto/tls,
-# html/template, os.Root, MIME header decode) are not exercised on untrusted
-# input. Remove each once the bundled tools ship binaries rebuilt with the Go
-# release that fixes it (weekly bump-tools).
+# import-reachability analysis, so every stdlib CVE fixed since go1.26.1 gates
+# this binary until upstream re-releases it with a patched Go. actionlint is a
+# static linter of local workflow files: it makes no network connections, and
+# the affected stdlib paths (crypto/x509 hostname check, encoding/asn1,
+# encoding/xml, net/url, net/http h2c, crypto/tls, html/template, os.Root, MIME
+# header decode) are not exercised on untrusted input.
 #
-# As of the 2026-10-16 audit (issue #605), the entries in this block are
-# carried only by actionlint 1.7.12 (go1.26.1, the newest release). The other
-# binaries have been rebuilt with a newer Go.
+# As of the 2026-10-21 audit (issue #629), actionlint is the only stdlib carrier
+# of every entry in this block. CVE-2026-33814 is also reported against
+# go-licenses (go image) through golang.org/x/net v0.43.0 (fixed in 0.53.0).
+# It is in the HTTP/2 transport, and go-licenses links no HTTP/2 code from its
+# x/net module (see the go-licenses note in the header).
+#
+# Remove once an actionlint release is built with a Go that fixes them (and, for
+# CVE-2026-33814, once go-licenses requires x/net >= 0.53.0). The weekly
+# bump-tools PR picks up a new actionlint.
 # =============================================================================
 CVE-2026-27145
 CVE-2026-32280
@@ -63,23 +80,20 @@ CVE-2026-56862
 
 # Go 1.26.9 / 1.27.2 batch (issue #605). Fixed in Go 1.26.9 / 1.27.2, but the
 # newest upstream release of each of these carriers is still built with an
-# older Go:
-#   - gh 2.102.0, go1.27.1 (GitHub CLI apt repo; all images)
+# older Go (carriers as of the 2026-10-21 audit, issue #629):
 #   - actionlint 1.7.12, go1.26.1 (all images)
 #   - shfmt 3.14.1, go1.27.1 (all images)
-#   - tofu (dev-base): CVE-2026-78669 only, via golang.org/x/net v0.57.0.
-#     tofu 1.13.2 is built with go1.27.3, so its stdlib is fixed (1.13.1 was
-#     built with go1.27.1). Issue #624.
-#   - /usr/bin/pebble, go1.26.7 (dev-java only): Canonical's Pebble service
-#     manager, shipped outside dpkg in the Ubuntu 26.04 base of eclipse-temurin
-#     (ubuntu:26.04 itself carries the same build). It is never started; the
-#     image entrypoint is Temurin's /__cacert_entrypoint.sh.
-#   - go-licenses v2.0.1 (dev-go only), CVE-2026-78669 only, via
-#     golang.org/x/net v0.43.0. It is built with the image's go1.26.9, so its
-#     stdlib is fixed. Issue #606.
-# nfpm and trivy carried the same three CVEs. The nfpm 2.48.0 and trivy 0.76.0
-# bumps fix them (both are built with go1.27.2), so those carriers are not
-# ignored.
+#   - /usr/bin/pebble, go1.27.1 (dev-java 17 and 21): Canonical's Pebble
+#     service manager, shipped outside dpkg in the Ubuntu 26.04 base of
+#     eclipse-temurin (ubuntu:26.04 itself carries the same build). It is never
+#     started; the image entrypoint is Temurin's /__cacert_entrypoint.sh.
+#   - tofu 1.13.2 (dev-base): CVE-2026-78669 only, via golang.org/x/net
+#     v0.57.0. tofu is built with go1.27.3, so its stdlib is fixed.
+#   - go-licenses v2.0.1 (dev-go): CVE-2026-78669 only, via golang.org/x/net
+#     v0.43.0. It is built with the image's go1.26.10, so its stdlib is fixed.
+# gh, nfpm and trivy carried them too. gh 2.103.0 is built with go1.27.3 and
+# x/net v0.60.0, and the nfpm 2.48.0 and trivy 0.76.1 bumps fixed theirs, so
+# those carriers are not ignored.
 #
 # CVE-2026-78667 — net/http: CPU exhaustion parsing Range headers in
 #   FileServer / ServeContent / ServeFile. Server-side only. None of these
@@ -89,21 +103,19 @@ CVE-2026-56862
 #   these binaries accepts TLS connections.
 # CVE-2026-78669 — net/http HTTP/2: CPU exhaustion from repeated
 #   SETTINGS_INITIAL_WINDOW_SIZE frames. Also carried as golang.org/x/net/http2
-#   < 0.60.0 in gh (v0.58.0) and tofu (v0.57.0). Unlike the two above, this
-#   one affects HTTP/2 clients too, and gh (api.github.com) and tofu (provider
-#   and module registries) are HTTP/2 clients. Triggering it requires the
+#   < 0.60.0 in tofu (v0.57.0) and go-licenses (v0.43.0). Unlike the two above,
+#   this one affects HTTP/2 clients too, and tofu (provider and module
+#   registries) is an HTTP/2 client. Triggering it requires the
 #   TLS-authenticated server itself to be malicious, and the impact is CPU
 #   exhaustion of a short-lived, user-invoked CLI process, with no
 #   confidentiality or integrity impact. actionlint and shfmt make no network
-#   connections, and pebble never runs. In go-licenses the vulnerable
-#   x/net/http2 package is not linked: the only x/net/http2 code in the binary
-#   is x/net/http2/hpack (`go tool nm`), so its x/net copy cannot run the
-#   HTTP/2 flow-control path at all.
+#   connections, and pebble never runs. go-licenses links no x/net/http2 code
+#   from its x/net module (see the go-licenses note in the header), so it
+#   cannot run the vulnerable flow-control path.
 #
-# Remove each once gh, actionlint, shfmt, tofu and the temurin base's pebble all
-# ship builds with Go >= 1.26.9 / 1.27.2 (and x/net >= 0.60.0 for gh, tofu and
-# go-licenses).
-# The weekly bump-tools PR and the nightly rebuild pick these up.
+# Remove each once actionlint, shfmt and the temurin base's pebble all ship
+# builds with Go >= 1.26.9 / 1.27.2, and tofu and go-licenses require x/net
+# >= 0.60.0. The weekly bump-tools PR and the nightly rebuild pick these up.
 CVE-2026-78667
 CVE-2026-78669
 CVE-2026-97031
@@ -118,7 +130,8 @@ CVE-2026-97031
 # tofu and trivy carried it too. The tofu 1.13.2 and trivy 0.76.1 bumps fix
 # them (both are built with go1.27.3), so those carriers are not ignored. The
 # newest upstream release of each carrier below is still built with an older
-# Go (`go version` on the downloaded release binaries, 2026-10-21):
+# Go (`go version` on the downloaded release binaries, 2026-10-21; confirmed by
+# the issue #629 scans):
 #   - actionlint 1.7.12, go1.26.1 (all images). A static linter of local
 #     workflow files. It makes no network connections and verifies no
 #     certificates.
@@ -130,9 +143,9 @@ CVE-2026-97031
 #     only. Exploiting the missing denylist needs a man-in-the-middle holding a
 #     certificate that chains through one of the distrusted intermediates. The
 #     impact would be tampered scorecard output.
-#   - /usr/bin/pebble, go1.27.1 (dev-java only). The Canonical Pebble build in
-#     the Ubuntu 26.04 base of eclipse-temurin (see the batch above). It is
-#     never started.
+#   - /usr/bin/pebble, go1.27.1 (dev-java 17 and 21). The Canonical Pebble
+#     build in the Ubuntu 26.04 base of eclipse-temurin (see the batch above).
+#     It is never started.
 #
 # Remove once actionlint, shfmt, nfpm, scorecard and the temurin base's pebble
 # all ship builds with Go >= 1.26.10 / 1.27.3. The weekly bump-tools PR and the
@@ -140,32 +153,44 @@ CVE-2026-97031
 CVE-2026-111943
 
 # =============================================================================
-# golang.org/x/net + x/idna vendored in the same prebuilt Go CLIs (common layer,
-# all images). DNS-message SVCB/HTTPS parsing panic, IDNA Punycode label
-# handling, and HTML/HTTP-parsing DoS. None of these tools acts as a DNS
-# resolver, IDNA-normalizes attacker-controlled hostnames, or parses untrusted
-# HTML. Remove once the bundled tools vendor the fixed x/net.
-#
-# As of the 2026-10-16 audit (issue #605), the carriers are actionlint 1.7.12
-# (all images) and go-licenses (go image).
+# Go's x/net idna and dnsmessage code. CVE-2026-39821 is in IDNA Punycode label
+# handling (fixed in Go 1.26.6 and x/net 0.55.0). CVE-2026-46600 is a panic when
+# parsing an invalid SVCB/HTTPS DNS record (fixed in Go 1.26.6 and x/net
+# 0.56.0). Carriers as of the 2026-10-21 audit (issue #629):
+#   - actionlint 1.7.12 (all images), as a stdlib finding: go1.26.1 predates
+#     the fix in the standard library's vendored copy of x/net. actionlint
+#     resolves no DNS names and normalizes no hostnames; it makes no network
+#     connections.
+#   - go-licenses v2.0.1 (dev-go), via golang.org/x/net v0.43.0. go-licenses
+#     links neither x/net/idna nor x/net/dns/dnsmessage from that module; the
+#     copies in the binary are the standard library's, from the patched
+#     go1.26.10 (see the go-licenses note in the header).
+# Remove once an actionlint release is built with Go >= 1.26.6 and go-licenses
+# requires x/net >= 0.56.0.
 # =============================================================================
 CVE-2026-39821
 CVE-2026-46600
 
 # golang.org/x/net/html (go image only). Both CVEs are in the HTML parser
-# (DOCTYPE character references, duplicate attributes). As of issue #606 the
-# only carrier is go-licenses v2.0.1 (x/net v0.43.0, the newest release, on both
-# Go images). x/net/html is not linked into that binary (`go tool nm` shows no
-# x/net/html symbols), and go-licenses never parses HTML. Remove once
-# go-licenses vendors x/net >= 0.55.0.
+# (DOCTYPE character references, duplicate attributes). The only carrier is
+# go-licenses v2.0.1 (x/net v0.43.0, the newest release), confirmed by the
+# 2026-10-21 audit (issue #629). x/net/html is not linked into that binary
+# (`go tool nm` shows no x/net/html symbols), and go-licenses never parses HTML.
+# Remove once go-licenses requires x/net >= 0.55.0.
 CVE-2026-25681
 CVE-2026-27136
 
-# golang.org/x/text (go image only, as of the 2026-10-16 audit: golangci-lint
-# and go-licenses; the common-layer CLIs no longer carry it). norm.Iter
-# infinite-loop DoS on crafted input; these tools do not normalize
-# attacker-controlled text. Remove once those linters vendor x/text >= the
-# fixed release.
+# golang.org/x/text v0.28.0 in go-licenses v2.0.1 (go image only), fixed in
+# 0.39.0. As of the 2026-10-21 audit (issue #629) go-licenses is the only
+# carrier; golangci-lint now requires x/text v0.41.0. CVE-2026-56852: a
+# norm.Iter can loop forever on input that contains invalid UTF-8. Unlike the
+# x/net packages above, x/text/unicode/norm from the module is linked into
+# go-licenses (`go tool nm`). go-licenses runs on the developer's own module
+# and its dependency tree, not on attacker-supplied text, and the impact is a
+# hang of a short-lived, user-invoked CLI with no confidentiality or integrity
+# impact. Not fixable by rebuilding: both the newest release (v2.0.1) and the
+# master branch still require x/text v0.28.0. Remove once a go-licenses
+# release requires x/text >= 0.39.0.
 CVE-2026-56852
 
 # golang.org/x/text v0.28.0 in go-licenses v2.0.1 (go image only), fixed in
@@ -173,8 +198,8 @@ CVE-2026-56852
 # panic with an out-of-bounds slice error when it transforms crafted input into
 # a short destination buffer. The vulnerable package is not in the binary:
 # `go tool nm` on a fresh `go install github.com/google/go-licenses/v2@latest`
-# shows no x/text/secure/precis symbols. Its only x/text packages are cases,
-# language, secure/bidirule, transform, unicode/bidi and unicode/norm.
+# shows no x/text/secure/precis symbols (re-checked in issue #629). Its x/text
+# packages are listed in the go-licenses note in the header.
 # Not fixable by rebuilding: `go install` builds with go-licenses' own go.mod,
 # and both the newest release (v2.0.1) and the master branch still require
 # x/text v0.28.0. Remove once a go-licenses release requires x/text >= 0.41.0.
@@ -182,7 +207,7 @@ CVE-2026-56851
 
 # golang.org/x/image (go image only). The carrier is go-test-coverage v2.19.0,
 # which pulls x/image v0.41.0 in through its coverage-badge renderer. Issue
-# #606.
+# #606; re-checked in issue #629.
 # CVE-2026-46602 — x/image/tiff decoder DoS (fixed in 0.43.0).
 # CVE-2026-46603 — x/image/vp8l (WebP lossless) excessive allocation (fixed in
 #   0.45.0).
@@ -197,39 +222,35 @@ CVE-2026-46602
 CVE-2026-46603
 
 # =============================================================================
-# golang.org/x/mod < 0.40.0 vendored in the prebuilt Go CLIs. The deferred pair
+# golang.org/x/mod < 0.40.0 vendored in prebuilt Go CLIs. The deferred pair
 # from the Go 1.26.6 / 1.25.13 batch (#559), which held them back while no
 # carrier reported a vulnerable x/mod; Trivy's DB has since ingested them and
-# they now gate every image. Issue #567.
+# they now gate every image that carries one. Issue #567.
 #
 # Vulnerable code is golang.org/x/mod/sumdb — the Go module CHECKSUM-DATABASE
 # CLIENT: a malicious GOSUMDB could serve module content absent from the
 # transparency log, and a coordinating GOPROXY/GOSUMDB pair could forge sumdb
-# responses. Carriers: gh (all images); scorecard and tofu (dev-base); and
-# goimports, go-licenses, govulncheck (go image). They vendor x/mod only to
-# parse modfile / semver / module paths — none resolves dependencies through an
-# attacker-controlled proxy or sumdb. Corroboration from the scans themselves:
-# /usr/local/go/bin/go, the one real module client in these images, is NOT
-# flagged — the toolchain already ships the patched x/mod.
-#
-# Not suppressed for trivy: trivy 0.74.0 vendors x/mod v0.40.0, so that carrier
-# is fixed by the version bump rather than ignored (bump-tools #566).
+# responses. Carriers as of the 2026-10-21 audit (issue #629):
+#   - tofu 1.13.2 (dev-base), x/mod v0.39.0. tofu is not a Go module client:
+#     it never fetches Go modules from a GOPROXY or verifies them against a
+#     GOSUMDB. (The release binary is stripped, so `go tool nm` cannot list
+#     its linked packages.)
+#   - go-licenses v2.0.1 (dev-go), x/mod v0.27.0. The only x/mod package linked
+#     into the binary is x/mod/semver (`go tool nm`); x/mod/sumdb is not in it.
+# Corroboration from the scans themselves: /usr/local/go/bin/go, the one real
+# module client in these images, is NOT flagged — the toolchain already ships
+# the patched x/mod. gh, scorecard, trivy and the other go-install linters
+# already require x/mod >= 0.40.0.
 #
 # Remove per carrier as each upstream re-releases with x/mod >= 0.40.0; watch
-# gh, scorecard, tofu and the go-install linters on the weekly bump.
-#
-# As of the 2026-10-16 audit (issue #605), gh and scorecard no longer carry a
-# vulnerable x/mod. The remaining carriers are tofu 1.13.1 (x/mod v0.39.0,
-# dev-base) and go-licenses v2.0.1 (x/mod v0.27.0, go image). goimports,
-# golangci-lint and govulncheck carried it only in their Go 1.25 builds, which
-# went away when issue #606 retired that image. tofu 1.13.2 (issue #624) still
-# vendors x/mod v0.39.0.
+# tofu and go-licenses on the weekly bump.
 # =============================================================================
 CVE-2026-56864
 CVE-2026-56865
 
-# google.golang.org/grpc v1.83.1 in /usr/local/bin/tofu 1.13.1 (dev-base),
-# fixed in 1.83.2. Issue #605. tofu 1.13.2 (issue #624) still ships v1.83.1.
+# google.golang.org/grpc v1.83.1 in /usr/local/bin/tofu 1.13.2 (dev-base),
+# fixed in 1.83.2. Issue #605; tofu 1.13.2 (the newest release) still ships
+# v1.83.1, confirmed by the issue #629 audit.
 # CVE-2026-84445: a gRPC-Go server built with
 # xds.NewGRPCServer panics on a request that has neither :authority nor Host.
 # tofu uses gRPC only as the client of its provider plugins (go-plugin); it
