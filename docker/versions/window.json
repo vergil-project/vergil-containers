@@ -64,6 +64,12 @@
           "token_prefix": "",
           "versions": [
             {
+              "version": "1.27",
+              "eol": null,
+              "in_policy": true,
+              "runtime_published": null
+            },
+            {
               "version": "1.26",
               "eol": null,
               "in_policy": true,

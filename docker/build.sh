@@ -71,6 +71,7 @@ build python PYTHON_VERSION 3.13
 build python PYTHON_VERSION 3.12
 build java JDK_VERSION 21
 build java JDK_VERSION 17
+build go GO_VERSION 1.27
 build go GO_VERSION 1.26
 build rust RUST_VERSION 1.93
 build rust RUST_VERSION 1.92

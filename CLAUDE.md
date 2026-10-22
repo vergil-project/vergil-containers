@@ -260,7 +260,7 @@ corresponding `prod-` packages):
 | --------------- | ---------- | ---------------------- | ------------------------- |
 | `dev-python`    | python     | 3.15, 3.14, 3.13, 3.12 | `python:<v>-slim`         |
 | `dev-java`      | java       | 21, 17                 | `eclipse-temurin:<v>-jdk` |
-| `dev-go`        | go         | 1.26                   | `golang:<v>`              |
+| `dev-go`        | go         | 1.27, 1.26             | `golang:<v>`              |
 | `dev-rust`      | rust       | 1.93, 1.92             | `rust:<v>-slim`           |
 | `dev-cpp-clang` | cpp        | 20, 19                 | `debian:trixie-slim`      |
 | `dev-cpp-gcc`   | cpp        | 14                     | `debian:trixie-slim`      |
