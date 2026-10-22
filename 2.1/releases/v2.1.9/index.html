@@ -617,6 +617,8 @@
       
         
       
+        
+      
     
     
     
@@ -672,6 +674,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.30/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.30
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2804,7 +2834,6 @@ Phase 3 rollout (epic vergil-project/.github#75): thin caller to the reusable op
 Add a pinned, checksum-verified nfpm binary to the base image via a new common/nfpm.dockerfile fragment, wired in after the OpenTofu include so dev-base/prod-base and every language image that extends them carry it. nfpm builds .deb and .rpm from one declarative config with no rpmbuild/dpkg host tooling — package publishing is a cross-cutting need across the component family (the MQ family ships precompiled .rpm/.deb).</li>
 </ul>
 <p>Pinned to current stable 2.47.0 (verified against the real release assets). nfpm's assets use x86_64/arm64 naming, so amd64 is arch-translated. Unlike OpenTofu's SHA256SUMS, nfpm's checksums.txt lists a .sbom.json entry beside each tarball, so the checksum line is selected by exact filename field (awk) rather than a substring grep that would match both and break sha256sum -c.</p>
-<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.9/v2.1.9-ci-evidence.tar.gz">Download →</a></p>
 
 
 

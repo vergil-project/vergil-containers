@@ -617,6 +617,8 @@
       
         
       
+        
+      
     
     
     
@@ -672,6 +674,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.30/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.30
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2804,7 +2834,6 @@ T1 installed the shared-analysis <code>typescript</code> unpinned, which now res
 <li><strong>node-22 dev/prod images on shared TS base (#532)</strong>
 Add the node-22 build line and its smoke invocation to docker/build.sh, mirroring the node-24 (T1) lines. Both majors reuse the same docker/ts-node/Dockerfile.template via the NODE_MAJOR build-arg and the shared common/typescript-analysis.dockerfile fragment, so no new Dockerfile is needed. T2 of epic vergil-project/.github#284.</li>
 </ul>
-<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.23/v2.1.23-ci-evidence.tar.gz">Download →</a></p>
 
 
 

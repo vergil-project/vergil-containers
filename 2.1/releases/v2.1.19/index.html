@@ -617,6 +617,8 @@
       
         
       
+        
+      
     
     
     
@@ -672,6 +674,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.30/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.30
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2777,7 +2807,6 @@
 The base/python templates deleted pip/_vendor/bom.cdx.json to keep Trivy from reporting pip's vendored deps (setuptools, msgpack) as image CVEs (#481). Replace that per-image rm with a single scan.skip-files entry in trivy.yaml.</li>
 </ul>
 <p>Both publish scans load trivy.yaml from /workspace -- the amd64 shared action and the arm64 inline scan -- so one skip covers both platforms. (The shared action also skips it now, vergil-actions#798, but only on the amd64 path it runs; the arm64 inline scan is not covered by the action, so the repo-level trivy.yaml is the correct single source.) This removes the Dockerfile duplication and stops mutating pip's internals in the image.</p>
-<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.19/v2.1.19-ci-evidence.tar.gz">Download →</a></p>
 
 
 

@@ -617,6 +617,8 @@
       
         
       
+        
+      
     
     
     
@@ -672,6 +674,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.30/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.30
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2814,7 +2844,7 @@ CATALOG.md is generated (version facts from images, justifications from pins.yml
 </li>
 <li>
 <p><strong>reap datestamp image aliases on a sliding window (prod 30d / dev 7d) (#426)</strong>
-Adds a reap-aliases job to package-cleanup.yml that deletes {prefix}-{lang}:{version}-YYYYMMDD (and {prefix}-base:latest-YYYYMMDD) aliases once they age past the retention window (prod 30 days, dev 7 days) via dataaxiom/ghcr-cleanup-action older-than. delete-tags matches only datestamp aliases (dash + 8-digit stamp, use-regex); exclude-tags protects rolling/version, cache-<em>, and </em>-candidate tags. delete-untagged is left off, so untagged pruning stays the cleanup job's remit. Preserves the existing DRY-RUN default and the PACKAGE_CLEANUP_DRY_RUN / workflow_dispatch arming mechanism verbatim.</p>
+Adds a reap-aliases job to package-cleanup.yml that deletes {prefix}-{lang}:{version}-YYYYMMDD (and {prefix}-base:latest-YYYYMMDD) aliases once they age past the retention window (prod 30 days, dev 7 days) via dataaxiom/ghcr-cleanup-action older-than. delete-tags matches only datestamp aliases (dash + 8-digit stamp, use-regex); exclude-tags protects rolling/version, cache-*, and *-candidate tags. delete-untagged is left off, so untagged pruning stays the cleanup job's remit. Preserves the existing DRY-RUN default and the PACKAGE_CLEANUP_DRY_RUN / workflow_dispatch arming mechanism verbatim.</p>
 </li>
 <li>
 <p><strong>audit pins; free loud-failure tools, justify survivors (#428)</strong></p>
@@ -2843,7 +2873,6 @@ WS3 repoint rollback (#427) lifts the gate on the silent-failure/fleet-gating sc
 </li>
 <li>feat(images): add nfpm to all language images</li>
 </ul>
-<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.10/v2.1.10-ci-evidence.tar.gz">Download →</a></p>
 
 
 

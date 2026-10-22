@@ -617,6 +617,8 @@
       
         
       
+        
+      
     
     
     
@@ -672,6 +674,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.30/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.30
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2811,7 +2841,6 @@ Add the GCC compiler family for C++ images (epic vergil-project/.github#207 task
 </ul>
 <p>Pins gcc-14 (primary) and gcc-13 (secondary): gcc-15 is not cleanly prebuilt for debian:trixie-slim (apt Candidate: none), triggering the spec 3.5/11 fallback to gcc-13/14. Compiler binaries come exclusively from Debian trixie main prebuilt packages, never built from source.</p>
 <p>Wires cpp-gcc into generate.sh and build.sh (both pinned majors + per-image smoke). Extends the shared smoke check to assert the analysis toolset (clang-format/clang-tidy/cppcheck/gcovr) is present and runnable, so both families verify it. Both images build and pass the CMake+Conan smoke check under nerdctl.</p>
-<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.15/v2.1.15-ci-evidence.tar.gz">Download →</a></p>
 
 
 
