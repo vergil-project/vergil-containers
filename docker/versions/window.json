@@ -15,19 +15,19 @@
             },
             {
               "version": "3.14",
-              "eol": null,
+              "eol": "2030-10-31",
               "in_policy": true,
               "runtime_published": true
             },
             {
               "version": "3.13",
-              "eol": null,
+              "eol": "2029-10-31",
               "in_policy": true,
               "runtime_published": false
             },
             {
               "version": "3.12",
-              "eol": null,
+              "eol": "2028-10-31",
               "in_policy": true,
               "runtime_published": false
             }
@@ -43,13 +43,13 @@
           "versions": [
             {
               "version": "21",
-              "eol": null,
+              "eol": "2029-12-31",
               "in_policy": true,
               "runtime_published": null
             },
             {
               "version": "17",
-              "eol": null,
+              "eol": "2027-10-31",
               "in_policy": true,
               "runtime_published": null
             }
@@ -143,13 +143,13 @@
           "versions": [
             {
               "version": "24",
-              "eol": null,
+              "eol": "2028-04-30",
               "in_policy": true,
               "runtime_published": null
             },
             {
               "version": "22",
-              "eol": null,
+              "eol": "2027-04-30",
               "in_policy": true,
               "runtime_published": null
             }

@@ -6,6 +6,13 @@
 # and commit the regenerated files. CI fails if they are out of date.
 #
 # Families are image suffixes (dev-<key>); versions are newest first.
+#
+# `ga` and `eol` hold the dates the family's lifecycle adapter records
+# (docker/versions/lifecycle/adapters/): `ga` is the date the version became
+# eligible under the family's GA rule, and `eol` is upstream's end of support.
+# A null `ga` or `eol` is intentional: upstream publishes no such date. Go and
+# Rust end a release's support when a later release ships, not on a date;
+# LLVM publishes no EOL; GCC closes a series without announcing a date.
 schema: 1
 families:
   - key: "python"
@@ -20,18 +27,18 @@ families:
         in_policy: true
         runtime_published: true
       - version: "3.14"
-        ga: null
-        eol: null
+        ga: 2025-10-07
+        eol: 2030-10-31
         in_policy: true
         runtime_published: true
       - version: "3.13"
-        ga: null
-        eol: null
+        ga: 2024-10-07
+        eol: 2029-10-31
         in_policy: true
         runtime_published: false
       - version: "3.12"
-        ga: null
-        eol: null
+        ga: 2023-10-02
+        eol: 2028-10-31
         in_policy: true
         runtime_published: false
   - key: "java"
@@ -41,13 +48,13 @@ families:
     automation: "report"
     versions:
       - version: "21"
-        ga: null
-        eol: null
+        ga: 2023-10-10
+        eol: 2029-12-31
         in_policy: true
         runtime_published: null
       - version: "17"
-        ga: null
-        eol: null
+        ga: 2021-09-22
+        eol: 2027-10-31
         in_policy: true
         runtime_published: null
   - key: "go"
@@ -62,7 +69,7 @@ families:
         in_policy: true
         runtime_published: null
       - version: "1.26"
-        ga: null
+        ga: 2026-02-10
         eol: null
         in_policy: true
         runtime_published: null
@@ -73,12 +80,12 @@ families:
     automation: "report"
     versions:
       - version: "1.93"
-        ga: null
+        ga: 2026-01-22
         eol: null
         in_policy: true
         runtime_published: null
       - version: "1.92"
-        ga: null
+        ga: 2025-12-11
         eol: null
         in_policy: true
         runtime_published: null
@@ -89,12 +96,12 @@ families:
     automation: "report"
     versions:
       - version: "20"
-        ga: null
+        ga: 2025-03-04
         eol: null
         in_policy: true
         runtime_published: null
       - version: "19"
-        ga: null
+        ga: 2024-09-17
         eol: null
         in_policy: true
         runtime_published: null
@@ -105,7 +112,7 @@ families:
     automation: "report"
     versions:
       - version: "14"
-        ga: null
+        ga: 2024-05-07
         eol: null
         in_policy: true
         runtime_published: null
@@ -116,12 +123,12 @@ families:
     automation: "report"
     versions:
       - version: "24"
-        ga: null
-        eol: null
+        ga: 2025-10-28
+        eol: 2028-04-30
         in_policy: true
         runtime_published: null
       - version: "22"
-        ga: null
-        eol: null
+        ga: 2024-10-29
+        eol: 2027-04-30
         in_policy: true
         runtime_published: null
