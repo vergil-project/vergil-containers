@@ -69,8 +69,8 @@ package.
 
 ## Current out-of-policy versions
 
-As of 2026-10-21: **13.** It is built, but gcc.gnu.org says the series is no
-longer supported. GCC 13 is being dropped in epic
+As of 2026-10-23: **none.** The manifest builds only 14. GCC 13, which
+gcc.gnu.org says is no longer supported, was dropped in epic
 [vergil-project/.github#407](https://github.com/vergil-project/.github/issues/407).
 
 GCC 15 and 16 are **blocked**, not behind: upstream maintains them, but Debian
