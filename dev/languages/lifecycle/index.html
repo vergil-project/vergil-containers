@@ -2151,6 +2151,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-lifecycle-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The lifecycle check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-consumers-use-the-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How consumers use the window
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2842,6 +2864,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-lifecycle-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The lifecycle check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-consumers-use-the-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How consumers use the window
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2919,6 +2963,59 @@ policy. Each language family also has an <strong>automation</strong> setting:</p
   human acts. This is a deliberate, temporary exception to rule 1 below for
   languages whose automation has not been turned on yet.</li>
 </ul>
+<h2 id="the-lifecycle-check">The lifecycle check<a class="headerlink" href="#the-lifecycle-check" title="Permanent link">&para;</a></h2>
+<p>The <code>language-lifecycle</code> job in the nightly <code>ops.yml</code> workflow runs
+<code>docker/versions/lifecycle/check.py</code>. For every family, the family's adapter
+reads upstream release and EOL data, applies the policy, and compares the
+target window with the manifest. Each run writes a matrix report covering every
+family, published as the job summary and the <code>language-lifecycle-report</code>
+artifact. The report also flags a version whose EOL falls within the next 90
+days.</p>
+<p>What the check does with a gap depends on the family's automation:</p>
+<ul>
+<li><strong><code>pr</code> families</strong> (Python and Go) get one pull request per change, on a
+  branch named <code>lifecycle/&lt;family&gt;-&lt;kind&gt;-&lt;version&gt;</code>. A change is an add, a
+  drop, or, for Python, a <code>runtime</code> change that records a newly published
+  <code>vergil-python</code> runtime in the manifest. Each PR carries the manifest edit
+  and every regenerated file. A rerun refreshes the same PR rather than
+  opening a second one, and a PR whose change is no longer reported is closed.</li>
+<li><strong><code>report</code> families</strong> get one issue per change, titled
+  <code>language lifecycle: &lt;family&gt; &lt;kind&gt; &lt;version&gt;</code> and labelled
+  <code>language-lifecycle</code>. A <code>pr</code> family also gets an issue for a change no PR
+  can carry: a version the base image can't install yet (<code>blocked</code>), an EOL
+  coming soon, or a missing runtime.</li>
+</ul>
+<p>Nothing is ever auto-merged. A person reviews and merges every lifecycle PR.
+This repository's pull-request CI does not build images: an add PR's new
+images are first built and scanned by the CD publish on <code>develop</code> after it
+merges. Building images in pull-request CI is deferred to epic
+<a href="https://github.com/vergil-project/.github/issues/213">vergil-project/.github#213</a>.</p>
+<p><strong>A failing check is loud.</strong> If an adapter can't fetch or parse upstream data,
+the job fails. It still finishes the other families, and it opens or refreshes
+one <code>lifecycle check failing for &lt;family&gt;</code> issue, which the next clean run
+closes. So no open PR and no open <code>language-lifecycle</code> issue reliably means
+"in sync".</p>
+<h2 id="how-consumers-use-the-window">How consumers use the window<a class="headerlink" href="#how-consumers-use-the-window" title="Permanent link">&para;</a></h2>
+<p>Consumer repos read the published window, <code>docker/versions/window.json</code> at the
+<code>v2.1</code> ref, through vergil-tooling's <code>vrg-ci-resolve</code>. It is the single
+resolver, called by local validation and by the vergil-actions CI setup alike.
+The window is fetched on every run and never cached, and a failed fetch is an
+error. For offline work, <code>VRG_VERSION_WINDOW</code> names a local <code>window.json</code>
+instead.</p>
+<ul>
+<li>With no <code>[ci].versions</code> in <code>vergil.toml</code>, a repo follows the window. A
+  <code>library</code> repo (<code>[project].repository-type</code>) builds every version in the
+  window. Any other repository type is an app, and builds only the newest.</li>
+<li><code>[ci].versions</code> is an optional pin. A pinned version that is not in the
+  window is a fatal error, and so is an app pin with more than one version.</li>
+<li>C++ and TypeScript are the exception: their versions carry a family prefix
+  (<code>clang-20</code>, <code>gcc-14</code>, <code>node-24</code>), so they have no single default and must
+  still pin <code>[ci].versions</code> until each language's lifecycle turn. A missing
+  pin is a fatal error.</li>
+<li>A packaged Python app or library deploys on the newest window version that
+  has a published <code>vergil-python</code> runtime (the manifest's <code>runtime_published</code>
+  field). See the <a href="../python/">Python policy</a>.</li>
+</ul>
 <h2 id="the-rules">The rules<a class="headerlink" href="#the-rules" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>Follow each community.</strong> A language's support policy is based on its
@@ -2967,10 +3064,16 @@ policy. Each language family also has an <strong>automation</strong> setting:</p
     upstream still supports it. Python 3.11 and Java 11 are both examples. The
     rule is enforced once, in the shared machinery.</li>
 <li><strong>Vergil owns which toolchain runs, and a language's own files declare only
-    a floor.</strong> Settings that choose a toolchain (for example <code>.python-version</code>
-    or <code>rust-toolchain.toml</code>) duplicate Vergil and are removed. Settings that
-    declare a minimum (for example <code>requires-python</code> or the <code>go</code> directive in
-    <code>go.mod</code>) are kept, as a floor with no upper bound.</li>
+    a floor.</strong> Settings that choose a toolchain version (for example
+    <code>.python-version</code> or <code>rust-toolchain.toml</code>) duplicate Vergil and are
+    removed. Settings that declare a minimum (for example <code>requires-python</code> or
+    the <code>go</code> directive in <code>go.mod</code>) are kept, as a floor with no upper bound.
+    Settings that choose only where a toolchain comes from, such as uv's
+    <code>python-preference</code> and <code>python-downloads</code>, are not version pins and may
+    stay. Vergil sets the source itself wherever it runs Python, with
+    <code>UV_PYTHON_PREFERENCE=only-system</code>, and names the resolved version with
+    <code>UV_PYTHON</code> wherever it has one. So the image's interpreter is always the
+    one used.</li>
 </ol>
 <h2 id="how-to-read-a-policy-page">How to read a policy page<a class="headerlink" href="#how-to-read-a-policy-page" title="Permanent link">&para;</a></h2>
 <p>Every policy page has the same seven sections:</p>
@@ -3041,8 +3144,9 @@ upstream fact cites its source and the date it was checked.</p>
 </tr>
 </tbody>
 </table>
-<p>Ruby is no longer a supported language. Its images are being removed, so it
-has no policy page.</p>
+<p>Ruby is no longer a supported language. It was removed in epic
+<a href="https://github.com/vergil-project/.github/issues/407">vergil-project/.github#407</a>,
+so it has no policy page.</p>
 
 
 
