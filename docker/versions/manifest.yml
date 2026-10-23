@@ -18,7 +18,7 @@ families:
         ga: 2026-10-09
         eol: 2031-10-31
         in_policy: true
-        runtime_published: false
+        runtime_published: true
       - version: "3.14"
         ga: null
         eol: null
