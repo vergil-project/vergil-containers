@@ -166,6 +166,9 @@ docker/
   java/Dockerfile.template    # Java dev image, Eclipse Temurin
   go/Dockerfile.template      # Go dev image with linters
   rust/Dockerfile.template    # Rust dev image with cargo tools
+  cpp-clang/, cpp-gcc/        # C++ dev images (Clang and GCC families)
+  ts-node/                    # TypeScript / Node.js dev image
+  versions/                   # Version manifest, generator and lifecycle check
 ```
 
 Each `Dockerfile.template` contains `# @include common/<fragment>.dockerfile`
@@ -255,6 +258,16 @@ corresponding `prod-` packages):
 
 ### Version Matrix
 
+The language versions come from one file,
+[`docker/versions/manifest.yml`](docker/versions/manifest.yml). Every other
+version list (the publish matrix, `docker/build.sh`, the Dockerfile `ARG`
+defaults, the package-cleanup lists, the published `docker/versions/window.json`
+and the table below) is generated from it by `docker/versions/generate.py`.
+Edit the manifest, never a generated list, then run the generator; CI runs
+`generate.py --check`. The nightly `language-lifecycle` job opens the PRs and
+issues that keep the manifest in step with upstream. See the
+[Language version lifecycle](docs/site/docs/languages/lifecycle.md) page.
+
 <!-- BEGIN generated: versions -->
 | Image           | Language   | Versions               | Base                      |
 | --------------- | ---------- | ---------------------- | ------------------------- |
@@ -274,7 +287,7 @@ To trigger a rebuild manually: Actions > CD > Run workflow.
 
 - **Thin images** — language runtime + package manager + git/curl
 - **Project-managed dependencies** — tools come from lockfiles at
-  container startup (e.g., `bundle install`, `uv sync`, `go install`)
+  container startup (e.g., `uv sync`, `go install`)
 - **No host requirements** — a single OCI container runtime is the only
   prerequisite for local development (nerdctl/Lima preferred, Docker
   supported)

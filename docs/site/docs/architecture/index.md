@@ -8,7 +8,10 @@ All images are built from Dockerfile templates using a two-stage process:
    `# @include` directives with the contents of shared fragments from
    `docker/common/`.
 2. `build.sh` calls `generate.sh` then runs `docker build` for every
-   language and version combination.
+   language and version combination. Its version lists, like the publish
+   matrix and the Dockerfile `ARG` defaults, are generated from
+   `docker/versions/manifest.yml` by `docker/versions/generate.py` (see
+   [Language version lifecycle](../languages/lifecycle.md)).
 
 ```text
 docker/
@@ -25,7 +28,14 @@ docker/
 ├── python/Dockerfile.template
 ├── go/Dockerfile.template
 ├── java/Dockerfile.template
-└── rust/Dockerfile.template
+├── rust/Dockerfile.template
+├── cpp-clang/Dockerfile.template
+├── cpp-gcc/Dockerfile.template
+├── ts-node/Dockerfile.template
+└── versions/
+    ├── manifest.yml            # The single source of language versions
+    ├── generate.py             # Writes every derived version list
+    └── lifecycle/              # The nightly lifecycle check and adapters
 ```
 
 ### Templating

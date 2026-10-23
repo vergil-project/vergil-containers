@@ -59,7 +59,5 @@ version.
 
 ## Current out-of-policy versions
 
-As of 2026-10-21: **none.** The manifest builds only 1.26, which is supported.
-
-The manifest is **behind**: Go 1.27 has been GA since 2026-08-19 and is not yet
-built.
+As of 2026-10-23: **none.** The manifest builds 1.27 and 1.26, the two
+supported releases, so the window is in sync with upstream.
