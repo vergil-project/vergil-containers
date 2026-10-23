@@ -619,6 +619,8 @@
       
         
       
+        
+      
     
     
     
@@ -674,6 +676,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.31/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.31
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2806,6 +2836,7 @@
 <li><strong>triage CVE-2026-71556 (go-git in nfpm) to unblock CD publish (#527)</strong>
 The Trivy CRITICAL,HIGH gate began failing on every dev image after the vulnerability DB picked up CVE-2026-71556 (HIGH, go-git v5.19.1, bundled in nfpm). No fixed carrier is installable — nfpm latest (2.47.0, the current pin) still vendors go-git v5.19.1 — so suppress the CVE with a justification per the established .trivyignore convention. The vulnerable clone-then-worktree path is not exercised: nfpm assembles packages from local files and does not clone untrusted repositories. Remove once nfpm vendors go-git &gt;= 5.19.2.</li>
 </ul>
+<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.22/v2.1.22-ci-evidence.tar.gz">Download →</a></p>
 
 
 

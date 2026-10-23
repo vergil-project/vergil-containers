@@ -619,6 +619,8 @@
       
         
       
+        
+      
     
     
     
@@ -674,6 +676,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.31/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.31
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2898,6 +2928,7 @@ Sweep the human-facing docs to match what the container-pinning epic actually sh
 Install pandoc via apt (--no-install-recommends, no texlive) in a new common/pandoc.dockerfile fragment, wired into base and all five language templates. Enables managed markdown -&gt; .docx conversion via vrg-container-run -- pandoc; the driver is research-report publishing to Google Docs (a .docx imports as a native Doc).</li>
 </ul>
 <p>Unpinned by design: apt pandoc floats cleanly, so it stays out of the docker/pins/ mechanism-pin set per the repo pinning doctrine. Docs inventory and CLAUDE.md common-layer list updated.</p>
+<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.12/v2.1.12-ci-evidence.tar.gz">Download →</a></p>
 
 
 
