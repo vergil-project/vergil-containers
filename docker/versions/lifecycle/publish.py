@@ -28,8 +28,8 @@ base as one commit (the manifest edit plus every regenerated file), pushes it
 only when that commit differs from the branch, and refreshes the open PR's
 title and body; it never opens a second PR for the same change. A managed PR
 whose change is no longer reported is closed, unless its family's check
-failed this run. Nothing here ever enables auto-merge; while the add hold is
-open, an add PR on which someone enabled it gets it turned off again.
+failed this run. Nothing here ever enables auto-merge: a human reviews and
+merges every PR.
 
 Any `gh` or `git` failure raises: a half-published run is never reported as
 success.
@@ -230,14 +230,6 @@ def _closing_comment(title: str, by_family: Mapping[str, FamilyResult], run_url:
 
 # --- Add/drop PRs ------------------------------------------------------------------
 
-# Bootstrap ordering (epic vergil-project/.github#407, plan "Bootstrap order"
-# item 4): PRs may be opened before consumers resolve versions from the
-# published window, but no version add may merge before the first-adds
-# validation task runs. While that issue is open, every add PR says so and is
-# kept off auto-merge. It lifts by itself when the issue closes.
-ADD_HOLD_REPO = "vergil-project/vergil-containers"
-ADD_HOLD_ISSUE = 622
-
 # The upstream evidence a PR cites, for the kinds whose evidence is not the
 # family's release metadata: a runtime flip is read from the package index.
 EVIDENCE_URLS: dict[str, str] = {"runtime": APT_URL}
@@ -257,10 +249,6 @@ class PrClient(Protocol):
     def update_pr(self, number: int, title: str, body: str) -> None: ...
 
     def close_pr(self, number: int, comment: str) -> None: ...
-
-    def issue_is_open(self, repo: str, number: int) -> bool: ...
-
-    def disable_auto_merge(self, number: int) -> bool: ...
 
 
 class BranchPublisher(Protocol):
@@ -290,7 +278,6 @@ def pr_body(
     files: Sequence[Path],
     follow_ups: Sequence[str],
     run_url: str,
-    held: bool,
     runtime_pending: bool,
 ) -> str:
     lines = [
@@ -308,13 +295,6 @@ def pr_body(
         "- This PR is **not** set to auto-merge, and the lifecycle automation never "
         "enables it. A human reviews and merges it.",
     ]
-    if held:
-        lines.append(
-            f"- **Hold: do not merge while {ADD_HOLD_REPO}#{ADD_HOLD_ISSUE} is open.** A version "
-            "add must not merge until consumers resolve their versions from the published "
-            "window; that validation task merges this PR as part of its procedure. While "
-            "the hold is open, the automation turns auto-merge off again if anyone enables it."
-        )
     if change.kind == "runtime":
         lines.append(
             "- Merging records `runtime_published: true` for this version, so packaged "
@@ -370,7 +350,6 @@ def sync_prs(
         for c in r.changes
         if c.kind in PR_KINDS
     ]
-    held = any(c.kind == "add" for _, c in wanted) and gh.issue_is_open(ADD_HOLD_REPO, ADD_HOLD_ISSUE)
     open_prs = {pr.head: pr.number for pr in gh.list_open_prs(BRANCH_PREFIX)}
 
     # One change that cannot be published must not hold back the others, and
@@ -385,7 +364,7 @@ def sync_prs(
             _publish_change(
                 r, c, gh, git,
                 branch=branch, number=open_prs.get(branch), families=families, manifest=manifest,
-                adapters=adapters, root=root, run_url=run_url, held=held and c.kind == "add",
+                adapters=adapters, root=root, run_url=run_url,
             )
         except (ApplyError, SourceError, PublishError) as exc:
             errors.append(f"{c.family} {c.kind} {c.version}: {exc}")
@@ -418,7 +397,6 @@ def _publish_change(
     adapters: Mapping[str, Adapter],
     root: Path,
     run_url: str,
-    held: bool,
 ) -> None:
     """Rebuild `change`'s branch and open or refresh its PR."""
     adapter = adapters.get(change.family)
@@ -433,7 +411,6 @@ def _publish_change(
         files=list(files),
         follow_ups=adapter.extra_changes(change),
         run_url=run_url,
-        held=held,
         runtime_pending=change.kind == "add" and has_runtime(families[change.family]),
     )
     pushed = git.publish_branch(branch, files, title)
@@ -442,8 +419,6 @@ def _publish_change(
     else:
         gh.update_pr(number, title, body)
         print(f"#{number}: branch {branch} {'force-pushed' if pushed else 'unchanged'}")
-    if held and gh.disable_auto_merge(number):
-        print(f"#{number}: auto-merge was enabled on a held add; turned it off")
 
 
 # --- The real client ---------------------------------------------------------------
@@ -558,27 +533,6 @@ class GhCli:
     def close_pr(self, number: int, comment: str) -> None:
         self._run(["pr", "close", str(number), "--repo", self._repo, "--delete-branch", "--comment", comment], None)
         print(f"closed PR #{number}: {comment}")
-
-    def issue_is_open(self, repo: str, number: int) -> bool:
-        out = self._run(["issue", "view", str(number), "--repo", repo, "--json", "state"], None)
-        try:
-            state = json.loads(out)["state"]
-        except (json.JSONDecodeError, KeyError, TypeError) as exc:
-            raise PublishError(f"gh issue view returned malformed JSON: {exc!r}") from exc
-        if state not in ("OPEN", "CLOSED"):
-            raise PublishError(f"gh issue view {repo}#{number}: unexpected state {state!r}")
-        return state == "OPEN"
-
-    def disable_auto_merge(self, number: int) -> bool:
-        out = self._run(["pr", "view", str(number), "--repo", self._repo, "--json", "autoMergeRequest"], None)
-        try:
-            request = json.loads(out)["autoMergeRequest"]
-        except (json.JSONDecodeError, KeyError, TypeError) as exc:
-            raise PublishError(f"gh pr view returned malformed JSON: {exc!r}") from exc
-        if request is None:
-            return False
-        self._run(["pr", "merge", str(number), "--repo", self._repo, "--disable-auto"], None)
-        return True
 
 
 _PR_URL_RE = re.compile(r"/pull/(\d+)\s*$")
