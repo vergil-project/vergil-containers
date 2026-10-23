@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.31] - 2026-10-23
+
+### Bug fixes
+
+- read the report image matrix from the frozen manifest, not the live one (#663)
+
+### Chores
+
+- add the report-only dependabot.yml (#665)
+
+### Features
+
+- record the published python 3.15 runtime (#666)
+
 ## [2.1.30] - 2026-10-22
 
 ### Bug fixes
