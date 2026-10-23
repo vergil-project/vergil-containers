@@ -41,6 +41,13 @@ HEADER = (
     "# and commit the regenerated files. CI fails if they are out of date.\n"
     "#\n"
     "# Families are image suffixes (dev-<key>); versions are newest first.\n"
+    "#\n"
+    "# `ga` and `eol` hold the dates the family's lifecycle adapter records\n"
+    "# (docker/versions/lifecycle/adapters/): `ga` is the date the version became\n"
+    "# eligible under the family's GA rule, and `eol` is upstream's end of support.\n"
+    "# A null `ga` or `eol` is intentional: upstream publishes no such date. Go and\n"
+    "# Rust end a release's support when a later release ships, not on a date;\n"
+    "# LLVM publishes no EOL; GCC closes a series without announcing a date.\n"
 )
 
 
