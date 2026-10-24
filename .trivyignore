@@ -260,7 +260,7 @@ CVE-2026-84445
 # =============================================================================
 # undici 6.29.0 bundled in npm 12.2.1 (all images), at
 # /usr/lib/node_modules/npm/node_modules/undici. Fixed in 6.29.1 / 7.30.1 /
-# 8.12.2. Issue #677. The images install npm with `npm install -g npm@^12.2.1`
+# 8.12.2. Issue #677. The images install npm with `npm install -g npm@latest`
 # (common/node-markdownlint.dockerfile, ts-node/Dockerfile.template). npm
 # 12.2.1, the newest release and now the `latest` dist-tag, still bundles undici
 # 6.29.0, and so does npm 11.21.1, the newest 11.x (both tarballs re-checked
@@ -284,9 +284,9 @@ CVE-2026-84445
 # integrity impact. In the other images npm is build-time-only tooling, used to
 # install markdownlint-cli (pure JS, no node-gyp build).
 #
-# Remove once an npm release bundles undici >= 6.29.1. The `^12.2.1` range
-# resolves to the highest 12.x release at build time, so the nightly rebuild
-# picks it up without a pin change. Do not patch npm's bundled node_modules in
-# place.
+# Remove once the npm release on the `latest` dist-tag bundles undici >= 6.29.1.
+# The images install `npm@latest` (issue #678), so the nightly rebuild picks up
+# the newest npm on that tag without a pin change. Do not patch npm's bundled
+# node_modules in place.
 # =============================================================================
 CVE-2026-109869
