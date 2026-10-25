@@ -228,7 +228,8 @@ workflow, parameterized by an `image-prefix` input:
 - **`dev-` images** — built on every push to `develop` and rebuilt
   nightly via `ops.yml` to pick up base-image security patches.
 - **`prod-` images** — built on push to `main`, after the release
-  workflow generates a changelog, git tag, and GitHub release.
+  workflow generates a changelog, git tag, and GitHub release, and
+  rebuilt nightly from `main` via `ops.yml`.
 
 Image naming: `ghcr.io/vergil-project/{prefix}-{language}:{version}`
 where `{prefix}` is `dev` or `prod`.
