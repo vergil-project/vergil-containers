@@ -35,11 +35,10 @@ RUN apt-get update && \
 # node-tar / brace-expansion versions carrying HIGH/CRITICAL CVEs, and npm@latest
 # vendors the patched versions (issue #461). npm is build-time-only tooling.
 # markdownlint-cli is installed here (not via common/node-markdownlint) because
-# this image's own Node is the one it runs on.
+# this image's own Node is the one it runs on. The install fails the build
+# unless the result is NodeSource's Node NODE_MAJOR with npm (issue #657).
 ARG NODE_MAJOR
-RUN curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash - && \
-    apt-get install -y --no-install-recommends nodejs && \
-    rm -rf /var/lib/apt/lists/*
+# @include common/nodesource-node.dockerfile
 # npm@latest, matching common/node-markdownlint.dockerfile (see there for the
 # history of the temporary #605 range pin, lifted by issue #678).
 RUN npm install -g npm@latest && \
