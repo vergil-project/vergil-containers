@@ -189,6 +189,7 @@ Every image includes (installed via shared fragments in `docker/common/`):
 - **gh** (GitHub CLI, via official apt repository)
 - **uv** — Python package manager
 - **nfpm** — build `.deb`/`.rpm` packages from one declarative config
+- **rpm** — inspect `.rpm` packages and compare versions (`rpm.vercmp`), the peer of `dpkg`
 - **pandoc** — convert Markdown to `.docx`/HTML (no TeX; PDF is opt-in)
 - **jq**, git, curl, openssh-client
 - Language-specific package manager and linting tools

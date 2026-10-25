@@ -51,6 +51,7 @@ RUN npm install -g npm@latest && \
 # @include common/python-support.dockerfile
 # @include common/typescript-analysis.dockerfile
 # @include common/nfpm.dockerfile
+# @include common/rpm.dockerfile
 # @include common/pandoc.dockerfile
 
 WORKDIR /workspace
