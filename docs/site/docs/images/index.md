@@ -51,6 +51,7 @@ All language images include:
 | yamllint         | YAML linting                   |
 | ansible-lint     | Ansible playbook/role linting  |
 | nfpm             | Build `.deb`/`.rpm` packages   |
+| rpm              | Inspect `.rpm`, `rpm.vercmp`   |
 | pandoc           | Convert Markdown to docx/HTML  |
 | git              | Repository operations          |
 | openssh-client   | SSH for git remote operations  |

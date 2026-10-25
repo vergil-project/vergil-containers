@@ -28,6 +28,7 @@ RUN apt-get update && \
 # @include common/python-support.dockerfile
 # @include common/cpp-analysis.dockerfile
 # @include common/nfpm.dockerfile
+# @include common/rpm.dockerfile
 # @include common/pandoc.dockerfile
 
 # --- Clang/LLVM compiler (prebuilt, apt.llvm.org) ----------------------------
