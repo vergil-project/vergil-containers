@@ -73,6 +73,7 @@ nav:
       - C++ / GCC: languages/cpp-gcc.md
   - Architecture:
       - architecture/index.md
+      - Trivy Scanning: architecture/trivy-scanning.md
       - Design Decisions:
           - Multi-Arch Images: architecture/decisions/multi-arch-images.md
           - Release Workflow: architecture/decisions/release-workflow.md
