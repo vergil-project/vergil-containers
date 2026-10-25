@@ -1,8 +1,6 @@
 # --- Node.js via NodeSource apt repo -----------------------------------------
 ARG NODE_MAJOR=22
-RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - && \
-    apt-get install -y --no-install-recommends nodejs && \
-    rm -rf /var/lib/apt/lists/*
+# @include common/nodesource-node.dockerfile
 
 # Upgrade the NodeSource-bundled npm to the latest release before installing
 # tools. NodeSource node 22 ships an older npm whose own vendored deps
