@@ -132,7 +132,7 @@ jobs:
           scan-type: image
           scan-ref: ${{ env.CANDIDATE }}
           exit-code: "1"
-          sarif-category: "trivy-image-${{ matrix.language }}-${{ matrix.version }}-amd64"
+          sarif-category: "trivy-image-${{ inputs.image-prefix }}-${{ matrix.language }}-${{ matrix.version }}-amd64"
           trivyignores: .trivyignore
 
       - name: Trivy scan (arm64)
@@ -181,7 +181,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-arm64.sarif
-          category: "trivy-image-${{ matrix.language }}-${{ matrix.version }}-arm64"
+          category: "trivy-image-${{ inputs.image-prefix }}-${{ matrix.language }}-${{ matrix.version }}-arm64"
 
       - name: Fail if vulnerabilities found
         if: >-
@@ -279,7 +279,7 @@ jobs:
           scan-type: image
           scan-ref: ${{ env.CANDIDATE }}
           exit-code: "1"
-          sarif-category: trivy-image-base-amd64
+          sarif-category: "trivy-image-${{ inputs.image-prefix }}-base-amd64"
           trivyignores: .trivyignore
 
       - name: Trivy scan (arm64)
@@ -328,7 +328,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-arm64.sarif
-          category: trivy-image-base-arm64
+          category: "trivy-image-${{ inputs.image-prefix }}-base-arm64"
 
       - name: Fail if vulnerabilities found
         if: >-
