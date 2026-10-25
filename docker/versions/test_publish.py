@@ -12,6 +12,7 @@ RUN1 = "https://github.com/o/r/actions/runs/1"
 RUN2 = "https://github.com/o/r/actions/runs/2"
 RUN3 = "https://github.com/o/r/actions/runs/3"
 AUTOMATION = {"python": "pr", "go": "pr", "rust": "report", "cpp-gcc": "report"}
+ADHOC = "o/.github#100"  # FakeGh's stand-in for the repo's ad-hoc epic
 
 
 class FakeGh:
@@ -22,10 +23,12 @@ class FakeGh:
         self.calls = []
         self._next = 100
 
-    def seed(self, title, labels=(LABEL,), body="old"):
+    def seed(self, title, labels=(LABEL,), body="old", parent=None):
         n = self._next
         self._next += 1
-        self.issues[n] = {"title": title, "body": body, "labels": list(labels), "open": True, "comments": []}
+        self.issues[n] = {
+            "title": title, "body": body, "labels": list(labels), "open": True, "comments": [], "parent": parent,
+        }
         return n
 
     def list_open_issues(self, label):
@@ -34,7 +37,7 @@ class FakeGh:
 
     def create_issue(self, title, body, labels):
         self.calls.append(("create", title))
-        return self.seed(title, labels, body)
+        return self.seed(title, labels, body, parent=ADHOC)
 
     def update_issue(self, number, body):
         self.calls.append(("update", number))
@@ -196,6 +199,25 @@ def test_duplicate_open_issues_are_collapsed_onto_the_oldest():
     assert gh.issues[second]["comments"][0].startswith(f"duplicate of #{first}")
 
 
+def test_new_issues_are_opened_under_the_adhoc_epic():
+    gh = FakeGh()
+    _sync(gh, [_result("rust", ("add", "1.99")), _result("python", error="boom")])
+    assert {i["title"]: i["parent"] for i in gh.issues.values()} == {
+        "language lifecycle: rust add 1.99": ADHOC,
+        "lifecycle check failing for python": ADHOC,
+    }
+
+
+def test_refreshing_an_issue_leaves_its_parent_alone():
+    """An existing issue is refreshed in place, never recreated, so whatever
+    parent it has (or a human moved it to) stays."""
+    gh = FakeGh()
+    n = gh.seed("language lifecycle: rust add 1.99", parent="o/.github#7")
+    _sync(gh, [_result("rust", ("add", "1.99"))])
+    assert gh.issues[n]["parent"] == "o/.github#7" and RUN1 in gh.issues[n]["body"]
+    assert [c for c in gh.calls if c[0] == "create"] == []
+
+
 def test_result_for_unknown_family_is_an_error():
     with pytest.raises(PublishError, match="'ruby'"):
         _sync(FakeGh(), [_result("ruby")])
@@ -290,7 +312,10 @@ class Recorder:
 
     def __call__(self, args, stdin):
         self.calls.append((args, stdin))
-        return self._outputs.pop(0) if self._outputs else ""
+        out = self._outputs.pop(0) if self._outputs else ""
+        if isinstance(out, Exception):
+            raise out
+        return out
 
 
 def test_ghcli_list_open_issues():
@@ -314,17 +339,96 @@ def test_ghcli_list_refuses_a_full_page(monkeypatch):
         GhCli("o/r", Recorder(out)).list_open_issues(LABEL)
 
 
+EPICS = json.dumps([
+    {"number": 99, "title": "Epic (ad hoc): other-repo"},
+    {"number": 100, "title": "Epic (ad hoc): r"},
+    {"number": 101, "title": "Epic (ad hoc): r-archive"},
+])
+
+
 def test_ghcli_create_issue_parses_number_and_passes_body_on_stdin():
-    rec = Recorder("https://github.com/o/r/issues/42\n")
+    rec = Recorder(EPICS, "https://github.com/o/r/issues/42\n", "4242\n")
     assert GhCli("o/r", rec).create_issue("t", "the body", [LABEL]) == 42
-    args, stdin = rec.calls[0]
+    args, stdin = rec.calls[1]
     assert stdin == "the body"
     assert args[:2] == ["issue", "create"] and "--body-file" in args and LABEL in args
 
 
+def test_ghcli_create_issue_links_it_under_the_adhoc_epic():
+    rec = Recorder(EPICS, "https://github.com/o/r/issues/42\n", "4242\n")
+    GhCli("o/r", rec).create_issue("t", "b", [LABEL])
+    calls = [args for args, _ in rec.calls]
+    # The epic is found first, in the org's .github, by its exact title and labels.
+    assert calls[0][:3] == ["issue", "list", "--repo"] and calls[0][3] == "o/.github"
+    assert ["--label", "epic", "--label", "ad-hoc"] == calls[0][calls[0].index("--label"):calls[0].index("--label") + 4]
+    assert "open" in calls[0]
+    assert calls[1][:2] == ["issue", "create"]
+    # Then linked by the new issue's database id (not its number).
+    assert calls[2] == ["api", "repos/o/r/issues/42", "--jq", ".id"]
+    assert calls[3] == ["api", "--method", "POST", "repos/o/.github/issues/100/sub_issues", "-F", "sub_issue_id=4242"]
+    assert len(calls) == 4
+
+
+def test_ghcli_looks_the_epic_up_once():
+    rec = Recorder(EPICS, "https://github.com/o/r/issues/42\n", "1\n", "", "https://github.com/o/r/issues/43\n", "2\n")
+    cli = GhCli("o/r", rec)
+    cli.create_issue("a", "b", [LABEL])
+    cli.create_issue("c", "d", [LABEL])
+    assert sum(1 for args, _ in rec.calls if args[:2] == ["issue", "list"]) == 1
+    assert rec.calls[-1][0][3] == "repos/o/.github/issues/100/sub_issues"
+
+
+@pytest.mark.parametrize(
+    "epics, match",
+    [
+        (json.dumps([{"number": 99, "title": "Epic (ad hoc): other-repo"}]), "no open ad-hoc epic 'Epic \\(ad hoc\\): r' in o/.github"),
+        (json.dumps([{"number": 100, "title": "Epic (ad hoc): r"}, {"number": 7, "title": "Epic (ad hoc): r"}]),
+         "more than one .* \\(#7, #100\\)"),
+        ("not json", "malformed"),
+        (json.dumps([{"number": 100}]), "malformed"),
+    ],
+)
+def test_ghcli_without_exactly_one_epic_opens_nothing(epics, match):
+    rec = Recorder(epics)
+    with pytest.raises(PublishError, match=match):
+        GhCli("o/r", rec).create_issue("t", "b", [LABEL])
+    assert [args[:2] for args, _ in rec.calls] == [["issue", "list"]]
+
+
+@pytest.mark.parametrize("repo", ["r", "o/", "/r", "o/r/x"])
+def test_ghcli_epic_needs_owner_and_name(repo):
+    rec = Recorder()
+    with pytest.raises(PublishError, match="OWNER/NAME"):
+        GhCli(repo, rec).create_issue("t", "b", [LABEL])
+    assert rec.calls == []
+
+
+def test_ghcli_failed_link_closes_the_new_issue_and_fails():
+    denied = PublishError("gh api --method POST failed (exit 1): HTTP 403: Resource not accessible by integration")
+    rec = Recorder(EPICS, "https://github.com/o/r/issues/42\n", "4242\n", denied, "")
+    with pytest.raises(PublishError, match="#42 closed again: linking it under o/.github#100 failed .*HTTP 403"):
+        GhCli("o/r", rec).create_issue("t", "b", [LABEL])
+    args, _ = rec.calls[-1]
+    assert args[:3] == ["issue", "close", "42"] and "o/.github#100" in args[args.index("--comment") + 1]
+
+
+def test_ghcli_unreadable_issue_id_is_a_failed_link():
+    rec = Recorder(EPICS, "https://github.com/o/r/issues/42\n", "null\n", "")
+    with pytest.raises(PublishError, match="closed again.*no id for #42"):
+        GhCli("o/r", rec).create_issue("t", "b", [LABEL])
+    assert rec.calls[-1][0][:3] == ["issue", "close", "42"]
+    assert not any("sub_issues" in " ".join(args) for args, _ in rec.calls)
+
+
+def test_ghcli_failed_link_and_failed_close_says_the_issue_is_orphaned():
+    rec = Recorder(EPICS, "https://github.com/o/r/issues/42\n", PublishError("api down"), PublishError("close down"))
+    with pytest.raises(PublishError, match="#42 is open without a parent: .*api down.*close down"):
+        GhCli("o/r", rec).create_issue("t", "b", [LABEL])
+
+
 def test_ghcli_create_issue_without_url_fails():
     with pytest.raises(PublishError, match="no issue URL"):
-        GhCli("o/r", Recorder("something else")).create_issue("t", "b", [LABEL])
+        GhCli("o/r", Recorder(EPICS, "something else")).create_issue("t", "b", [LABEL])
 
 
 def test_ghcli_update_close_and_label_commands():
