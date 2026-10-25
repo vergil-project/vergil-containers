@@ -614,6 +614,8 @@
       
         
       
+        
+      
     
     
     
@@ -666,6 +668,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.32/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.32
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3009,23 +3039,33 @@ day of the check.</p>
   once that tag exists.</li>
 <li>Deployed Python code needs a <code>vergil-python</code> runtime for its version (see
   below). Containers and runtimes are released separately, so there can be a
-  gap of a few days between them. A packaged app resolves to the newest window
-  version that has a published runtime. That rule is Python-specific, so it
-  lives in the Python adapter and resolver extension, never in shared code.</li>
+  gap of a few days between them. A packaged Python app or library deploys on
+  the newest window version that has a published runtime. That rule is
+  Python-specific, so it lives in the Python adapter and resolver extension,
+  never in shared code.</li>
 <li>The manifest's <code>runtime_published</code> field records, for each version, whether
   a <code>vergil-python</code> runtime is published. It travels in the published window.</li>
 </ul>
 <h2 id="deployed-runtime-package">Deployed runtime package<a class="headerlink" href="#deployed-runtime-package" title="Permanent link">&para;</a></h2>
 <p><strong>Yes.</strong> <code>vergil-python</code> publishes the runtime that deployed Python code runs
-on. Each version in the window needs one before a packaged app can move to it.</p>
+on. Each version in the window needs one before a packaged app or library can
+deploy on it.</p>
+<p>There is one package per Python series, named <code>vergil-python&lt;x.y&gt;</code> and
+installed at <code>/opt/vergil/python/&lt;x.y&gt;</code>. The patch level floats within the
+series. On 2026-10-23 <code>vergil-python</code> builds the 3.15 series. The 3.14 package
+stays published but is frozen at 3.14.8+20261013 and no longer rebuilt.
+Building several series at once is deferred to
+<a href="https://github.com/vergil-project/vergil-python/issues/36">vergil-project/vergil-python#36</a>.</p>
 <h2 id="automation">Automation<a class="headerlink" href="#automation" title="Permanent link">&para;</a></h2>
 <p><strong><code>pr</code>.</strong> The lifecycle check opens the pull request that adds or drops a
-Python version.</p>
+Python version. It also opens a <code>runtime</code> pull request when a version's
+<code>vergil-python</code> runtime is first published, which sets that version's
+<code>runtime_published</code> field. A newly added version starts with
+<code>runtime_published: false</code>.</p>
 <h2 id="current-out-of-policy-versions">Current out-of-policy versions<a class="headerlink" href="#current-out-of-policy-versions" title="Permanent link">&para;</a></h2>
-<p>As of 2026-10-21: <strong>none.</strong> The manifest builds 3.12, 3.13 and 3.14, all of
-which are GA and not EOL.</p>
-<p>The manifest is <strong>behind</strong>: Python 3.15 has been GA since 2026-10-09 and is not
-yet built.</p>
+<p>As of 2026-10-23: <strong>none.</strong> The manifest builds 3.15, 3.14, 3.13 and 3.12,
+all of which are GA and not EOL, so the window is in sync with upstream. It
+records a published runtime for 3.15 and 3.14.</p>
 
 
 

@@ -614,6 +614,8 @@
       
         
       
+        
+      
     
     
     
@@ -666,6 +668,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.32/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.32
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2933,7 +2963,10 @@
    <code># @include</code> directives with the contents of shared fragments from
    <code>docker/common/</code>.</li>
 <li><code>build.sh</code> calls <code>generate.sh</code> then runs <code>docker build</code> for every
-   language and version combination.</li>
+   language and version combination. Its version lists, like the publish
+   matrix and the Dockerfile <code>ARG</code> defaults, are generated from
+   <code>docker/versions/manifest.yml</code> by <code>docker/versions/generate.py</code> (see
+   <a href="../languages/lifecycle/">Language version lifecycle</a>).</li>
 </ol>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker/
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── build.sh                    # Builds all images
@@ -2949,7 +2982,14 @@
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── python/Dockerfile.template
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── go/Dockerfile.template
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── java/Dockerfile.template
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>└── rust/Dockerfile.template
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>├── rust/Dockerfile.template
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>├── cpp-clang/Dockerfile.template
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>├── cpp-gcc/Dockerfile.template
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>├── ts-node/Dockerfile.template
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>└── versions/
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    ├── manifest.yml            # The single source of language versions
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    ├── generate.py             # Writes every derived version list
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    └── lifecycle/              # The nightly lifecycle check and adapters
 </code></pre></div>
 <h3 id="templating">Templating<a class="headerlink" href="#templating" title="Permanent link">&para;</a></h3>
 <p>Each <code>Dockerfile.template</code> contains standard Dockerfile instructions plus
