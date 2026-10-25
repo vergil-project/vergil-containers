@@ -21,7 +21,7 @@ rebuilds to catch upstream CVEs between merges.
 | Prefix | Source branch | Built by | Purpose |
 |--------|-------------|----------|---------|
 | `dev-{lang}:{ver}` | develop | `cd.yml` (develop push) + `ops.yml` (nightly) | Staging and validation of image changes |
-| `prod-{lang}:{ver}` | main | `cd.yml` (main push, after release) | Production use by all consumers |
+| `prod-{lang}:{ver}` | main | `cd.yml` (main push, after release) + `ops.yml` (nightly) | Production use by all consumers |
 
 All images use the `ghcr.io/vergil-project/` namespace, including
 `dev-base`/`prod-base`.
@@ -32,19 +32,28 @@ pointing a single consumer at `dev-` while debugging a broken workflow.
 
 ## Key Decisions
 
-### Nightly rebuilds target dev-images only
+### Nightly rebuilds cover dev- and prod-images
 
-The `ops.yml` workflow runs daily at 06:15 UTC and rebuilds all `dev-`
-images. `prod-` images are built exclusively by the CD release workflow
-on main merges.
+The `ops.yml` workflow runs every morning (UTC; the `schedule` trigger in
+`.github/workflows/ops.yml` holds the exact time) and rebuilds every image
+with the registry cache disabled: `dev-` images from `develop` and `prod-`
+images from `main`.
 
-**Why?** Nightly rebuilds ensure development images stay current with
-upstream security patches (base image updates, apt package refreshes)
-without waiting for a code change. `prod-` images intentionally lag —
-they represent a known-good, released state. The nightly `dev-` rebuild
-surfaces CVE issues early via GitHub Actions failure notifications; if
-Trivy finds new vulnerabilities, the build fails and the team triages
+**Why?** Nightly rebuilds keep images current with upstream security
+patches (base image updates, apt package refreshes) without waiting for a
+code change. `prod-` images still lag `develop` in source: the prod rebuild
+uses the released `main` source, so it picks up upstream fixes without
+shipping unreleased changes. A nightly failure surfaces CVE issues early
+via GitHub Actions failure notifications; if Trivy finds new
+vulnerabilities, the build fails and the team triages
 (see [Trivy CVE Triage](../../operations/trivy-triage.md)).
+
+**History.** The original design rebuilt only `dev-` images nightly and
+built `prod-` images solely on release.
+[#304](https://github.com/vergil-project/vergil-containers/issues/304)
+added the no-cache `prod-` nightly rebuild, and
+[#544](https://github.com/vergil-project/vergil-containers/pull/544)
+pinned it to `main` (it had been building from `develop`).
 
 ### cd.yml as thin orchestration shim
 

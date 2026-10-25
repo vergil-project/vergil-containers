@@ -7,8 +7,9 @@ retention workflow keeps the org packages tidy.
 
 ## Why packages accumulate
 
-The publish pipeline (`cd-docker-publish.yml`) runs nightly for `dev-*` images
-and on every release for `prod-*` images. Each run, **per image**, pushes:
+The publish pipeline (`cd-docker-publish.yml`) runs on every `develop` push for
+`dev-*` images, on every release for `prod-*` images, and nightly (`ops.yml`)
+for both. Each run, **per image**, pushes:
 
 - a **multi-arch** (amd64 + arm64) manifest list, whose **two per-platform
   child manifests** appear as untagged versions;

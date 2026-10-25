@@ -148,7 +148,8 @@ via the reusable `cd-docker-publish.yml` workflow, parameterized by an
   pick up base-image security patches.
 - **`prod-` images** (`ghcr.io/vergil-project/prod-{language}:{version}`) —
   built on push to `main`, after the release workflow generates a
-  changelog, git tag, and GitHub release.
+  changelog, git tag, and GitHub release, and rebuilt nightly from `main`
+  via `ops.yml`.
 
 The publish pipeline for each prefix:
 
@@ -181,9 +182,17 @@ release completes.
 
 ### Nightly rebuilds
 
-The `ops.yml` workflow runs daily at 06:15 UTC and rebuilds all `dev-`
-images. This ensures development images stay current with upstream
-security patches without waiting for a code change to trigger a build.
+The `ops.yml` workflow runs every morning (UTC; the `schedule` trigger in
+`.github/workflows/ops.yml` holds the exact time) and rebuilds every image
+with the registry cache disabled (`no-cache: true`):
+
+- `nightly-rebuild-dev` rebuilds all `dev-` images from `develop`.
+- `nightly-rebuild-prod` rebuilds all `prod-` images from `main`, so they
+  pick up upstream fixes without moving past the released source.
+
+This keeps both image sets current with upstream security patches (base
+image updates, apt package refreshes) without waiting for a code change to
+trigger a build.
 
 ### Authentication
 
