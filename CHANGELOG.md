@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.32] - 2026-10-25
+
+### Bug fixes
+
+- fill in the upstream ga/eol dates for the seeded manifest versions (#674)
+- bump the smoke fixture to vitest 5 to clear its npm lockfile advisories (#676)
+- ignore CVE-2026-109869 in npm's bundled undici until npm ships a fix (#679)
+
+### Chores
+
+- return the npm install to npm@latest now that latest is 12.2.1 (#680)
+- sync the vergil-managed .gitignore block (#691)
+
+### Documentation
+
+- bring the lifecycle docs in line with epic #407's final state (#672)
+
+### Features
+
+- add rpm to every dev image, as the peer of dpkg (#694)
+
+### Refactoring
+
+- remove the #622 merge hold from lifecycle PRs (#670)
+
 ## [2.1.31] - 2026-10-23
 
 ### Bug fixes

@@ -40,11 +40,9 @@ ARG NODE_MAJOR
 RUN curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
     rm -rf /var/lib/apt/lists/*
-# npm@^12.2.1 rather than npm@latest: a temporary floor for the bundled
-# brace-expansion / undici CVEs while `latest` is still 12.2.0. See
-# common/node-markdownlint.dockerfile for the reasoning and the revert
-# condition. Issue #605.
-RUN npm install -g npm@^12.2.1 && \
+# npm@latest, matching common/node-markdownlint.dockerfile (see there for the
+# history of the temporary #605 range pin, lifted by issue #678).
+RUN npm install -g npm@latest && \
     npm install -g markdownlint-cli && \
     npm cache clean --force
 
@@ -53,6 +51,7 @@ RUN npm install -g npm@^12.2.1 && \
 # @include common/python-support.dockerfile
 # @include common/typescript-analysis.dockerfile
 # @include common/nfpm.dockerfile
+# @include common/rpm.dockerfile
 # @include common/pandoc.dockerfile
 
 WORKDIR /workspace

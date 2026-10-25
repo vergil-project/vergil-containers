@@ -135,8 +135,7 @@ jobs:
       # One PR per add/drop on a `pr` family, on lifecycle/<family>-<kind>-<v>,
       # rebuilt from this checkout as one commit and force-pushed only when it
       # changed; a rerun refreshes the same PR, never a second one. Nothing
-      # auto-merges, and add PRs carry the hold that keeps them unmerged until
-      # the first-adds validation task (vergil-containers#622). Only from the
+      # auto-merges: a human reviews and merges every PR. Only from the
       # default branch: the checkout is the PRs' base.
       - name: Open, refresh and close add/drop PRs
         if: >-

@@ -34,6 +34,12 @@ All images are published to GitHub Container Registry at
 | `dev-base`      | —          | latest                 | `python:3.14-slim`        |
 <!-- END generated: versions -->
 
+The table is generated from
+[`docker/versions/manifest.yml`](docker/versions/manifest.yml), the single
+source of every language version this repo builds. Each language's versions
+follow its upstream support window; see
+[Language version lifecycle](https://vergil-project.github.io/vergil-containers/languages/lifecycle/).
+
 ## Usage
 
 Pull a pre-built image:

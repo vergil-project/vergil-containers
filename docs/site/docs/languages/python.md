@@ -59,26 +59,36 @@ day of the check.
   once that tag exists.
 - Deployed Python code needs a `vergil-python` runtime for its version (see
   below). Containers and runtimes are released separately, so there can be a
-  gap of a few days between them. A packaged app resolves to the newest window
-  version that has a published runtime. That rule is Python-specific, so it
-  lives in the Python adapter and resolver extension, never in shared code.
+  gap of a few days between them. A packaged Python app or library deploys on
+  the newest window version that has a published runtime. That rule is
+  Python-specific, so it lives in the Python adapter and resolver extension,
+  never in shared code.
 - The manifest's `runtime_published` field records, for each version, whether
   a `vergil-python` runtime is published. It travels in the published window.
 
 ## Deployed runtime package
 
 **Yes.** `vergil-python` publishes the runtime that deployed Python code runs
-on. Each version in the window needs one before a packaged app can move to it.
+on. Each version in the window needs one before a packaged app or library can
+deploy on it.
+
+There is one package per Python series, named `vergil-python<x.y>` and
+installed at `/opt/vergil/python/<x.y>`. The patch level floats within the
+series. On 2026-10-23 `vergil-python` builds the 3.15 series. The 3.14 package
+stays published but is frozen at 3.14.8+20261013 and no longer rebuilt.
+Building several series at once is deferred to
+[vergil-project/vergil-python#36](https://github.com/vergil-project/vergil-python/issues/36).
 
 ## Automation
 
 **`pr`.** The lifecycle check opens the pull request that adds or drops a
-Python version.
+Python version. It also opens a `runtime` pull request when a version's
+`vergil-python` runtime is first published, which sets that version's
+`runtime_published` field. A newly added version starts with
+`runtime_published: false`.
 
 ## Current out-of-policy versions
 
-As of 2026-10-21: **none.** The manifest builds 3.12, 3.13 and 3.14, all of
-which are GA and not EOL.
-
-The manifest is **behind**: Python 3.15 has been GA since 2026-10-09 and is not
-yet built.
+As of 2026-10-23: **none.** The manifest builds 3.15, 3.14, 3.13 and 3.12,
+all of which are GA and not EOL, so the window is in sync with upstream. It
+records a published runtime for 3.15 and 3.14.

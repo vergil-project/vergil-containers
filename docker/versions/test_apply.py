@@ -14,7 +14,7 @@ from lifecycle.adapters.go import GoAdapter
 from lifecycle.adapters.python import PythonAdapter
 from lifecycle.apply import ApplyError, apply_change, branch_name, parse_branch, pr_title, render_change
 from lifecycle.core import Change, FamilyResult, TargetVersion
-from lifecycle.publish import ADD_HOLD_ISSUE, ADD_HOLD_REPO, GhCli, GitCli, OpenPr, PublishError, sync_prs
+from lifecycle.publish import GhCli, GitCli, OpenPr, PublishError, sync_prs
 from lifecycle.report import results_to_json
 from lifecycle.runtime import AptIndex
 from test_generate import repo  # noqa: F401  (fixture: a copy of every generated file)
@@ -173,16 +173,15 @@ def test_render_drop_of_an_older_version_leaves_the_arg_default(repo):  # noqa: 
 class FakeGh:
     """An in-memory PR tracker implementing the PrClient protocol."""
 
-    def __init__(self, hold_open=True):
-        self.prs = {}  # number -> dict(head, title, body, open, comments, auto)
+    def __init__(self):
+        self.prs = {}  # number -> dict(head, title, body, open, comments)
         self.calls = []
-        self.hold_open = hold_open
         self._next = 500
 
-    def seed(self, head, title="old", auto=False):
+    def seed(self, head, title="old"):
         n = self._next
         self._next += 1
-        self.prs[n] = {"head": head, "title": title, "body": "old", "open": True, "comments": [], "auto": auto}
+        self.prs[n] = {"head": head, "title": title, "body": "old", "open": True, "comments": []}
         return n
 
     def list_open_prs(self, head_prefix):
@@ -203,15 +202,6 @@ class FakeGh:
         self.calls.append(("close", number))
         self.prs[number]["open"] = False
         self.prs[number]["comments"].append(comment)
-
-    def issue_is_open(self, repo, number):
-        self.calls.append(("hold", f"{repo}#{number}"))
-        return self.hold_open
-
-    def disable_auto_merge(self, number):
-        was = self.prs[number]["auto"]
-        self.prs[number]["auto"] = False
-        return was
 
     def open_prs(self):
         return {p["head"]: p for p in self.prs.values() if p["open"]}
@@ -296,9 +286,6 @@ def test_drop_pr_body_lists_go_case_followup():
     assert "- [ ] remove the `case go1.26*)` branch from `docker/go/Dockerfile.template`" in drop["body"]
     assert "- [ ] retire or update the `go-test-coverage` pin in `docker/pins/pins.yml`" in drop["body"]
     assert "https://endoflife.date/go" in drop["body"]
-    # A drop is not held; an add is.
-    assert "Hold" not in drop["body"]
-    assert f"{ADD_HOLD_REPO}#{ADD_HOLD_ISSUE}" in prs["lifecycle/go-add-1.28"]["body"]
     _, files = git.branches["lifecycle/go-drop-1.26"]
     assert "1.26" not in [v.version for v in _family(mf.parse_manifest(__import__("yaml").safe_load(files[g.MANIFEST])), "go").versions]
 
@@ -318,11 +305,9 @@ def test_report_family_never_gets_pr():
     gh, git = FakeGh(), FakeGit()
     _sync(gh, git, results)
     assert gh.prs == {} and git.pushes == []
-    # Nothing to add, so the hold is never even looked up.
-    assert [c for c in gh.calls if c[0] == "hold"] == []
 
 
-# --- sync_prs: body, hold, auto-merge ------------------------------------------------------------
+# --- sync_prs: body, auto-merge ------------------------------------------------------------------
 
 
 def test_add_pr_body():
@@ -334,7 +319,7 @@ def test_add_pr_body():
     assert "https://endoflife.date/python" in body
     assert "`docs/site/docs/languages/python.md`" in body
     assert "**not** set to auto-merge" in body
-    assert f"do not merge while {ADD_HOLD_REPO}#{ADD_HOLD_ISSUE} is open" in body
+    assert "Hold" not in body
     assert "`runtime_published: false`" in body
     assert "- `docker/versions/manifest.yml`" in body and "- `docker/versions/window.json`" in body
     assert "## Manual follow-ups\n\nNone." in body
@@ -342,27 +327,27 @@ def test_add_pr_body():
     assert "runtime_published" not in go_body
 
 
-def test_hold_lifts_when_the_validation_issue_closes():
-    gh, git = FakeGh(hold_open=False), FakeGit()
+def test_sync_never_touches_auto_merge():
+    # Driven through the real gh client: a first run opens, a rerun refreshes,
+    # and a stale PR is closed, yet no gh call ever merges or sets auto-merge.
+    def gh_run(args, stdin):
+        calls.append(args)
+        if args[:2] == ["pr", "list"]:
+            return json.dumps(listed)
+        if args[:2] == ["pr", "create"]:
+            n = 900 + len(listed)
+            listed.append({"number": n, "headRefName": args[args.index("--head") + 1]})
+            return f"https://github.com/o/r/pull/{n}\n"
+        return ""
+
+    calls, listed = [], [{"number": 1, "headRefName": "lifecycle/python-add-3.99"}]
+    gh, git = GhCli("o/r", gh_run, base="develop"), FakeGit()
     _sync(gh, git, _pr_results())
-    body = gh.open_prs()["lifecycle/python-add-3.15"]["body"]
-    assert "Hold" not in body and "**not** set to auto-merge" in body
-
-
-def test_auto_merge_is_turned_off_on_a_held_add(capsys):
-    gh, git = FakeGh(), FakeGit()
-    n = gh.seed("lifecycle/python-add-3.15", auto=True)
-    m = gh.seed("lifecycle/go-add-1.27", auto=False)
-    _sync(gh, git, _pr_results())
-    assert gh.prs[n]["auto"] is False and gh.prs[m]["auto"] is False
-    assert f"#{n}: auto-merge was enabled" in capsys.readouterr().out
-
-
-def test_auto_merge_left_alone_when_not_held():
-    gh, git = FakeGh(hold_open=False), FakeGit()
-    n = gh.seed("lifecycle/python-add-3.15", auto=True)
-    _sync(gh, git, _pr_results())
-    assert gh.prs[n]["auto"] is True
+    _sync(gh, git, _pr_results(), RUN2)
+    kinds = [c[:2] for c in calls]
+    assert ["pr", "create"] in kinds and ["pr", "edit"] in kinds and ["pr", "close"] in kinds
+    assert ["pr", "merge"] not in kinds
+    assert not [c for c in calls if any("auto" in a for a in c if a.startswith("--"))]
 
 
 # --- sync_prs: stale PRs and failures --------------------------------------------------------------
@@ -552,30 +537,6 @@ def test_ghcli_create_update_close_pr():
 def test_ghcli_create_pr_without_url_fails():
     with pytest.raises(PublishError, match="no PR URL"):
         GhCli("o/r", Recorder("oops"), base="develop").create_pr("h", "t", "b")
-
-
-@pytest.mark.parametrize("state, expected", [("OPEN", True), ("CLOSED", False)])
-def test_ghcli_issue_is_open(state, expected):
-    rec = Recorder(json.dumps({"state": state}))
-    assert GhCli("o/r", rec).issue_is_open("x/y", 9) is expected
-    assert rec.calls[0][0] == ["issue", "view", "9", "--repo", "x/y", "--json", "state"]
-
-
-@pytest.mark.parametrize("out, needle", [("nope", "malformed"), ("{}", "malformed"), ('{"state": "MERGED"}', "unexpected state")])
-def test_ghcli_issue_is_open_fails_loud(out, needle):
-    with pytest.raises(PublishError, match=needle):
-        GhCli("o/r", Recorder(out)).issue_is_open("x/y", 9)
-
-
-def test_ghcli_disable_auto_merge():
-    rec = Recorder(json.dumps({"autoMergeRequest": {"enabledAt": "x"}}))
-    assert GhCli("o/r", rec).disable_auto_merge(5) is True
-    assert rec.calls[1][0] == ["pr", "merge", "5", "--repo", "o/r", "--disable-auto"]
-    rec = Recorder(json.dumps({"autoMergeRequest": None}))
-    assert GhCli("o/r", rec).disable_auto_merge(5) is False
-    assert len(rec.calls) == 1
-    with pytest.raises(PublishError, match="malformed"):
-        GhCli("o/r", Recorder("nope")).disable_auto_merge(5)
 
 
 # --- GitCli, against a real local repository and remote ---------------------------------------------

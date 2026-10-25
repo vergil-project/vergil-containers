@@ -344,7 +344,6 @@ def test_results_json_carries_runtime_evidence():
 class FakePrs:
     def __init__(self):
         self.created = {}
-        self.hold_checked = False
 
     def list_open_prs(self, head_prefix):
         return []
@@ -358,13 +357,6 @@ class FakePrs:
 
     def close_pr(self, number, comment):
         raise AssertionError("no PR is open")
-
-    def issue_is_open(self, repo, number):
-        self.hold_checked = True
-        return True
-
-    def disable_auto_merge(self, number):
-        return False
 
 
 class FakeGit:
@@ -386,8 +378,7 @@ def test_runtime_change_opens_a_pr_citing_the_package_index():
     assert title == "feat(versions): record the published python 3.15 runtime"
     assert f"- Upstream evidence: {APT_URL}" in body
     assert "records `runtime_published: true`" in body
-    # The add hold applies to version adds only.
-    assert "Hold" not in body and gh.hold_checked is False
+    assert "**not** set to auto-merge" in body
     message, files = git.branches["lifecycle/python-runtime-3.15"]
     recorded = mf.parse_manifest(yaml.safe_load(files[g.MANIFEST]))
     assert _family(recorded).versions[0] == replace(_family(WITH_315).versions[0], runtime_published=True)

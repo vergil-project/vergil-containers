@@ -31,6 +31,64 @@ policy. Each language family also has an **automation** setting:
   human acts. This is a deliberate, temporary exception to rule 1 below for
   languages whose automation has not been turned on yet.
 
+## The lifecycle check
+
+The `language-lifecycle` job in the nightly `ops.yml` workflow runs
+`docker/versions/lifecycle/check.py`. For every family, the family's adapter
+reads upstream release and EOL data, applies the policy, and compares the
+target window with the manifest. Each run writes a matrix report covering every
+family, published as the job summary and the `language-lifecycle-report`
+artifact. The report also flags a version whose EOL falls within the next 90
+days.
+
+What the check does with a gap depends on the family's automation:
+
+- **`pr` families** (Python and Go) get one pull request per change, on a
+  branch named `lifecycle/<family>-<kind>-<version>`. A change is an add, a
+  drop, or, for Python, a `runtime` change that records a newly published
+  `vergil-python` runtime in the manifest. Each PR carries the manifest edit
+  and every regenerated file. A rerun refreshes the same PR rather than
+  opening a second one, and a PR whose change is no longer reported is closed.
+- **`report` families** get one issue per change, titled
+  `language lifecycle: <family> <kind> <version>` and labelled
+  `language-lifecycle`. A `pr` family also gets an issue for a change no PR
+  can carry: a version the base image can't install yet (`blocked`), an EOL
+  coming soon, or a missing runtime.
+
+Nothing is ever auto-merged. A person reviews and merges every lifecycle PR.
+This repository's pull-request CI does not build images: an add PR's new
+images are first built and scanned by the CD publish on `develop` after it
+merges. Building images in pull-request CI is deferred to epic
+[vergil-project/.github#213](https://github.com/vergil-project/.github/issues/213).
+
+**A failing check is loud.** If an adapter can't fetch or parse upstream data,
+the job fails. It still finishes the other families, and it opens or refreshes
+one `lifecycle check failing for <family>` issue, which the next clean run
+closes. So no open PR and no open `language-lifecycle` issue reliably means
+"in sync".
+
+## How consumers use the window
+
+Consumer repos read the published window, `docker/versions/window.json` at the
+`v2.1` ref, through vergil-tooling's `vrg-ci-resolve`. It is the single
+resolver, called by local validation and by the vergil-actions CI setup alike.
+The window is fetched on every run and never cached, and a failed fetch is an
+error. For offline work, `VRG_VERSION_WINDOW` names a local `window.json`
+instead.
+
+- With no `[ci].versions` in `vergil.toml`, a repo follows the window. A
+  `library` repo (`[project].repository-type`) builds every version in the
+  window. Any other repository type is an app, and builds only the newest.
+- `[ci].versions` is an optional pin. A pinned version that is not in the
+  window is a fatal error, and so is an app pin with more than one version.
+- C++ and TypeScript are the exception: their versions carry a family prefix
+  (`clang-20`, `gcc-14`, `node-24`), so they have no single default and must
+  still pin `[ci].versions` until each language's lifecycle turn. A missing
+  pin is a fatal error.
+- A packaged Python app or library deploys on the newest window version that
+  has a published `vergil-python` runtime (the manifest's `runtime_published`
+  field). See the [Python policy](python.md).
+
 ## The rules
 
 1. **Follow each community.** A language's support policy is based on its
@@ -79,10 +137,16 @@ policy. Each language family also has an **automation** setting:
     upstream still supports it. Python 3.11 and Java 11 are both examples. The
     rule is enforced once, in the shared machinery.
 13. **Vergil owns which toolchain runs, and a language's own files declare only
-    a floor.** Settings that choose a toolchain (for example `.python-version`
-    or `rust-toolchain.toml`) duplicate Vergil and are removed. Settings that
-    declare a minimum (for example `requires-python` or the `go` directive in
-    `go.mod`) are kept, as a floor with no upper bound.
+    a floor.** Settings that choose a toolchain version (for example
+    `.python-version` or `rust-toolchain.toml`) duplicate Vergil and are
+    removed. Settings that declare a minimum (for example `requires-python` or
+    the `go` directive in `go.mod`) are kept, as a floor with no upper bound.
+    Settings that choose only where a toolchain comes from, such as uv's
+    `python-preference` and `python-downloads`, are not version pins and may
+    stay. Vergil sets the source itself wherever it runs Python, with
+    `UV_PYTHON_PREFERENCE=only-system`, and names the resolved version with
+    `UV_PYTHON` wherever it has one. So the image's interpreter is always the
+    one used.
 
 ## How to read a policy page
 
@@ -120,5 +184,6 @@ upstream fact cites its source and the date it was checked.
 | `cpp-clang` | `report` | [C++ / Clang](cpp-clang.md) |
 | `cpp-gcc` | `report` | [C++ / GCC](cpp-gcc.md) |
 
-Ruby is no longer a supported language. Its images are being removed, so it
-has no policy page.
+Ruby is no longer a supported language. It was removed in epic
+[vergil-project/.github#407](https://github.com/vergil-project/.github/issues/407),
+so it has no policy page.

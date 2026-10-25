@@ -256,3 +256,37 @@ CVE-2026-56865
 # tofu uses gRPC only as the client of its provider plugins (go-plugin); it
 # runs no xDS gRPC server. Remove once a tofu release ships grpc >= 1.83.2.
 CVE-2026-84445
+
+# =============================================================================
+# undici 6.29.0 bundled in npm 12.2.1 (all images), at
+# /usr/lib/node_modules/npm/node_modules/undici. Fixed in 6.29.1 / 7.30.1 /
+# 8.12.2. Issue #677. The images install npm with `npm install -g npm@latest`
+# (common/node-markdownlint.dockerfile, ts-node/Dockerfile.template). npm
+# 12.2.1, the newest release and now the `latest` dist-tag, still bundles undici
+# 6.29.0, and so does npm 11.21.1, the newest 11.x (both tarballs re-checked
+# 2026-10-24). No npm release exists to bump to.
+#
+# CVE-2026-109869 — undici fetch(): a malicious server that returns a response
+#   with more than five content codings and then closes the connection before
+#   the body crashes the Node.js process with an unhandled stream error.
+# In npm's bundled tree the only package that requires undici is node-gyp
+# 13.0.0. Its lib/download.js uses undici's fetch() for one job: downloading the
+# Node.js header tarball and SHASUMS256.txt (process.release.headersUrl, by
+# default https://nodejs.org) when an install compiles a native addon from
+# source and the headers are not yet cached. npm's registry traffic goes through
+# make-fetch-happen / minipass-fetch, which do not use undici, so `npm install`
+# and `npm ci` of pure-JS packages never reach the vulnerable code. The real
+# exposure is in dev-ts-node, where consumers run npm at container runtime: an
+# install that builds a native addon fetches headers through this code. To
+# trigger the crash, the TLS-authenticated header server (nodejs.org, or a
+# configured --dist-url or proxy) must itself be malicious. The impact is a
+# crash of a short-lived, user-invoked install, with no confidentiality or
+# integrity impact. In the other images npm is build-time-only tooling, used to
+# install markdownlint-cli (pure JS, no node-gyp build).
+#
+# Remove once the npm release on the `latest` dist-tag bundles undici >= 6.29.1.
+# The images install `npm@latest` (issue #678), so the nightly rebuild picks up
+# the newest npm on that tag without a pin change. Do not patch npm's bundled
+# node_modules in place.
+# =============================================================================
+CVE-2026-109869
