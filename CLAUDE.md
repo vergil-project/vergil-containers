@@ -248,9 +248,12 @@ No PAT or additional secret is needed. However, each GHCR package must
 explicitly grant this repository write access because the packages were
 originally created by the `vergil-tooling` repository.
 
-Per-package setup (one-time, for each of `dev-base`, `dev-python`, `dev-java`,
-`dev-go`, `dev-rust`, `dev-cpp-clang`, `dev-cpp-gcc`, and the
-corresponding `prod-` packages):
+Per-package setup (one-time, for every image in the generated
+[Version Matrix](#version-matrix) table below, under both prefixes: each
+`dev-<image>` package and its `prod-<image>` counterpart). That table is
+generated from `docker/versions/manifest.yml`, the same source as the publish
+matrix, so it always lists every published image; do not hand-copy the list
+here.
 
 1. Navigate to the package settings page on GHCR.
 2. Under **Manage Actions access**, click **Add Repository**.
