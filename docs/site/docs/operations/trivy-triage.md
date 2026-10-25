@@ -6,6 +6,10 @@ This runbook covers the end-to-end triage process: identifying the
 CVEs, assessing each one, suppressing or escalating, and unblocking
 the pipeline.
 
+For which Trivy scans run on pull requests versus on publish, and why
+pull requests show a "configurations not found" code-scanning warning, see
+[Trivy Scanning](../architecture/trivy-scanning.md).
+
 ## How the pipeline gates on vulnerabilities
 
 The `cd-docker-publish.yml` workflow scans each image on both platforms

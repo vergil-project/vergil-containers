@@ -149,7 +149,8 @@ via the reusable `cd-docker-publish.yml` workflow, parameterized by an
 The publish pipeline for each prefix:
 
 1. Builds a candidate tag for both platforms (amd64 + arm64)
-2. Scans each platform independently with Trivy (SARIF upload)
+2. Scans each platform independently with Trivy (SARIF upload; see
+   [Trivy Scanning](trivy-scanning.md))
 3. Attests build provenance (SLSA via GitHub attestations)
 4. Promotes the candidate to the final tag via `docker buildx imagetools create`
 5. Verifies digest preservation between candidate and final
