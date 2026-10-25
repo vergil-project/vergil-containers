@@ -3035,8 +3035,9 @@ something prunes it. This page explains where the cruft comes from, how to
 clean up the orphaned personal-namespace packages, and how the scheduled
 retention workflow keeps the org packages tidy.</p>
 <h2 id="why-packages-accumulate">Why packages accumulate<a class="headerlink" href="#why-packages-accumulate" title="Permanent link">&para;</a></h2>
-<p>The publish pipeline (<code>cd-docker-publish.yml</code>) runs nightly for <code>dev-*</code> images
-and on every release for <code>prod-*</code> images. Each run, <strong>per image</strong>, pushes:</p>
+<p>The publish pipeline (<code>cd-docker-publish.yml</code>) runs on every <code>develop</code> push for
+<code>dev-*</code> images, on every release for <code>prod-*</code> images, and nightly (<code>ops.yml</code>)
+for both. Each run, <strong>per image</strong>, pushes:</p>
 <ul>
 <li>a <strong>multi-arch</strong> (amd64 + arm64) manifest list, whose <strong>two per-platform
   child manifests</strong> appear as untagged versions;</li>

@@ -3143,7 +3143,8 @@ via the reusable <code>cd-docker-publish.yml</code> workflow, parameterized by a
   pick up base-image security patches.</li>
 <li><strong><code>prod-</code> images</strong> (<code>ghcr.io/vergil-project/prod-{language}:{version}</code>) —
   built on push to <code>main</code>, after the release workflow generates a
-  changelog, git tag, and GitHub release.</li>
+  changelog, git tag, and GitHub release, and rebuilt nightly from <code>main</code>
+  via <code>ops.yml</code>.</li>
 </ul>
 <p>The publish pipeline for each prefix:</p>
 <ol>
@@ -3170,9 +3171,17 @@ gate: it hard-fails on incomplete or failed evidence, which blocks the
 downstream docker-publish job. The docker publish job runs after the
 release completes.</p>
 <h3 id="nightly-rebuilds">Nightly rebuilds<a class="headerlink" href="#nightly-rebuilds" title="Permanent link">&para;</a></h3>
-<p>The <code>ops.yml</code> workflow runs daily at 06:15 UTC and rebuilds all <code>dev-</code>
-images. This ensures development images stay current with upstream
-security patches without waiting for a code change to trigger a build.</p>
+<p>The <code>ops.yml</code> workflow runs every morning (UTC; the <code>schedule</code> trigger in
+<code>.github/workflows/ops.yml</code> holds the exact time) and rebuilds every image
+with the registry cache disabled (<code>no-cache: true</code>):</p>
+<ul>
+<li><code>nightly-rebuild-dev</code> rebuilds all <code>dev-</code> images from <code>develop</code>.</li>
+<li><code>nightly-rebuild-prod</code> rebuilds all <code>prod-</code> images from <code>main</code>, so they
+  pick up upstream fixes without moving past the released source.</li>
+</ul>
+<p>This keeps both image sets current with upstream security patches (base
+image updates, apt package refreshes) without waiting for a code change to
+trigger a build.</p>
 <h3 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h3>
 <p>The workflow authenticates with <code>GITHUB_TOKEN</code> using <code>packages: write</code>
 permission. No personal access token or additional secret is needed.</p>

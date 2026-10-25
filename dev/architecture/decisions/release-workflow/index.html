@@ -2625,10 +2625,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#nightly-rebuilds-target-dev-images-only" class="md-nav__link">
+  <a href="#nightly-rebuilds-cover-dev-and-prod-images" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Nightly rebuilds target dev-images only
+        Nightly rebuilds cover dev- and prod-images
       
     </span>
   </a>
@@ -2991,10 +2991,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#nightly-rebuilds-target-dev-images-only" class="md-nav__link">
+  <a href="#nightly-rebuilds-cover-dev-and-prod-images" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Nightly rebuilds target dev-images only
+        Nightly rebuilds cover dev- and prod-images
       
     </span>
   </a>
@@ -3111,7 +3111,7 @@ rebuilds to catch upstream CVEs between merges.</p>
 <tr>
 <td><code>prod-{lang}:{ver}</code></td>
 <td>main</td>
-<td><code>cd.yml</code> (main push, after release)</td>
+<td><code>cd.yml</code> (main push, after release) + <code>ops.yml</code> (nightly)</td>
 <td>Production use by all consumers</td>
 </tr>
 </tbody>
@@ -3122,17 +3122,25 @@ rebuilds to catch upstream CVEs between merges.</p>
 temporarily to validate changes to the images themselves, typically by
 pointing a single consumer at <code>dev-</code> while debugging a broken workflow.</p>
 <h2 id="key-decisions">Key Decisions<a class="headerlink" href="#key-decisions" title="Permanent link">&para;</a></h2>
-<h3 id="nightly-rebuilds-target-dev-images-only">Nightly rebuilds target dev-images only<a class="headerlink" href="#nightly-rebuilds-target-dev-images-only" title="Permanent link">&para;</a></h3>
-<p>The <code>ops.yml</code> workflow runs daily at 06:15 UTC and rebuilds all <code>dev-</code>
-images. <code>prod-</code> images are built exclusively by the CD release workflow
-on main merges.</p>
-<p><strong>Why?</strong> Nightly rebuilds ensure development images stay current with
-upstream security patches (base image updates, apt package refreshes)
-without waiting for a code change. <code>prod-</code> images intentionally lag —
-they represent a known-good, released state. The nightly <code>dev-</code> rebuild
-surfaces CVE issues early via GitHub Actions failure notifications; if
-Trivy finds new vulnerabilities, the build fails and the team triages
+<h3 id="nightly-rebuilds-cover-dev-and-prod-images">Nightly rebuilds cover dev- and prod-images<a class="headerlink" href="#nightly-rebuilds-cover-dev-and-prod-images" title="Permanent link">&para;</a></h3>
+<p>The <code>ops.yml</code> workflow runs every morning (UTC; the <code>schedule</code> trigger in
+<code>.github/workflows/ops.yml</code> holds the exact time) and rebuilds every image
+with the registry cache disabled: <code>dev-</code> images from <code>develop</code> and <code>prod-</code>
+images from <code>main</code>.</p>
+<p><strong>Why?</strong> Nightly rebuilds keep images current with upstream security
+patches (base image updates, apt package refreshes) without waiting for a
+code change. <code>prod-</code> images still lag <code>develop</code> in source: the prod rebuild
+uses the released <code>main</code> source, so it picks up upstream fixes without
+shipping unreleased changes. A nightly failure surfaces CVE issues early
+via GitHub Actions failure notifications; if Trivy finds new
+vulnerabilities, the build fails and the team triages
 (see <a href="../../../operations/trivy-triage/">Trivy CVE Triage</a>).</p>
+<p><strong>History.</strong> The original design rebuilt only <code>dev-</code> images nightly and
+built <code>prod-</code> images solely on release.
+<a href="https://github.com/vergil-project/vergil-containers/issues/304">#304</a>
+added the no-cache <code>prod-</code> nightly rebuild, and
+<a href="https://github.com/vergil-project/vergil-containers/pull/544">#544</a>
+pinned it to <code>main</code> (it had been building from <code>develop</code>).</p>
 <h3 id="cdyml-as-thin-orchestration-shim">cd.yml as thin orchestration shim<a class="headerlink" href="#cdyml-as-thin-orchestration-shim" title="Permanent link">&para;</a></h3>
 <p><code>cd.yml</code> is a thin shim that calls three reusable workflows:</p>
 <ul>
