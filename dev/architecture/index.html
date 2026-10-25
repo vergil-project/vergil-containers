@@ -3025,7 +3025,9 @@
 <p>Each <code>Dockerfile.template</code> contains standard Dockerfile instructions plus
 <code># @include common/&lt;fragment&gt;.dockerfile</code> directives. <code>generate.sh</code>
 replaces each directive with the full contents of the referenced fragment,
-producing a final <code>Dockerfile</code> in the same directory.</p>
+producing a final <code>Dockerfile</code> in the same directory. Includes nest: a
+fragment may include another fragment (for example
+<code>node-markdownlint.dockerfile</code> includes <code>nodesource-node.dockerfile</code>).</p>
 <p>This eliminates duplication — shared tool installations (GitHub CLI,
 Node.js, markdownlint, validation tools) are maintained once in
 <code>docker/common/</code> and included by every template that needs them.</p>
@@ -3039,6 +3041,8 @@ all images automatically at build time.</p>
 <li><strong><code>path-defaults.dockerfile</code></strong> — Sets PATH for <code>uv tool install</code>
   entry points across GitHub Actions and local contexts.</li>
 <li><strong><code>node-markdownlint.dockerfile</code></strong> — Node.js via NodeSource apt repo
+  (installed by the nested <code>nodesource-node.dockerfile</code>, which fails the
+  build unless it gets NodeSource Node <code>NODE_MAJOR</code> with npm)
   and markdownlint-cli via npm.</li>
 <li><strong><code>github-cli.dockerfile</code></strong> — GitHub CLI via the official apt repo.</li>
 <li><strong><code>validation-tools.dockerfile</code></strong> — Architecture-aware binary
