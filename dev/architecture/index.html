@@ -14,7 +14,7 @@
         <link rel="prev" href="../languages/cpp-gcc/">
       
       
-        <link rel="next" href="decisions/multi-arch-images/">
+        <link rel="next" href="trivy-scanning/">
       
       
         
@@ -2346,6 +2346,8 @@
       
         
       
+        
+      
     
     
     
@@ -2409,6 +2411,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="trivy-scanning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trivy Scanning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -2432,10 +2462,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="">
             
   
   
@@ -2453,8 +2483,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3114,7 +3144,8 @@ via the reusable <code>cd-docker-publish.yml</code> workflow, parameterized by a
 <p>The publish pipeline for each prefix:</p>
 <ol>
 <li>Builds a candidate tag for both platforms (amd64 + arm64)</li>
-<li>Scans each platform independently with Trivy (SARIF upload)</li>
+<li>Scans each platform independently with Trivy (SARIF upload; see
+   <a href="trivy-scanning/">Trivy Scanning</a>)</li>
 <li>Attests build provenance (SLSA via GitHub attestations)</li>
 <li>Promotes the candidate to the final tag via <code>docker buildx imagetools create</code></li>
 <li>Verifies digest preservation between candidate and final</li>

@@ -2344,6 +2344,8 @@
       
         
       
+        
+      
     
     
     
@@ -2404,6 +2406,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../architecture/trivy-scanning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trivy Scanning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -2424,10 +2454,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
             
   
   
@@ -2445,8 +2475,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3227,6 +3257,9 @@ Trivy found new HIGH or CRITICAL vulnerabilities in the built images.
 This runbook covers the end-to-end triage process: identifying the
 CVEs, assessing each one, suppressing or escalating, and unblocking
 the pipeline.</p>
+<p>For which Trivy scans run on pull requests versus on publish, and why
+pull requests show a "configurations not found" code-scanning warning, see
+<a href="../../architecture/trivy-scanning/">Trivy Scanning</a>.</p>
 <h2 id="how-the-pipeline-gates-on-vulnerabilities">How the pipeline gates on vulnerabilities<a class="headerlink" href="#how-the-pipeline-gates-on-vulnerabilities" title="Permanent link">&para;</a></h2>
 <p>The <code>cd-docker-publish.yml</code> workflow scans each image on both platforms
 (amd64 and arm64) using Trivy. Each scan step uses <code>continue-on-error:
