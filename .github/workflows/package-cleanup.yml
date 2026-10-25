@@ -25,6 +25,23 @@ name: Package cleanup
 # Token: the default GITHUB_TOKEN can list/preview. Real deletion of
 # org-owned package versions may require a PAT with `delete:packages` stored
 # as the secret GHCR_CLEANUP_TOKEN; the workflow prefers it when present.
+#
+# Rate limits (issue #652): every leg fetches every manifest of its package
+# from ghcr.io, and on a cold manifest cache that is ~25k registry GETs per
+# run. With all 32 legs started at once, ghcr.io answered 429 and the action's
+# own per-request retry (axios-retry, 3 tries, sub-second exponential backoff
+# honouring Retry-After) ran out within seconds. Two workflow-level defences:
+#   1. `max-parallel` caps how many legs of each job hit the registry at once
+#      (3 per job, so at most 6 legs in flight instead of 32);
+#   2. each leg retries the action ONCE after a bounded, jittered back-off
+#      (RETRY_BACKOFF_BASE_SECONDS + up to RETRY_BACKOFF_JITTER_SECONDS), so a
+#      transient 429 burst clears and the run completes. A second failure fails
+#      the leg loudly with a rate-limit diagnosis — never a silent skip.
+# The retry covers any failure of the action (a step's exit status cannot tell
+# a 429 from other errors); re-running the cleanup is idempotent, so a retry of
+# a non-transient failure costs one back-off and then fails the same way.
+# Keep the attempt-1 and attempt-2 `with:` blocks identical —
+# docker/versions/test_package_cleanup.py enforces it.
 
 on:
   schedule:
@@ -44,12 +61,19 @@ concurrency:
   group: package-cleanup
   cancel-in-progress: false
 
+env:
+  # Bounded back-off before the single retry of a failed cleanup attempt.
+  RETRY_BACKOFF_BASE_SECONDS: 90
+  RETRY_BACKOFF_JITTER_SECONDS: 60
+
 jobs:
   cleanup:
     name: "cleanup: ${{ matrix.package }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # Rate-limit cap (issue #652): keep in step with reap-aliases.
+      max-parallel: 3
       matrix:
         package:
           # Generated from docker/versions/manifest.yml by docker/versions/generate.py.
@@ -72,7 +96,35 @@ jobs:
           - prod-ts-node
           # END generated: versions (cleanup)
     steps:
-      - name: Prune untagged versions
+      - name: Prune untagged versions (attempt 1)
+        id: attempt1
+        # A failure here is retried once below after a back-off; the leg's
+        # result is decided by attempt 2 (issue #652).
+        continue-on-error: true
+        uses: dataaxiom/ghcr-cleanup-action@v1.2.2
+        with:
+          owner: vergil-project
+          packages: ${{ matrix.package }}
+          token: ${{ secrets.GHCR_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
+          delete-untagged: true
+          validate: true
+          # Same arming expression as attempt 2 below (documented there).
+          dry-run: >-
+            ${{ !(
+            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
+            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
+            ) }}
+
+      - name: Back off before retrying
+        if: steps.attempt1.outcome == 'failure'
+        run: |
+          delay=$(( RETRY_BACKOFF_BASE_SECONDS + RANDOM % (RETRY_BACKOFF_JITTER_SECONDS + 1) ))
+          echo "::warning title=Package cleanup retry::Attempt 1 failed (often a ghcr.io 429 rate limit: 'Request failed with status code 429' above). Backing off ${delay}s, then retrying once."
+          sleep "${delay}"
+
+      - name: Prune untagged versions (attempt 2)
+        id: attempt2
+        if: steps.attempt1.outcome == 'failure'
         uses: dataaxiom/ghcr-cleanup-action@v1.2.2
         with:
           owner: vergil-project
@@ -99,11 +151,21 @@ jobs:
             || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
             ) }}
 
+      - name: Report persistent failure
+        if: failure() && steps.attempt2.outcome == 'failure'
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          echo "::error title=Package cleanup failed twice::ghcr-cleanup-action failed on both attempts for ${PACKAGE}, with a ${RETRY_BACKOFF_BASE_SECONDS}-$(( RETRY_BACKOFF_BASE_SECONDS + RETRY_BACKOFF_JITTER_SECONDS ))s back-off between them. If the attempt logs show 'Request failed with status code 429', ghcr.io is still rate limiting this token after the action's per-request retries (which honour Retry-After) and this workflow's retry: re-run the failed legs later, or lower max-parallel. Any other error is not a rate limit; read the attempt logs (issue #652)."
+          exit 1
+
   reap-aliases:
     name: "reap: ${{ matrix.package }} (older than ${{ matrix.older_than }})"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # Rate-limit cap (issue #652): keep in step with cleanup.
+      max-parallel: 3
       matrix:
         # prod aliases live 30 days, dev aliases 7 (spec §9 capacity windows).
         include:
@@ -143,7 +205,37 @@ jobs:
             older_than: "7 days"
             # END generated: versions (reap)
     steps:
-      - name: Reap datestamp aliases past the retention window
+      - name: Reap datestamp aliases past the retention window (attempt 1)
+        id: attempt1
+        # A failure here is retried once below after a back-off; the leg's
+        # result is decided by attempt 2 (issue #652).
+        continue-on-error: true
+        uses: dataaxiom/ghcr-cleanup-action@v1.2.2
+        with:
+          owner: vergil-project
+          packages: ${{ matrix.package }}
+          token: ${{ secrets.GHCR_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
+          # Same inputs as attempt 2 below, where each one is documented.
+          older-than: ${{ matrix.older_than }}
+          use-regex: true
+          delete-tags: '^.+-\d{8}$'
+          validate: true
+          dry-run: >-
+            ${{ !(
+            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
+            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
+            ) }}
+
+      - name: Back off before retrying
+        if: steps.attempt1.outcome == 'failure'
+        run: |
+          delay=$(( RETRY_BACKOFF_BASE_SECONDS + RANDOM % (RETRY_BACKOFF_JITTER_SECONDS + 1) ))
+          echo "::warning title=Package cleanup retry::Attempt 1 failed (often a ghcr.io 429 rate limit: 'Request failed with status code 429' above). Backing off ${delay}s, then retrying once."
+          sleep "${delay}"
+
+      - name: Reap datestamp aliases past the retention window (attempt 2)
+        id: attempt2
+        if: steps.attempt1.outcome == 'failure'
         uses: dataaxiom/ghcr-cleanup-action@v1.2.2
         with:
           owner: vergil-project
@@ -184,3 +276,11 @@ jobs:
             (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
             || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
             ) }}
+
+      - name: Report persistent failure
+        if: failure() && steps.attempt2.outcome == 'failure'
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          echo "::error title=Package cleanup failed twice::ghcr-cleanup-action failed on both attempts for ${PACKAGE}, with a ${RETRY_BACKOFF_BASE_SECONDS}-$(( RETRY_BACKOFF_BASE_SECONDS + RETRY_BACKOFF_JITTER_SECONDS ))s back-off between them. If the attempt logs show 'Request failed with status code 429', ghcr.io is still rate limiting this token after the action's per-request retries (which honour Retry-After) and this workflow's retry: re-run the failed legs later, or lower max-parallel. Any other error is not a rate limit; read the attempt logs (issue #652)."
+          exit 1
