@@ -2534,10 +2534,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#categories-are-shared-between-dev-and-prod" class="md-nav__link">
+  <a href="#why-the-category-includes-the-image-prefix" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Categories are shared between dev and prod
+        Why the category includes the image prefix
       
     </span>
   </a>
@@ -2990,10 +2990,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#categories-are-shared-between-dev-and-prod" class="md-nav__link">
+  <a href="#why-the-category-includes-the-image-prefix" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Categories are shared between dev and prod
+        Why the category includes the image prefix
       
     </span>
   </a>
@@ -3056,21 +3056,21 @@ harmless.</p>
 <td><code>cd.yml</code> → <code>cd-docker-publish.yml</code> (<code>image-prefix: dev</code>)</td>
 <td><code>trivy image</code></td>
 <td>Each <code>dev-*</code> candidate image, amd64 and arm64</td>
-<td><code>trivy-image-&lt;language&gt;-&lt;version&gt;-&lt;arch&gt;</code> and <code>trivy-image-base-&lt;arch&gt;</code></td>
+<td><code>trivy-image-dev-&lt;language&gt;-&lt;version&gt;-&lt;arch&gt;</code> and <code>trivy-image-dev-base-&lt;arch&gt;</code></td>
 </tr>
 <tr>
 <td>Push to <code>main</code></td>
 <td><code>cd.yml</code> → release, then <code>cd-docker-publish.yml</code> (<code>image-prefix: prod</code>)</td>
 <td><code>trivy image</code></td>
 <td>Each <code>prod-*</code> candidate image, amd64 and arm64</td>
-<td>same as above</td>
+<td><code>trivy-image-prod-&lt;language&gt;-&lt;version&gt;-&lt;arch&gt;</code> and <code>trivy-image-prod-base-&lt;arch&gt;</code></td>
 </tr>
 <tr>
 <td>Nightly (<code>ops.yml</code>)</td>
 <td><code>nightly-rebuild-dev</code> and <code>nightly-rebuild-prod</code> → <code>cd-docker-publish.yml</code> (<code>no-cache: true</code>)</td>
 <td><code>trivy image</code></td>
 <td>Fresh rebuilds of every <code>dev-*</code> and <code>prod-*</code> image</td>
-<td>same as above</td>
+<td>the <code>dev</code> or <code>prod</code> categories above, by image prefix</td>
 </tr>
 </tbody>
 </table>
@@ -3091,12 +3091,13 @@ plus <code>base</code>, and pushes each one as a <code>-candidate</code> tag. It
 candidate once per platform:</p>
 <ul>
 <li><strong>amd64</strong> goes through the shared <code>trivy</code> action with <code>scan-type: image</code>
-  and <code>sarif-category: trivy-image-&lt;language&gt;-&lt;version&gt;-amd64</code>.</li>
+  and <code>sarif-category: trivy-image-&lt;prefix&gt;-&lt;language&gt;-&lt;version&gt;-amd64</code>.</li>
 <li><strong>arm64</strong> runs Trivy directly in a pinned <code>aquasec/trivy</code> container with
   <code>--platform linux/arm64</code>. Its SARIF is uploaded under
-  <code>trivy-image-&lt;language&gt;-&lt;version&gt;-arm64</code>.</li>
+  <code>trivy-image-&lt;prefix&gt;-&lt;language&gt;-&lt;version&gt;-arm64</code>.</li>
 </ul>
-<p><code>base</code> uses <code>trivy-image-base-amd64</code> and <code>trivy-image-base-arm64</code>.</p>
+<p><code>&lt;prefix&gt;</code> is the workflow's <code>image-prefix</code> input, <code>dev</code> or <code>prod</code>. <code>base</code>
+uses <code>trivy-image-&lt;prefix&gt;-base-amd64</code> and <code>trivy-image-&lt;prefix&gt;-base-arm64</code>.</p>
 <p>Each scan step uses <code>continue-on-error</code>, so both platforms always get
 scanned. A later "Fail if vulnerabilities found" step then fails the job if
 either scan found an unsuppressed <code>CRITICAL</code> or <code>HIGH</code> vulnerability. A
@@ -3126,7 +3127,9 @@ shows it as "skipping"), which does not block a merge. The scan's actual
 result is the <code>security / trivy</code> job, which feeds <code>security / evidence</code>.</p>
 <p>The warning still appears today. On PR #694 (October 2026) it listed 42
 missing configurations: amd64 and arm64 categories for <code>base</code> and for every
-current matrix image, plus some stale ones (see below).</p>
+current matrix image, plus some stale ones (see below). That list predates
+the image prefix in the category name; with separate <code>dev</code> and <code>prod</code>
+categories, the list is longer.</p>
 <h3 id="stale-categories-from-retired-versions">Stale categories from retired versions<a class="headerlink" href="#stale-categories-from-retired-versions" title="Permanent link">&para;</a></h3>
 <p>A code-scanning category stays on <code>develop</code> until someone deletes it. When a
 language version, or a whole language, leaves the matrix, nothing uploads
@@ -3134,24 +3137,31 @@ new results under its categories. Its last analysis stays on the branch, so
 it keeps showing up in the warning. The PR #694 list still included
 <code>trivy-image-ruby-3.2/3.3/3.4-*</code> (Ruby images are retired),
 <code>trivy-image-go-1.25-*</code> and <code>trivy-image-cpp-gcc-13-*</code>.</p>
+<p>The same applies to the old unprefixed categories
+(<code>trivy-image-&lt;language&gt;-&lt;version&gt;-&lt;arch&gt;</code> and <code>trivy-image-base-&lt;arch&gt;</code>)
+used before the image prefix was added to the category name (see below).
+Nothing uploads under them any more, so they stay on <code>develop</code> until they
+are deleted.</p>
 <p>These leftovers do no harm beyond making the list longer. To remove them,
 delete the stale analyses from the repository's code scanning (the GitHub
 REST API endpoint <code>DELETE /repos/{owner}/{repo}/code-scanning/analyses/{analysis_id}</code>).
 This needs a token with <code>security_events</code> write access, so a maintainer has
 to do it.</p>
-<h3 id="categories-are-shared-between-dev-and-prod">Categories are shared between <code>dev</code> and <code>prod</code><a class="headerlink" href="#categories-are-shared-between-dev-and-prod" title="Permanent link">&para;</a></h3>
-<p>The image categories leave out the image prefix. So the <code>dev-python:3.14</code>
-scan and the <code>prod-python:3.14</code> scan both upload under
-<code>trivy-image-python-3.14-&lt;arch&gt;</code>. The SARIF upload records each result
-against the ref of the workflow run that uploaded it. A scheduled run
-always runs on the default branch (<code>develop</code>). That means the
-<code>nightly-rebuild-prod</code> results are filed under <code>refs/heads/develop</code>, even
-though they come from a <code>main</code> checkout. Within a ref, the most recent
-upload for a category replaces the one before it. For any category, the
-code-scanning view on <code>develop</code> shows whichever image was scanned last,
-<code>dev</code> or <code>prod</code>. This affects only what the code-scanning UI shows. The
-publish gate is decided separately for every image, in the job that builds
-it.</p>
+<h3 id="why-the-category-includes-the-image-prefix">Why the category includes the image prefix<a class="headerlink" href="#why-the-category-includes-the-image-prefix" title="Permanent link">&para;</a></h3>
+<p>The SARIF upload records each result against the ref of the workflow run
+that uploaded it. A scheduled run always runs on the default branch
+(<code>develop</code>). That means the <code>nightly-rebuild-prod</code> results are filed under
+<code>refs/heads/develop</code>, even though they come from a <code>main</code> checkout, next to
+the <code>dev</code> results. Within a ref, the most recent upload for a category
+replaces the one before it.</p>
+<p>So the category names the image prefix. The <code>dev-python:3.14</code> scan uploads
+under <code>trivy-image-dev-python-3.14-&lt;arch&gt;</code> and the <code>prod-python:3.14</code> scan
+under <code>trivy-image-prod-python-3.14-&lt;arch&gt;</code>. Each image keeps its own result
+on <code>develop</code>, instead of one overwriting the other. Before the prefix was
+added, both shared <code>trivy-image-python-3.14-&lt;arch&gt;</code>, and the code-scanning
+view showed whichever image was scanned last. That only ever affected what
+the code-scanning UI shows. The publish gate is decided separately for every
+image, in the job that builds it.</p>
 
 
 
