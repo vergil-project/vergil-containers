@@ -106,6 +106,26 @@ they *would* delete:
   Actions → Variables). The weekly run then deletes for real. No code change is
   needed to arm or disarm.
 
+### Rate limits
+
+Every leg of both jobs fetches every manifest of its package from ghcr.io. On a
+cold manifest cache that is tens of thousands of registry requests per run, and
+with every leg started at once ghcr.io answered HTTP 429
+([#652](https://github.com/vergil-project/vergil-containers/issues/652)). The
+action already retries each request a few times, but only for about a second.
+The workflow adds two defences:
+
+- **Capped fan-out:** `max-parallel: 3` on each job, so at most 6 legs hit the
+  registry together.
+- **One retry per leg:** if the action fails, the leg waits a bounded, jittered
+  back-off (`RETRY_BACKOFF_BASE_SECONDS` plus up to
+  `RETRY_BACKOFF_JITTER_SECONDS`), logs a warning, and runs the action once
+  more with the same inputs. If that also fails, the leg fails with an error
+  that names the package and says how to read a 429. Nothing is skipped.
+
+`docker/versions/test_package_cleanup.py` pins this structure. If 429s persist,
+lower `max-parallel` first.
+
 ### Token
 
 The default `GITHUB_TOKEN` can list and preview. If real deletion of org-owned
