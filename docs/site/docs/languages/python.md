@@ -74,10 +74,13 @@ deploy on it.
 
 There is one package per Python series, named `vergil-python<x.y>` and
 installed at `/opt/vergil/python/<x.y>`. The patch level floats within the
-series. On 2026-10-23 `vergil-python` builds the 3.15 series. The 3.14 package
-stays published but is frozen at 3.14.8+20261013 and no longer rebuilt.
-Building several series at once is deferred to
-[vergil-project/vergil-python#36](https://github.com/vergil-project/vergil-python/issues/36).
+series. `vergil-python` builds every series listed in its `runtime.toml` (3.14
+and 3.15 today), and every release publishes every listed series. A daily
+upstream refresh moves each series to its newest patch within the series. It
+also adds a new leading-edge series once that series is in the window and
+python-build-standalone ships it. No older series is back-filled, and removing
+a series is a reviewed pull request made by hand. See vergil-python's
+[`docs/runtime-package-pattern.md`](https://github.com/vergil-project/vergil-python/blob/develop/docs/runtime-package-pattern.md).
 
 ## Automation
 
