@@ -78,7 +78,7 @@ def test_harvest_parses_probe_output():
 # five bump PRs stacked unnoticed for a month while trivy sat on 0.72.0.
 
 AUTO = {"state": "auto-managed", "inducing_release": None,
-        "constraint": "latest, auto-bumped weekly", "reason": "x",
+        "constraint": "latest, auto-bumped daily", "reason": "x",
         "deterministic": False}
 
 

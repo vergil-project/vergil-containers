@@ -55,7 +55,7 @@ def auto_managed_behind(
     *supposed* to move. Folding the two together would conflate "this pin's
     justification may have expired" with "this pin is merely behind".
 
-    Behind means the weekly bumper's PR has not been merged (it is never
+    Behind means the daily bumper's PR has not been merged (it is never
     auto-merged — #435 keeps a human merge gate), so nothing has carried the new
     version into the images. Unresolvable or unparseable versions are skipped:
     unknowns never raise a false alarm. Returns (tool, pinned, latest)."""
@@ -110,7 +110,7 @@ def render(root: Path, latest: dict[str, str], installed: dict[str, dict[str, st
     ] or ["- none\n"]
     lines.append("\n## Auto-managed tools behind the leading edge\n")
     lines.append(
-        "> These float via the weekly `bump-tools` workflow, which opens a PR "
+        "> These float via the daily `upstream-refresh` job in `ops.yml`, which opens a PR "
         "but never auto-merges (#435). Anything listed here means a bump PR is "
         "waiting on a human — check for an open `upstream-refresh` PR.\n"
     )
@@ -119,9 +119,9 @@ def render(root: Path, latest: dict[str, str], installed: dict[str, dict[str, st
         for t, have, newest in behind
     ] or ["- none — every auto-managed tool is at its leading edge.\n"]
     auto = sorted(t for t, m in pins.items() if m.get("state") == "auto-managed")
-    lines.append("\n## Auto-managed (leading edge, weekly bumper)\n")
+    lines.append("\n## Auto-managed (leading edge, daily bumper)\n")
     lines.append(
-        "> Floated to the newest upstream release by the `bump-tools` workflow "
+        "> Floated to the newest upstream release by the `upstream-refresh` job in `ops.yml` "
         "(#435); the pin stays in source for reproducibility.\n"
     )
     lines += [

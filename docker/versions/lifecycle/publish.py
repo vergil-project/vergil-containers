@@ -612,7 +612,7 @@ _PR_URL_RE = re.compile(r"/pull/(\d+)\s*$")
 
 # --- The real branch publisher ---------------------------------------------------------
 
-# The bot identity bump-tools.yml commits as. Fixed here, with the commit dates
+# The bot identity the add/drop commits are made as. Fixed here, with the commit dates
 # taken from the base, so the same change on the same base is the same commit:
 # a rerun can tell "already pushed" from "changed" by comparing commit ids.
 BOT_NAME = "github-actions[bot]"

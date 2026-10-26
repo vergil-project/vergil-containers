@@ -127,7 +127,7 @@ def test_branch_names_and_titles():
     assert branch_name(drop) == "lifecycle/cpp-clang-drop-19"
     assert parse_branch("lifecycle/python-add-3.15") == ("python", "add", "3.15")
     assert parse_branch("lifecycle/cpp-clang-drop-19") == ("cpp-clang", "drop", "19")
-    for other in ("lifecycle/python-blocked-3.15", "bot/bump-tools-1", "lifecycle/python-add-x"):
+    for other in ("lifecycle/python-blocked-3.15", "upstream-refresh", "lifecycle/python-add-x"):
         assert parse_branch(other) is None
     assert pr_title(add, None) == "feat(versions): add python 3.15"
     assert pr_title(drop, date(2026, 9, 1)) == "feat(versions): drop cpp-clang 19 (EOL 2026-09-01)"
