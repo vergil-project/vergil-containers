@@ -56,8 +56,8 @@
 # x/net module (see the go-licenses note in the header).
 #
 # Remove once an actionlint release is built with a Go that fixes them (and, for
-# CVE-2026-33814, once go-licenses requires x/net >= 0.53.0). The weekly
-# bump-tools PR picks up a new actionlint.
+# CVE-2026-33814, once go-licenses requires x/net >= 0.53.0). The daily
+# upstream-refresh PR picks up a new actionlint.
 # =============================================================================
 CVE-2026-27145
 CVE-2026-32280
@@ -115,7 +115,7 @@ CVE-2026-56862
 #
 # Remove each once actionlint, shfmt and the temurin base's pebble all ship
 # builds with Go >= 1.26.9 / 1.27.2, and tofu and go-licenses require x/net
-# >= 0.60.0. The weekly bump-tools PR and the nightly rebuild pick these up.
+# >= 0.60.0. The daily upstream-refresh PR and the nightly rebuild pick these up.
 CVE-2026-78667
 CVE-2026-78669
 CVE-2026-97031
@@ -148,7 +148,7 @@ CVE-2026-97031
 #     It is never started.
 #
 # Remove once actionlint, shfmt, nfpm, scorecard and the temurin base's pebble
-# all ship builds with Go >= 1.26.10 / 1.27.3. The weekly bump-tools PR and the
+# all ship builds with Go >= 1.26.10 / 1.27.3. The daily upstream-refresh PR and the
 # nightly rebuild pick these up.
 CVE-2026-111943
 

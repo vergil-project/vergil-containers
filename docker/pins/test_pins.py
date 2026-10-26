@@ -113,7 +113,7 @@ def test_catalog_check_matches_committed_file():
 def test_osv_scanner_is_an_auto_managed_java_pin():
     # #689: the dev-java AUDIT stage (vergil-tooling#3554) runs osv-scanner, so
     # the Java image must ship it — pinned, checksum-verified, and floated by the
-    # weekly bumper like the other binary-download tools.
+    # daily bumper like the other binary-download tools.
     import resolve_latest
 
     pins = {p.tool: p for p in extract_pins.extract(DOCKER)}

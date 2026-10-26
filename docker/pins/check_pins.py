@@ -10,8 +10,8 @@ import yaml
 import extract_pins
 
 # States a pins.yml entry may declare. `auto-managed` (#435) is a legitimately
-# pinned entry whose version is floated to the leading edge by the weekly
-# bump-tools workflow — distinct from the Tenet-6 `active` break-hold,
+# pinned entry whose version is floated to the leading edge by the daily
+# upstream-refresh job in ops.yml — distinct from the Tenet-6 `active` break-hold,
 # `under-evaluation`, and `freed`. An entry with any other state fails the gate.
 VALID_STATES = {"active", "under-evaluation", "freed", "auto-managed"}
 

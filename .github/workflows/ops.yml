@@ -56,7 +56,7 @@ jobs:
   # The add/drop branches and PRs, and the issues, are written with GitHub App
   # tokens, not this job's GITHUB_TOKEN, so it needs no contents, pull-requests
   # or issues write here: the App's installation grants them (contents: write,
-  # pull-requests: write, exactly what bump-tools.yml already uses; issues:
+  # pull-requests: write, exactly what upstream-refresh already uses; issues:
   # write, as the org epic sweep uses). App-authored PRs fire CI.
   language-lifecycle:
     name: "language lifecycle check"
@@ -74,7 +74,7 @@ jobs:
       # The App token authenticates the GitHub releases API reads (the LLVM
       # adapter), which unauthenticated get only 60 requests an hour per runner
       # IP, and the add/drop branch pushes and PRs. Minted exactly as
-      # bump-tools.yml does.
+      # the upstream-refresh reusable workflow does.
       - name: Generate app token
         id: app-token
         uses: actions/create-github-app-token@v3
@@ -83,7 +83,7 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       # Checked out with the App token so the add/drop branch pushes are
-      # App-authored (and so trigger CI), as in bump-tools.yml.
+      # App-authored (and so trigger CI), as upstream-refresh's are.
       - name: Checkout code
         uses: actions/checkout@v6
         with:
@@ -173,6 +173,24 @@ jobs:
     permissions:
       contents: read
       issues: write
+    secrets:
+      APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+
+  # The leading-edge bumper for the binary-download mechanism tools (#435). It
+  # runs vrg-upstream-refresh (epic vergil-project/.github#472): the
+  # [upstream-refresh].hook in vergil.toml (docker/pins/upstream-refresh.sh)
+  # resolves each tool's newest release, rewrites the `ARG *_VERSION=` pins in
+  # docker/common/* and regenerates docker/pins/CATALOG.md, and the reusable
+  # workflow keeps exactly one PR on the fixed `upstream-refresh` branch in step
+  # with the result (opened on drift, refreshed in place, closed when nothing
+  # drifts). The push and PR use the App token minted inside the reusable
+  # workflow, so App-authored PRs fire CI and this job's GITHUB_TOKEN needs
+  # only contents: read. Nothing is auto-merged: a human merges every PR.
+  upstream-refresh:
+    uses: vergil-project/vergil-actions/.github/workflows/ops-upstream-refresh.yml@v2.1
+    permissions:
+      contents: read
     secrets:
       APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
