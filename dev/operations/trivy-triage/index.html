@@ -3252,9 +3252,12 @@
 
 
 <h1 id="trivy-cve-triage">Trivy CVE Triage<a class="headerlink" href="#trivy-cve-triage" title="Permanent link">&para;</a></h1>
-<p>When the docker-publish pipeline fails, it is almost always because
-Trivy found new HIGH or CRITICAL vulnerabilities in the built images.
-This runbook covers the end-to-end triage process: identifying the
+<p>When the docker-publish pipeline fails at the Trivy gate, it is usually
+because Trivy found new HIGH or CRITICAL vulnerabilities in the built
+images. Check the gate's message first: <code>Trivy scan errored (no report
+produced)</code> means a scan failed before it could report (a dropped image-layer
+or vulnerability-DB download) and found nothing. Re-run the job; there is
+nothing to triage. This runbook covers the end-to-end triage process: identifying the
 CVEs, assessing each one, suppressing or escalating, and unblocking
 the pipeline.</p>
 <p>For which Trivy scans run on pull requests versus on publish, and why
@@ -3264,8 +3267,20 @@ pull requests show a "configurations not found" code-scanning warning, see
 <p>The <code>cd-docker-publish.yml</code> workflow scans each image on both platforms
 (amd64 and arm64) using Trivy. Each scan step uses <code>continue-on-error:
 true</code> so both platforms are scanned even if the first fails. A
-subsequent "Fail if vulnerabilities found" step checks the outcomes
-and fails the job if either scan found CRITICAL or HIGH vulnerabilities.</p>
+subsequent "Trivy gate" step (<code>scripts/bin/trivy-gate</code>) checks each
+platform and fails the job with one of two messages:</p>
+<ul>
+<li><code>Trivy found CRITICAL/HIGH vulnerabilities in &lt;image&gt; (&lt;platform&gt;)</code> — the
+  scan finished and wrote its report, and it has unsuppressed findings.
+  Triage them as described below.</li>
+<li><code>Trivy scan errored (no report produced) for &lt;image&gt; (&lt;platform&gt;)</code> — the
+  scan wrote no report, even after retries. Both scans retry a scan that
+  writes no report up to three times with backoff (the amd64 shared action
+  since vergil-actions#1079, the arm64 <code>scripts/bin/trivy-image-scan</code>), so this
+  means a persistent download or registry error, not a finding. The scan
+  step's log has the Trivy error. A platform with no report never passes the
+  gate (issue #721).</li>
+</ul>
 <p>Scans filter against the <code>.trivyignore</code> file at the repository root.
 CVEs listed there are excluded from the results. If all remaining
 findings are below HIGH severity, the scan passes and the image is

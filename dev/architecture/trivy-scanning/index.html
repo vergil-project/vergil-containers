@@ -3093,15 +3093,21 @@ candidate once per platform:</p>
 <li><strong>amd64</strong> goes through the shared <code>trivy</code> action with <code>scan-type: image</code>
   and <code>sarif-category: trivy-image-&lt;prefix&gt;-&lt;language&gt;-&lt;version&gt;-amd64</code>.</li>
 <li><strong>arm64</strong> runs Trivy directly in a pinned <code>aquasec/trivy</code> container with
-  <code>--platform linux/arm64</code>. Its SARIF is uploaded under
+  <code>--platform linux/arm64</code>, through <code>scripts/bin/trivy-image-scan</code>. Its SARIF
+  is uploaded under
   <code>trivy-image-&lt;prefix&gt;-&lt;language&gt;-&lt;version&gt;-arm64</code>.</li>
 </ul>
 <p><code>&lt;prefix&gt;</code> is the workflow's <code>image-prefix</code> input, <code>dev</code> or <code>prod</code>. <code>base</code>
 uses <code>trivy-image-&lt;prefix&gt;-base-amd64</code> and <code>trivy-image-&lt;prefix&gt;-base-arm64</code>.</p>
 <p>Each scan step uses <code>continue-on-error</code>, so both platforms always get
-scanned. A later "Fail if vulnerabilities found" step then fails the job if
-either scan found an unsuppressed <code>CRITICAL</code> or <code>HIGH</code> vulnerability. A
-failed job never promotes its candidate to the final tag. Both image scans
+scanned. Both scans retry a scan that ends without writing its report (a
+dropped layer or vulnerability-DB download) with backoff, and record the
+outcome as <code>passed</code>, <code>findings</code> or <code>error</code>. A later "Trivy gate" step
+(<code>scripts/bin/trivy-gate</code>) then fails the job if either scan found an
+unsuppressed <code>CRITICAL</code> or <code>HIGH</code> vulnerability, or if either produced no
+report, with a message that says which. A scan that errored is never
+reported as a vulnerability, and never passes (issue #721). A failed job
+never promotes its candidate to the final tag. Both image scans
 run from the repository root, so <code>trivy.yaml</code> (with <code>ignore-unfixed</code> and the
 <code>linux-libc-dev</code> ignore policy) and <code>.trivyignore</code> apply to both of them.</p>
 <p>The publish workflow does not run on pull requests. <code>ci.yml</code> does not call
