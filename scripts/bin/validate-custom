@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/bin/validate-custom — repo-specific validation, auto-discovered by
 # vrg-validate (vergil_tooling.bin.vrg_validate._find_custom_validator looks for
-# exactly this path). It runs the repo's five pins and versions checks; PR CI
+# exactly this path). It runs the repo's pins, versions and Trivy-gate checks; PR CI
 # runs it as `quality / custom` (the custom job in vergil-actions
 # ci-quality.yml, via `vrg-validate --check custom`), so local validation and
 # CI run the same checks:
@@ -12,7 +12,9 @@
 #   4. every generated version list (publish matrix, build.sh, package cleanup,
 #      Dockerfile ARG defaults, docs tables, window.json) is up to date with
 #      docker/versions/manifest.yml (epic vergil-project/.github#407);
-#   5. the docker/versions tooling tests pass (offline, hermetic).
+#   5. the docker/versions tooling tests pass (offline, hermetic);
+#   6. the publish pipeline's Trivy scan and gate scripts pass their tests
+#      (scripts/tests/trivy.test.sh; a stubbed docker, offline, #721).
 # Fail-defer: run everything, report all failures, exit nonzero if any failed.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -43,5 +45,6 @@ run_in docker/pins \
 run python3 "${ROOT}/docker/versions/generate.py" --check
 run_in docker/versions \
   uv run --with pytest --with pyyaml python -m pytest -q -p no:cacheprovider
+run bash "${ROOT}/scripts/tests/trivy.test.sh"
 
 exit "$fail"

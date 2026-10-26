@@ -43,16 +43,22 @@ candidate once per platform:
 - **amd64** goes through the shared `trivy` action with `scan-type: image`
   and `sarif-category: trivy-image-<prefix>-<language>-<version>-amd64`.
 - **arm64** runs Trivy directly in a pinned `aquasec/trivy` container with
-  `--platform linux/arm64`. Its SARIF is uploaded under
+  `--platform linux/arm64`, through `scripts/bin/trivy-image-scan`. Its SARIF
+  is uploaded under
   `trivy-image-<prefix>-<language>-<version>-arm64`.
 
 `<prefix>` is the workflow's `image-prefix` input, `dev` or `prod`. `base`
 uses `trivy-image-<prefix>-base-amd64` and `trivy-image-<prefix>-base-arm64`.
 
 Each scan step uses `continue-on-error`, so both platforms always get
-scanned. A later "Fail if vulnerabilities found" step then fails the job if
-either scan found an unsuppressed `CRITICAL` or `HIGH` vulnerability. A
-failed job never promotes its candidate to the final tag. Both image scans
+scanned. Both scans retry a scan that ends without writing its report (a
+dropped layer or vulnerability-DB download) with backoff, and record the
+outcome as `passed`, `findings` or `error`. A later "Trivy gate" step
+(`scripts/bin/trivy-gate`) then fails the job if either scan found an
+unsuppressed `CRITICAL` or `HIGH` vulnerability, or if either produced no
+report, with a message that says which. A scan that errored is never
+reported as a vulnerability, and never passes (issue #721). A failed job
+never promotes its candidate to the final tag. Both image scans
 run from the repository root, so `trivy.yaml` (with `ignore-unfixed` and the
 `linux-libc-dev` ignore policy) and `.trivyignore` apply to both of them.
 

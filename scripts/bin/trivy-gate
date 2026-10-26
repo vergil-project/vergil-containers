@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+#
+# scripts/bin/trivy-gate — the publish pipeline's Trivy gate
+# (.github/workflows/cd-docker-publish.yml). It decides, per scanned platform,
+# whether the candidate image may be promoted, and says why not (issue #721).
+#
+# The scan steps run with continue-on-error, so a failed step's outcome alone
+# cannot tell "Trivy found CRITICAL/HIGH vulnerabilities" from "the scan
+# errored and never produced a report". The old gate printed the first for
+# both, so a dropped layer download blocked a clean image as a security
+# finding (CD run 40349047526). This gate reports each case accurately and
+# still fails closed: a platform with no report never passes.
+#
+# Usage: trivy-gate <image> <label> <outcome> <result> <report-file> [...]
+#   One group of four per platform after <image>:
+#     <label>        platform label for messages (amd64, arm64)
+#     <outcome>      the scan step's outcome (success, failure, cancelled,
+#                    skipped)
+#     <result>       the scan step's `result` output (passed, findings, error),
+#                    or empty when the step did not set one (an older shared
+#                    trivy action)
+#     <report-file>  the SARIF report the scan writes when it completes
+#
+# For each platform, the first matching rule decides:
+#   result=error, or no report file      → "scan errored (no report produced)"
+#   result=findings                      → "found CRITICAL/HIGH vulnerabilities"
+#   no result and outcome=failure        → "found CRITICAL/HIGH vulnerabilities"
+#                                          (a report exists, so Trivy finished)
+#   outcome other than success           → "scan step did not succeed"
+#   otherwise                            → passes
+# Exit status: 0 when every platform passes, 1 otherwise (all are reported).
+set -uo pipefail
+
+if [ "$#" -lt 5 ] || [ $((($# - 1) % 4)) -ne 0 ]; then
+  echo "usage: trivy-gate <image> <label> <outcome> <result> <report-file> [...]" >&2
+  exit 2
+fi
+
+image="$1"
+shift
+failed=0
+
+while [ "$#" -gt 0 ]; do
+  label="$1"
+  outcome="$2"
+  result="$3"
+  report="$4"
+  shift 4
+
+  if [ "${result}" = "error" ] || [ ! -f "${report}" ]; then
+    echo "::error::Trivy scan errored (no report produced) for ${image} (${label}); the scan step's outcome was '${outcome}'. This is a scan failure, not a vulnerability finding: re-run the job, and see the scan step's log for the Trivy error."
+    failed=1
+  elif [ "${result}" = "findings" ] || { [ -z "${result}" ] && [ "${outcome}" = "failure" ]; }; then
+    echo "::error::Trivy found CRITICAL/HIGH vulnerabilities in ${image} (${label}); see ${report} and the code-scanning alerts."
+    failed=1
+  elif [ "${outcome}" != "success" ]; then
+    echo "::error::Trivy scan step for ${image} (${label}) did not succeed (outcome '${outcome}', result '${result}'), though the scan reported no CRITICAL/HIGH findings; see the scan step's log."
+    failed=1
+  else
+    echo "Trivy gate passed for ${image} (${label})."
+  fi
+done
+
+exit "${failed}"

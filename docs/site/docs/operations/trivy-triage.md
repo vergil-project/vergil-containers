@@ -1,8 +1,11 @@
 # Trivy CVE Triage
 
-When the docker-publish pipeline fails, it is almost always because
-Trivy found new HIGH or CRITICAL vulnerabilities in the built images.
-This runbook covers the end-to-end triage process: identifying the
+When the docker-publish pipeline fails at the Trivy gate, it is usually
+because Trivy found new HIGH or CRITICAL vulnerabilities in the built
+images. Check the gate's message first: `Trivy scan errored (no report
+produced)` means a scan failed before it could report (a dropped image-layer
+or vulnerability-DB download) and found nothing. Re-run the job; there is
+nothing to triage. This runbook covers the end-to-end triage process: identifying the
 CVEs, assessing each one, suppressing or escalating, and unblocking
 the pipeline.
 
@@ -15,8 +18,19 @@ pull requests show a "configurations not found" code-scanning warning, see
 The `cd-docker-publish.yml` workflow scans each image on both platforms
 (amd64 and arm64) using Trivy. Each scan step uses `continue-on-error:
 true` so both platforms are scanned even if the first fails. A
-subsequent "Fail if vulnerabilities found" step checks the outcomes
-and fails the job if either scan found CRITICAL or HIGH vulnerabilities.
+subsequent "Trivy gate" step (`scripts/bin/trivy-gate`) checks each
+platform and fails the job with one of two messages:
+
+- `Trivy found CRITICAL/HIGH vulnerabilities in <image> (<platform>)` — the
+  scan finished and wrote its report, and it has unsuppressed findings.
+  Triage them as described below.
+- `Trivy scan errored (no report produced) for <image> (<platform>)` — the
+  scan wrote no report, even after retries. Both scans retry a scan that
+  writes no report up to three times with backoff (the amd64 shared action
+  since vergil-actions#1079, the arm64 `scripts/bin/trivy-image-scan`), so this
+  means a persistent download or registry error, not a finding. The scan
+  step's log has the Trivy error. A platform with no report never passes the
+  gate (issue #721).
 
 Scans filter against the `.trivyignore` file at the repository root.
 CVEs listed there are excluded from the results. If all remaining
