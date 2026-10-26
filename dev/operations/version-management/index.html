@@ -2765,10 +2765,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#auto-managed-tools-and-the-weekly-bumper" class="md-nav__link">
+  <a href="#auto-managed-tools-and-the-daily-bumper" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Auto-managed tools and the weekly bumper
+        Auto-managed tools and the daily bumper
       
     </span>
   </a>
@@ -3007,10 +3007,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#auto-managed-tools-and-the-weekly-bumper" class="md-nav__link">
+  <a href="#auto-managed-tools-and-the-daily-bumper" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Auto-managed tools and the weekly bumper
+        Auto-managed tools and the daily bumper
       
     </span>
   </a>
@@ -3098,7 +3098,7 @@
 <h1 id="tool-version-management">Tool Version Management<a class="headerlink" href="#tool-version-management" title="Permanent link">&para;</a></h1>
 <p>The images bundle a shared layer of build, lint, and security tools. This page
 explains <strong>how those tool versions are managed</strong> — the pinning philosophy, the
-lifecycle every pin follows, the generated catalog and its CI gate, the weekly
+lifecycle every pin follows, the generated catalog and its CI gate, the daily
 leading-edge bumper, and the exposure report that flags pins due for
 re-evaluation.</p>
 <p>It is the operator-facing companion to the container-pinning design (epic
@@ -3176,7 +3176,7 @@ stays structured:</p>
 <tr>
 <td><strong>auto-managed</strong></td>
 <td>Yes (as source pin)</td>
-<td>Pinned in source for reproducibility, but floated to the newest upstream release weekly by the bumper (below). <code>inducing_release</code> is null — not a break-hold.</td>
+<td>Pinned in source for reproducibility, but floated to the newest upstream release daily by the bumper (below). <code>inducing_release</code> is null — not a break-hold.</td>
 </tr>
 </tbody>
 </table>
@@ -3197,7 +3197,7 @@ any exact-pinned tool lacks a <code>pins.yml</code> justification, if a <code>pi
 longer pins anything, or if an entry declares an unknown state. <strong>A new pin
 cannot merge undocumented.</strong> A companion <code>generate_catalog.py --check</code> fails if
 <code>CATALOG.md</code> is stale relative to the templates and <code>pins.yml</code>.</p>
-<h2 id="auto-managed-tools-and-the-weekly-bumper">Auto-managed tools and the weekly bumper<a class="headerlink" href="#auto-managed-tools-and-the-weekly-bumper" title="Permanent link">&para;</a></h2>
+<h2 id="auto-managed-tools-and-the-daily-bumper">Auto-managed tools and the daily bumper<a class="headerlink" href="#auto-managed-tools-and-the-daily-bumper" title="Permanent link">&para;</a></h2>
 <p>Most package-manager tools (installed via <code>npm</code>, <code>pip</code>, <code>uv</code>, <code>go install</code>,
 <code>cargo</code>) were <strong>freed</strong> in the pin audit: dropping the version token lets them
 resolve latest at build time, so they float cleanly and need no entry.</p>
@@ -3206,11 +3206,12 @@ per-version checksum embed an explicit version, so they cannot float by simply
 dropping a token. Rather than add an unauthenticated GitHub version-resolution
 round-trip to every image build, these are <strong>auto-managed</strong>: shellcheck, shfmt,
 actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, and trivy.</p>
-<p>They stay pinned in source (hermetic, reproducible, revertible) while the weekly
-<a href="https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/bump-tools.yml"><code>bump-tools.yml</code></a>
-workflow tracks the leading edge:</p>
+<p>They stay pinned in source (hermetic, reproducible, revertible) while the daily
+<code>upstream-refresh</code> job in
+<a href="https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/ops.yml"><code>ops.yml</code></a>
+tracks the leading edge:</p>
 <ul>
-<li>Runs Mondays 06:30 UTC (and on demand). It calls the reusable
+<li>Runs daily at 06:37 UTC with the rest of <code>ops.yml</code> (and on demand). It calls the reusable
   <code>ops-upstream-refresh.yml</code> workflow from vergil-actions, which runs
   <code>vrg-upstream-refresh</code> with this repo's <code>[upstream-refresh].hook</code>,
   <code>docker/pins/upstream-refresh.sh</code>. For each tool the hook resolves the newest
