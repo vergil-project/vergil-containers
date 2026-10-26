@@ -3192,7 +3192,8 @@ exactly a hand-edited version list drifting from the code (<code>CLAUDE.md</code
 <li><code>docker/pins/generate_catalog.py</code> joins them into the human-readable
   <code>CATALOG.md</code>.</li>
 </ul>
-<p>A <strong>CI gate</strong> (<code>docker/pins/check_pins.py</code>, run in <code>ci.yml</code>) fails the build if
+<p>A <strong>CI gate</strong> (<code>docker/pins/check_pins.py</code>, run by <code>scripts/bin/validate-custom</code>
+as PR CI's <code>quality / custom</code> check) fails the build if
 any exact-pinned tool lacks a <code>pins.yml</code> justification, if a <code>pins.yml</code> entry no
 longer pins anything, or if an entry declares an unknown state. <strong>A new pin
 cannot merge undocumented.</strong> A companion <code>generate_catalog.py --check</code> fails if
