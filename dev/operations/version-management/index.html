@@ -3210,13 +3210,19 @@ actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, and trivy.</p>
 <a href="https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/bump-tools.yml"><code>bump-tools.yml</code></a>
 workflow tracks the leading edge:</p>
 <ul>
-<li>Runs Mondays 06:30 UTC (and on demand). For each tool it resolves the newest
+<li>Runs Mondays 06:30 UTC (and on demand). It calls the reusable
+  <code>ops-upstream-refresh.yml</code> workflow from vergil-actions, which runs
+  <code>vrg-upstream-refresh</code> with this repo's <code>[upstream-refresh].hook</code>,
+  <code>docker/pins/upstream-refresh.sh</code>. For each tool the hook resolves the newest
   release via the <code>/releases/latest</code> redirect
   (<code>docker/pins/resolve_latest.py</code>), rewrites the <code>ARG *_VERSION=</code> pins in
   <code>docker/common/*</code>, and regenerates <code>CATALOG.md</code>.</li>
-<li><strong>Only if something drifted</strong> it opens a bump PR, authored by the GitHub App
-  (so the PR fires CI and every bump is validated). <strong>Nothing is auto-merged</strong> —
-  fleet policy keeps a human merge gate.</li>
+<li><strong>Only if something drifted</strong> it opens one bump PR from the fixed
+  <code>upstream-refresh</code> branch, titled <code>chore(upstream): refresh upstream inputs</code>
+  and authored by the GitHub App (so the PR fires CI and every bump is
+  validated). A later run refreshes that PR in place rather than opening
+  another, and a run with nothing to bump closes a stale one. <strong>Nothing is
+  auto-merged</strong> — fleet policy keeps a human merge gate.</li>
 </ul>
 <p>This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy <code>0.70.0 → 0.72.0</code> security bump landed through the bumper.</p>
