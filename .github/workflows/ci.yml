@@ -35,39 +35,8 @@ jobs:
       - name: Run Hadolint
         run: hadolint docker/*/Dockerfile
 
-  pins:
-    name: "quality / pins"
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/vergil-project/prod-base:latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Every exact pin is justified
-        run: python3 docker/pins/check_pins.py
-
-      - name: CATALOG.md is up to date
-        run: python3 docker/pins/generate_catalog.py --check
-
-      # The pins tooling shipped with a test suite that nothing ever ran, so it
-      # rotted silently: #569 legitimately re-pinned golangci-lint and left
-      # test_pins.py asserting the opposite, red on develop with no signal.
-      # Offline and hermetic — every test injects its fetch/probe (#574).
-      - name: Pins tooling tests
-        working-directory: docker/pins
-        run: uv run --with pytest --with packaging --with pyyaml python -m pytest -q
-
-      # Every version list (publish matrix, build.sh, package cleanup, Dockerfile
-      # ARG defaults, docs tables, the published window.json) is generated from
-      # docker/versions/manifest.yml (epic vergil-project/.github#407).
-      - name: Versions are up to date
-        run: python3 docker/versions/generate.py --check
-
-      - name: Versions tooling tests
-        working-directory: docker/versions
-        run: uv run --with pytest --with pyyaml python -m pytest -q
-
+  # The pins and versions checks run in `quality / custom` (below), which runs
+  # scripts/bin/validate-custom via `vrg-validate --check custom`.
   quality:
     uses: vergil-project/vergil-actions/.github/workflows/ci-quality.yml@v2.1
     with:

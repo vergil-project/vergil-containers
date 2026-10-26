@@ -80,7 +80,8 @@ exactly a hand-edited version list drifting from the code (`CLAUDE.md` once said
 - `docker/pins/generate_catalog.py` joins them into the human-readable
   `CATALOG.md`.
 
-A **CI gate** (`docker/pins/check_pins.py`, run in `ci.yml`) fails the build if
+A **CI gate** (`docker/pins/check_pins.py`, run by `scripts/bin/validate-custom`
+as PR CI's `quality / custom` check) fails the build if
 any exact-pinned tool lacks a `pins.yml` justification, if a `pins.yml` entry no
 longer pins anything, or if an entry declares an unknown state. **A new pin
 cannot merge undocumented.** A companion `generate_catalog.py --check` fails if
