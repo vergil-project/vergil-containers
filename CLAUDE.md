@@ -209,7 +209,9 @@ source of the drift this repo now guards against. The model (epic
 - **Default is unpinned** — most tools float on their leading edge.
 - **Nine binary-download tools are auto-managed** — pinned in source for
   reproducibility but bumped to the leading edge weekly by
-  `.github/workflows/bump-tools.yml` (opens a reviewed PR; no auto-merge).
+  `.github/workflows/bump-tools.yml`, which runs `vrg-upstream-refresh` with
+  the `docker/pins/upstream-refresh.sh` hook (one reviewed PR on the
+  `upstream-refresh` branch; no auto-merge).
 - **A few tools stay pinned** with a written justification (an `inducing_release`
   and reason) recorded in `docker/pins/pins.yml`; a CI gate blocks any
   undocumented pin.

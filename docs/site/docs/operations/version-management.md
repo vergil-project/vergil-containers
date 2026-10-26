@@ -102,13 +102,19 @@ They stay pinned in source (hermetic, reproducible, revertible) while the weekly
 [`bump-tools.yml`](https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/bump-tools.yml)
 workflow tracks the leading edge:
 
-- Runs Mondays 06:30 UTC (and on demand). For each tool it resolves the newest
+- Runs Mondays 06:30 UTC (and on demand). It calls the reusable
+  `ops-upstream-refresh.yml` workflow from vergil-actions, which runs
+  `vrg-upstream-refresh` with this repo's `[upstream-refresh].hook`,
+  `docker/pins/upstream-refresh.sh`. For each tool the hook resolves the newest
   release via the `/releases/latest` redirect
   (`docker/pins/resolve_latest.py`), rewrites the `ARG *_VERSION=` pins in
   `docker/common/*`, and regenerates `CATALOG.md`.
-- **Only if something drifted** it opens a bump PR, authored by the GitHub App
-  (so the PR fires CI and every bump is validated). **Nothing is auto-merged** —
-  fleet policy keeps a human merge gate.
+- **Only if something drifted** it opens one bump PR from the fixed
+  `upstream-refresh` branch, titled `chore(upstream): refresh upstream inputs`
+  and authored by the GitHub App (so the PR fires CI and every bump is
+  validated). A later run refreshes that PR in place rather than opening
+  another, and a run with nothing to bump closes a stale one. **Nothing is
+  auto-merged** — fleet policy keeps a human merge gate.
 
 This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy `0.70.0 → 0.72.0` security bump landed through the bumper.

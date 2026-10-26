@@ -112,7 +112,7 @@ def render(root: Path, latest: dict[str, str], installed: dict[str, dict[str, st
     lines.append(
         "> These float via the weekly `bump-tools` workflow, which opens a PR "
         "but never auto-merges (#435). Anything listed here means a bump PR is "
-        "waiting on a human — check for an open `bot/bump-tools-*` PR (#573).\n"
+        "waiting on a human — check for an open `upstream-refresh` PR.\n"
     )
     lines += [
         f"- **{t}** — pinned {have}, upstream {newest}; the bump has not landed."
