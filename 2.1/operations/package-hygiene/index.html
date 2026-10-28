@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -29,10 +29,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -616,6 +616,8 @@
       
         
       
+        
+      
     
     
     
@@ -668,6 +670,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.33/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.33
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2344,6 +2374,8 @@
       
         
       
+        
+      
     
     
     
@@ -2404,6 +2436,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../architecture/trivy-scanning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trivy Scanning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -2424,10 +2484,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
             
   
   
@@ -2445,8 +2505,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2803,6 +2863,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#rate-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rate limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#token" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2945,6 +3016,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#rate-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rate limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#token" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2983,8 +3065,9 @@ something prunes it. This page explains where the cruft comes from, how to
 clean up the orphaned personal-namespace packages, and how the scheduled
 retention workflow keeps the org packages tidy.</p>
 <h2 id="why-packages-accumulate">Why packages accumulate<a class="headerlink" href="#why-packages-accumulate" title="Permanent link">&para;</a></h2>
-<p>The publish pipeline (<code>cd-docker-publish.yml</code>) runs nightly for <code>dev-*</code> images
-and on every release for <code>prod-*</code> images. Each run, <strong>per image</strong>, pushes:</p>
+<p>The publish pipeline (<code>cd-docker-publish.yml</code>) runs on every <code>develop</code> push for
+<code>dev-*</code> images, on every release for <code>prod-*</code> images, and nightly (<code>ops.yml</code>)
+for both. Each run, <strong>per image</strong>, pushes:</p>
 <ul>
 <li>a <strong>multi-arch</strong> (amd64 + arm64) manifest list, whose <strong>two per-platform
   child manifests</strong> appear as untagged versions;</li>
@@ -3066,6 +3149,24 @@ they <em>would</em> delete:</p>
   Actions → Variables). The weekly run then deletes for real. No code change is
   needed to arm or disarm.</li>
 </ul>
+<h3 id="rate-limits">Rate limits<a class="headerlink" href="#rate-limits" title="Permanent link">&para;</a></h3>
+<p>Every leg of both jobs fetches every manifest of its package from ghcr.io. On a
+cold manifest cache that is tens of thousands of registry requests per run, and
+with every leg started at once ghcr.io answered HTTP 429
+(<a href="https://github.com/vergil-project/vergil-containers/issues/652">#652</a>). The
+action already retries each request a few times, but only for about a second.
+The workflow adds two defences:</p>
+<ul>
+<li><strong>Capped fan-out:</strong> <code>max-parallel: 3</code> on each job, so at most 6 legs hit the
+  registry together.</li>
+<li><strong>One retry per leg:</strong> if the action fails, the leg waits a bounded, jittered
+  back-off (<code>RETRY_BACKOFF_BASE_SECONDS</code> plus up to
+  <code>RETRY_BACKOFF_JITTER_SECONDS</code>), logs a warning, and runs the action once
+  more with the same inputs. If that also fails, the leg fails with an error
+  that names the package and says how to read a 429. Nothing is skipped.</li>
+</ul>
+<p><code>docker/versions/test_package_cleanup.py</code> pins this structure. If 429s persist,
+lower <code>max-parallel</code> first.</p>
 <h3 id="token">Token<a class="headerlink" href="#token" title="Permanent link">&para;</a></h3>
 <p>The default <code>GITHUB_TOKEN</code> can list and preview. If real deletion of org-owned
 package versions fails with a permissions error, provision a PAT with
@@ -3126,10 +3227,10 @@ workflow prefers it when present and falls back to <code>GITHUB_TOKEN</code> oth
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

@@ -14,14 +14,14 @@
         <link rel="prev" href="../languages/cpp-gcc/">
       
       
-        <link rel="next" href="decisions/multi-arch-images/">
+        <link rel="next" href="trivy-scanning/">
       
       
         
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -29,10 +29,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -616,6 +616,8 @@
       
         
       
+        
+      
     
     
     
@@ -668,6 +670,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.33/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.33
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2346,6 +2376,8 @@
       
         
       
+        
+      
     
     
     
@@ -2409,6 +2441,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="trivy-scanning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trivy Scanning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -2432,10 +2492,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="">
             
   
   
@@ -2453,8 +2513,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2995,7 +3055,9 @@
 <p>Each <code>Dockerfile.template</code> contains standard Dockerfile instructions plus
 <code># @include common/&lt;fragment&gt;.dockerfile</code> directives. <code>generate.sh</code>
 replaces each directive with the full contents of the referenced fragment,
-producing a final <code>Dockerfile</code> in the same directory.</p>
+producing a final <code>Dockerfile</code> in the same directory. Includes nest: a
+fragment may include another fragment (for example
+<code>node-markdownlint.dockerfile</code> includes <code>nodesource-node.dockerfile</code>).</p>
 <p>This eliminates duplication — shared tool installations (GitHub CLI,
 Node.js, markdownlint, validation tools) are maintained once in
 <code>docker/common/</code> and included by every template that needs them.</p>
@@ -3009,6 +3071,8 @@ all images automatically at build time.</p>
 <li><strong><code>path-defaults.dockerfile</code></strong> — Sets PATH for <code>uv tool install</code>
   entry points across GitHub Actions and local contexts.</li>
 <li><strong><code>node-markdownlint.dockerfile</code></strong> — Node.js via NodeSource apt repo
+  (installed by the nested <code>nodesource-node.dockerfile</code>, which fails the
+  build unless it gets NodeSource Node <code>NODE_MAJOR</code> with npm)
   and markdownlint-cli via npm.</li>
 <li><strong><code>github-cli.dockerfile</code></strong> — GitHub CLI via the official apt repo.</li>
 <li><strong><code>validation-tools.dockerfile</code></strong> — Architecture-aware binary
@@ -3019,12 +3083,20 @@ all images automatically at build time.</p>
   from binary releases. Currently includes scorecard (OpenSSF).</li>
 <li><strong><code>python-support.dockerfile</code></strong> — Minimal Python plus yamllint and
   uv, used by non-Python images.</li>
+<li><strong><code>nfpm.dockerfile</code></strong> — nfpm release binary, which builds <code>.deb</code> and
+  <code>.rpm</code> packages from one declarative config.</li>
+<li><strong><code>rpm.dockerfile</code></strong> — The distro's <code>rpm</code>, the peer of <code>dpkg</code>, for
+  inspecting <code>.rpm</code> packages and comparing versions (<code>rpm.vercmp</code>).</li>
+<li><strong><code>pandoc.dockerfile</code></strong> — pandoc for Markdown to <code>.docx</code>/HTML
+  conversion (no TeX; PDF output is opt-in).</li>
 </ul>
 <p>Python-based images (<code>dev-python</code>, <code>dev-base</code>) install yamllint and uv
 directly via pip rather than the <code>python-support</code> fragment.</p>
 <p>The <code>dev-base</code> image includes all common fragments plus documentation
-tooling (MkDocs Material, mike, semgrep). It is the fallback image for
-repos with no detected language.</p>
+tooling (MkDocs Material, mike, semgrep) and OpenTofu
+(<code>opentofu.dockerfile</code>) for in-sandbox <code>tofu fmt -check</code> / <code>tofu validate</code>
+of OpenTofu modules. It is the fallback image for repos with no detected
+language.</p>
 <h2 id="design-principles">Design Principles<a class="headerlink" href="#design-principles" title="Permanent link">&para;</a></h2>
 <p><strong>Thin images</strong> — Each image provides the language runtime, package
 manager, and common tooling layer. Project-specific dependencies (from
@@ -3034,6 +3106,9 @@ container startup by the consuming repository's test script.</p>
 Any repository using the supported language can use them.</p>
 <p><strong>No duplication</strong> — Shared tooling is maintained in common fragments.
 Adding a tool to all images means editing one fragment file.</p>
+<p><strong>No host requirements</strong> — A single OCI container runtime is the only
+prerequisite for local development (nerdctl/Lima preferred, Docker
+supported).</p>
 <h2 id="multi-architecture-support">Multi-Architecture Support<a class="headerlink" href="#multi-architecture-support" title="Permanent link">&para;</a></h2>
 <p>All images are published as multi-architecture manifests supporting
 <strong>amd64</strong> and <strong>arm64</strong>. Binary tool downloads in <code>validation-tools.dockerfile</code>
@@ -3109,12 +3184,14 @@ via the reusable <code>cd-docker-publish.yml</code> workflow, parameterized by a
   pick up base-image security patches.</li>
 <li><strong><code>prod-</code> images</strong> (<code>ghcr.io/vergil-project/prod-{language}:{version}</code>) —
   built on push to <code>main</code>, after the release workflow generates a
-  changelog, git tag, and GitHub release.</li>
+  changelog, git tag, and GitHub release, and rebuilt nightly from <code>main</code>
+  via <code>ops.yml</code>.</li>
 </ul>
 <p>The publish pipeline for each prefix:</p>
 <ol>
 <li>Builds a candidate tag for both platforms (amd64 + arm64)</li>
-<li>Scans each platform independently with Trivy (SARIF upload)</li>
+<li>Scans each platform independently with Trivy (SARIF upload; see
+   <a href="trivy-scanning/">Trivy Scanning</a>)</li>
 <li>Attests build provenance (SLSA via GitHub attestations)</li>
 <li>Promotes the candidate to the final tag via <code>docker buildx imagetools create</code></li>
 <li>Verifies digest preservation between candidate and final</li>
@@ -3135,9 +3212,23 @@ gate: it hard-fails on incomplete or failed evidence, which blocks the
 downstream docker-publish job. The docker publish job runs after the
 release completes.</p>
 <h3 id="nightly-rebuilds">Nightly rebuilds<a class="headerlink" href="#nightly-rebuilds" title="Permanent link">&para;</a></h3>
-<p>The <code>ops.yml</code> workflow runs daily at 06:15 UTC and rebuilds all <code>dev-</code>
-images. This ensures development images stay current with upstream
-security patches without waiting for a code change to trigger a build.</p>
+<p>The <code>ops.yml</code> workflow runs every morning (UTC; the <code>schedule</code> trigger in
+<code>.github/workflows/ops.yml</code> holds the exact time) and rebuilds every image
+with the registry cache disabled (<code>no-cache: true</code>):</p>
+<ul>
+<li><code>nightly-rebuild-dev</code> rebuilds all <code>dev-</code> images from <code>develop</code>.</li>
+<li><code>nightly-rebuild-prod</code> rebuilds all <code>prod-</code> images from <code>main</code>, so they
+  pick up upstream fixes without moving past the released source. It calls
+  <code>main</code>'s copy of <code>cd-docker-publish.yml</code> (<code>@main</code>), not <code>develop</code>'s, so the
+  publish steps and the files they run (such as <code>scripts/bin/trivy-gate</code>)
+  always come from the same release as the Dockerfiles they build. A
+  workflow change on <code>develop</code> reaches the prod nightly only when it is
+  released.</li>
+</ul>
+<p>This keeps both image sets current with upstream security patches (base
+image updates, apt package refreshes) without waiting for a code change to
+trigger a build. To trigger a rebuild manually, run the CD workflow from the
+Actions tab (<strong>Actions &gt; CD &gt; Run workflow</strong>).</p>
 <h3 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h3>
 <p>The workflow authenticates with <code>GITHUB_TOKEN</code> using <code>packages: write</code>
 permission. No personal access token or additional secret is needed.</p>
@@ -3146,9 +3237,12 @@ permission. No personal access token or additional secret is needed.</p>
 repository write access. The packages were originally created by the
 <code>vergil-tooling</code> repository, so that repo has implicit write access.
 This repo does not, unless manually configured.</p>
-<p>Per-package setup (one-time, for each of <code>dev-base</code>, <code>dev-python</code>,
-<code>dev-java</code>, <code>dev-go</code>, <code>dev-rust</code>, and the corresponding
-<code>prod-</code> packages):</p>
+<p>Per-package setup (one-time, for every image in the generated
+<a href="../images/#versions">version table</a>, under both prefixes: each
+<code>dev-&lt;image&gt;</code> package and its <code>prod-&lt;image&gt;</code> counterpart). That table is
+generated from <code>docker/versions/manifest.yml</code>, the same source as the
+publish matrix, so it always lists every published image; do not hand-copy
+the list here:</p>
 <ol>
 <li>Navigate to the package settings page on GHCR.</li>
 <li>Under <strong>Manage Actions access</strong>, click <strong>Add Repository</strong>.</li>
@@ -3217,10 +3311,10 @@ environment variable.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

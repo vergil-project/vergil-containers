@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -29,10 +29,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -616,6 +616,8 @@
       
         
       
+        
+      
     
     
     
@@ -668,6 +670,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.33/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.33
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2344,6 +2374,8 @@
       
         
       
+        
+      
     
     
     
@@ -2404,6 +2436,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../architecture/trivy-scanning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trivy Scanning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -2424,10 +2484,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
             
   
   
@@ -2445,8 +2505,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2735,10 +2795,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#auto-managed-tools-and-the-weekly-bumper" class="md-nav__link">
+  <a href="#auto-managed-tools-and-the-daily-bumper" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Auto-managed tools and the weekly bumper
+        Auto-managed tools and the daily bumper
       
     </span>
   </a>
@@ -2977,10 +3037,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#auto-managed-tools-and-the-weekly-bumper" class="md-nav__link">
+  <a href="#auto-managed-tools-and-the-daily-bumper" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Auto-managed tools and the weekly bumper
+        Auto-managed tools and the daily bumper
       
     </span>
   </a>
@@ -3068,7 +3128,7 @@
 <h1 id="tool-version-management">Tool Version Management<a class="headerlink" href="#tool-version-management" title="Permanent link">&para;</a></h1>
 <p>The images bundle a shared layer of build, lint, and security tools. This page
 explains <strong>how those tool versions are managed</strong> — the pinning philosophy, the
-lifecycle every pin follows, the generated catalog and its CI gate, the weekly
+lifecycle every pin follows, the generated catalog and its CI gate, the daily
 leading-edge bumper, and the exposure report that flags pins due for
 re-evaluation.</p>
 <p>It is the operator-facing companion to the container-pinning design (epic
@@ -3146,7 +3206,7 @@ stays structured:</p>
 <tr>
 <td><strong>auto-managed</strong></td>
 <td>Yes (as source pin)</td>
-<td>Pinned in source for reproducibility, but floated to the newest upstream release weekly by the bumper (below). <code>inducing_release</code> is null — not a break-hold.</td>
+<td>Pinned in source for reproducibility, but floated to the newest upstream release daily by the bumper (below). <code>inducing_release</code> is null — not a break-hold.</td>
 </tr>
 </tbody>
 </table>
@@ -3162,31 +3222,40 @@ exactly a hand-edited version list drifting from the code (<code>CLAUDE.md</code
 <li><code>docker/pins/generate_catalog.py</code> joins them into the human-readable
   <code>CATALOG.md</code>.</li>
 </ul>
-<p>A <strong>CI gate</strong> (<code>docker/pins/check_pins.py</code>, run in <code>ci.yml</code>) fails the build if
+<p>A <strong>CI gate</strong> (<code>docker/pins/check_pins.py</code>, run by <code>scripts/bin/validate-custom</code>
+as PR CI's <code>quality / custom</code> check) fails the build if
 any exact-pinned tool lacks a <code>pins.yml</code> justification, if a <code>pins.yml</code> entry no
 longer pins anything, or if an entry declares an unknown state. <strong>A new pin
 cannot merge undocumented.</strong> A companion <code>generate_catalog.py --check</code> fails if
 <code>CATALOG.md</code> is stale relative to the templates and <code>pins.yml</code>.</p>
-<h2 id="auto-managed-tools-and-the-weekly-bumper">Auto-managed tools and the weekly bumper<a class="headerlink" href="#auto-managed-tools-and-the-weekly-bumper" title="Permanent link">&para;</a></h2>
+<h2 id="auto-managed-tools-and-the-daily-bumper">Auto-managed tools and the daily bumper<a class="headerlink" href="#auto-managed-tools-and-the-daily-bumper" title="Permanent link">&para;</a></h2>
 <p>Most package-manager tools (installed via <code>npm</code>, <code>pip</code>, <code>uv</code>, <code>go install</code>,
 <code>cargo</code>) were <strong>freed</strong> in the pin audit: dropping the version token lets them
 resolve latest at build time, so they float cleanly and need no entry.</p>
-<p>Nine tools install from a <strong>binary release tarball</strong> whose download URL and
+<p>Ten tools install from a <strong>binary release download</strong> whose URL and
 per-version checksum embed an explicit version, so they cannot float by simply
 dropping a token. Rather than add an unauthenticated GitHub version-resolution
 round-trip to every image build, these are <strong>auto-managed</strong>: shellcheck, shfmt,
-actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, and trivy.</p>
-<p>They stay pinned in source (hermetic, reproducible, revertible) while the weekly
-<a href="https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/bump-tools.yml"><code>bump-tools.yml</code></a>
-workflow tracks the leading edge:</p>
+actionlint, git-cliff, hadolint, opentofu, nfpm, osv-scanner, scorecard, and
+trivy.</p>
+<p>They stay pinned in source (hermetic, reproducible, revertible) while the daily
+<code>upstream-refresh</code> job in
+<a href="https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/ops.yml"><code>ops.yml</code></a>
+tracks the leading edge:</p>
 <ul>
-<li>Runs Mondays 06:30 UTC (and on demand). For each tool it resolves the newest
+<li>Runs daily at 06:37 UTC with the rest of <code>ops.yml</code> (and on demand). It calls the reusable
+  <code>ops-upstream-refresh.yml</code> workflow from vergil-actions, which runs
+  <code>vrg-upstream-refresh</code> with this repo's <code>[upstream-refresh].hook</code>,
+  <code>docker/pins/upstream-refresh.sh</code>. For each tool the hook resolves the newest
   release via the <code>/releases/latest</code> redirect
   (<code>docker/pins/resolve_latest.py</code>), rewrites the <code>ARG *_VERSION=</code> pins in
   <code>docker/common/*</code>, and regenerates <code>CATALOG.md</code>.</li>
-<li><strong>Only if something drifted</strong> it opens a bump PR, authored by the GitHub App
-  (so the PR fires CI and every bump is validated). <strong>Nothing is auto-merged</strong> —
-  fleet policy keeps a human merge gate.</li>
+<li><strong>Only if something drifted</strong> it opens one bump PR from the fixed
+  <code>upstream-refresh</code> branch, titled <code>chore(upstream): refresh upstream inputs</code>
+  and authored by the GitHub App (so the PR fires CI and every bump is
+  validated). A later run refreshes that PR in place rather than opening
+  another, and a run with nothing to bump closes a stale one. <strong>Nothing is
+  auto-merged</strong> — fleet policy keeps a human merge gate.</li>
 </ul>
 <p>This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy <code>0.70.0 → 0.72.0</code> security bump landed through the bumper.</p>
@@ -3303,10 +3372,10 @@ non-deterministic observation is not — but its <em>process</em> is fully descr
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>
