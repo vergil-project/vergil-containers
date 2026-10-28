@@ -257,6 +257,34 @@ CVE-2026-56865
 # runs no xDS gRPC server. Remove once a tofu release ships grpc >= 1.83.2.
 CVE-2026-84445
 
+# github.com/go-jose/go-jose/v4 < 4.1.6 (dev-base), fixed in 4.1.6 (released
+# 2026-10-14). Issue #732; first gated the 2026-10-28 nightly. Carriers, each
+# the newest upstream release (checked 2026-10-28):
+#   - /usr/local/bin/scorecard 5.6.0, go-jose v4.1.4
+#   - /usr/local/bin/tofu 1.13.2, go-jose v4.1.4
+#   - /usr/local/bin/trivy 0.76.1, go-jose v4.1.5
+# CVE-2026-116587 — go-jose parses RSA modulus and prime values from a JWK
+#   without size bounds before crypto/rsa.PrivateKey.Validate, so a crafted
+#   JWK with large or degenerate RSA private parameters costs cubic CPU time.
+#   The fix bounds the parameters and rejects private keys embedded in JWS/JWE
+#   headers.
+# The release binaries link only go-jose's JWK and JWK-set code
+# (JSONWebKey.UnmarshalJSON, JSONWebKeySet.Key, Thumbprint, …). None of them
+# links ParseSigned, ParseEncrypted or the JWS/JWE header parsers (symbol names
+# in each binary, checked 2026-10-28), so the embedded-header path the fix also
+# closes is absent. The stripped binaries do not show which caller reaches the
+# JWK parser. In these dependency trees JWKs come from key sets fetched over
+# TLS (OIDC issuers, signing-key services), so the authenticated endpoint
+# would itself have to be malicious and serve private RSA parameters where a
+# public key belongs. The impact is CPU exhaustion of a short-lived,
+# user-invoked CLI, with no confidentiality or integrity impact. The images
+# install tofu for `fmt -check` and `init -backend=false && validate` (no
+# backend, no cloud auth; common/opentofu.dockerfile), which fetch no key sets.
+# Not fixable by bumping: no newer release of any carrier exists. Remove per
+# carrier once a scorecard, tofu or trivy release ships go-jose >= 4.1.6; the
+# daily upstream-refresh PR picks up the new release.
+CVE-2026-116587
+
 # =============================================================================
 # undici 6.29.0 bundled in npm 12.2.1 (all images), at
 # /usr/lib/node_modules/npm/node_modules/undici. Fixed in 6.29.1 / 7.30.1 /
@@ -264,11 +292,26 @@ CVE-2026-84445
 # (common/node-markdownlint.dockerfile, ts-node/Dockerfile.template). npm
 # 12.2.1, the newest release and now the `latest` dist-tag, still bundles undici
 # 6.29.0, and so does npm 11.21.1, the newest 11.x (both tarballs re-checked
-# 2026-10-24). No npm release exists to bump to.
+# 2026-10-28, issue #732). No npm release exists to bump to.
 #
 # CVE-2026-109869 — undici fetch(): a malicious server that returns a response
 #   with more than five content codings and then closes the connection before
 #   the body crashes the Node.js process with an unhandled stream error.
+# CVE-2026-87018 — undici: a TLS 1.2 server that renegotiates after the
+#   connection is established and presents a different CA-trusted certificate
+#   whose hostname does not match crashes the Node.js process on an uncaught
+#   assertion. Issue #732 (first gated the 2026-10-28 nightly). TLS 1.3 cannot
+#   renegotiate, so only a TLS 1.2 endpoint that is itself malicious can
+#   trigger it.
+# CVE-2026-109383 — undici Agent: a function-valued `tls` option (such as a
+#   custom checkServerIdentity) is dropped by a JSON clone, so a pinning
+#   callback silently never runs. Issue #732. Only callers that pass a `tls`
+#   option to Agent are affected. node-gyp 13.0.0's createDispatcher() passes
+#   none: it builds a bare `new Agent()`, or an EnvHttpProxyAgent configured
+#   through `connect`, `requestTls` and `proxyTls` (the advisory's own
+#   workaround), and it sets no checkServerIdentity at all (lib/download.js in
+#   the npm 12.2.1 tarball, checked 2026-10-28). The vulnerable path is not
+#   exercised.
 # In npm's bundled tree the only package that requires undici is node-gyp
 # 13.0.0. Its lib/download.js uses undici's fetch() for one job: downloading the
 # Node.js header tarball and SHASUMS256.txt (process.release.headersUrl, by
@@ -282,11 +325,16 @@ CVE-2026-84445
 # configured --dist-url or proxy) must itself be malicious. The impact is a
 # crash of a short-lived, user-invoked install, with no confidentiality or
 # integrity impact. In the other images npm is build-time-only tooling, used to
-# install markdownlint-cli (pure JS, no node-gyp build).
+# install markdownlint-cli (pure JS, no node-gyp build). The same reasoning
+# covers CVE-2026-87018 (a crash of the same short-lived install, needing a
+# malicious TLS 1.2 header server).
 #
-# Remove once the npm release on the `latest` dist-tag bundles undici >= 6.29.1.
+# Remove all three once the npm release on the `latest` dist-tag bundles
+# undici >= 6.29.1 (which fixes every one of them).
 # The images install `npm@latest` (issue #678), so the nightly rebuild picks up
 # the newest npm on that tag without a pin change. Do not patch npm's bundled
 # node_modules in place.
 # =============================================================================
 CVE-2026-109869
+CVE-2026-87018
+CVE-2026-109383
