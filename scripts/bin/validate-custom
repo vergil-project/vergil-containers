@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
 # scripts/bin/validate-custom — repo-specific validation, auto-discovered by
 # vrg-validate (vergil_tooling.bin.vrg_validate._find_custom_validator looks for
-# exactly this path). It runs the same version-manifest gates as the CI pins job
-# (.github/workflows/ci.yml), so local validation and CI agree:
-#   1. every generated version list is up to date with docker/versions/manifest.yml;
-#   2. the docker/versions tooling tests pass (offline, hermetic).
+# exactly this path). It runs the repo's pins, versions and Trivy-gate checks; PR CI
+# runs it as `quality / custom` (the custom job in vergil-actions
+# ci-quality.yml, via `vrg-validate --check custom`), so local validation and
+# CI run the same checks:
+#   1. every exact pin in docker/pins/pins.yml is justified (check_pins.py);
+#   2. docker/pins/CATALOG.md is up to date (generate_catalog.py --check);
+#   3. the docker/pins tooling tests pass (offline, hermetic — every test
+#      injects its fetch/probe; an unrun suite once rotted silently, #574);
+#   4. every generated version list (publish matrix, build.sh, package cleanup,
+#      Dockerfile ARG defaults, docs tables, window.json) is up to date with
+#      docker/versions/manifest.yml (epic vergil-project/.github#407);
+#   5. the docker/versions tooling tests pass (offline, hermetic);
+#   6. the publish pipeline's Trivy scan and gate scripts pass their tests
+#      (scripts/tests/trivy.test.sh; a stubbed docker, offline, #721).
 # Fail-defer: run everything, report all failures, exit nonzero if any failed.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -16,11 +26,25 @@ run() {
   "$@" || fail=1
 }
 
+# Run a command from a subdirectory (CI's `working-directory:`), recording a
+# failure without aborting the remaining checks.
+run_in() {
+  local dir="$1"
+  shift
+  (
+    cd "${ROOT}/${dir}" || exit 1
+    run "$@"
+    exit "$fail"
+  ) || fail=1
+}
+
+run python3 "${ROOT}/docker/pins/check_pins.py"
+run python3 "${ROOT}/docker/pins/generate_catalog.py" --check
+run_in docker/pins \
+  uv run --with pytest --with packaging --with pyyaml python -m pytest -q -p no:cacheprovider
 run python3 "${ROOT}/docker/versions/generate.py" --check
-(
-  cd "${ROOT}/docker/versions" &&
-    run uv run --with pytest --with pyyaml python -m pytest -q -p no:cacheprovider
-  exit "$fail"
-) || fail=1
+run_in docker/versions \
+  uv run --with pytest --with pyyaml python -m pytest -q -p no:cacheprovider
+run bash "${ROOT}/scripts/tests/trivy.test.sh"
 
 exit "$fail"

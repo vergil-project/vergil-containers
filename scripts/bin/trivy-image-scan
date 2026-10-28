@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+#
+# scripts/bin/trivy-image-scan — the publish pipeline's per-platform Trivy
+# image scan (the arm64 scan in .github/workflows/cd-docker-publish.yml).
+#
+# The amd64 scan uses the shared vergil-actions trivy action, which has no
+# platform input, so this repo runs the arm64 scan itself. Like the shared
+# action's scan.sh (vergil-actions#1079), it tells the three outcomes of a scan
+# apart by whether the scan wrote its SARIF report (issue #721):
+#
+#   passed   — report written, no CRITICAL/HIGH findings (after .trivyignore).
+#   findings — report written, CRITICAL/HIGH findings. Not retried.
+#   error    — no report: Trivy stopped before it could report (a dropped
+#              image-layer download, a failed vulnerability-DB download, …).
+#              Retried with backoff; if no attempt writes a report, the scan
+#              fails with a "scan errored" message. It never passes.
+#
+# Usage: trivy-image-scan <image-ref> <platform> <report-file>
+#   <report-file> is relative to GITHUB_WORKSPACE (the checkout, mounted at
+#   /workspace so Trivy loads trivy.yaml from the repository root).
+#
+# Writes `result=<outcome>` to $GITHUB_OUTPUT when that is set; the publish
+# gate (scripts/bin/trivy-gate) reads it. Exit status: 0 passed, 1 findings or
+# error.
+#
+# Env: TRIVY_IMAGE (required), GITHUB_WORKSPACE (required).
+# Tunables (env, for tests): TRIVY_SCAN_ATTEMPTS (default 3),
+# TRIVY_SCAN_RETRY_DELAY (default 15; attempt N waits N times this many seconds
+# before the next attempt).
+set -euo pipefail
+
+if [ "$#" -ne 3 ]; then
+  echo "usage: trivy-image-scan <image-ref> <platform> <report-file>" >&2
+  exit 2
+fi
+image_ref="$1"
+platform="$2"
+report_file="$3"
+: "${TRIVY_IMAGE:?TRIVY_IMAGE is required}"
+: "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}"
+
+attempts="${TRIVY_SCAN_ATTEMPTS:-3}"
+delay="${TRIVY_SCAN_RETRY_DELAY:-15}"
+report="${GITHUB_WORKSPACE}/${report_file}"
+
+TRIVYIGNORE_ARGS=""
+if [ -f "${GITHUB_WORKSPACE}/.trivyignore" ]; then
+  TRIVYIGNORE_ARGS="--ignorefile .trivyignore"
+fi
+IMAGE_REF="${image_ref}"
+PLATFORM="${platform}"
+REPORT_FILE="${report_file}"
+export IMAGE_REF PLATFORM REPORT_FILE TRIVYIGNORE_ARGS
+
+set_result() {
+  if [ -n "${GITHUB_OUTPUT:-}" ]; then
+    echo "result=$1" >>"${GITHUB_OUTPUT}"
+  fi
+}
+
+run_scan() {
+  # The script passed to `sh -c` is single-quoted on purpose: it expands the
+  # -e variables inside the Trivy container, not here.
+  # shellcheck disable=SC2016
+  docker run --rm \
+    -v "${GITHUB_WORKSPACE}:/workspace" \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -w /workspace \
+    -e IMAGE_REF \
+    -e PLATFORM \
+    -e REPORT_FILE \
+    -e TRIVYIGNORE_ARGS \
+    --entrypoint sh \
+    "${TRIVY_IMAGE}" \
+    -c '
+      set -e
+      trivy image \
+        --scanners vuln \
+        --severity CRITICAL,HIGH \
+        --platform "$PLATFORM" \
+        --exit-code 0 \
+        --format json \
+        --output /tmp/trivy-raw.json \
+        $TRIVYIGNORE_ARGS \
+        "$IMAGE_REF"
+      trivy convert \
+        --severity CRITICAL,HIGH \
+        --format table \
+        --exit-code 0 \
+        /tmp/trivy-raw.json
+      trivy convert \
+        --severity CRITICAL,HIGH \
+        --format sarif \
+        --exit-code 1 \
+        --output "/workspace/$REPORT_FILE" \
+        /tmp/trivy-raw.json
+    '
+}
+
+for i in $(seq 1 "${attempts}"); do
+  # A report left by an earlier attempt must not stand in for this attempt's.
+  rm -f "${report}"
+
+  set +e
+  run_scan
+  rc=$?
+  set -e
+
+  if [ -f "${report}" ]; then
+    if [ "${rc}" -eq 0 ]; then
+      set_result passed
+      exit 0
+    fi
+    echo "::error::Trivy found CRITICAL/HIGH vulnerabilities in ${image_ref} (${platform}); see the table above and ${report_file}" >&2
+    set_result findings
+    exit 1
+  fi
+
+  echo "::warning::Trivy scan of ${image_ref} (${platform}) produced no report (exit ${rc}, attempt ${i}/${attempts})" >&2
+  if [ "${i}" -lt "${attempts}" ]; then
+    backoff=$((i * delay))
+    echo "Retrying the scan in ${backoff}s" >&2
+    sleep "${backoff}"
+  fi
+done
+
+echo "::error::Trivy scan errored (no report produced) for ${image_ref} (${platform}) after ${attempts} attempts. This is a scan failure, not a vulnerability finding; see the Trivy errors above." >&2
+set_result error
+exit 1

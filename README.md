@@ -71,7 +71,7 @@ docker build --build-arg PYTHON_VERSION=3.14 \
 
 The `dev-base` image includes all common tooling plus MkDocs Material
 and mike for documentation. It is the fallback image used by
-`vrg-docker-run` when no language is detected, and is shared across all
+`vrg-container-run` when no language is detected, and is shared across all
 repos for documentation builds.
 
 Build locally:
@@ -81,12 +81,15 @@ docker/generate.sh base
 docker build -t dev-base:latest docker/base/
 ```
 
-Use via the `docker-docs` wrapper in vergil-tooling:
+Use via the `vrg-container-docs` wrapper in vergil-tooling:
 
 ```bash
-docker-docs serve   # Live-reloading preview at http://localhost:8000
-docker-docs build   # Build static site (validation)
+vrg-container-docs serve   # Live-reloading preview at http://localhost:8000
+vrg-container-docs build   # Build static site (validation)
 ```
+
+`vrg-container-docs` uses the published `prod-base` image by default; pass
+`--prefix dev` to use `dev-base` instead.
 
 **Python repos**: When `pyproject.toml` is detected, the wrapper runs
 `uv sync --group docs` before mkdocs so that mkdocstrings and other
@@ -94,27 +97,35 @@ Python-specific plugins are available.
 
 **Environment variables**:
 
-| Variable             | Default                | Description           |
-| -------------------- | ---------------------- | --------------------- |
-| `DOCKER_DOCS_IMAGE`  | `dev-base:latest`      | Override Docker image |
-| `MKDOCS_CONFIG`      | `docs/site/mkdocs.yml` | Path to mkdocs config |
-| `DOCS_PORT`          | `8000`                 | Host port for serve   |
+| Variable            | Default                                       | Description                              |
+| ------------------- | --------------------------------------------- | ---------------------------------------- |
+| `DOCKER_DOCS_IMAGE` | `ghcr.io/vergil-project/{prefix}-base:latest` | Override the image (ignores `--prefix`)  |
+| `MKDOCS_CONFIG`     | `docs/site/mkdocs.yml`                        | Path to mkdocs config                    |
+| `DOCS_PORT`         | `8000`                                        | Host port for serve                      |
 
 ## Common Tooling
 
 Every language image includes:
 
-- **Node.js** 22 (via NodeSource apt repo)
-- **markdownlint-cli** 0.47.0
+- **Node.js** (via NodeSource apt repo) — runtime for markdownlint-cli
+- **markdownlint-cli**, **yamllint**, **ansible-lint** — linters
+- **ShellCheck**, **shfmt** — shell lint/format
+- **actionlint** — GitHub Actions linting
+- **git-cliff** — changelog generation
+- **hadolint** — Dockerfile linting
+- **scorecard**, **trivy** — supply-chain / vulnerability scanning
 - **GitHub CLI** (gh) via official apt repo
-- **ShellCheck** 0.11.0
-- **shfmt** 3.12.0
-- **actionlint** 1.7.11
-- **git-cliff** 2.8.0
-- **hadolint** 2.14.0
-- **uv** 0.7.12
-- **yamllint** 1.38.0
-- **openssh-client** (SSH for git remote operations)
+- **uv** — Python package manager
+- **nfpm**, **rpm** — build and inspect `.deb`/`.rpm` packages
+- **pandoc** — convert Markdown to `.docx`/HTML
+- **jq**, git, curl, **openssh-client** (SSH for git remote operations)
+
+Tool versions are deliberately not listed here, because a hand-copied list
+goes stale. Most tools float on their leading edge; the few that are pinned,
+and why, are recorded in [`docker/pins/pins.yml`](docker/pins/pins.yml), and
+the generated [`docker/pins/CATALOG.md`](docker/pins/CATALOG.md) shows every
+pinned version currently in the Dockerfiles. See
+[Tool Version Management](https://vergil-project.github.io/vergil-containers/operations/version-management/).
 
 All images are published as multi-architecture manifests supporting
 both **amd64** and **arm64**.
@@ -137,7 +148,8 @@ for details.
 
 Images are built for both amd64 and arm64, scanned with Trivy on both
 platforms, attested with SLSA build provenance, and published to GHCR
-on push to `develop` or `main` via the `docker-publish.yml` workflow.
+on push to `develop` (`dev-` images) or `main` (`prod-` images) via the
+reusable `cd-docker-publish.yml` workflow.
 Manual rebuilds can be triggered via `workflow_dispatch` in the Actions
 tab.
 
@@ -151,12 +163,15 @@ PAT or additional secret is needed. Each GHCR package must grant this
 repository write access because the packages were originally created by
 the `vergil-tooling` repository:
 
-1. Go to the package settings page on GHCR for each `dev-*` package.
+1. Go to the package settings page on GHCR for each package.
 2. Under **Manage Actions access**, click **Add Repository**.
 3. Select `vergil-containers` and set the role to **Write**.
 
-This applies to: `dev-python`, `dev-java`, `dev-go`, `dev-rust`,
-`dev-ts-node`, `dev-base`.
+This applies to every image in the generated
+[Available Images](#available-images) table, under both prefixes: each
+`dev-<image>` package and its `prod-<image>` counterpart. That table is
+generated from [`docker/versions/manifest.yml`](docker/versions/manifest.yml),
+the same source as the publish matrix, so it always lists every published image.
 
 ## Migration Note
 

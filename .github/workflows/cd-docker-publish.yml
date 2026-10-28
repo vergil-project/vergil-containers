@@ -132,64 +132,38 @@ jobs:
           scan-type: image
           scan-ref: ${{ env.CANDIDATE }}
           exit-code: "1"
-          sarif-category: "trivy-image-${{ matrix.language }}-${{ matrix.version }}-amd64"
+          sarif-category: "trivy-image-${{ inputs.image-prefix }}-${{ matrix.language }}-${{ matrix.version }}-amd64"
           trivyignores: .trivyignore
 
+      # Same outcomes as the amd64 scan above: retried when it writes no report,
+      # and never reported as findings when it errored (issue #721).
       - name: Trivy scan (arm64)
         id: trivy-arm64
         continue-on-error: true
-        shell: bash
         env:
           TRIVY_IMAGE: aquasec/trivy:0.72.0
-        run: |
-          TRIVYIGNORE_ARGS=""
-          if [ -f .trivyignore ]; then
-            TRIVYIGNORE_ARGS="--ignorefile .trivyignore"
-          fi
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/workspace" \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -w /workspace \
-            --entrypoint sh \
-            "$TRIVY_IMAGE" \
-            -c "
-              set -e
-              trivy image \
-                --scanners vuln \
-                --severity CRITICAL,HIGH \
-                --platform linux/arm64 \
-                --exit-code 0 \
-                --format json \
-                --output /tmp/trivy-raw.json \
-                $TRIVYIGNORE_ARGS \
-                \"${{ env.CANDIDATE }}\"
-              trivy convert \
-                --severity CRITICAL,HIGH \
-                --format table \
-                --exit-code 0 \
-                /tmp/trivy-raw.json
-              trivy convert \
-                --severity CRITICAL,HIGH \
-                --format sarif \
-                --exit-code 1 \
-                --output /workspace/trivy-arm64.sarif \
-                /tmp/trivy-raw.json
-            "
+        run: scripts/bin/trivy-image-scan "$CANDIDATE" linux/arm64 trivy-arm64.sarif
 
+      # Skipped when the scan errored and wrote no report; the gate reports that.
       - name: Upload SARIF (arm64)
-        if: always()
+        if: always() && hashFiles('trivy-arm64.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-arm64.sarif
-          category: "trivy-image-${{ matrix.language }}-${{ matrix.version }}-arm64"
+          category: "trivy-image-${{ inputs.image-prefix }}-${{ matrix.language }}-${{ matrix.version }}-arm64"
 
-      - name: Fail if vulnerabilities found
-        if: >-
-          steps.trivy-amd64.outcome == 'failure' ||
-          steps.trivy-arm64.outcome == 'failure'
-        run: |
-          echo "::error::Trivy found CRITICAL/HIGH vulnerabilities"
-          exit 1
+      # Tells "found CRITICAL/HIGH vulnerabilities" apart from "the scan errored
+      # and produced no report", and fails closed on both (issue #721).
+      - name: Trivy gate
+        env:
+          AMD64_OUTCOME: ${{ steps.trivy-amd64.outcome }}
+          AMD64_RESULT: ${{ steps.trivy-amd64.outputs.result }}
+          ARM64_OUTCOME: ${{ steps.trivy-arm64.outcome }}
+          ARM64_RESULT: ${{ steps.trivy-arm64.outputs.result }}
+        run: >-
+          scripts/bin/trivy-gate "$CANDIDATE"
+          amd64 "$AMD64_OUTCOME" "$AMD64_RESULT" trivy-results.sarif
+          arm64 "$ARM64_OUTCOME" "$ARM64_RESULT" trivy-arm64.sarif
 
       - name: Get candidate digest
         id: digest
@@ -279,64 +253,38 @@ jobs:
           scan-type: image
           scan-ref: ${{ env.CANDIDATE }}
           exit-code: "1"
-          sarif-category: trivy-image-base-amd64
+          sarif-category: "trivy-image-${{ inputs.image-prefix }}-base-amd64"
           trivyignores: .trivyignore
 
+      # Same outcomes as the amd64 scan above: retried when it writes no report,
+      # and never reported as findings when it errored (issue #721).
       - name: Trivy scan (arm64)
         id: trivy-arm64
         continue-on-error: true
-        shell: bash
         env:
           TRIVY_IMAGE: aquasec/trivy:0.72.0
-        run: |
-          TRIVYIGNORE_ARGS=""
-          if [ -f .trivyignore ]; then
-            TRIVYIGNORE_ARGS="--ignorefile .trivyignore"
-          fi
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/workspace" \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -w /workspace \
-            --entrypoint sh \
-            "$TRIVY_IMAGE" \
-            -c "
-              set -e
-              trivy image \
-                --scanners vuln \
-                --severity CRITICAL,HIGH \
-                --platform linux/arm64 \
-                --exit-code 0 \
-                --format json \
-                --output /tmp/trivy-raw.json \
-                $TRIVYIGNORE_ARGS \
-                \"${{ env.CANDIDATE }}\"
-              trivy convert \
-                --severity CRITICAL,HIGH \
-                --format table \
-                --exit-code 0 \
-                /tmp/trivy-raw.json
-              trivy convert \
-                --severity CRITICAL,HIGH \
-                --format sarif \
-                --exit-code 1 \
-                --output /workspace/trivy-arm64.sarif \
-                /tmp/trivy-raw.json
-            "
+        run: scripts/bin/trivy-image-scan "$CANDIDATE" linux/arm64 trivy-arm64.sarif
 
+      # Skipped when the scan errored and wrote no report; the gate reports that.
       - name: Upload SARIF (arm64)
-        if: always()
+        if: always() && hashFiles('trivy-arm64.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-arm64.sarif
-          category: trivy-image-base-arm64
+          category: "trivy-image-${{ inputs.image-prefix }}-base-arm64"
 
-      - name: Fail if vulnerabilities found
-        if: >-
-          steps.trivy-amd64.outcome == 'failure' ||
-          steps.trivy-arm64.outcome == 'failure'
-        run: |
-          echo "::error::Trivy found CRITICAL/HIGH vulnerabilities"
-          exit 1
+      # Tells "found CRITICAL/HIGH vulnerabilities" apart from "the scan errored
+      # and produced no report", and fails closed on both (issue #721).
+      - name: Trivy gate
+        env:
+          AMD64_OUTCOME: ${{ steps.trivy-amd64.outcome }}
+          AMD64_RESULT: ${{ steps.trivy-amd64.outputs.result }}
+          ARM64_OUTCOME: ${{ steps.trivy-arm64.outcome }}
+          ARM64_RESULT: ${{ steps.trivy-arm64.outputs.result }}
+        run: >-
+          scripts/bin/trivy-gate "$CANDIDATE"
+          amd64 "$AMD64_OUTCOME" "$AMD64_RESULT" trivy-results.sarif
+          arm64 "$ARM64_OUTCOME" "$ARM64_RESULT" trivy-arm64.sarif
 
       - name: Get candidate digest
         id: digest

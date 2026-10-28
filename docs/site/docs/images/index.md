@@ -7,7 +7,7 @@ runtimes and tools. Images are published as multi-architecture manifests
 !!! info "Tool versions are managed, not hand-listed here"
     This page is the **inventory** — what each image includes. It deliberately
     does not assert specific tool versions: most tools float on their leading
-    edge, a handful of binary tools are auto-bumped weekly, and only a few are
+    edge, a handful of binary tools are auto-bumped daily, and only a few are
     pinned with a written justification. The always-current version-of-record is
     the generated catalog,
     [`docker/pins/CATALOG.md`](https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md).

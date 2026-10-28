@@ -43,7 +43,9 @@ docker/
 Each `Dockerfile.template` contains standard Dockerfile instructions plus
 `# @include common/<fragment>.dockerfile` directives. `generate.sh`
 replaces each directive with the full contents of the referenced fragment,
-producing a final `Dockerfile` in the same directory.
+producing a final `Dockerfile` in the same directory. Includes nest: a
+fragment may include another fragment (for example
+`node-markdownlint.dockerfile` includes `nodesource-node.dockerfile`).
 
 This eliminates duplication — shared tool installations (GitHub CLI,
 Node.js, markdownlint, validation tools) are maintained once in
@@ -62,6 +64,8 @@ Every language image includes the following shared fragments:
 - **`path-defaults.dockerfile`** — Sets PATH for `uv tool install`
   entry points across GitHub Actions and local contexts.
 - **`node-markdownlint.dockerfile`** — Node.js via NodeSource apt repo
+  (installed by the nested `nodesource-node.dockerfile`, which fails the
+  build unless it gets NodeSource Node `NODE_MAJOR` with npm)
   and markdownlint-cli via npm.
 - **`github-cli.dockerfile`** — GitHub CLI via the official apt repo.
 - **`validation-tools.dockerfile`** — Architecture-aware binary
@@ -72,13 +76,21 @@ Every language image includes the following shared fragments:
   from binary releases. Currently includes scorecard (OpenSSF).
 - **`python-support.dockerfile`** — Minimal Python plus yamllint and
   uv, used by non-Python images.
+- **`nfpm.dockerfile`** — nfpm release binary, which builds `.deb` and
+  `.rpm` packages from one declarative config.
+- **`rpm.dockerfile`** — The distro's `rpm`, the peer of `dpkg`, for
+  inspecting `.rpm` packages and comparing versions (`rpm.vercmp`).
+- **`pandoc.dockerfile`** — pandoc for Markdown to `.docx`/HTML
+  conversion (no TeX; PDF output is opt-in).
 
 Python-based images (`dev-python`, `dev-base`) install yamllint and uv
 directly via pip rather than the `python-support` fragment.
 
 The `dev-base` image includes all common fragments plus documentation
-tooling (MkDocs Material, mike, semgrep). It is the fallback image for
-repos with no detected language.
+tooling (MkDocs Material, mike, semgrep) and OpenTofu
+(`opentofu.dockerfile`) for in-sandbox `tofu fmt -check` / `tofu validate`
+of OpenTofu modules. It is the fallback image for repos with no detected
+language.
 
 ## Design Principles
 
@@ -92,6 +104,10 @@ Any repository using the supported language can use them.
 
 **No duplication** — Shared tooling is maintained in common fragments.
 Adding a tool to all images means editing one fragment file.
+
+**No host requirements** — A single OCI container runtime is the only
+prerequisite for local development (nerdctl/Lima preferred, Docker
+supported).
 
 ## Multi-Architecture Support
 
@@ -144,12 +160,14 @@ via the reusable `cd-docker-publish.yml` workflow, parameterized by an
   pick up base-image security patches.
 - **`prod-` images** (`ghcr.io/vergil-project/prod-{language}:{version}`) —
   built on push to `main`, after the release workflow generates a
-  changelog, git tag, and GitHub release.
+  changelog, git tag, and GitHub release, and rebuilt nightly from `main`
+  via `ops.yml`.
 
 The publish pipeline for each prefix:
 
 1. Builds a candidate tag for both platforms (amd64 + arm64)
-2. Scans each platform independently with Trivy (SARIF upload)
+2. Scans each platform independently with Trivy (SARIF upload; see
+   [Trivy Scanning](trivy-scanning.md))
 3. Attests build provenance (SLSA via GitHub attestations)
 4. Promotes the candidate to the final tag via `docker buildx imagetools create`
 5. Verifies digest preservation between candidate and final
@@ -176,9 +194,23 @@ release completes.
 
 ### Nightly rebuilds
 
-The `ops.yml` workflow runs daily at 06:15 UTC and rebuilds all `dev-`
-images. This ensures development images stay current with upstream
-security patches without waiting for a code change to trigger a build.
+The `ops.yml` workflow runs every morning (UTC; the `schedule` trigger in
+`.github/workflows/ops.yml` holds the exact time) and rebuilds every image
+with the registry cache disabled (`no-cache: true`):
+
+- `nightly-rebuild-dev` rebuilds all `dev-` images from `develop`.
+- `nightly-rebuild-prod` rebuilds all `prod-` images from `main`, so they
+  pick up upstream fixes without moving past the released source. It calls
+  `main`'s copy of `cd-docker-publish.yml` (`@main`), not `develop`'s, so the
+  publish steps and the files they run (such as `scripts/bin/trivy-gate`)
+  always come from the same release as the Dockerfiles they build. A
+  workflow change on `develop` reaches the prod nightly only when it is
+  released.
+
+This keeps both image sets current with upstream security patches (base
+image updates, apt package refreshes) without waiting for a code change to
+trigger a build. To trigger a rebuild manually, run the CD workflow from the
+Actions tab (**Actions > CD > Run workflow**).
 
 ### Authentication
 
@@ -192,9 +224,12 @@ repository write access. The packages were originally created by the
 `vergil-tooling` repository, so that repo has implicit write access.
 This repo does not, unless manually configured.
 
-Per-package setup (one-time, for each of `dev-base`, `dev-python`,
-`dev-java`, `dev-go`, `dev-rust`, and the corresponding
-`prod-` packages):
+Per-package setup (one-time, for every image in the generated
+[version table](../images/index.md#versions), under both prefixes: each
+`dev-<image>` package and its `prod-<image>` counterpart). That table is
+generated from `docker/versions/manifest.yml`, the same source as the
+publish matrix, so it always lists every published image; do not hand-copy
+the list here:
 
 1. Navigate to the package settings page on GHCR.
 2. Under **Manage Actions access**, click **Add Repository**.

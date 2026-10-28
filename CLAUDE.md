@@ -2,139 +2,80 @@
 
 This file provides guidance to Claude Code when working in this repository.
 
-## Memory management
+<!-- vergil:template:claude-md:begin -->
+## Memory
 
-Memory is allowed with human approval. The authoritative policy is in
-the user's global `~/.claude/CLAUDE.md` — agents must propose memory
-writes and suggest a destination (repo memory, global CLAUDE.md, or
-plugin/skill issue) before writing. See that file for the full
-workflow.
+Never write, edit or delete memory files without explicit human approval.
+Propose the entry and where it belongs first, then wait for the decision.
 
-Available skills:
-- `/vergil:memory-init` — set up or update the policy header
-  in a project's `MEMORY.md`.
-- `/vergil:memory-audit` — structured collaborative review
-  of memory files.
+## Worktrees
 
-## Parallel AI agent development
+- Sessions always start at the project root, never inside `.worktrees/`.
+- One worktree per issue: `.worktrees/issue-<N>-<slug>/` on branch
+  `feature/<N>-<slug>`. Remove it once its branch lands.
+- The main worktree is read-only; every edit goes through a worktree.
+- Read, Edit and Write use the worktree's absolute path. Bash commands `cd`
+  into the worktree first or use absolute paths.
+- The full convention: <https://github.com/vergil-project/vergil-tooling/blob/develop/docs/specs/worktree-convention.md>.
+- Brief each parallel sub-agent with its [Agent prompt contract](https://github.com/vergil-project/vergil-tooling/blob/develop/docs/specs/worktree-convention.md#agent-prompt-contract).
 
-This repository supports running multiple Claude Code agents in parallel via
-git worktrees. The convention keeps parallel agents' working trees isolated
-while preserving shared project memory (which Claude Code derives from the
-session's starting CWD).
+## Git and GitHub
 
-**Canonical spec:**
-[`vergil-tooling/docs/specs/worktree-convention.md`](https://github.com/vergil-project/vergil-tooling/blob/develop/docs/specs/worktree-convention.md)
-— full rationale, trust model, failure modes, and memory-path implications.
-The canonical text lives in `vergil-tooling`; this section is the local
-on-ramp.
-
-### Structure
-
-```text
-<project-root>/                              ← sessions ALWAYS start here
-  .git/
-  CLAUDE.md, …                               ← main worktree (usually `develop`)
-  .worktrees/                                ← container for parallel worktrees
-    issue-<N>-<short-slug>/                  ← worktree on feature/<N>-<short-slug>
-    …
-```
-
-### Rules
-
-1. **Sessions always start at the project root.**
-   Never start Claude from inside `.worktrees/<name>/`. This keeps the
-   memory-path slug stable and shared.
-2. **Each parallel agent is assigned exactly one worktree.** The session
-   prompt names the worktree (see Agent prompt contract below).
-   - For Read / Edit / Write tools: use the worktree's absolute path.
-   - For Bash commands that touch files: `cd` into the worktree first,
-     or use absolute paths.
-3. **The main worktree is read-only.** All edits flow through a worktree
-   on a feature branch — the logical endpoint of the standing
-   "no direct commits to develop" policy.
-4. **One worktree per issue.** Don't stack in-flight issues. When a
-   branch lands, remove the worktree before starting the next.
-5. **Naming: `issue-<N>-<short-slug>`.** `<N>` is the GitHub issue
-   number; `<short-slug>` is 2–4 kebab-case tokens.
-
-### Agent prompt contract
-
-When launching a parallel-agent session, use this template (fill in the
-placeholders):
-
-```text
-You are working on issue #<N>: <issue title>.
-
-Your worktree is: <project-root>/.worktrees/issue-<N>-<slug>/
-Your branch is:   feature/<N>-<slug>
-
-Rules for this session:
-- Do all git operations from inside your worktree:
-    cd <absolute-worktree-path> && vrg-git <command>
-- For Read / Edit / Write tools, use the absolute worktree path.
-- For Bash commands that touch files, cd into the worktree first
-  or use absolute paths.
-- Do not edit files at the project root. The main worktree is
-  read-only — all changes flow through your worktree on your
-  feature branch.
-- When you need to run validation, run it from inside your worktree
-  (vrg-container-run mounts the current directory).
-```
-
-All fields are required.
-
-## Shell command policy
-
-Use `vrg-git` instead of `git` for all git operations. Use `vrg-gh`
-instead of `gh` for all GitHub CLI operations. These wrappers enforce
-subcommand allowlists, flag deny lists, and credential selection.
-
-Raw `git` and `gh` are denied by the permission model. If a command
-is not available through the wrappers, explain the situation to the
-human who can run it directly via `! <command>` in the prompt.
+Use `vrg-git` and `vrg-gh` only; the hook guard blocks raw `git` and `gh`. If a
+command is not available through the wrappers, explain why and ask the human to
+run it with `! <command>` in the prompt.
 
 ## Validation
 
-```bash
-vrg-container-run -- vrg-validate
-```
+`vrg-container-run -- vrg-validate` is the only validation command. Don't run
+linters, formatters or tests outside it; a tool it doesn't invoke is not part
+of the pipeline.
 
-This is the **only** validation command. Do not run individual linters,
-formatters, or other tools outside of `vrg-validate`. If a tool is not
-invoked by `vrg-validate`, it is not part of the validation pipeline.
+## PR handoff
 
-## Project Overview
+- Agents never run `vrg-submit-pr`. Submitting, merging and finalizing a PR are
+  human actions.
+- Hand off with `vrg-pr-workflow report-ready --issue <N> --title --summary
+  --notes`. It pushes the branch itself. Leave `--linkage` at its default (`Ref`).
+- A delta touching `.github/workflows/**` makes GitHub refuse the agent push.
+  That is expected: report-ready records the state anyway and the human's
+  `vrg-submit-pr` pushes the branch.
+- After report-ready the branch is frozen: no new commits and no push that
+  advances it; more work is a new follow-up issue. Re-running report-ready to
+  fix the prose is allowed. `vrg-pr-workflow unfreeze` is the only way to lift it.
+- The report-ready title, summary and notes are public (the relay ref is
+  world-readable): never put secrets in them.
 
-This repository contains the Docker dev container images for the
-VERGIL ecosystem. Each image provides a language runtime plus
-shared tooling (Node.js, ShellCheck, markdownlint) used by CI and local
-Docker-first development across all managed repositories.
+## Local settings
 
-**Project name**: vergil-containers
+`.claude/settings.local.json` must stay absent or exactly `{}`; the agent tools
+refuse otherwise. See the [ownership model](https://github.com/vergil-project/vergil-tooling/blob/develop/docs/site/docs/guides/claude-config-ownership.md).
 
-**Status**: Active
+## Engineering principles
 
-**Standards reference**: <https://github.com/vergil-project/standards-and-conventions>
-— historical reference; active standards documentation lives in the
-vergil-tooling repository under `docs/`.
+- Correctness over cost over speed. Never ship known-broken code with a
+  follow-up fix; if something is wrong, fix it now.
+- No silent failures: no swallowed exceptions, no `except: return ""`, no
+  fallbacks that hide errors. A failure hidden in code becomes a hallucination
+  at the AI layer.
 
-## Development Commands
+## paad
 
-### Environment Setup
+paad usage policy and deviations:
+<https://github.com/vergil-project/vergil-claude-plugin/blob/develop/docs/paad-policy.md>.
+<!-- vergil:template:claude-md:end -->
 
-```bash
-# Host-installed vergil-tooling provides vrg-* commands on PATH.
-# Install per the host-level-tool spec
-# (https://github.com/vergil-project/vergil-tooling/blob/develop/docs/specs/host-level-tool.md):
-uv tool install 'vergil-tooling @ git+https://github.com/vergil-project/vergil-tooling@v2.1'
-# (or `pip install` into the same Python env that hosts `uv`).
+## Project overview
 
-# The Claude Code PreToolUse hook guard (.claude/hooks/guard.sh)
-# blocks raw git/gh commands — use vrg-git / vrg-gh wrappers.
-```
+vergil-containers builds the dev container images (`dev-<language>` and
+`prod-<language>` on GHCR) that CI and local Docker-first development use
+across every managed repository: a language runtime plus the shared tooling
+layer. Architecture, image layout, publishing and design principles:
+[architecture](docs/site/docs/architecture/index.md); the per-image tool
+inventory: [images](docs/site/docs/images/index.md). Host setup for the
+`vrg-*` tools: [consuming-repo setup](https://github.com/vergil-project/vergil-tooling/blob/develop/docs/site/docs/guides/consuming-repo-setup.md).
 
-### Building Images Locally
+## Building images locally
 
 ```bash
 docker/build.sh                 # Build all images for every version in the matrix
@@ -152,150 +93,28 @@ docker/generate.sh python
 docker build --build-arg PYTHON_VERSION=3.14 -t dev-python:3.14 docker/python/
 ```
 
-## Architecture
+Each `Dockerfile.template` pulls shared fragments from `docker/common/` via
+`# @include` directives; `generate.sh` expands them into the gitignored
+`Dockerfile`.
 
-### Image Layout
+## Language versions
 
-```text
-docker/
-  build.sh                    # Builds all images locally
-  generate.sh                 # Expands Dockerfile.template → Dockerfile
-  common/                     # Shared fragments included via # @include
-  base/Dockerfile.template    # Base dev image (all common tools, no runtime)
-  python/Dockerfile.template  # Python dev image with uv
-  java/Dockerfile.template    # Java dev image, Eclipse Temurin
-  go/Dockerfile.template      # Go dev image with linters
-  rust/Dockerfile.template    # Rust dev image with cargo tools
-  cpp-clang/, cpp-gcc/        # C++ dev images (Clang and GCC families)
-  ts-node/                    # TypeScript / Node.js dev image
-  versions/                   # Version manifest, generator and lifecycle check
-```
+Every language version list is generated from
+[`docker/versions/manifest.yml`](docker/versions/manifest.yml). Edit the
+manifest, never a generated list, then run `docker/versions/generate.py`
+(CI runs `generate.py --check`). See the
+[Language version lifecycle](docs/site/docs/languages/lifecycle.md).
 
-Each `Dockerfile.template` contains `# @include common/<fragment>.dockerfile`
-directives. `generate.sh` expands these to produce the final `Dockerfile`
-(which is gitignored). Run `docker/generate.sh` before `hadolint`.
+## Tool versions
 
-### Common Layer
-
-Every image includes (installed via shared fragments in `docker/common/`):
-
-- **Node.js 22** (via NodeSource apt repository) — runtime for markdownlint-cli
-- **markdownlint-cli**, **yamllint**, **ansible-lint** — linters
-- **ShellCheck**, **shfmt** — shell lint/format
-- **actionlint** — GitHub Actions linting
-- **git-cliff** — changelog generation
-- **hadolint** — Dockerfile linting
-- **scorecard**, **trivy** — supply-chain / vulnerability scanning
-- **gh** (GitHub CLI, via official apt repository)
-- **uv** — Python package manager
-- **nfpm** — build `.deb`/`.rpm` packages from one declarative config
-- **rpm** — inspect `.rpm` packages and compare versions (`rpm.vercmp`), the peer of `dpkg`
-- **pandoc** — convert Markdown to `.docx`/HTML (no TeX; PDF is opt-in)
-- **jq**, git, curl, openssh-client
-- Language-specific package manager and linting tools
-
-The `dev-base` image includes additional documentation tooling (MkDocs
-Material, mike, semgrep) and **OpenTofu** for in-sandbox
-`tofu fmt -check` / `tofu validate` of OpenTofu modules. See the
-[images documentation](https://vergil-project.github.io/vergil-containers/images/)
-for the full inventory.
-
-#### Tool version management
-
-Tool **versions are not hardcoded here** — that hand-maintained list was the
-source of the drift this repo now guards against. The model (epic
-[vergil-project/.github#155](https://github.com/vergil-project/.github/issues/155)):
-
-- **Default is unpinned** — most tools float on their leading edge.
-- **Nine binary-download tools are auto-managed** — pinned in source for
-  reproducibility but bumped to the leading edge weekly by
-  `.github/workflows/bump-tools.yml` (opens a reviewed PR; no auto-merge).
-- **A few tools stay pinned** with a written justification (an `inducing_release`
-  and reason) recorded in `docker/pins/pins.yml`; a CI gate blocks any
-  undocumented pin.
-
-The generated, always-current source of truth for what is pinned and why is
-[`docker/pins/CATALOG.md`](docker/pins/CATALOG.md). The operator-facing doctrine
-and pin-lifecycle guidance live in the site docs under
+Never hardcode a tool version list here. Ten binary-download tools are
+auto-managed (bumped daily by the `upstream-refresh` job). Every pin, auto-managed
+or held, is recorded with its justification in `docker/pins/pins.yml`, and a CI
+gate blocks any undocumented pin. Current state:
+[`docker/pins/CATALOG.md`](docker/pins/CATALOG.md); doctrine:
 [Tool Version Management](docs/site/docs/operations/version-management.md).
 
-### GHCR Publishing
+## Key references
 
-Images are published as multi-architecture manifests (amd64 + arm64) to
-GitHub Container Registry via the reusable `cd-docker-publish.yml`
-workflow, parameterized by an `image-prefix` input:
-
-- **`dev-` images** — built on every push to `develop` and rebuilt
-  nightly via `ops.yml` to pick up base-image security patches.
-- **`prod-` images** — built on push to `main`, after the release
-  workflow generates a changelog, git tag, and GitHub release.
-
-Image naming: `ghcr.io/vergil-project/{prefix}-{language}:{version}`
-where `{prefix}` is `dev` or `prod`.
-
-Image URLs use the **user namespace** (`ghcr.io/vergil-project/...`), not a
-repo-specific namespace. This means image paths are stable across repo
-migrations — they do not change when the publishing repository changes.
-
-The publish pipeline builds a candidate tag, scans both platforms with Trivy,
-attests build provenance (SLSA), then promotes the candidate to the final tag
-via `docker buildx imagetools create`.
-
-#### Publishing prerequisites
-
-The workflow uses `secrets.GITHUB_TOKEN` with `packages: write` permission.
-No PAT or additional secret is needed. However, each GHCR package must
-explicitly grant this repository write access because the packages were
-originally created by the `vergil-tooling` repository.
-
-Per-package setup (one-time, for each of `dev-base`, `dev-python`, `dev-java`,
-`dev-go`, `dev-rust`, `dev-cpp-clang`, `dev-cpp-gcc`, and the
-corresponding `prod-` packages):
-
-1. Navigate to the package settings page on GHCR.
-2. Under **Manage Actions access**, click **Add Repository**.
-3. Select `vergil-containers`.
-4. Set role to **Write**.
-
-### Version Matrix
-
-The language versions come from one file,
-[`docker/versions/manifest.yml`](docker/versions/manifest.yml). Every other
-version list (the publish matrix, `docker/build.sh`, the Dockerfile `ARG`
-defaults, the package-cleanup lists, the published `docker/versions/window.json`
-and the table below) is generated from it by `docker/versions/generate.py`.
-Edit the manifest, never a generated list, then run the generator; CI runs
-`generate.py --check`. The nightly `language-lifecycle` job opens the PRs and
-issues that keep the manifest in step with upstream. See the
-[Language version lifecycle](docs/site/docs/languages/lifecycle.md) page.
-
-<!-- BEGIN generated: versions -->
-| Image           | Language   | Versions               | Base                      |
-| --------------- | ---------- | ---------------------- | ------------------------- |
-| `dev-python`    | python     | 3.15, 3.14, 3.13, 3.12 | `python:<v>-slim`         |
-| `dev-java`      | java       | 21, 17                 | `eclipse-temurin:<v>-jdk` |
-| `dev-go`        | go         | 1.27, 1.26             | `golang:<v>`              |
-| `dev-rust`      | rust       | 1.93, 1.92             | `rust:<v>-slim`           |
-| `dev-cpp-clang` | cpp        | 20, 19                 | `debian:trixie-slim`      |
-| `dev-cpp-gcc`   | cpp        | 14                     | `debian:trixie-slim`      |
-| `dev-ts-node`   | typescript | 24, 22                 | `debian:trixie-slim`      |
-| `dev-base`      | —          | latest                 | `python:3.14-slim`        |
-<!-- END generated: versions -->
-
-To trigger a rebuild manually: Actions > CD > Run workflow.
-
-### Design Principles
-
-- **Thin images** — language runtime + package manager + git/curl
-- **Project-managed dependencies** — tools come from lockfiles at
-  container startup (e.g., `uv sync`, `go install`)
-- **No host requirements** — a single OCI container runtime is the only
-  prerequisite for local development (nerdctl/Lima preferred, Docker
-  supported)
-
-## Key References
-
-**Sibling repositories**:
-
-- `../vergil-tooling` — Python CLI tools and bash validators
-- `../vergil-claude-plugin` — Claude Code plugin (hooks, skills, agents)
+Sibling repositories: `../vergil-tooling` (the `vrg-*` CLI tools and
+validators) and `../vergil-claude-plugin` (Claude Code plugin: hooks, skills).

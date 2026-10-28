@@ -2,7 +2,7 @@
 
 The images bundle a shared layer of build, lint, and security tools. This page
 explains **how those tool versions are managed** — the pinning philosophy, the
-lifecycle every pin follows, the generated catalog and its CI gate, the weekly
+lifecycle every pin follows, the generated catalog and its CI gate, the daily
 leading-edge bumper, and the exposure report that flags pins due for
 re-evaluation.
 
@@ -65,7 +65,7 @@ stays structured:
 | **active** | Yes | A Tenet-6 break-hold: a specific upstream release broke us; the constraint applies and names its `inducing_release`. |
 | **under-evaluation** | No (floats) | Retained with full metadata and a scheduled follow-up issue. The observe phase for a non-deterministic / stability pin. |
 | **freed** | No | Removed; the tool floats with no record needed (the entry is deleted). |
-| **auto-managed** | Yes (as source pin) | Pinned in source for reproducibility, but floated to the newest upstream release weekly by the bumper (below). `inducing_release` is null — not a break-hold. |
+| **auto-managed** | Yes (as source pin) | Pinned in source for reproducibility, but floated to the newest upstream release daily by the bumper (below). `inducing_release` is null — not a break-hold. |
 
 ## The generated catalog and its CI gate
 
@@ -80,35 +80,44 @@ exactly a hand-edited version list drifting from the code (`CLAUDE.md` once said
 - `docker/pins/generate_catalog.py` joins them into the human-readable
   `CATALOG.md`.
 
-A **CI gate** (`docker/pins/check_pins.py`, run in `ci.yml`) fails the build if
+A **CI gate** (`docker/pins/check_pins.py`, run by `scripts/bin/validate-custom`
+as PR CI's `quality / custom` check) fails the build if
 any exact-pinned tool lacks a `pins.yml` justification, if a `pins.yml` entry no
 longer pins anything, or if an entry declares an unknown state. **A new pin
 cannot merge undocumented.** A companion `generate_catalog.py --check` fails if
 `CATALOG.md` is stale relative to the templates and `pins.yml`.
 
-## Auto-managed tools and the weekly bumper
+## Auto-managed tools and the daily bumper
 
 Most package-manager tools (installed via `npm`, `pip`, `uv`, `go install`,
 `cargo`) were **freed** in the pin audit: dropping the version token lets them
 resolve latest at build time, so they float cleanly and need no entry.
 
-Nine tools install from a **binary release tarball** whose download URL and
+Ten tools install from a **binary release download** whose URL and
 per-version checksum embed an explicit version, so they cannot float by simply
 dropping a token. Rather than add an unauthenticated GitHub version-resolution
 round-trip to every image build, these are **auto-managed**: shellcheck, shfmt,
-actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, and trivy.
+actionlint, git-cliff, hadolint, opentofu, nfpm, osv-scanner, scorecard, and
+trivy.
 
-They stay pinned in source (hermetic, reproducible, revertible) while the weekly
-[`bump-tools.yml`](https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/bump-tools.yml)
-workflow tracks the leading edge:
+They stay pinned in source (hermetic, reproducible, revertible) while the daily
+`upstream-refresh` job in
+[`ops.yml`](https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/ops.yml)
+tracks the leading edge:
 
-- Runs Mondays 06:30 UTC (and on demand). For each tool it resolves the newest
+- Runs daily at 06:37 UTC with the rest of `ops.yml` (and on demand). It calls the reusable
+  `ops-upstream-refresh.yml` workflow from vergil-actions, which runs
+  `vrg-upstream-refresh` with this repo's `[upstream-refresh].hook`,
+  `docker/pins/upstream-refresh.sh`. For each tool the hook resolves the newest
   release via the `/releases/latest` redirect
   (`docker/pins/resolve_latest.py`), rewrites the `ARG *_VERSION=` pins in
   `docker/common/*`, and regenerates `CATALOG.md`.
-- **Only if something drifted** it opens a bump PR, authored by the GitHub App
-  (so the PR fires CI and every bump is validated). **Nothing is auto-merged** —
-  fleet policy keeps a human merge gate.
+- **Only if something drifted** it opens one bump PR from the fixed
+  `upstream-refresh` branch, titled `chore(upstream): refresh upstream inputs`
+  and authored by the GitHub App (so the PR fires CI and every bump is
+  validated). A later run refreshes that PR in place rather than opening
+  another, and a run with nothing to bump closes a stale one. **Nothing is
+  auto-merged** — fleet policy keeps a human merge gate.
 
 This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy `0.70.0 → 0.72.0` security bump landed through the bumper.

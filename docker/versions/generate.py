@@ -11,7 +11,7 @@ Generated outputs (epic vergil-project/.github#407, spec §6.1):
 - the `docker/build.sh` build and smoke-test lines;
 - the `package-cleanup.yml` package lists;
 - every docker/<family>/Dockerfile.template `ARG <BUILD_ARG>=` default;
-- the version tables in README.md, CLAUDE.md and the docs site.
+- the version tables in README.md and the docs site.
 
 In-place blocks sit between `BEGIN generated: <name>` and `END generated: <name>`
 marker lines (a `#` comment, or an HTML comment in Markdown). There are no
@@ -35,7 +35,6 @@ BUILD_SH = Path("docker/build.sh")
 PACKAGE_CLEANUP = Path(".github/workflows/package-cleanup.yml")
 DOC_TABLES = (
     Path("README.md"),
-    Path("CLAUDE.md"),
     Path("docs/site/docs/index.md"),
     Path("docs/site/docs/images/index.md"),
 )

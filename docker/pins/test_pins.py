@@ -108,3 +108,19 @@ def test_catalog_lists_every_documented_pin():
 
 def test_catalog_check_matches_committed_file():
     assert generate_catalog.render(DOCKER) == (DOCKER / "pins" / "CATALOG.md").read_text()
+
+
+def test_osv_scanner_is_an_auto_managed_java_pin():
+    # #689: the dev-java AUDIT stage (vergil-tooling#3554) runs osv-scanner, so
+    # the Java image must ship it — pinned, checksum-verified, and floated by the
+    # daily bumper like the other binary-download tools.
+    import resolve_latest
+
+    pins = {p.tool: p for p in extract_pins.extract(DOCKER)}
+    assert "osv-scanner" in pins
+    assert pins["osv-scanner"].source == "common/osv-scanner.dockerfile"
+    assert check_pins.load_pins(DOCKER)["osv-scanner"]["state"] == "auto-managed"
+    assert resolve_latest.TOOL_REPOS["osv-scanner"] == "google/osv-scanner"
+    assert resolve_latest.TOOL_ARGS["osv-scanner"] == "OSV_SCANNER_VERSION"
+    template = (DOCKER / "java" / "Dockerfile.template").read_text()
+    assert "# @include common/osv-scanner.dockerfile" in template.splitlines()

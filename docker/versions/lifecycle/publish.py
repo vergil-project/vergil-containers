@@ -16,6 +16,13 @@ Issues:
 - one issue per family whose check failed, titled
   `lifecycle check failing for <family>`, with the error text as its body.
 
+Every issue this script opens is linked, as a native sub-issue, under the
+repository's ad-hoc epic (`Epic (ad hoc): <repo>` in `<owner>/.github`), so the
+org's epic sweep never finds it parentless and moves it into the human intake
+queue. The epic is looked up before the issue is created; if the link then
+fails, the new issue is closed again (the next run reopens it, linked) and the
+run fails. Refreshing an existing issue never touches its parent.
+
 Every run refreshes the issues that are still reported (never duplicating
 them), closes a failure issue with `recovered in run <url>` once its family
 checks cleanly, and closes a change issue that is no longer reported. Every
@@ -76,6 +83,12 @@ CHANGE_PREFIX = "language lifecycle: "
 FAILURE_PREFIX = "lifecycle check failing for "
 REPORT_AUTOMATION = "report"
 
+# Where a public repo's ad-hoc epic lives, and how it is recognised: the same
+# home, title and labels vergil-tooling's `vrg-issue-create --epic adhoc` uses.
+EPIC_HOME_REPO = ".github"
+ADHOC_EPIC_PREFIX = "Epic (ad hoc): "
+ADHOC_EPIC_LABELS = ("epic", "ad-hoc")
+
 # `gh issue list` returns at most this many; a full page means the listing may
 # be incomplete, which would hide issues from refresh and closure.
 LIST_LIMIT = 1000
@@ -94,9 +107,14 @@ class OpenIssue:
 class GhClient(Protocol):
     def list_open_issues(self, label: str) -> list[OpenIssue]: ...
 
-    def create_issue(self, title: str, body: str, labels: Sequence[str]) -> int: ...
+    def create_issue(self, title: str, body: str, labels: Sequence[str]) -> int:
+        """Open an issue linked under the repo's ad-hoc epic and return its
+        number. Raises rather than leave an open issue without that parent."""
+        ...
 
-    def update_issue(self, number: int, body: str) -> None: ...
+    def update_issue(self, number: int, body: str) -> None:
+        """Replace an issue's body; its parent is left exactly as it is."""
+        ...
 
     def close_issue(self, number: int, comment: str) -> None: ...
 
@@ -445,6 +463,7 @@ class GhCli:
         self._repo = repo
         self._run = runner or run_gh
         self._base = base
+        self._epic: tuple[str, int] | None = None
 
     def _require_base(self) -> str:
         if not self._base:
@@ -476,7 +495,35 @@ class GhCli:
             )
         return issues
 
+    def adhoc_epic(self) -> tuple[str, int]:
+        """The repo's ad-hoc epic as (home repo, number): the one open issue in
+        `<owner>/.github` titled `Epic (ad hoc): <name>` with the epic labels.
+        Looked up once; none, or more than one, raises."""
+        if self._epic is not None:
+            return self._epic
+        owner, sep, name = self._repo.partition("/")
+        if not (owner and sep and name) or "/" in name:
+            raise PublishError(f"repository {self._repo!r} is not OWNER/NAME")
+        home = f"{owner}/{EPIC_HOME_REPO}"
+        title = f"{ADHOC_EPIC_PREFIX}{name}"
+        args = ["issue", "list", "--repo", home, "--state", "open"]
+        for label in ADHOC_EPIC_LABELS:
+            args += ["--label", label]
+        out = self._run([*args, "--limit", str(LIST_LIMIT), "--json", "number,title"], None)
+        try:
+            numbers = sorted(int(i["number"]) for i in json.loads(out) if i["title"] == title)
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            raise PublishError(f"gh issue list returned malformed JSON for the epics in {home}: {exc!r}") from exc
+        if not numbers:
+            raise PublishError(f"no open ad-hoc epic {title!r} in {home}: refusing to open issues without a parent")
+        if len(numbers) > 1:
+            listed = ", ".join(f"#{n}" for n in numbers)
+            raise PublishError(f"more than one open ad-hoc epic {title!r} in {home} ({listed})")
+        self._epic = (home, numbers[0])
+        return self._epic
+
     def create_issue(self, title: str, body: str, labels: Sequence[str]) -> int:
+        home, epic = self.adhoc_epic()  # before creating: a missing epic opens nothing
         args = ["issue", "create", "--repo", self._repo, "--title", title, "--body-file", "-"]
         for label in labels:
             args += ["--label", label]
@@ -486,7 +533,33 @@ class GhCli:
             raise PublishError(f"gh issue create printed no issue URL: {out.strip()!r}")
         number = int(m.group(1))
         print(f"opened #{number}: {title}")
+        try:
+            self._link(number, home, epic)
+        except PublishError as exc:
+            # Never leave it open without a parent, where the epic sweep would
+            # move it into the intake queue: close it, so the next run reopens
+            # it, linked. The run fails either way.
+            try:
+                self.close_issue(number, f"could not be linked under the ad-hoc epic {home}#{epic}; "
+                                         "the next run of the check reopens it")
+            except PublishError as close_exc:
+                raise PublishError(
+                    f"#{number} is open without a parent: linking it under {home}#{epic} failed ({exc}), "
+                    f"and so did closing it ({close_exc})"
+                ) from exc
+            raise PublishError(f"#{number} closed again: linking it under {home}#{epic} failed ({exc})") from exc
         return number
+
+    def _link(self, number: int, home: str, epic: int) -> None:
+        """Add issue `number` as a native sub-issue of `home`#`epic`."""
+        out = self._run(["api", f"repos/{self._repo}/issues/{number}", "--jq", ".id"], None).strip()
+        if not out.isdigit():
+            raise PublishError(f"gh api printed no id for #{number}: {out!r}")
+        self._run(
+            ["api", "--method", "POST", f"repos/{home}/issues/{epic}/sub_issues", "-F", f"sub_issue_id={out}"],
+            None,
+        )
+        print(f"linked #{number} under {home}#{epic}")
 
     def update_issue(self, number: int, body: str) -> None:
         self._run(["issue", "edit", str(number), "--repo", self._repo, "--body-file", "-"], body)
@@ -539,7 +612,7 @@ _PR_URL_RE = re.compile(r"/pull/(\d+)\s*$")
 
 # --- The real branch publisher ---------------------------------------------------------
 
-# The bot identity bump-tools.yml commits as. Fixed here, with the commit dates
+# The bot identity the add/drop commits are made as. Fixed here, with the commit dates
 # taken from the base, so the same change on the same base is the same commit:
 # a rerun can tell "already pushed" from "changed" by comparing commit ids.
 BOT_NAME = "github-actions[bot]"

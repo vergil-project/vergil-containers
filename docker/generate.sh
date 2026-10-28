@@ -3,6 +3,7 @@
 #
 # Processes "# @include common/<fragment>.dockerfile" directives by
 # replacing each include line with the contents of the referenced file.
+# Includes nest: a fragment may itself include other fragments.
 #
 # Usage:
 #   docker/generate.sh              # generate all
@@ -21,18 +22,31 @@ generate() {
     return 1
   fi
 
+  expand "$template" 0 > "$output"
+}
+
+# expand FILE DEPTH — print FILE with every include line replaced by the
+# expanded fragment. Fragments may include other fragments (for example
+# common/node-markdownlint includes common/nodesource-node); the depth cap
+# turns an include cycle into an error instead of unbounded recursion.
+expand() {
+  local file="$1" depth="$2" line fragment
+  if (( depth > 8 )); then
+    echo "ERROR: @include nesting too deep (cycle?) at: ${file}" >&2
+    return 1
+  fi
   while IFS= read -r line; do
     if [[ "$line" =~ ^#\ @include\ (.+)$ ]]; then
-      local fragment="${script_dir}/${BASH_REMATCH[1]}"
+      fragment="${script_dir}/${BASH_REMATCH[1]}"
       if [[ ! -f "$fragment" ]]; then
         echo "ERROR: fragment not found: ${fragment}" >&2
         return 1
       fi
-      cat "$fragment"
+      expand "$fragment" $((depth + 1)) || return 1
     else
       printf '%s\n' "$line"
     fi
-  done < "$template" > "$output"
+  done < "$file"
 }
 
 if [[ $# -eq 0 ]]; then

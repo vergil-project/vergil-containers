@@ -23,3 +23,11 @@ vergil = "v2.1"
 # Least-privilege: the named action at any version (@*), not dataaxiom/*.
 # SHA-pinning the uses: ref is tracked separately (vergil-project/.github#165).
 extra-allowed-patterns = ["dataaxiom/ghcr-cleanup-action@*"]
+
+[upstream-refresh]
+# The daily leading-edge bump of the auto-managed binary tools (#435), run by
+# vrg-upstream-refresh from the upstream-refresh job in .github/workflows/ops.yml.
+# The hook only
+# edits the pins and the catalog; the command opens, refreshes or closes the one
+# PR on the `upstream-refresh` branch, and a human merges it.
+hook = "docker/pins/upstream-refresh.sh"

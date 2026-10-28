@@ -19,6 +19,7 @@ RUN apt-get update && \
 # @include common/nfpm.dockerfile
 # @include common/rpm.dockerfile
 # @include common/pandoc.dockerfile
+# @include common/osv-scanner.dockerfile
 
 # Maven wrapper self-bootstraps from consuming repos.
 

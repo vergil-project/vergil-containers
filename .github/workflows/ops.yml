@@ -53,16 +53,16 @@ jobs:
   # Unlike pin-exposure, NO continue-on-error: a check that cannot reach or
   # parse upstream (a Docker Hub or GitHub API rate limit included) fails this
   # job loudly, and still publishes its failure issue first.
-  # The add/drop branches and PRs are written with the GitHub App token, not
-  # this job's GITHUB_TOKEN, so it needs no contents/pull-requests write here:
-  # the App's installation grants them (contents: write, pull-requests: write,
-  # exactly what bump-tools.yml already uses). App-authored PRs fire CI.
+  # The add/drop branches and PRs, and the issues, are written with GitHub App
+  # tokens, not this job's GITHUB_TOKEN, so it needs no contents, pull-requests
+  # or issues write here: the App's installation grants them (contents: write,
+  # pull-requests: write, exactly what upstream-refresh already uses; issues:
+  # write, as the org epic sweep uses). App-authored PRs fire CI.
   language-lifecycle:
     name: "language lifecycle check"
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      issues: write
     concurrency:
       group: language-lifecycle
       cancel-in-progress: false
@@ -74,7 +74,7 @@ jobs:
       # The App token authenticates the GitHub releases API reads (the LLVM
       # adapter), which unauthenticated get only 60 requests an hour per runner
       # IP, and the add/drop branch pushes and PRs. Minted exactly as
-      # bump-tools.yml does.
+      # the upstream-refresh reusable workflow does.
       - name: Generate app token
         id: app-token
         uses: actions/create-github-app-token@v3
@@ -83,7 +83,7 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       # Checked out with the App token so the add/drop branch pushes are
-      # App-authored (and so trigger CI), as in bump-tools.yml.
+      # App-authored (and so trigger CI), as upstream-refresh's are.
       - name: Checkout code
         uses: actions/checkout@v6
         with:
@@ -119,13 +119,30 @@ jobs:
           path: lifecycle-out/
           if-no-files-found: error
 
-      # Issues are written with the job's GITHUB_TOKEN (issues: write); the
-      # App token is only for the upstream API reads above.
+      # Every new lifecycle issue is linked under this repo's ad-hoc epic in
+      # <owner>/.github (vergil-containers#687), and adding a sub-issue needs
+      # issues: write on the epic's repository, which this job's GITHUB_TOKEN
+      # can never have. So the issues are written with an App token scoped to
+      # exactly this repository and the epic home, issues: write only, as
+      # vergil-actions' ops-epic-rollup.yml mints for the same cross-repo link.
+      - name: Generate app token for issues
+        id: issues-token
+        if: ${{ !cancelled() && hashFiles('lifecycle-out/results.json') != '' }}
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            ${{ github.event.repository.name }}
+            .github
+          permission-issues: write
+
       - name: Open, refresh and close lifecycle issues
         if: ${{ !cancelled() && hashFiles('lifecycle-out/results.json') != '' }}
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.issues-token.outputs.token }}
         run: |
           set -euo pipefail
           python3 docker/versions/lifecycle/publish.py \
@@ -160,6 +177,24 @@ jobs:
       APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
 
+  # The leading-edge bumper for the binary-download mechanism tools (#435). It
+  # runs vrg-upstream-refresh (epic vergil-project/.github#472): the
+  # [upstream-refresh].hook in vergil.toml (docker/pins/upstream-refresh.sh)
+  # resolves each tool's newest release, rewrites the `ARG *_VERSION=` pins in
+  # docker/common/* and regenerates docker/pins/CATALOG.md, and the reusable
+  # workflow keeps exactly one PR on the fixed `upstream-refresh` branch in step
+  # with the result (opened on drift, refreshed in place, closed when nothing
+  # drifts). The push and PR use the App token minted inside the reusable
+  # workflow, so App-authored PRs fire CI and this job's GITHUB_TOKEN needs
+  # only contents: read. Nothing is auto-merged: a human merges every PR.
+  upstream-refresh:
+    uses: vergil-project/vergil-actions/.github/workflows/ops-upstream-refresh.yml@v2.1
+    permissions:
+      contents: read
+    secrets:
+      APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+
   nightly-rebuild-dev:
     uses: ./.github/workflows/cd-docker-publish.yml
     with:
@@ -173,8 +208,17 @@ jobs:
       attestations: write
       id-token: write
 
+  # The prod rebuild runs main's copy of the publish workflow, not this one's,
+  # so the workflow logic and the checked-out tree always come from the same
+  # ref. A schedule runs from the default branch (develop): calling
+  # ./.github/workflows/... here would run develop's publish steps against
+  # main's tree, and any step that needs a file added on develop since the last
+  # release would fail with "No such file or directory" (issue #731). The
+  # `ref: main` input is still required, because a reusable workflow's checkout
+  # defaults to the caller's commit, which is develop's. Keep the inputs passed
+  # here to ones main's cd-docker-publish.yml already accepts.
   nightly-rebuild-prod:
-    uses: ./.github/workflows/cd-docker-publish.yml
+    uses: vergil-project/vergil-containers/.github/workflows/cd-docker-publish.yml@main
     with:
       image-prefix: prod
       no-cache: true

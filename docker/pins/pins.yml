@@ -15,9 +15,9 @@
 #   under-evaluation — held while a fix/decision is tracked (tracking_issue set).
 #   freed          — no longer pinned (entry removed once the pin is gone).
 #   auto-managed   — pinned in source for reproducibility, but floated to the
-#                    newest upstream release by the weekly bump-tools workflow
+#                    newest upstream release by the daily upstream-refresh job
 #                    (#435). inducing_release is null (not a break-hold) and the
-#                    `constraint` is DESCRIPTIVE ("latest, auto-bumped weekly"),
+#                    `constraint` is DESCRIPTIVE ("latest, auto-bumped daily"),
 #                    never a hard-coded version — so pins.yml never drifts from
 #                    the template when the bumper rewrites the ARG. The
 #                    version-of-record comes from the template via extract_pins.
@@ -34,7 +34,7 @@
 #     release broke us (Tenet 6), only because the install idiom needs a version.
 #     FLAGGED for human decision (see PR notes). RESOLVED by #435: rather than
 #     free (per-build network) or hand-manage, these 9 tools are now AUTO-MANAGED
-#     — pinned in source, bumped weekly by the bump-tools workflow.
+#     — pinned in source, bumped daily by the upstream-refresh job in ops.yml.
 #   - Security scanners were the silent-failure / fleet-gating set, deferred to
 #     WS3-gated task #422. WS3 repoint rollback now exists (#427), lifting that
 #     gate. Outcome of #422:
@@ -62,18 +62,19 @@ pins:
   # per-version checksum embed an explicit version, so they cannot float by
   # dropping a token. #435 makes them
   # AUTO-MANAGED: they stay pinned in source (hermetic,
-  # reproducible, revertible) while the weekly `bump-tools` workflow tracks the
+  # reproducible, revertible) while the daily `upstream-refresh` job in `ops.yml` tracks the
   # leading edge via the /releases/latest redirect and opens a reviewed bump PR.
   # inducing_release is null (not a Tenet-6 break-hold) and the constraint is
   # descriptive, not a hard-coded version — the version-of-record lives in the
   # template (extract_pins reads it). govulncheck FREED under #422 (installs via
   # `go install ...@latest`); its entry is removed. semgrep stays floating.
-  shellcheck:  {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball URL embeds the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
-  shfmt:       {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary URL embeds the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
-  actionlint:  {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version checksums embed the version; the weekly bump-tools workflow delivers the FORWARD bump #260 asked for once upstream ships it.", state: auto-managed, tracking_issue: null}
-  git-cliff:   {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version sha512 embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
-  hadolint:    {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary + per-version checksums.sha256 (exact asset line) embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
-  opentofu:    {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version SHA256SUMS embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
-  nfpm:        {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version checksums embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
-  scorecard:   {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — scorecard release tarball + scorecard_checksums.txt embed the version; floated to the leading edge by the weekly bump-tools workflow.", state: auto-managed, tracking_issue: null}
-  trivy:       {constraint: "latest, auto-bumped weekly", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — trivy release tarball + per-version checksums embed the version; floated to the leading edge by the weekly bump-tools workflow (weekly bumps also pick up CVE-fix releases, e.g. the 0.70.0 → 0.72.0 bump under #438).", state: auto-managed, tracking_issue: null}
+  shellcheck:  {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball URL embeds the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
+  shfmt:       {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary URL embeds the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
+  actionlint:  {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version checksums embed the version; the daily upstream-refresh job in ops.yml delivers the FORWARD bump #260 asked for once upstream ships it.", state: auto-managed, tracking_issue: null}
+  git-cliff:   {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version sha512 embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
+  hadolint:    {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary + per-version checksums.sha256 (exact asset line) embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
+  opentofu:    {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version SHA256SUMS embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
+  nfpm:        {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version checksums embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
+  scorecard:   {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — scorecard release tarball + scorecard_checksums.txt embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
+  trivy:       {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — trivy release tarball + per-version checksums embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml (the bumps also pick up CVE-fix releases, e.g. the 0.70.0 → 0.72.0 bump under #438).", state: auto-managed, tracking_issue: null}
+  osv-scanner: {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#689) — osv-scanner release binary + per-version osv-scanner_SHA256SUMS embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml. Java-only: the dev-java AUDIT stage scans the Maven CycloneDX SBOM with it (vergil-tooling#3554).", state: auto-managed, tracking_issue: null}

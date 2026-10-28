@@ -7,8 +7,9 @@ retention workflow keeps the org packages tidy.
 
 ## Why packages accumulate
 
-The publish pipeline (`cd-docker-publish.yml`) runs nightly for `dev-*` images
-and on every release for `prod-*` images. Each run, **per image**, pushes:
+The publish pipeline (`cd-docker-publish.yml`) runs on every `develop` push for
+`dev-*` images, on every release for `prod-*` images, and nightly (`ops.yml`)
+for both. Each run, **per image**, pushes:
 
 - a **multi-arch** (amd64 + arm64) manifest list, whose **two per-platform
   child manifests** appear as untagged versions;
@@ -105,6 +106,26 @@ they *would* delete:
   `PACKAGE_CLEANUP_DRY_RUN` to `false` (Settings → Secrets and variables →
   Actions → Variables). The weekly run then deletes for real. No code change is
   needed to arm or disarm.
+
+### Rate limits
+
+Every leg of both jobs fetches every manifest of its package from ghcr.io. On a
+cold manifest cache that is tens of thousands of registry requests per run, and
+with every leg started at once ghcr.io answered HTTP 429
+([#652](https://github.com/vergil-project/vergil-containers/issues/652)). The
+action already retries each request a few times, but only for about a second.
+The workflow adds two defences:
+
+- **Capped fan-out:** `max-parallel: 3` on each job, so at most 6 legs hit the
+  registry together.
+- **One retry per leg:** if the action fails, the leg waits a bounded, jittered
+  back-off (`RETRY_BACKOFF_BASE_SECONDS` plus up to
+  `RETRY_BACKOFF_JITTER_SECONDS`), logs a warning, and runs the action once
+  more with the same inputs. If that also fails, the leg fails with an error
+  that names the package and says how to read a 429. Nothing is skipped.
+
+`docker/versions/test_package_cleanup.py` pins this structure. If 429s persist,
+lower `max-parallel` first.
 
 ### Token
 

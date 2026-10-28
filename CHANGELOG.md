@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.33] - 2026-10-28
+
+### Bug fixes
+
+- cap fan-out and retry the cleanup action once on ghcr.io 429s (#703)
+- fail the build when the NodeSource Node install falls back or mismatches (#704)
+- run every quality / pins step in local vrg-validate (#705)
+- file lifecycle-check issues under the containers ad-hoc epic (#707)
+- separate dev and prod Trivy image scans in code scanning (#710)
+- distinguish a Trivy scan error from CRITICAL/HIGH findings in the publish gate (#722)
+- run the prod nightly from main's copy of the publish workflow (#733)
+- ignore new undici and go-jose CVEs that have no reachable fix (#734)
+
+### CI
+
+- run the tool bumps through vrg-upstream-refresh (#712)
+- move the upstream refresh from bump-tools.yml into ops.yml (#714)
+- drop the quality / pins job now that the custom stage runs in PR CI (#719)
+
+### Chores
+
+- stop tracking generated changelog/releases docs (#708)
+- sync the vergil-managed .gitignore block (#724)
+
+### Documentation
+
+- document the Trivy scanning architecture and the expected PR code-scanning warning (#702)
+- fix stale tool versions, command names and package grants (#706)
+- correct the nightly rebuild time and scope (#711)
+- describe vergil-python's multi-series runtime build (#718)
+- steering and settings sweep (epic 558) (#735)
+
+### Features
+
+- ship pinned osv-scanner in the dev-java images (#709)
+
 ## [2.1.32] - 2026-10-25
 
 ### Bug fixes
