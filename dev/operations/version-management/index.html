@@ -3202,11 +3202,12 @@ cannot merge undocumented.</strong> A companion <code>generate_catalog.py --chec
 <p>Most package-manager tools (installed via <code>npm</code>, <code>pip</code>, <code>uv</code>, <code>go install</code>,
 <code>cargo</code>) were <strong>freed</strong> in the pin audit: dropping the version token lets them
 resolve latest at build time, so they float cleanly and need no entry.</p>
-<p>Nine tools install from a <strong>binary release tarball</strong> whose download URL and
+<p>Ten tools install from a <strong>binary release download</strong> whose URL and
 per-version checksum embed an explicit version, so they cannot float by simply
 dropping a token. Rather than add an unauthenticated GitHub version-resolution
 round-trip to every image build, these are <strong>auto-managed</strong>: shellcheck, shfmt,
-actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, and trivy.</p>
+actionlint, git-cliff, hadolint, opentofu, nfpm, osv-scanner, scorecard, and
+trivy.</p>
 <p>They stay pinned in source (hermetic, reproducible, revertible) while the daily
 <code>upstream-refresh</code> job in
 <a href="https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/ops.yml"><code>ops.yml</code></a>

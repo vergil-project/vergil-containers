@@ -3053,12 +3053,20 @@ all images automatically at build time.</p>
   from binary releases. Currently includes scorecard (OpenSSF).</li>
 <li><strong><code>python-support.dockerfile</code></strong> — Minimal Python plus yamllint and
   uv, used by non-Python images.</li>
+<li><strong><code>nfpm.dockerfile</code></strong> — nfpm release binary, which builds <code>.deb</code> and
+  <code>.rpm</code> packages from one declarative config.</li>
+<li><strong><code>rpm.dockerfile</code></strong> — The distro's <code>rpm</code>, the peer of <code>dpkg</code>, for
+  inspecting <code>.rpm</code> packages and comparing versions (<code>rpm.vercmp</code>).</li>
+<li><strong><code>pandoc.dockerfile</code></strong> — pandoc for Markdown to <code>.docx</code>/HTML
+  conversion (no TeX; PDF output is opt-in).</li>
 </ul>
 <p>Python-based images (<code>dev-python</code>, <code>dev-base</code>) install yamllint and uv
 directly via pip rather than the <code>python-support</code> fragment.</p>
 <p>The <code>dev-base</code> image includes all common fragments plus documentation
-tooling (MkDocs Material, mike, semgrep). It is the fallback image for
-repos with no detected language.</p>
+tooling (MkDocs Material, mike, semgrep) and OpenTofu
+(<code>opentofu.dockerfile</code>) for in-sandbox <code>tofu fmt -check</code> / <code>tofu validate</code>
+of OpenTofu modules. It is the fallback image for repos with no detected
+language.</p>
 <h2 id="design-principles">Design Principles<a class="headerlink" href="#design-principles" title="Permanent link">&para;</a></h2>
 <p><strong>Thin images</strong> — Each image provides the language runtime, package
 manager, and common tooling layer. Project-specific dependencies (from
@@ -3068,6 +3076,9 @@ container startup by the consuming repository's test script.</p>
 Any repository using the supported language can use them.</p>
 <p><strong>No duplication</strong> — Shared tooling is maintained in common fragments.
 Adding a tool to all images means editing one fragment file.</p>
+<p><strong>No host requirements</strong> — A single OCI container runtime is the only
+prerequisite for local development (nerdctl/Lima preferred, Docker
+supported).</p>
 <h2 id="multi-architecture-support">Multi-Architecture Support<a class="headerlink" href="#multi-architecture-support" title="Permanent link">&para;</a></h2>
 <p>All images are published as multi-architecture manifests supporting
 <strong>amd64</strong> and <strong>arm64</strong>. Binary tool downloads in <code>validation-tools.dockerfile</code>
@@ -3186,7 +3197,8 @@ with the registry cache disabled (<code>no-cache: true</code>):</p>
 </ul>
 <p>This keeps both image sets current with upstream security patches (base
 image updates, apt package refreshes) without waiting for a code change to
-trigger a build.</p>
+trigger a build. To trigger a rebuild manually, run the CD workflow from the
+Actions tab (<strong>Actions &gt; CD &gt; Run workflow</strong>).</p>
 <h3 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h3>
 <p>The workflow authenticates with <code>GITHUB_TOKEN</code> using <code>packages: write</code>
 permission. No personal access token or additional secret is needed.</p>
@@ -3195,9 +3207,12 @@ permission. No personal access token or additional secret is needed.</p>
 repository write access. The packages were originally created by the
 <code>vergil-tooling</code> repository, so that repo has implicit write access.
 This repo does not, unless manually configured.</p>
-<p>Per-package setup (one-time, for each of <code>dev-base</code>, <code>dev-python</code>,
-<code>dev-java</code>, <code>dev-go</code>, <code>dev-rust</code>, and the corresponding
-<code>prod-</code> packages):</p>
+<p>Per-package setup (one-time, for every image in the generated
+<a href="../images/#versions">version table</a>, under both prefixes: each
+<code>dev-&lt;image&gt;</code> package and its <code>prod-&lt;image&gt;</code> counterpart). That table is
+generated from <code>docker/versions/manifest.yml</code>, the same source as the
+publish matrix, so it always lists every published image; do not hand-copy
+the list here:</p>
 <ol>
 <li>Navigate to the package settings page on GHCR.</li>
 <li>Under <strong>Manage Actions access</strong>, click <strong>Add Repository</strong>.</li>
