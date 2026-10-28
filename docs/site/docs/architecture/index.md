@@ -76,13 +76,21 @@ Every language image includes the following shared fragments:
   from binary releases. Currently includes scorecard (OpenSSF).
 - **`python-support.dockerfile`** — Minimal Python plus yamllint and
   uv, used by non-Python images.
+- **`nfpm.dockerfile`** — nfpm release binary, which builds `.deb` and
+  `.rpm` packages from one declarative config.
+- **`rpm.dockerfile`** — The distro's `rpm`, the peer of `dpkg`, for
+  inspecting `.rpm` packages and comparing versions (`rpm.vercmp`).
+- **`pandoc.dockerfile`** — pandoc for Markdown to `.docx`/HTML
+  conversion (no TeX; PDF output is opt-in).
 
 Python-based images (`dev-python`, `dev-base`) install yamllint and uv
 directly via pip rather than the `python-support` fragment.
 
 The `dev-base` image includes all common fragments plus documentation
-tooling (MkDocs Material, mike, semgrep). It is the fallback image for
-repos with no detected language.
+tooling (MkDocs Material, mike, semgrep) and OpenTofu
+(`opentofu.dockerfile`) for in-sandbox `tofu fmt -check` / `tofu validate`
+of OpenTofu modules. It is the fallback image for repos with no detected
+language.
 
 ## Design Principles
 
@@ -96,6 +104,10 @@ Any repository using the supported language can use them.
 
 **No duplication** — Shared tooling is maintained in common fragments.
 Adding a tool to all images means editing one fragment file.
+
+**No host requirements** — A single OCI container runtime is the only
+prerequisite for local development (nerdctl/Lima preferred, Docker
+supported).
 
 ## Multi-Architecture Support
 
@@ -197,7 +209,8 @@ with the registry cache disabled (`no-cache: true`):
 
 This keeps both image sets current with upstream security patches (base
 image updates, apt package refreshes) without waiting for a code change to
-trigger a build.
+trigger a build. To trigger a rebuild manually, run the CD workflow from the
+Actions tab (**Actions > CD > Run workflow**).
 
 ### Authentication
 
@@ -211,9 +224,12 @@ repository write access. The packages were originally created by the
 `vergil-tooling` repository, so that repo has implicit write access.
 This repo does not, unless manually configured.
 
-Per-package setup (one-time, for each of `dev-base`, `dev-python`,
-`dev-java`, `dev-go`, `dev-rust`, and the corresponding
-`prod-` packages):
+Per-package setup (one-time, for every image in the generated
+[version table](../images/index.md#versions), under both prefixes: each
+`dev-<image>` package and its `prod-<image>` counterpart). That table is
+generated from `docker/versions/manifest.yml`, the same source as the
+publish matrix, so it always lists every published image; do not hand-copy
+the list here:
 
 1. Navigate to the package settings page on GHCR.
 2. Under **Manage Actions access**, click **Add Repository**.
