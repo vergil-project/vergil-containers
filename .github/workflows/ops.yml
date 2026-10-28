@@ -208,8 +208,17 @@ jobs:
       attestations: write
       id-token: write
 
+  # The prod rebuild runs main's copy of the publish workflow, not this one's,
+  # so the workflow logic and the checked-out tree always come from the same
+  # ref. A schedule runs from the default branch (develop): calling
+  # ./.github/workflows/... here would run develop's publish steps against
+  # main's tree, and any step that needs a file added on develop since the last
+  # release would fail with "No such file or directory" (issue #731). The
+  # `ref: main` input is still required, because a reusable workflow's checkout
+  # defaults to the caller's commit, which is develop's. Keep the inputs passed
+  # here to ones main's cd-docker-publish.yml already accepts.
   nightly-rebuild-prod:
-    uses: ./.github/workflows/cd-docker-publish.yml
+    uses: vergil-project/vergil-containers/.github/workflows/cd-docker-publish.yml@main
     with:
       image-prefix: prod
       no-cache: true
