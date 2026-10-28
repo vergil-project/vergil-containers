@@ -3177,7 +3177,12 @@ with the registry cache disabled (<code>no-cache: true</code>):</p>
 <ul>
 <li><code>nightly-rebuild-dev</code> rebuilds all <code>dev-</code> images from <code>develop</code>.</li>
 <li><code>nightly-rebuild-prod</code> rebuilds all <code>prod-</code> images from <code>main</code>, so they
-  pick up upstream fixes without moving past the released source.</li>
+  pick up upstream fixes without moving past the released source. It calls
+  <code>main</code>'s copy of <code>cd-docker-publish.yml</code> (<code>@main</code>), not <code>develop</code>'s, so the
+  publish steps and the files they run (such as <code>scripts/bin/trivy-gate</code>)
+  always come from the same release as the Dockerfiles they build. A
+  workflow change on <code>develop</code> reaches the prod nightly only when it is
+  released.</li>
 </ul>
 <p>This keeps both image sets current with upstream security patches (base
 image updates, apt package refreshes) without waiting for a code change to
