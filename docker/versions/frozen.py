@@ -35,7 +35,7 @@ def make_repo(dest: Path) -> Path:
     the frozen manifest in place of the live one and every generated block
     regenerated from it. Hand-written content (templates, workflow, docs prose)
     comes from the live checkout; only the version data is frozen."""
-    rels = {g.MANIFEST, g.MATRIX_JSON, g.WINDOW_JSON, g.BUILD_SH, g.PACKAGE_CLEANUP, *g.DOC_TABLES}
+    rels = {g.MANIFEST, g.MATRIX_JSON, g.WINDOW_JSON, g.BUILD_SH, g.PACKAGE_CLEANUP, g.PACKAGE_CACHE_WARM, *g.DOC_TABLES}
     rels |= {Path("docker") / d / "Dockerfile.template" for d in (g.BASE_KEY, *(f.key for f in SEED.families))}
     rels |= {p.relative_to(LIVE_ROOT) for p in (LIVE_ROOT / "docker").glob("*/smoke-test.sh")}
     for rel in rels:

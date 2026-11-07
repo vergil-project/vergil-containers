@@ -42,6 +42,11 @@ name: Package cleanup
 # a non-transient failure costs one back-off and then fails the same way.
 # Keep the attempt-1 and attempt-2 `with:` blocks identical —
 # docker/versions/test_package_cleanup.py enforces it.
+#
+# The cold start itself is avoided by package-cache-warm.yml, which restores
+# the action's manifest cache mid-week so GitHub's 7-day eviction never empties
+# it (issue #700). It copies the action's cache scheme, so bump the action
+# version in both files together.
 
 on:
   schedule:

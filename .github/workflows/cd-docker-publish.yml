@@ -29,6 +29,11 @@ concurrency:
   group: docker-publish-${{ inputs.image-prefix }}
   cancel-in-progress: true
 
+env:
+  # Bounded back-off before the single retry of a failed attestation (issue #743).
+  ATTEST_RETRY_BACKOFF_BASE_SECONDS: 30
+  ATTEST_RETRY_BACKOFF_JITTER_SECONDS: 30
+
 jobs:
   hadolint:
     name: Lint Dockerfiles
@@ -171,11 +176,40 @@ jobs:
           DIGEST=$(docker buildx imagetools inspect "$CANDIDATE" --format '{{.Manifest.Digest}}')
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
-      - name: Attest build provenance
+      # Sigstore's transparency log fails transiently ("error fetching tlog
+      # entry", issue #743) and attest-build-provenance has no retry input, so
+      # the retry lives here, in the attempt / back-off / attempt / report shape
+      # of package-cleanup.yml (issue #652): a failed attempt 1 is retried once
+      # after a bounded, jittered back-off; attempt 2 has no continue-on-error,
+      # so its failure fails the job and promotion below never runs unattested.
+      - name: Attest build provenance (attempt 1)
+        id: attest1
+        continue-on-error: true
         uses: actions/attest-build-provenance@v4
         with:
           subject-name: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}"
           subject-digest: ${{ steps.digest.outputs.digest }}
+
+      - name: Back off before retrying attestation
+        if: steps.attest1.outcome == 'failure'
+        run: |
+          delay=$(( ATTEST_RETRY_BACKOFF_BASE_SECONDS + RANDOM % (ATTEST_RETRY_BACKOFF_JITTER_SECONDS + 1) ))
+          echo "::warning title=Attestation retry::Attempt 1 failed (often a transient Sigstore error such as 'error fetching tlog entry' above). Backing off ${delay}s, then retrying once."
+          sleep "${delay}"
+
+      - name: Attest build provenance (attempt 2)
+        id: attest2
+        if: steps.attest1.outcome == 'failure'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}"
+          subject-digest: ${{ steps.digest.outputs.digest }}
+
+      - name: Report persistent attestation failure
+        if: failure() && steps.attest2.outcome == 'failure'
+        run: |
+          echo "::error title=Attestation failed twice::actions/attest-build-provenance failed on both attempts for ${CANDIDATE}, with a ${ATTEST_RETRY_BACKOFF_BASE_SECONDS}-$(( ATTEST_RETRY_BACKOFF_BASE_SECONDS + ATTEST_RETRY_BACKOFF_JITTER_SECONDS ))s back-off between them. The candidate was not promoted. If both attempt logs show a Sigstore error, re-run the failed job later; any other error is not transient, so read the attempt logs (issue #743)."
+          exit 1
 
       - name: Compute datestamp
         id: stamp
@@ -292,11 +326,35 @@ jobs:
           DIGEST=$(docker buildx imagetools inspect "$CANDIDATE" --format '{{.Manifest.Digest}}')
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
-      - name: Attest build provenance
+      # Same bounded retry as the build-scan-push job above (issue #743).
+      - name: Attest build provenance (attempt 1)
+        id: attest1
+        continue-on-error: true
         uses: actions/attest-build-provenance@v4
         with:
           subject-name: ghcr.io/vergil-project/${{ inputs.image-prefix }}-base
           subject-digest: ${{ steps.digest.outputs.digest }}
+
+      - name: Back off before retrying attestation
+        if: steps.attest1.outcome == 'failure'
+        run: |
+          delay=$(( ATTEST_RETRY_BACKOFF_BASE_SECONDS + RANDOM % (ATTEST_RETRY_BACKOFF_JITTER_SECONDS + 1) ))
+          echo "::warning title=Attestation retry::Attempt 1 failed (often a transient Sigstore error such as 'error fetching tlog entry' above). Backing off ${delay}s, then retrying once."
+          sleep "${delay}"
+
+      - name: Attest build provenance (attempt 2)
+        id: attest2
+        if: steps.attest1.outcome == 'failure'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ghcr.io/vergil-project/${{ inputs.image-prefix }}-base
+          subject-digest: ${{ steps.digest.outputs.digest }}
+
+      - name: Report persistent attestation failure
+        if: failure() && steps.attest2.outcome == 'failure'
+        run: |
+          echo "::error title=Attestation failed twice::actions/attest-build-provenance failed on both attempts for ${CANDIDATE}, with a ${ATTEST_RETRY_BACKOFF_BASE_SECONDS}-$(( ATTEST_RETRY_BACKOFF_BASE_SECONDS + ATTEST_RETRY_BACKOFF_JITTER_SECONDS ))s back-off between them. The candidate was not promoted. If both attempt logs show a Sigstore error, re-run the failed job later; any other error is not transient, so read the attempt logs (issue #743)."
+          exit 1
 
       - name: Compute datestamp
         id: stamp

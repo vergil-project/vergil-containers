@@ -1,0 +1,130 @@
+name: Package cache warm
+
+# Keeps package-cleanup.yml's manifest cache from being evicted (issue #700).
+#
+# dataaxiom/ghcr-cleanup-action keeps a cross-run cache of the manifests it
+# fetches, in the repo's Actions cache: one entry per package per run, keyed
+# ghcr-manifest-v1-<owner>-<package>-<run id> and restored by the prefix
+# ghcr-manifest-v1-<owner>-<package>-. GitHub evicts a cache entry that has not
+# been accessed for 7 days, and the cleanup runs weekly at whatever time the
+# scheduler starts it, so the gap is sometimes just over 7 days. The cleanup
+# then starts cold and fetches every manifest from ghcr.io: the 2026-11-01 run
+# started cold for every package and fetched 37,500 manifests (the 429 storm
+# of issue #652).
+#
+# This workflow restores each package's newest cache entry mid-week. A restore
+# counts as an access, so the entry stays well inside the 7-day window and the
+# next cleanup starts warm. The restore is a download from the GitHub cache
+# service and makes no ghcr.io requests. A second weekly cleanup run would
+# also keep the cache alive, but it costs a run's worth of registry requests
+# (about 16,800 on the warm 2026-10-18 run) and, once deletions are armed, a
+# second deletion pass.
+#
+# Cold start: if a package has no cache entry at all (evicted, a new package,
+# or the action's cache scheme changed), the leg warns and rebuilds the cache
+# with a preview-only run of the action whose delete selector matches no tag,
+# so every fetched manifest is kept in the saved cache. It then restores again
+# and fails loudly if there is still no entry, because that means the key or
+# path below no longer matches what the action writes.
+#
+# Coupling: the path and key below copy the action's internal cache scheme
+# (src/manifest-cache.ts in ghcr-cleanup-action v1.2.2). They must stay in step
+# with the action version that package-cleanup.yml uses, which is why both
+# files pin the same version; docker/versions/test_package_cache_warm.py
+# enforces it. On an action upgrade, re-check the scheme, then bump both.
+
+on:
+  schedule:
+    - cron: "30 11 * * 3"  # Wednesdays 11:30 UTC, midway between Sunday cleanups
+  workflow_dispatch:
+
+permissions:
+  # Read-only: the rebuild only lists and fetches; it never deletes.
+  packages: read
+  contents: read
+
+concurrency:
+  # Own group: sharing package-cleanup's group could cancel a pending cleanup.
+  group: package-cache-warm
+  cancel-in-progress: false
+
+jobs:
+  warm:
+    name: "warm: ${{ matrix.package }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # Rate-limit cap (issue #652): a cold rebuild fetches every manifest.
+      max-parallel: 3
+      matrix:
+        package:
+          # Generated from docker/versions/manifest.yml by docker/versions/generate.py.
+          # BEGIN generated: versions (warm)
+          - dev-base
+          - dev-python
+          - dev-java
+          - dev-go
+          - dev-rust
+          - dev-cpp-clang
+          - dev-cpp-gcc
+          - dev-ts-node
+          - prod-base
+          - prod-python
+          - prod-java
+          - prod-go
+          - prod-rust
+          - prod-cpp-clang
+          - prod-cpp-gcc
+          - prod-ts-node
+          # END generated: versions (warm)
+    env:
+      PACKAGE: ${{ matrix.package }}
+    steps:
+      - name: Restore the manifest cache
+        id: touch
+        uses: actions/cache/restore@v6
+        with:
+          # Must equal the action's cache directory and key scheme exactly:
+          # the cache version is a hash of this path string.
+          path: ${{ runner.temp }}/ghcr-cleanup-manifest-cache/vergil-project-${{ matrix.package }}
+          key: ghcr-manifest-v1-vergil-project-${{ matrix.package }}-${{ github.run_id }}
+          restore-keys: ghcr-manifest-v1-vergil-project-${{ matrix.package }}-
+
+      - name: Report the cache state
+        env:
+          MATCHED_KEY: ${{ steps.touch.outputs.cache-matched-key }}
+        run: |
+          if [ -n "${MATCHED_KEY}" ]; then
+            echo "Manifest cache for ${PACKAGE} is warm: restored ${MATCHED_KEY}, which resets its 7-day eviction clock."
+          else
+            echo "::warning title=Manifest cache cold::No manifest cache entry for ${PACKAGE}. Rebuilding it with a preview-only cleanup run, which fetches every manifest from ghcr.io."
+          fi
+
+      - name: Rebuild the manifest cache (preview only)
+        if: steps.touch.outputs.cache-matched-key == ''
+        uses: dataaxiom/ghcr-cleanup-action@v1.2.2
+        with:
+          owner: vergil-project
+          packages: ${{ matrix.package }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # A selector that matches no tag. A dry run still removes the digests
+          # it would delete from the cache it saves, so delete-untagged here
+          # would leave the untagged versions out of the rebuilt cache.
+          delete-tags: vergil-cache-warm-matches-no-tag
+          # Never deletes, whatever the arming of package-cleanup.yml.
+          dry-run: true
+
+      - name: Confirm the rebuilt cache
+        id: verify
+        if: steps.touch.outputs.cache-matched-key == ''
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ runner.temp }}/ghcr-cleanup-manifest-cache/vergil-project-${{ matrix.package }}
+          key: ghcr-manifest-v1-vergil-project-${{ matrix.package }}-${{ github.run_id }}
+          restore-keys: ghcr-manifest-v1-vergil-project-${{ matrix.package }}-
+
+      - name: Fail if the cache is still cold
+        if: steps.touch.outputs.cache-matched-key == '' && steps.verify.outputs.cache-matched-key == ''
+        run: |
+          echo "::error title=Manifest cache not found::The rebuild ran, but there is still no manifest cache entry for ${PACKAGE}. Either the rebuild's save failed (see its log) or this workflow's cache path and key no longer match the scheme of the ghcr-cleanup-action version in use (issue #700)."
+          exit 1
