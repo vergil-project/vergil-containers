@@ -92,6 +92,15 @@ def test_render_package_cleanup_includes_all_families():
     assert len(pairs) == 2 * 2 * len(keys)
 
 
+def test_render_package_cache_warm_lists_the_cleanup_packages():
+    keys = ["base"] + [f.key for f in _seed().families]
+    text = g.render_package_cache_warm(_seed(), frozen.root())
+    warm = text.split("# BEGIN generated: versions (warm)\n")[1].split("# END")[0]
+    assert [line.strip() for line in warm.splitlines() if line.strip()] == (
+        [f"- dev-{k}" for k in keys] + [f"- prod-{k}" for k in keys]
+    )
+
+
 def test_render_docs_tables(repo):
     out = g.render_all(_seed(), repo)
     for rel in g.DOC_TABLES:
@@ -204,6 +213,7 @@ def test_manifest_change_flows_to_every_target(repo, capsys):
         assert str(rel) in out
     # Package names do not depend on versions.
     assert str(g.PACKAGE_CLEANUP) not in out
+    assert str(g.PACKAGE_CACHE_WARM) not in out
 
 
 def test_missing_marker_fails_loud(repo, capsys):

@@ -9,7 +9,7 @@ Generated outputs (epic vergil-project/.github#407, spec §6.1):
 - docker/versions/matrix.json: the cd-docker-publish.yml build matrix;
 - docker/versions/window.json: the published window consumers read;
 - the `docker/build.sh` build and smoke-test lines;
-- the `package-cleanup.yml` package lists;
+- the `package-cleanup.yml` and `package-cache-warm.yml` package lists;
 - every docker/<family>/Dockerfile.template `ARG <BUILD_ARG>=` default;
 - the version tables in README.md and the docs site.
 
@@ -33,6 +33,7 @@ MATRIX_JSON = Path("docker/versions/matrix.json")
 WINDOW_JSON = Path("docker/versions/window.json")
 BUILD_SH = Path("docker/build.sh")
 PACKAGE_CLEANUP = Path(".github/workflows/package-cleanup.yml")
+PACKAGE_CACHE_WARM = Path(".github/workflows/package-cache-warm.yml")
 DOC_TABLES = (
     Path("README.md"),
     Path("docs/site/docs/index.md"),
@@ -160,9 +161,20 @@ def render_arg_default(f: mf.Family, root: Path) -> str:
     return pattern.sub(f"ARG {f.build_arg}={f.versions[0].version}", text)
 
 
+def _package_list(m: mf.Manifest) -> list[str]:
+    """Every org package, as YAML list items: each prefix, then each image."""
+    keys = [BASE_KEY] + [f.key for f in m.families]
+    return [f"- {prefix}-{key}" for prefix in IMAGE_PREFIXES for key in keys]
+
+
+def render_package_cache_warm(m: mf.Manifest, root: Path) -> str:
+    text = _read(root, PACKAGE_CACHE_WARM)
+    return replace_block(text, PACKAGE_CACHE_WARM, "versions (warm)", _package_list(m), markdown=False)
+
+
 def render_package_cleanup(m: mf.Manifest, root: Path) -> str:
     keys = [BASE_KEY] + [f.key for f in m.families]
-    cleanup = [f"- {prefix}-{key}" for prefix in IMAGE_PREFIXES for key in keys]
+    cleanup = _package_list(m)
     reap: list[str] = []
     for prefix, window in REAP_WINDOWS:
         for key in keys:
@@ -213,6 +225,7 @@ def render_all(m: mf.Manifest, root: Path) -> dict[Path, str]:
         root / WINDOW_JSON: render_window_json(m),
         root / BUILD_SH: render_build_sh(m, root),
         root / PACKAGE_CLEANUP: render_package_cleanup(m, root),
+        root / PACKAGE_CACHE_WARM: render_package_cache_warm(m, root),
     }
     for f in m.families:
         out[root / _template(f.key)] = render_arg_default(f, root)
