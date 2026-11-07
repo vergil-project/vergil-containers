@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.34] - 2026-11-07
+
+### Bug fixes
+
+- restore the image Trivy gate for CVE-2026-78661 (#756)
+- retry transient network fetches in image builds and attestation (#759)
+
+### CI
+
+- keep the manifest cache warm with a mid-week restore (#758)
+
+### Chores
+
+- sync the vergil-managed .gitignore block (#741)
+
+### Documentation
+
+- sync the template's build/ exception line (#748)
+- retire the standards-and-conventions page (#754)
+- point version management at the pinning model and name vrg-container-run (#760)
+
 ## [2.1.33] - 2026-10-28
 
 ### Bug fixes
