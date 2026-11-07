@@ -127,6 +127,33 @@ The workflow adds two defences:
 `docker/versions/test_package_cleanup.py` pins this structure. If 429s persist,
 lower `max-parallel` first.
 
+### Manifest cache
+
+The action keeps a cache of the manifests it has fetched, in the repository's
+Actions cache, one entry per package per run. A run that finds an entry fetches
+only the manifests it has not seen. GitHub evicts an entry that nobody has used
+for 7 days, and the weekly cleanup often starts a few hours later than its
+schedule, so the gap between runs can pass 7 days. The 2026-11-01 run started
+with no cache for any package and fetched 37,500 manifests
+([#700](https://github.com/vergil-project/vergil-containers/issues/700)).
+
+[`package-cache-warm.yml`](https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/package-cache-warm.yml)
+prevents this. Every Wednesday it restores each package's newest cache entry.
+A restore counts as a use, so the entry survives until Sunday's cleanup. The
+restore downloads from the GitHub cache service and sends no requests to
+ghcr.io.
+
+If a package has no entry at all, the leg logs a *Manifest cache cold* warning
+and rebuilds the cache with a preview-only run of the action that selects
+nothing for deletion. It then checks the entry exists and fails if it does not.
+That failure means the workflow's cache path or key no longer matches what the
+action writes, which can happen when the action is upgraded. The workflow
+copies the action's cache scheme, so the two workflows must pin the same action
+version; `docker/versions/test_package_cache_warm.py` enforces it.
+
+To check that the cache is warm, read a cleanup leg's log: the line
+`manifest cache: N/M digests served from cache (P%)` should show more than 0%.
+
 ### Token
 
 The default `GITHUB_TOKEN` can list and preview. If real deletion of org-owned
