@@ -13,9 +13,12 @@ ARG NFPM_VERSION=2.48.0
 # hadolint ignore=DL3003
 RUN NFPM_ARCH="$([ "${TARGETARCH}" = "amd64" ] && echo x86_64 || echo "${TARGETARCH}")" && \
     NFPM_TARBALL="nfpm_${NFPM_VERSION}_Linux_${NFPM_ARCH}.tar.gz" && \
-    curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/${NFPM_TARBALL}" \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+      "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/${NFPM_TARBALL}" \
       -o "/tmp/${NFPM_TARBALL}" && \
-    curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/checksums.txt" \
-      | awk -v f="${NFPM_TARBALL}" '$2 == f' | (cd /tmp && sha256sum -c) && \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+      "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/checksums.txt" \
+      -o /tmp/nfpm_checksums.txt && \
+    awk -v f="${NFPM_TARBALL}" '$2 == f' /tmp/nfpm_checksums.txt | (cd /tmp && sha256sum -c) && \
     tar -xzf "/tmp/${NFPM_TARBALL}" -C /usr/local/bin/ nfpm && \
-    rm "/tmp/${NFPM_TARBALL}"
+    rm "/tmp/${NFPM_TARBALL}" /tmp/nfpm_checksums.txt

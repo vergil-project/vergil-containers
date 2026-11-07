@@ -20,7 +20,8 @@ ARG CLANG_TOOLS_VERSION=20
 # update-alternatives also exposes the unversioned run-clang-tidy driver (shipped
 # by the clang-tidy package as run-clang-tidy-${CLANG_TOOLS_VERSION}) so the LINT
 # command resolves `run-clang-tidy` without a version suffix (issue #487).
-RUN curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
+RUN curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+      https://apt.llvm.org/llvm-snapshot.gpg.key \
       -o /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
     echo "deb http://apt.llvm.org/trixie/ llvm-toolchain-trixie-${CLANG_TOOLS_VERSION} main" \
       > "/etc/apt/sources.list.d/llvm-toolchain-${CLANG_TOOLS_VERSION}.list" && \

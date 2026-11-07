@@ -16,11 +16,15 @@ RUN case "${TARGETARCH}" in \
       *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac && \
     OSV_ASSET="osv-scanner_linux_${TARGETARCH}" && \
-    curl -fsSL "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/${OSV_ASSET}" \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+      "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/${OSV_ASSET}" \
       -o "/tmp/${OSV_ASSET}" && \
-    curl -fsSL "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_SHA256SUMS" \
-      | grep -x -E "[0-9a-f]{64} [ *]${OSV_ASSET}" \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+      "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_SHA256SUMS" \
+      -o /tmp/osv-scanner_SHA256SUMS && \
+    grep -x -E "[0-9a-f]{64} [ *]${OSV_ASSET}" /tmp/osv-scanner_SHA256SUMS \
       | (cd /tmp && sha256sum -c) && \
     mv "/tmp/${OSV_ASSET}" /usr/local/bin/osv-scanner && \
     chmod +x /usr/local/bin/osv-scanner && \
+    rm /tmp/osv-scanner_SHA256SUMS && \
     osv-scanner --version
