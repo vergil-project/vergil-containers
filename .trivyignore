@@ -87,8 +87,9 @@ CVE-2026-56862
 #     service manager, shipped outside dpkg in the Ubuntu 26.04 base of
 #     eclipse-temurin (ubuntu:26.04 itself carries the same build). It is never
 #     started; the image entrypoint is Temurin's /__cacert_entrypoint.sh.
-#   - tofu 1.13.2 (dev-base): CVE-2026-78669 only, via golang.org/x/net
-#     v0.57.0. tofu is built with go1.27.3, so its stdlib is fixed.
+#   - tofu 1.13.9 (dev-base): CVE-2026-78669 only, via golang.org/x/net
+#     v0.57.0. tofu is built with go1.27.3, so its stdlib is fixed. (1.13.9,
+#     bumped under issue #755, still requires x/net v0.57.0.)
 #   - go-licenses v2.0.1 (dev-go): CVE-2026-78669 only, via golang.org/x/net
 #     v0.43.0. It is built with the image's go1.26.10, so its stdlib is fixed.
 # gh, nfpm and trivy carried them too. gh 2.103.0 is built with go1.27.3 and
@@ -180,6 +181,45 @@ CVE-2026-46600
 CVE-2026-25681
 CVE-2026-27136
 
+# golang.org/x/net/html < 0.62.0 in prebuilt Go CLIs (all images), fixed in
+# x/net 0.62.0 (released 2026-10-27). Issue #755; first gated the 2026-11-07
+# CD run and nightly. CVE-2026-78661 (GO-2026-6860) — quadratic CPU and
+# allocation in the HTML tree builder: when it coalesces adjacent text nodes
+# (parser.addText, parser.fosterParent), it re-copies the accumulated string on
+# every token, so input with many short text runs separated by ignored end
+# tags costs O(n^2). The advisory's affected symbols are Parse, ParseFragment,
+# ParseWithOptions, ParseFragmentWithOptions and the parser internals; the
+# tokenizer is not affected.
+# Carriers, each the newest upstream release (checked 2026-11-07). The x/net
+# version is the build info in the binary; the linked x/net/html functions are
+# the function names in the binary (both read with `strings` on the amd64
+# release binary, and on the binaries in the published dev-go:1.27 image for
+# gh and go-licenses):
+#   - /usr/bin/gh 2.103.3 (all images), x/net v0.60.0. Links only the
+#     tokenizer (NewTokenizer, Tokenizer methods, EscapeString, unescape).
+#   - /usr/local/bin/nfpm 2.48.0 (all images), x/net v0.60.0. Links no
+#     x/net/html code (only x/net/context, proxy and internal/socks).
+#   - /usr/local/bin/scorecard 5.6.0 (base), x/net v0.60.0. Links only
+#     x/net/html's package init and x/net/html/charset.
+#   - /usr/local/bin/tofu 1.13.9 (base), x/net v0.57.0. Links no x/net/html
+#     code.
+#   - /usr/local/bin/osv-scanner 2.7.0 (java 17 and 21), x/net v0.61.0. Links
+#     only the tokenizer and x/net/html/charset.
+#   - go-licenses v2.0.1 (go images), x/net v0.43.0. Links no x/net/html code
+#     (see the go-licenses note in the header).
+# None of these binaries contains Parse, ParseFragment, ParseWithOptions,
+# ParseFragmentWithOptions or the parser's addText / fosterParent / parse, so
+# the vulnerable tree builder cannot run. Trivy flags the module version only.
+# trivy carried it too (0.76.1, x/net v0.60.0). The trivy 0.76.2 bump (issue
+# #755) ships x/net v0.62.0, so that carrier is not ignored.
+# Not fixable by bumping: no newer release of any carrier above exists, and
+# each one's newest release still requires x/net < 0.62.0. Remove per carrier
+# once a release requires x/net >= 0.62.0. The daily upstream-refresh PR picks
+# up nfpm, scorecard, tofu and osv-scanner; every image build installs the
+# newest gh from the cli.github.com apt repository and runs `go install
+# github.com/google/go-licenses/v2@latest`.
+CVE-2026-78661
+
 # golang.org/x/text v0.28.0 in go-licenses v2.0.1 (go image only), fixed in
 # 0.39.0. As of the 2026-10-21 audit (issue #629) go-licenses is the only
 # carrier; golangci-lint now requires x/text v0.41.0. CVE-2026-56852: a
@@ -231,7 +271,7 @@ CVE-2026-46603
 # CLIENT: a malicious GOSUMDB could serve module content absent from the
 # transparency log, and a coordinating GOPROXY/GOSUMDB pair could forge sumdb
 # responses. Carriers as of the 2026-10-21 audit (issue #629):
-#   - tofu 1.13.2 (dev-base), x/mod v0.39.0. tofu is not a Go module client:
+#   - tofu 1.13.9 (dev-base), x/mod v0.39.0. tofu is not a Go module client:
 #     it never fetches Go modules from a GOPROXY or verifies them against a
 #     GOSUMDB. (The release binary is stripped, so `go tool nm` cannot list
 #     its linked packages.)
@@ -248,9 +288,10 @@ CVE-2026-46603
 CVE-2026-56864
 CVE-2026-56865
 
-# google.golang.org/grpc v1.83.1 in /usr/local/bin/tofu 1.13.2 (dev-base),
-# fixed in 1.83.2. Issue #605; tofu 1.13.2 (the newest release) still ships
-# v1.83.1, confirmed by the issue #629 audit.
+# google.golang.org/grpc v1.83.1 in /usr/local/bin/tofu 1.13.9 (dev-base),
+# fixed in 1.83.2. Issue #605; tofu 1.13.2 still shipped v1.83.1 at the issue
+# #629 audit, and so does 1.13.9, the newest release (build info in the
+# release binary, issue #755).
 # CVE-2026-84445: a gRPC-Go server built with
 # xds.NewGRPCServer panics on a request that has neither :authority nor Host.
 # tofu uses gRPC only as the client of its provider plugins (go-plugin); it
@@ -259,10 +300,12 @@ CVE-2026-84445
 
 # github.com/go-jose/go-jose/v4 < 4.1.6 (dev-base), fixed in 4.1.6 (released
 # 2026-10-14). Issue #732; first gated the 2026-10-28 nightly. Carriers, each
-# the newest upstream release (checked 2026-10-28):
+# the newest upstream release (checked 2026-10-28; re-checked 2026-11-07,
+# issue #755):
 #   - /usr/local/bin/scorecard 5.6.0, go-jose v4.1.4
-#   - /usr/local/bin/tofu 1.13.2, go-jose v4.1.4
-#   - /usr/local/bin/trivy 0.76.1, go-jose v4.1.5
+#   - /usr/local/bin/tofu 1.13.9, go-jose v4.1.4
+# trivy carried it too (0.76.1, go-jose v4.1.5). The trivy 0.76.2 bump
+# (issue #755) ships go-jose v4.1.6, so that carrier is not ignored.
 # CVE-2026-116587 — go-jose parses RSA modulus and prime values from a JWK
 #   without size bounds before crypto/rsa.PrivateKey.Validate, so a crafted
 #   JWK with large or degenerate RSA private parameters costs cubic CPU time.
@@ -280,8 +323,8 @@ CVE-2026-84445
 # user-invoked CLI, with no confidentiality or integrity impact. The images
 # install tofu for `fmt -check` and `init -backend=false && validate` (no
 # backend, no cloud auth; common/opentofu.dockerfile), which fetch no key sets.
-# Not fixable by bumping: no newer release of any carrier exists. Remove per
-# carrier once a scorecard, tofu or trivy release ships go-jose >= 4.1.6; the
+# Not fixable by bumping: no newer release of either carrier exists. Remove per
+# carrier once a scorecard or tofu release ships go-jose >= 4.1.6; the
 # daily upstream-refresh PR picks up the new release.
 CVE-2026-116587
 
