@@ -53,9 +53,12 @@ Node.js, markdownlint, validation tools) are maintained once in
 
 ### Version management
 
-All shared tool versions are pinned via `ARG` directives in the common
-fragments. A version bump is a one-line change in one file, applied to
-all images automatically at build time.
+Most tools are unpinned and resolve their latest release at build time.
+Each tool held at a version carries a justification in
+`docker/pins/pins.yml`, and the binary-download tools among them are bumped
+to the leading edge by the daily `upstream-refresh` job. See
+[Tool Version Management](../operations/version-management.md) for the
+pinning model.
 
 ## Common Tooling Layer
 
@@ -238,9 +241,11 @@ the list here:
 
 ## Consumption
 
-Images are consumed via `vrg-docker-run` and `vrg-docker-test` in
+Images are consumed via `vrg-container-run` in
 [vergil-tooling](https://github.com/vergil-project/vergil-tooling).
-`vrg-docker-run` runs arbitrary commands inside the matching container;
-`vrg-docker-test` auto-detects the project language and runs the test
-suite. Consuming repos can override the image with the `DOCKER_DEV_IMAGE`
+It auto-detects the project language, selects the matching image (falling
+back to the base image when no language is detected) and runs the given
+command inside it; a repo's validation runs as
+`vrg-container-run -- vrg-validate`. The image prefix defaults to `prod-`;
+`--prefix dev` selects the `dev-` image. Consuming repos can override the image with the `DOCKER_DEV_IMAGE`
 environment variable.
