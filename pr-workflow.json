@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "issue": "755",
+  "branch": "feature/755-trivy-gate",
+  "base": "origin/develop",
+  "status": "ready",
+  "created_at": "2026-11-07T14:48:50Z",
+  "updated_at": "2026-11-07T14:48:50Z",
+  "git": {
+    "base_sha": "26fbe12ab7b6eeb1d80f6e043bee06de11b07f6b",
+    "head_sha": "eee8bb2626846217ce1331c08b47caf1c71ab11b"
+  },
+  "pr_metadata": {
+    "title": "fix(security): restore the image Trivy gate for CVE-2026-78661",
+    "summary": "Bump trivy to 0.76.2 (x/net v0.62.0) and opentofu to 1.13.9 through the upstream-refresh hook, and document CVE-2026-78661 in .trivyignore for the gh, nfpm, scorecard, tofu, osv-scanner and go-licenses releases that still ship an older x/net but do not link the vulnerable HTML parser, so the publish gate passes again.",
+    "notes": "Findings that failed the gate. They come from every failing publish job in CD runs 41139916928 and 42381348953 and nightlies 42049687187, 42235004094 and 42377183315:\n\n- CVE-2026-78661 (HIGH, golang.org/x/net/html, fixed in x/net 0.62.0). Carriers: gh 2.103.3 (x/net v0.60.0, all images), nfpm 2.48.0 (v0.60.0, all images), scorecard 5.6.0 (v0.60.0, base), tofu 1.13.2 (v0.57.0, base), trivy 0.76.1 (v0.60.0, base), osv-scanner 2.7.0 (v0.61.0, java 17 and 21) and go-licenses v2.0.1 (v0.43.0, go images).\n  - trivy is bumped to 0.76.2, which carries x/net v0.62.0. It also carries go-jose v4.1.6, so trivy is no longer a CVE-2026-116587 carrier either.\n  - tofu is bumped to 1.13.9 by the same upstream-refresh run, but 1.13.9 still has x/net v0.57.0.\n  - Every other carrier is already on its newest release, and each one still requires x/net < 0.62.0.\n  - Evidence: the build info and function names in each amd64 release binary, plus the gh and go-licenses binaries in the published dev-go:1.27 image. None of them links Parse, ParseFragment(WithOptions), ParseWithOptions or the parser's addText / fosterParent. gh and osv-scanner link only the tokenizer, scorecard links only x/net/html's init and html/charset, and nfpm, tofu and go-licenses link no x/net/html code at all.\n  - So the new .trivyignore entry follows the #605 / #624 form: it lists the carriers, gives the reachability reasoning and states the removal condition.\n- CVE-2026-116795 (HIGH, re2js 2.8.6, via markdownlint 0.42.0 under markdownlint-cli 0.50.0). It was in every dev and prod image through the 2026-11-06 nightly. markdownlint 0.42.1 (2026-11-07) moved to re2js 2.9.1, and the 2026-11-07 no-cache nightly no longer shows it. No change is needed.\n- CVE-2026-76844 and CVE-2026-85091 (HIGH, zlib1g 1:1.3.dfsg+really1.3.1-1+b1, fixed in +deb13u1). These appear only in dev-rust:1.92. Its candidate is the 2026-11-06 build: the 2026-11-07 nightly leg was cancelled, and the CD leg was fully cached from that build. Fresh builds run `apt-get upgrade` and pick up deb13u1, as prod-rust:1.92 from 2026-11-07 shows. No change is needed.\n\nUpstream-refresh PR #752 carries the same trivy and opentofu bump, so it becomes redundant once this merges. The next refresh run with nothing to bump closes it.\n\nVerification:\n- `vrg-container-run -- vrg-validate` is green.\n- I scanned every dev and prod `*-candidate` image in the registry, on amd64 and arm64, with this branch's .trivyignore and trivy.yaml, using Trivy 0.76.1 at CRITICAL,HIGH. 63 of 64 come back clean. The exception is dev-rust:1.92, the stale 2026-11-06 build described above, which shows only re2js and zlib.\n- A rootfs scan of the trivy 0.76.2 and tofu 1.13.9 release binaries finds nothing that this .trivyignore does not already cover. trivy 0.76.2 has no HIGH or CRITICAL findings even with no ignore file.\n- PR CI runs no image scan; only the post-merge CD and the nightly run the gate. I did not see the gate itself pass.\n\nAfter merge:\n- If CD's dev-rust:1.92 leg is again fully cached, it can fail on zlib and re2js. A no-cache rebuild clears it: the next nightly, or dispatching ops.yml.\n- nightly-rebuild-prod builds main with main's .trivyignore, so the prod images stay red until this change is released to main.",
+    "linkage": "Ref"
+  },
+  "submitted": null
+}
