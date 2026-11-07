@@ -2874,6 +2874,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#manifest-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manifest cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#token" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3027,6 +3038,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#manifest-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manifest cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#token" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3167,6 +3189,28 @@ The workflow adds two defences:</p>
 </ul>
 <p><code>docker/versions/test_package_cleanup.py</code> pins this structure. If 429s persist,
 lower <code>max-parallel</code> first.</p>
+<h3 id="manifest-cache">Manifest cache<a class="headerlink" href="#manifest-cache" title="Permanent link">&para;</a></h3>
+<p>The action keeps a cache of the manifests it has fetched, in the repository's
+Actions cache, one entry per package per run. A run that finds an entry fetches
+only the manifests it has not seen. GitHub evicts an entry that nobody has used
+for 7 days, and the weekly cleanup often starts a few hours later than its
+schedule, so the gap between runs can pass 7 days. The 2026-11-01 run started
+with no cache for any package and fetched 37,500 manifests
+(<a href="https://github.com/vergil-project/vergil-containers/issues/700">#700</a>).</p>
+<p><a href="https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/package-cache-warm.yml"><code>package-cache-warm.yml</code></a>
+prevents this. Every Wednesday it restores each package's newest cache entry.
+A restore counts as a use, so the entry survives until Sunday's cleanup. The
+restore downloads from the GitHub cache service and sends no requests to
+ghcr.io.</p>
+<p>If a package has no entry at all, the leg logs a <em>Manifest cache cold</em> warning
+and rebuilds the cache with a preview-only run of the action that selects
+nothing for deletion. It then checks the entry exists and fails if it does not.
+That failure means the workflow's cache path or key no longer matches what the
+action writes, which can happen when the action is upgraded. The workflow
+copies the action's cache scheme, so the two workflows must pin the same action
+version; <code>docker/versions/test_package_cache_warm.py</code> enforces it.</p>
+<p>To check that the cache is warm, read a cleanup leg's log: the line
+<code>manifest cache: N/M digests served from cache (P%)</code> should show more than 0%.</p>
 <h3 id="token">Token<a class="headerlink" href="#token" title="Permanent link">&para;</a></h3>
 <p>The default <code>GITHUB_TOKEN</code> can list and preview. If real deletion of org-owned
 package versions fails with a permissions error, provision a PAT with
