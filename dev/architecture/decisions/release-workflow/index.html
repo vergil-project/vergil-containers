@@ -3215,16 +3215,14 @@ triage, not infrastructure issues), and the team monitors GitHub
 notifications. Custom notification infrastructure would add complexity
 without proportional value at current scale.</p>
 <h2 id="consumer-integration">Consumer Integration<a class="headerlink" href="#consumer-integration" title="Permanent link">&para;</a></h2>
-<p>Images are consumed via <code>vrg-docker-run</code> and <code>vrg-docker-test</code> in
+<p>Images are consumed via <code>vrg-container-run</code> in
 <a href="https://github.com/vergil-project/vergil-tooling">vergil-tooling</a>.
-The image prefix defaults to <code>prod-</code> and can be overridden per-repo
-in <code>vergil.toml</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">[docker]</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">image-prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"dev"</span><span class="w">   </span><span class="c1"># default: "prod"</span>
+The image prefix defaults to <code>prod-</code> and can be overridden per
+invocation with <code>--prefix</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>vrg-container-run<span class="w"> </span>--prefix<span class="w"> </span>dev<span class="w"> </span>--<span class="w"> </span>vrg-validate
 </code></pre></div>
-<p>This allows a single consuming repo to temporarily use <code>dev-</code> images
-for validating in-progress image changes without affecting the rest of
-the fleet.</p>
+<p>This allows a consuming repo to use <code>dev-</code> images for validating
+in-progress image changes without affecting the rest of the fleet.</p>
 <h2 id="migration-sequence">Migration Sequence<a class="headerlink" href="#migration-sequence" title="Permanent link">&para;</a></h2>
 <p>The original migration order was load-bearing — consumers could not
 reference <code>prod-</code> images before they existed:</p>

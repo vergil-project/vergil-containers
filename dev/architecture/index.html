@@ -3062,9 +3062,12 @@ fragment may include another fragment (for example
 Node.js, markdownlint, validation tools) are maintained once in
 <code>docker/common/</code> and included by every template that needs them.</p>
 <h3 id="version-management">Version management<a class="headerlink" href="#version-management" title="Permanent link">&para;</a></h3>
-<p>All shared tool versions are pinned via <code>ARG</code> directives in the common
-fragments. A version bump is a one-line change in one file, applied to
-all images automatically at build time.</p>
+<p>Most tools are unpinned and resolve their latest release at build time.
+Each tool held at a version carries a justification in
+<code>docker/pins/pins.yml</code>, and the binary-download tools among them are bumped
+to the leading edge by the daily <code>upstream-refresh</code> job. See
+<a href="../operations/version-management/">Tool Version Management</a> for the
+pinning model.</p>
 <h2 id="common-tooling-layer">Common Tooling Layer<a class="headerlink" href="#common-tooling-layer" title="Permanent link">&para;</a></h2>
 <p>Every language image includes the following shared fragments:</p>
 <ul>
@@ -3250,11 +3253,13 @@ the list here:</p>
 <li>Set role to <strong>Write</strong>.</li>
 </ol>
 <h2 id="consumption">Consumption<a class="headerlink" href="#consumption" title="Permanent link">&para;</a></h2>
-<p>Images are consumed via <code>vrg-docker-run</code> and <code>vrg-docker-test</code> in
+<p>Images are consumed via <code>vrg-container-run</code> in
 <a href="https://github.com/vergil-project/vergil-tooling">vergil-tooling</a>.
-<code>vrg-docker-run</code> runs arbitrary commands inside the matching container;
-<code>vrg-docker-test</code> auto-detects the project language and runs the test
-suite. Consuming repos can override the image with the <code>DOCKER_DEV_IMAGE</code>
+It auto-detects the project language, selects the matching image (falling
+back to the base image when no language is detected) and runs the given
+command inside it; a repo's validation runs as
+<code>vrg-container-run -- vrg-validate</code>. The image prefix defaults to <code>prod-</code>;
+<code>--prefix dev</code> selects the <code>dev-</code> image. Consuming repos can override the image with the <code>DOCKER_DEV_IMAGE</code>
 environment variable.</p>
 
 
