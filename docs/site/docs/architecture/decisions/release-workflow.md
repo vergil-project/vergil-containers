@@ -114,19 +114,17 @@ without proportional value at current scale.
 
 ## Consumer Integration
 
-Images are consumed via `vrg-docker-run` and `vrg-docker-test` in
+Images are consumed via `vrg-container-run` in
 [vergil-tooling](https://github.com/vergil-project/vergil-tooling).
-The image prefix defaults to `prod-` and can be overridden per-repo
-in `vergil.toml`:
+The image prefix defaults to `prod-` and can be overridden per
+invocation with `--prefix`:
 
-```toml
-[docker]
-image-prefix = "dev"   # default: "prod"
+```bash
+vrg-container-run --prefix dev -- vrg-validate
 ```
 
-This allows a single consuming repo to temporarily use `dev-` images
-for validating in-progress image changes without affecting the rest of
-the fleet.
+This allows a consuming repo to use `dev-` images for validating
+in-progress image changes without affecting the rest of the fleet.
 
 ## Migration Sequence
 
