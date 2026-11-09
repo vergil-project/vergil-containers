@@ -8,3 +8,4 @@ ignored:
   - DL3013  # pin versions in pip — floated by policy; see docker/pins/
   - DL3016  # pin versions in npm — floated by policy; see docker/pins/
   - DL3062  # pin versions in go install — floated by policy; see docker/pins/
+  - DL3041  # pin versions in dnf — floated by policy, as apt is; see docker/pins/

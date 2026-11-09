@@ -67,6 +67,8 @@ jobs:
           - dev-cpp-clang
           - dev-cpp-gcc
           - dev-ts-node
+          - dev-pkg-ubuntu
+          - dev-pkg-rhel
           - prod-base
           - prod-python
           - prod-go
@@ -74,6 +76,8 @@ jobs:
           - prod-cpp-clang
           - prod-cpp-gcc
           - prod-ts-node
+          - prod-pkg-ubuntu
+          - prod-pkg-rhel
           # END generated: versions (warm)
     env:
       PACKAGE: ${{ matrix.package }}

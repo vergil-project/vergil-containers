@@ -1,0 +1,65 @@
+# Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
+# Canonical source: https://github.com/vergil-project/vergil-containers
+# pkg-ubuntu — package toolchain image for the Ubuntu targets (epic
+# vergil-project/.github#607): the upstream image plus the OS upgrade, the
+# package-toolchain prerequisites, uv, nFPM, the amd64 apt mirror config and
+# the toolchain marker. Nothing else: no interpreter, no vergil-tooling.
+#
+# It sets no ENTRYPOINT, CMD, USER or WORKDIR (test_generate.py checks it): an
+# image built FROM it (epic vergil-project/.github#649) inherits only what
+# ubuntu:<v> itself sets.
+ARG UBUNTU_VERSION=26.04
+FROM ubuntu:${UBUNTU_VERSION}
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# @include common/apt-mirror.dockerfile
+
+# --- System packages ---------------------------------------------------------
+# The prerequisites os-prereqs.sh installs today (vergil-actions
+# actions/package/setup), in one layer with the OS upgrade. Package lists are
+# removed: kept lists go stale between nightly rebuilds, so package jobs run
+# their own apt-get update.
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      ca-certificates curl git tar gzip gnupg && \
+    rm -rf /var/lib/apt/lists/*
+
+# @include common/uv.dockerfile
+# @include common/nfpm.dockerfile
+# @include common/package-toolchain-marker.dockerfile
+
+# --- Build-time checks -------------------------------------------------------
+# Any failure fails the build, so no published image can lack one of these:
+#   - on amd64 the Ubuntu sources point at the mirror list and the fail-fast
+#     config exists; on arm64 (ports.ubuntu.com, which the mirrors do not
+#     serve) the sources are untouched and neither file exists;
+#   - every tool runs;
+#   - the marker lists seven tools, uv and nfpm among them;
+#   - no python3 is on PATH, and no package lists are kept.
+ARG TARGETARCH
+RUN sources=/etc/apt/sources.list.d/ubuntu.sources && \
+    test -f "${sources}" && \
+    case "${TARGETARCH}" in \
+      amd64) \
+        grep -q 'mirror+file:/etc/apt/apt-mirrors.txt' "${sources}" && \
+        ! grep -qE 'https?://((azure\.)?archive|security)\.ubuntu\.com' "${sources}" && \
+        test -s /etc/apt/apt-mirrors.txt && \
+        test -s /etc/apt/apt.conf.d/80-vergil-fast-fail ;; \
+      arm64) \
+        grep -q 'ports.ubuntu.com' "${sources}" && \
+        ! grep -q 'mirror+file:' "${sources}" && \
+        test ! -e /etc/apt/apt-mirrors.txt && \
+        test ! -e /etc/apt/apt.conf.d/80-vergil-fast-fail ;; \
+      *) echo "check: unsupported TARGETARCH '${TARGETARCH}'" >&2; false ;; \
+    esac && \
+    curl --version && \
+    git --version && \
+    gpg --version && \
+    uv --version && \
+    nfpm --version && \
+    test "$(wc -l < /etc/vergil/package-toolchain)" -eq 7 && \
+    grep -q '^uv ' /etc/vergil/package-toolchain && \
+    grep -q '^nfpm ' /etc/vergil/package-toolchain && \
+    ! command -v python3 && \
+    test -z "$(find /var/lib/apt/lists -name '*_Packages*' -print -quit)"

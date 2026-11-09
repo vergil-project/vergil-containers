@@ -90,6 +90,8 @@ jobs:
           - dev-cpp-clang
           - dev-cpp-gcc
           - dev-ts-node
+          - dev-pkg-ubuntu
+          - dev-pkg-rhel
           - prod-base
           - prod-python
           - prod-go
@@ -97,6 +99,8 @@ jobs:
           - prod-cpp-clang
           - prod-cpp-gcc
           - prod-ts-node
+          - prod-pkg-ubuntu
+          - prod-pkg-rhel
           # END generated: versions (cleanup)
     steps:
       - name: Prune untagged versions (attempt 1)
@@ -197,6 +201,10 @@ jobs:
             older_than: "30 days"
           - package: prod-ts-node
             older_than: "30 days"
+          - package: prod-pkg-ubuntu
+            older_than: "30 days"
+          - package: prod-pkg-rhel
+            older_than: "30 days"
           - package: dev-base
             older_than: "7 days"
           - package: dev-python
@@ -210,6 +218,10 @@ jobs:
           - package: dev-cpp-gcc
             older_than: "7 days"
           - package: dev-ts-node
+            older_than: "7 days"
+          - package: dev-pkg-ubuntu
+            older_than: "7 days"
+          - package: dev-pkg-rhel
             older_than: "7 days"
             # END generated: versions (reap)
     steps:

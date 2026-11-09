@@ -76,8 +76,24 @@ def _all_commands() -> list[tuple[Path, list[str], str | None]]:
     ]
 
 
+# `curl --version` downloads nothing: the package toolchain images run it in
+# their build-time checks (vergil-containers#728). It is the only curl exempt.
+VERSION_PROBE = ["curl", "--version"]
+
+
 def _curls() -> list[tuple[Path, list[str], str | None]]:
-    return [(p, argv, after) for p, argv, after in _all_commands() if argv[0] == "curl"]
+    return [
+        (p, argv, after)
+        for p, argv, after in _all_commands()
+        if argv[0] == "curl" and argv != VERSION_PROBE
+    ]
+
+
+def test_only_a_bare_version_probe_is_exempt():
+    # A curl with a URL beside --version is still a download and still checked.
+    assert any(argv == VERSION_PROBE for _, argv, _ in _all_commands())
+    probe = _commands(" curl --version https://x/y")[0][0]
+    assert probe != VERSION_PROBE
 
 
 def _has_retry(argv: list[str]) -> bool:

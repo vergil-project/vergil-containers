@@ -118,6 +118,42 @@
       "depth": 0
     },
     {
+      "language": "pkg-ubuntu",
+      "version": "26.04",
+      "build-args": {
+        "UBUNTU_VERSION": "26.04"
+      },
+      "parent": null,
+      "depth": 0
+    },
+    {
+      "language": "pkg-ubuntu",
+      "version": "24.04",
+      "build-args": {
+        "UBUNTU_VERSION": "24.04"
+      },
+      "parent": null,
+      "depth": 0
+    },
+    {
+      "language": "pkg-rhel",
+      "version": "10",
+      "build-args": {
+        "RHEL_VERSION": "10"
+      },
+      "parent": null,
+      "depth": 0
+    },
+    {
+      "language": "pkg-rhel",
+      "version": "9",
+      "build-args": {
+        "RHEL_VERSION": "9"
+      },
+      "parent": null,
+      "depth": 0
+    },
+    {
       "language": "base",
       "version": "latest",
       "build-args": {},
