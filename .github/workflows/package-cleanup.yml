@@ -85,7 +85,6 @@ jobs:
           # BEGIN generated: versions (cleanup)
           - dev-base
           - dev-python
-          - dev-java
           - dev-go
           - dev-rust
           - dev-cpp-clang
@@ -93,7 +92,6 @@ jobs:
           - dev-ts-node
           - prod-base
           - prod-python
-          - prod-java
           - prod-go
           - prod-rust
           - prod-cpp-clang
@@ -180,8 +178,6 @@ jobs:
             older_than: "30 days"
           - package: prod-python
             older_than: "30 days"
-          - package: prod-java
-            older_than: "30 days"
           - package: prod-go
             older_than: "30 days"
           - package: prod-rust
@@ -195,8 +191,6 @@ jobs:
           - package: dev-base
             older_than: "7 days"
           - package: dev-python
-            older_than: "7 days"
-          - package: dev-java
             older_than: "7 days"
           - package: dev-go
             older_than: "7 days"

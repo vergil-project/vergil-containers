@@ -19,9 +19,8 @@
 # ignore-unfixed and skip-files from trivy.yaml. Every entry below appeared in
 # at least one of those scans, so none was removed. The audit corrected the
 # carrier notes: gh (2.103.0, go1.27.3, x/net v0.60.0, x/mod v0.41.0) no longer
-# carries any entry, the temurin base's pebble is built with go1.27.1, the
-# image's Go is 1.26.10, and golangci-lint no longer carries CVE-2026-56852. No
-# carrier had a newer upstream release to bump to. With this file and the rego,
+# carries any entry, the image's Go is 1.26.10, and golangci-lint no longer
+# carries CVE-2026-56852. No carrier had a newer upstream release to bump to. With this file and the rego,
 # all 14 images scan clean (0 HIGH/CRITICAL).
 # Previous audits: 2026-10-16 (issue #605), which removed 25 stale entries, and
 # 2026-08-15 (issue #561), which removed 137.
@@ -83,10 +82,6 @@ CVE-2026-56862
 # older Go (carriers as of the 2026-10-21 audit, issue #629):
 #   - actionlint 1.7.12, go1.26.1 (all images)
 #   - shfmt 3.14.1, go1.27.1 (all images)
-#   - /usr/bin/pebble, go1.27.1 (dev-java 17 and 21): Canonical's Pebble
-#     service manager, shipped outside dpkg in the Ubuntu 26.04 base of
-#     eclipse-temurin (ubuntu:26.04 itself carries the same build). It is never
-#     started; the image entrypoint is Temurin's /__cacert_entrypoint.sh.
 #   - tofu 1.13.9 (dev-base): CVE-2026-78669 only, via golang.org/x/net
 #     v0.57.0. tofu is built with go1.27.3, so its stdlib is fixed. (1.13.9,
 #     bumped under issue #755, still requires x/net v0.57.0.)
@@ -110,11 +105,11 @@ CVE-2026-56862
 #   TLS-authenticated server itself to be malicious, and the impact is CPU
 #   exhaustion of a short-lived, user-invoked CLI process, with no
 #   confidentiality or integrity impact. actionlint and shfmt make no network
-#   connections, and pebble never runs. go-licenses links no x/net/http2 code
+#   connections. go-licenses links no x/net/http2 code
 #   from its x/net module (see the go-licenses note in the header), so it
 #   cannot run the vulnerable flow-control path.
 #
-# Remove each once actionlint, shfmt and the temurin base's pebble all ship
+# Remove each once actionlint and shfmt both ship
 # builds with Go >= 1.26.9 / 1.27.2, and tofu and go-licenses require x/net
 # >= 0.60.0. The daily upstream-refresh PR and the nightly rebuild pick these up.
 CVE-2026-78667
@@ -144,11 +139,8 @@ CVE-2026-97031
 #     only. Exploiting the missing denylist needs a man-in-the-middle holding a
 #     certificate that chains through one of the distrusted intermediates. The
 #     impact would be tampered scorecard output.
-#   - /usr/bin/pebble, go1.27.1 (dev-java 17 and 21). The Canonical Pebble
-#     build in the Ubuntu 26.04 base of eclipse-temurin (see the batch above).
-#     It is never started.
 #
-# Remove once actionlint, shfmt, nfpm, scorecard and the temurin base's pebble
+# Remove once actionlint, shfmt, nfpm and scorecard
 # all ship builds with Go >= 1.26.10 / 1.27.3. The daily upstream-refresh PR and the
 # nightly rebuild pick these up.
 CVE-2026-111943
@@ -203,8 +195,6 @@ CVE-2026-27136
 #     x/net/html's package init and x/net/html/charset.
 #   - /usr/local/bin/tofu 1.13.9 (base), x/net v0.57.0. Links no x/net/html
 #     code.
-#   - /usr/local/bin/osv-scanner 2.7.0 (java 17 and 21), x/net v0.61.0. Links
-#     only the tokenizer and x/net/html/charset.
 #   - go-licenses v2.0.1 (go images), x/net v0.43.0. Links no x/net/html code
 #     (see the go-licenses note in the header).
 # None of these binaries contains Parse, ParseFragment, ParseWithOptions,
@@ -215,7 +205,7 @@ CVE-2026-27136
 # Not fixable by bumping: no newer release of any carrier above exists, and
 # each one's newest release still requires x/net < 0.62.0. Remove per carrier
 # once a release requires x/net >= 0.62.0. The daily upstream-refresh PR picks
-# up nfpm, scorecard, tofu and osv-scanner; every image build installs the
+# up nfpm, scorecard and tofu; every image build installs the
 # newest gh from the cli.github.com apt repository and runs `go install
 # github.com/google/go-licenses/v2@latest`.
 CVE-2026-78661

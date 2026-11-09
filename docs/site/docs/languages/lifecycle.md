@@ -120,8 +120,8 @@ instead.
    then change it. A language's quirks live in that language's adapter, never in
    the shared code.
 8. **Work at `x.y` and ignore the patch level.** Versions are compared at
-   `x.y`, or at the major for languages numbered by whole majors (Java, Node,
-   Clang, GCC). A pin of `3.14` is satisfied by any 3.14 patch release. Version
+   `x.y`, or at the major for languages numbered by whole majors (Node, Clang,
+   GCC). A pin of `3.14` is satisfied by any 3.14 patch release. Version
    order is semantic-version order.
 9. **No special handling for major-version jumps.** A new major version is
    adopted like any other version. Anything that breaks is pinned and handled
@@ -134,7 +134,7 @@ instead.
     edge.
 12. **No backfill.** The window grows only at the top, through new GA releases.
     A version older than the window's current oldest is never added, even if
-    upstream still supports it. Python 3.11 and Java 11 are both examples. The
+    upstream still supports it. Python 3.11 is an example. The
     rule is enforced once, in the shared machinery.
 13. **Vergil owns which toolchain runs, and a language's own files declare only
     a floor.** Settings that choose a toolchain version (for example
@@ -179,7 +179,6 @@ upstream fact cites its source and the date it was checked.
 | `python` | `pr` | [Python](python.md) |
 | `go` | `pr` | [Go](go.md) |
 | `rust` | `report` | [Rust](rust.md) |
-| `java` | `report` | [Java](java.md) |
 | `ts-node` | `report` | [TypeScript / Node.js](ts-node.md) |
 | `cpp-clang` | `report` | [C++ / Clang](cpp-clang.md) |
 | `cpp-gcc` | `report` | [C++ / GCC](cpp-gcc.md) |

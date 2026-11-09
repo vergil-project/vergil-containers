@@ -1,4 +1,4 @@
-"""The report-only adapters (Rust, Java, Node, Clang, GCC) against fixtures that
+"""The report-only adapters (Rust, Node, Clang, GCC) against fixtures that
 are copies of the upstream responses on 2026-10-21. No test touches the network."""
 from datetime import date
 from pathlib import Path
@@ -11,7 +11,6 @@ from lifecycle import core
 from lifecycle.adapters import ADAPTERS
 from lifecycle.adapters.clang import ClangAdapter
 from lifecycle.adapters.gcc import GccAdapter, parse_releases, parse_supported
-from lifecycle.adapters.java import JavaAdapter
 from lifecycle.adapters.node import NodeAdapter
 from lifecycle.adapters.rust import RustAdapter
 from lifecycle.core import EOL_DATE_UNKNOWN, Change, NotFoundError, SourceError, UpstreamRelease
@@ -23,7 +22,6 @@ SEED = frozen.SEED  # the frozen test manifest, not the live one (#654)
 
 URL_FIXTURES = {
     "https://endoflife.date/api/rust.json": "endoflife-rust.json",
-    "https://endoflife.date/api/eclipse-temurin.json": "endoflife-eclipse-temurin.json",
     "https://endoflife.date/api/nodejs.json": "endoflife-nodejs.json",
     "https://api.github.com/repos/llvm/llvm-project/releases?per_page=100": "llvm-releases.json",
     "https://apt.llvm.org/trixie/dists/": "apt-llvm-trixie-index.html",
@@ -80,7 +78,6 @@ def test_every_manifest_family_has_an_adapter():
 def test_run_reports_no_missing_adapter_against_fixtures():
     adapters = {
         "rust": RustAdapter(fetch=fixture_fetch, tag_exists=Tags()),
-        "java": JavaAdapter(fetch=fixture_fetch, tag_exists=Tags()),
         "ts-node": NodeAdapter(fetch=fixture_fetch, setup_exists=lambda url: True),
         "cpp-clang": ClangAdapter(fetch=fixture_fetch),
         "cpp-gcc": GccAdapter(fetch=fixture_fetch),
@@ -133,31 +130,6 @@ def test_rust_ignores_a_future_release():
 def test_rust_missing_tag_is_blocked():
     adapter = RustAdapter(fetch=fixture_fetch, tag_exists=Tags(missing={("rust", "1.99-slim")}))
     assert _kinds(_changes(adapter))[:2] == [("blocked", "1.99"), ("add", "1.98")]
-
-
-# --- Java --------------------------------------------------------------------------
-
-
-def test_java_window_is_lts_not_eol():
-    tags = Tags()
-    adapter = JavaAdapter(fetch=fixture_fetch, tag_exists=tags)
-    target = adapter.target(adapter.fetch(), TODAY)
-    # 11 and 8 are still supported upstream; the core's no-backfill drops them.
-    assert [t.version for t in target] == ["25", "21", "17", "11", "8"]
-    assert ("eclipse-temurin", "25-jdk") in tags.asked
-    assert {t.version: t.eol for t in target}["25"] == date(2031, 9, 30)
-
-
-def test_java_classify_against_seed_is_add_25():
-    changes = _changes(JavaAdapter(fetch=fixture_fetch, tag_exists=Tags()))
-    assert _kinds(changes) == [("add", "25")]
-
-
-def test_java_lts_past_eol_leaves_the_window():
-    adapter = JavaAdapter(fetch=fixture_fetch, tag_exists=Tags())
-    later = date(2027, 11, 1)  # 17 is EOL on 2027-10-31; 27 (non-LTS) never counts
-    changes = core.classify(_family("java"), adapter.target(adapter.fetch(), later), later, 90)
-    assert _kinds(changes) == [("add", "25"), ("out_of_policy", "17")]
 
 
 # --- Node --------------------------------------------------------------------------
@@ -352,6 +324,6 @@ def test_gcc_undecodable_page_is_loud():
 # --- Shared ------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("adapter", [RustAdapter(), JavaAdapter(), ClangAdapter(), GccAdapter()])
+@pytest.mark.parametrize("adapter", [RustAdapter(), ClangAdapter(), GccAdapter()])
 def test_adapters_without_follow_ups(adapter):
     assert adapter.extra_changes(Change(adapter.key, "out_of_policy", "1", "")) == []
