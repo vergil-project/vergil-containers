@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -620,6 +620,8 @@
       
         
       
+        
+      
     
     
     
@@ -672,6 +674,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.35/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.35
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2113,8 +2143,6 @@
       
         
       
-        
-      
     
     
     
@@ -2375,34 +2403,6 @@
     
   
     Rust
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../java/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Java
   
 
     
@@ -3167,8 +3167,8 @@ instead.</p>
    then change it. A language's quirks live in that language's adapter, never in
    the shared code.</li>
 <li><strong>Work at <code>x.y</code> and ignore the patch level.</strong> Versions are compared at
-   <code>x.y</code>, or at the major for languages numbered by whole majors (Java, Node,
-   Clang, GCC). A pin of <code>3.14</code> is satisfied by any 3.14 patch release. Version
+   <code>x.y</code>, or at the major for languages numbered by whole majors (Node, Clang,
+   GCC). A pin of <code>3.14</code> is satisfied by any 3.14 patch release. Version
    order is semantic-version order.</li>
 <li><strong>No special handling for major-version jumps.</strong> A new major version is
    adopted like any other version. Anything that breaks is pinned and handled
@@ -3181,7 +3181,7 @@ instead.</p>
     edge.</li>
 <li><strong>No backfill.</strong> The window grows only at the top, through new GA releases.
     A version older than the window's current oldest is never added, even if
-    upstream still supports it. Python 3.11 and Java 11 are both examples. The
+    upstream still supports it. Python 3.11 is an example. The
     rule is enforced once, in the shared machinery.</li>
 <li><strong>Vergil owns which toolchain runs, and a language's own files declare only
     a floor.</strong> Settings that choose a toolchain version (for example
@@ -3241,11 +3241,6 @@ upstream fact cites its source and the date it was checked.</p>
 <td><code>rust</code></td>
 <td><code>report</code></td>
 <td><a href="../rust/">Rust</a></td>
-</tr>
-<tr>
-<td><code>java</code></td>
-<td><code>report</code></td>
-<td><a href="../java/">Java</a></td>
 </tr>
 <tr>
 <td><code>ts-node</code></td>
@@ -3325,7 +3320,7 @@ so it has no policy page.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>
