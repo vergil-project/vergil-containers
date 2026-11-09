@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.35] - 2026-11-09
+
+### Chores
+
+- sync guard.sh with vergil-tooling's managed hook guard shim (#766)
+
+### Refactoring
+
+- remove the Java image, its lifecycle adapter and osv-scanner (#769)
+
 ## [2.1.34] - 2026-11-07
 
 ### Bug fixes
