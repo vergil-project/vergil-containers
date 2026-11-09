@@ -119,8 +119,9 @@ use `TARGETARCH` (injected by Docker Buildx) to select the correct
 platform artifact.
 
 Local builds via `docker/build.sh` build for the host's native
-architecture only (for speed). The CI pipeline builds both platforms
-using QEMU emulation on the GitHub Actions runner.
+architecture only (for speed). The CI pipeline builds each platform
+natively, amd64 on `ubuntu-24.04` and arm64 on `ubuntu-24.04-arm`, and
+stitches the two into one multi-arch manifest. Nothing is emulated.
 
 ## Download Integrity
 

@@ -22,7 +22,7 @@ import frozen
 
 WORKFLOW = frozen.LIVE_ROOT / ".github" / "workflows" / "cd-docker-publish.yml"
 ACTION = re.compile(r"^actions/attest-build-provenance@")
-JOBS = ("build-scan-push", "publish-base")
+JOBS = ("publish",)
 SEQUENCE = [
     "attest1",
     "Back off before retrying attestation",

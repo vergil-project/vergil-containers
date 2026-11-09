@@ -64,6 +64,11 @@
       "language": "ts-node",
       "version": "22",
       "build-arg": "NODE_MAJOR"
+    },
+    {
+      "language": "base",
+      "version": "latest",
+      "build-arg": null
     }
   ]
 }

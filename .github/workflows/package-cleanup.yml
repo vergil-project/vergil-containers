@@ -110,6 +110,8 @@ jobs:
           packages: ${{ matrix.package }}
           token: ${{ secrets.GHCR_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
           delete-untagged: true
+          # Same age floor as attempt 2 below (documented there).
+          older-than: 24 hours
           validate: true
           # Same arming expression as attempt 2 below (documented there).
           dry-run: >-
@@ -134,6 +136,13 @@ jobs:
           packages: ${{ matrix.package }}
           token: ${{ secrets.GHCR_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
           delete-untagged: true
+          # The publish pipeline pushes each per-arch image by digest, untagged,
+          # and only tags it (through the stitched multi-arch candidate) once
+          # every build in its run has finished (vergil-containers#515). Until
+          # then nothing references it, so pruning it would fail that publish.
+          # Untagged versions younger than 24 hours are left for the next run;
+          # the platform children of tagged images are never pruned anyway.
+          older-than: 24 hours
           validate: true
           # Real deletion is armed only when a trigger explicitly asks for it:
           # a manual run with "Preview only" unchecked, or a scheduled run with
