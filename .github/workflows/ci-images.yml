@@ -1,0 +1,173 @@
+# PR CI's selective image build and scan (vergil-containers#514, epic
+# vergil-project/.github#213 T6'), called by ci.yml as its `images` job.
+#
+# `select` maps the PR's changed paths and its docker/versions/matrix.json diff
+# to the matrix entries the change reaches (docker/versions/selection.py), and
+# groups them into build jobs (docker/versions/pr_jobs.py): a selected parent
+# is built in the same job as its selected descendants, which build FROM it,
+# and a child whose parent is not selected builds FROM the published dev-
+# parent. `build` runs each job once per architecture on that architecture's
+# native runner (no emulation): it builds, scans with the publish pipeline's
+# Trivy scan and gate, and smoke-tests each image (scripts/bin/pr-image-build).
+# Nothing is pushed to GHCR: the build cache is read, never written, and a
+# parent reaches its children through a registry local to the job. `evidence`
+# is the one aggregating gate, the required status check.
+name: Images
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+# Every `run:` step is bash. A job in a container otherwise gets `sh -e`, where
+# the select step's `[[ =~ ]]` SHA check is not a command and fails every PR.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  select:
+    name: select
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/vergil-project/prod-base:latest
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+      arch-matrix: ${{ steps.select.outputs.arch-matrix }}
+      has: ${{ steps.select.outputs.has }}
+    steps:
+      # The whole history, so the PR's base and head commits are both present.
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Outputs `matrix` (the selected entries), `arch-matrix` (the build jobs,
+      # each once per architecture) and `has` ("true" when there is anything
+      # to build). Nothing is written unless every step succeeds, and every
+      # failure fails this job, which fails `evidence`: a broken selection
+      # never reads as "nothing to build".
+      - name: Select the images this change reaches
+        id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          WORK: ${{ runner.temp }}/select
+        run: |
+          set -euo pipefail
+          for sha in "$BASE_SHA" "$HEAD_SHA"; do
+            if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error title=Image selection failed::'${sha}' is not a commit SHA. The pull request's base ('${BASE_SHA}') and head ('${HEAD_SHA}') commits come from its pull_request event."
+              exit 1
+            fi
+          done
+          # The checkout belongs to the runner's user, not the container's.
+          git config --global --add safe.directory "$PWD"
+          mkdir -p "$WORK"
+          if ! git diff --name-only "${BASE_SHA}...${HEAD_SHA}" > "$WORK/changed"; then
+            echo "::error title=Image selection failed::Cannot list the files changed between ${BASE_SHA} and ${HEAD_SHA}."
+            exit 1
+          fi
+          if ! git show "${BASE_SHA}:docker/versions/matrix.json" > "$WORK/base-matrix.json"; then
+            echo "::error title=Image selection failed::Cannot read docker/versions/matrix.json at the base commit ${BASE_SHA}."
+            exit 1
+          fi
+          # Both scripts report their own ::error::, and the selector's
+          # ::warning:: (an unclassified path, so every image is built) reaches
+          # this log on stderr.
+          uv run docker/versions/selection.py \
+            --base-matrix "$WORK/base-matrix.json" \
+            --head-matrix docker/versions/matrix.json \
+            --changed-files "$WORK/changed" > "$WORK/selected.json"
+          uv run docker/versions/pr_jobs.py --selected "$WORK/selected.json" > "$WORK/jobs.json"
+          matrix="$(jq -c . "$WORK/selected.json")"
+          arch_matrix="$(jq -c . "$WORK/jobs.json")"
+          has="$(jq -r '.include | length > 0' "$WORK/jobs.json")"
+          {
+            echo "### Images this change builds"
+            echo
+            if [ "$has" = "true" ]; then
+              jq -r '.include[] | "- dev-\(.language):\(.version)"' "$WORK/selected.json"
+            else
+              echo "None: no changed path reaches an image."
+            fi
+          } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+          printf 'matrix=%s\narch-matrix=%s\nhas=%s\n' "$matrix" "$arch_matrix" "$has" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: "build: ${{ matrix.name }} (${{ matrix.arch }})"
+    needs: select
+    if: ${{ needs.select.outputs.has == 'true' }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.select.outputs.arch-matrix) }}
+    # A parent built in this job is pushed here, and only here, for its
+    # children to be built FROM: the registry lives and dies with the job.
+    services:
+      registry:
+        image: registry:2.8.3
+        ports:
+          - 5000:5000
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # The host network lets BuildKit reach the job's registry on localhost.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          driver-opts: network=host
+
+      - name: Build, scan and smoke-test
+        env:
+          ARCH: ${{ matrix.arch }}
+          ENTRIES_JSON: ${{ toJSON(matrix.entries) }}
+          TRIVY_IMAGE: aquasec/trivy:0.72.0
+        run: scripts/bin/pr-image-build "$ARCH"
+
+  # The required status check. It passes when every selected image was built,
+  # scanned and smoke-tested, or when nothing was selected, and fails, naming
+  # why, in every other case.
+  evidence:
+    name: evidence
+    needs: [select, build]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check every selected image was proved
+        id: evidence
+        env:
+          SELECT_RESULT: ${{ needs.select.result }}
+          HAS: ${{ needs.select.outputs.has }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          set -euo pipefail
+          if [ "$SELECT_RESULT" != "success" ]; then
+            echo "::error title=Images not proved::The image selection did not succeed (result '${SELECT_RESULT}'), so no image was proved; see the select job."
+            exit 1
+          fi
+          case "$HAS" in
+            true)
+              if [ "$BUILD_RESULT" != "success" ]; then
+                echo "::error title=Images not proved::The build of the selected images ended '${BUILD_RESULT}', not success; see the failed build jobs."
+                exit 1
+              fi
+              echo "Every selected image was built, scanned and smoke-tested."
+              ;;
+            false)
+              if [ "$BUILD_RESULT" != "skipped" ]; then
+                echo "::error title=Images not proved::nothing was selected, yet the build ended '${BUILD_RESULT}', not skipped."
+                exit 1
+              fi
+              echo "No image is reached by this change."
+              ;;
+            *)
+              echo "::error title=Images not proved::The select job's has output is '${HAS}', not true or false."
+              exit 1
+              ;;
+          esac

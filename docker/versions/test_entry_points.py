@@ -27,6 +27,7 @@ ENTRY_POINTS: dict[str, list[str]] = {
     "docker/pins/report_exposure.py": ["packaging", "pyyaml"],
     "docker/versions/generate.py": ["pyyaml"],
     "docker/versions/selection.py": ["pyyaml"],
+    "docker/versions/pr_jobs.py": ["pyyaml"],
     "docker/versions/lifecycle/check.py": ["pyyaml"],
     "docker/versions/lifecycle/publish.py": ["pyyaml"],
 }
