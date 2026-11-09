@@ -26,41 +26,89 @@ def repo(tmp_path):
     return frozen.make_repo(tmp_path)
 
 
+MATRIX_KEYS = ["language", "version", "build-args", "parent", "depth"]
+
+
 def test_render_matrix_json_equals_current_include_list():
     data = json.loads(g.render_matrix_json(_seed()))
     assert set(data) == {"include"}
-    assert all(set(e) == {"language", "version", "build-arg"} for e in data["include"])
+    assert all(list(e) == MATRIX_KEYS for e in data["include"])
     families = data["include"][:-1]
-    triples = [(e["language"], e["version"], e["build-arg"]) for e in families]
+    triples = [(e["language"], e["version"], *e["build-args"]) for e in families]
     assert sorted(triples) == sorted(CURRENT_MATRIX)
     assert len(triples) == len(CURRENT_MATRIX)
+    # No entry of the frozen manifest names a parent: everything is tier 0.
+    assert all(e["parent"] is None and e["depth"] == 0 for e in data["include"])
 
 
-def test_render_matrix_json_base_entry_is_last_and_only_null_build_arg():
+def test_build_args_map_replaces_build_arg():
     include = json.loads(g.render_matrix_json(_seed()))["include"]
-    assert include[-1] == {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-arg": None}
-    assert [e for e in include if e["build-arg"] is None] == [include[-1]]
+    assert all("build-arg" not in e for e in include)
+    python = [e for e in include if e["language"] == "python"]
+    assert [e["build-args"] for e in python] == [
+        {"PYTHON_VERSION": "3.14"}, {"PYTHON_VERSION": "3.13"}, {"PYTHON_VERSION": "3.12"}]
+    for e in include[:-1]:
+        assert list(e["build-args"].values()) == [e["version"]]
+
+
+def test_base_build_args_empty():
+    include = json.loads(g.render_matrix_json(_seed()))["include"]
+    assert include[-1] == {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-args": {},
+                           "parent": None, "depth": 0}
+    assert [e for e in include if e["build-args"] == {}] == [include[-1]]
     assert [e for e in include if e["language"] == g.BASE_KEY] == [include[-1]]
+
+
+def _tree() -> mf.Manifest:
+    """A synthetic tree: `pkg-ubuntu` <- `base` <- `python`, with `go` on an
+    upstream image. No real manifest entry has a parent yet (epic
+    vergil-project/.github#649 sets them)."""
+    seed = {f.key: f for f in _seed().families}
+    pkg = replace(seed["go"], key="pkg-ubuntu", language="pkgubuntu", build_arg="UBUNTU_VERSION",
+                  versions=(mf.ManifestVersion("24.04", None, None, True, None),))
+    python = replace(seed["python"], parent=mf.Parent("base", "latest"))
+    return mf.Manifest(families=(python, seed["go"], pkg), base_parent=mf.Parent("pkg-ubuntu", "24.04"))
+
+
+def test_matrix_parent_and_depth_emitted():
+    include = json.loads(g.render_matrix_json(_tree()))["include"]
+    by = {(e["language"], e["version"]): e for e in include}
+    assert by[("pkg-ubuntu", "24.04")]["parent"] is None
+    assert by[("pkg-ubuntu", "24.04")]["depth"] == 0
+    assert by[("base", "latest")]["parent"] == {"language": "pkg-ubuntu", "version": "24.04"}
+    assert by[("base", "latest")]["depth"] == 1
+    assert by[("python", "3.14")]["parent"] == {"language": "base", "version": "latest"}
+    assert by[("python", "3.14")]["depth"] == 2
+    assert by[("go", "1.26")] == {"language": "go", "version": "1.26", "build-args": {"GO_VERSION": "1.26"},
+                                  "parent": None, "depth": 0}
+
+
+def test_matrix_ordered_by_depth():
+    include = json.loads(g.render_matrix_json(_tree()))["include"]
+    assert [(e["language"], e["version"], e["depth"]) for e in include] == [
+        ("go", "1.26", 0),
+        ("pkg-ubuntu", "24.04", 0),
+        ("base", "latest", 1),
+        ("python", "3.14", 2),
+        ("python", "3.13", 2),
+        ("python", "3.12", 2),
+    ]
+
+
+def test_matrix_refuses_a_bad_tree():
+    seed = _seed()
+    bad = mf.Manifest(families=seed.families, base_parent=mf.Parent("pkg-ubuntu", "24.04"))
+    with pytest.raises(mf.ManifestError, match=r"base: parent: no manifest entry 'pkg-ubuntu'"):
+        g.render_matrix_json(bad)
 
 
 def test_render_build_sh_block():
     text = g.render_build_sh(_seed(), frozen.root())
     block = text.split("# BEGIN generated: versions\n")[1].split("# END generated: versions")[0]
-    lines = block.splitlines()
-    builds = [tuple(line.split()[1:]) for line in lines if line.startswith("build ")]
-    assert sorted((k, v, a) for k, a, v in builds) == sorted(CURRENT_MATRIX)
-    # Smoke tests come from the family's or its language's smoke-test.sh.
-    smokes = [line for line in lines if "smoke-test.sh" in line]
-    assert smokes == [
-        '"${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:20" "$runtime"',
-        '"${script_dir}/cpp/smoke-test.sh" "dev-cpp-clang:19" "$runtime"',
-        '"${script_dir}/cpp/smoke-test.sh" "dev-cpp-gcc:14" "$runtime"',
-        '"${script_dir}/ts-node/smoke-test.sh" "dev-ts-node:24" "$runtime"',
-        '"${script_dir}/ts-node/smoke-test.sh" "dev-ts-node:22" "$runtime"',
-    ]
-    assert len(lines) == len(CURRENT_MATRIX) + len(smokes)
-    # The hand-written base build stays outside the block.
-    assert '"$runtime" build -t "dev-base:latest"' in text.split("# END generated: versions")[1]
+    # The builds come from matrix.json at run time; the block holds only the
+    # smoke-test table, from the family's or its language's smoke-test.sh.
+    assert block.splitlines() == ['smoke_tests="cpp-clang:cpp cpp-gcc:cpp ts-node:ts-node"']
+    assert "build python" not in text
 
 
 def test_render_arg_defaults_newest(repo):
@@ -200,7 +248,7 @@ def test_real_manifest_is_valid(capsys):
 def test_check_mode_reports_drift(repo, capsys):
     assert g.main(["--check", "--root", str(repo)]) == 0
     build_sh = repo / g.BUILD_SH
-    build_sh.write_text(build_sh.read_text().replace("build go GO_VERSION 1.26", "build go GO_VERSION 1.25"))
+    build_sh.write_text(build_sh.read_text().replace("cpp-gcc:cpp ", ""))
     capsys.readouterr()
     assert g.main(["--check", "--root", str(repo)]) == 1
     out = capsys.readouterr().out
@@ -216,10 +264,12 @@ def test_manifest_change_flows_to_every_target(repo, capsys):
     path.write_text(path.read_text().replace('version: "1.26"', 'version: "1.27"'))
     assert g.main(["--check", "--root", str(repo)]) == 1
     out = capsys.readouterr().out
-    for rel in (g.MATRIX_JSON, g.WINDOW_JSON, g.BUILD_SH, Path("docker/go/Dockerfile.template"),
+    for rel in (g.MATRIX_JSON, g.WINDOW_JSON, Path("docker/go/Dockerfile.template"),
                 *g.DOC_TABLES):
         assert str(rel) in out
-    # Package names do not depend on versions.
+    # build.sh reads its builds from matrix.json; package names do not depend
+    # on versions.
+    assert str(g.BUILD_SH) not in out
     assert str(g.PACKAGE_CLEANUP) not in out
     assert str(g.PACKAGE_CACHE_WARM) not in out
 

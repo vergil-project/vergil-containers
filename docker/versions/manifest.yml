@@ -13,6 +13,11 @@
 # A null `ga` or `eol` is intentional: upstream publishes no such date. Go and
 # Rust end a release's support when a later release ships, not on a date;
 # LLVM publishes no EOL; GCC closes a series without announcing a date.
+#
+# A family may name a `parent:` (another entry's `name` and one of its
+# `version`s) that its image is built FROM, and an optional top-level `base:`
+# section names base's. No parent means an upstream image. The publish builds
+# in tiers by depth in that tree, at most 2 deep (vergil-containers#773).
 schema: 1
 families:
   - key: "python"

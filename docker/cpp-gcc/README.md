@@ -33,8 +33,8 @@ not done.
 
 Add `gcc-15` to the matrix **only once it is available as a prebuilt stable
 binary** on the base image's channel (§3.5). The version axis lives in
-`docker/versions/manifest.yml` (the `cpp-gcc` family); `docker/build.sh` and
-the publish matrix are generated from it.
+`docker/versions/manifest.yml` (the `cpp-gcc` family); the publish matrix,
+which `docker/build.sh` reads, is generated from it.
 
 Note the compiler-agnostic `clang-format` / `clang-tidy` analysis tools (from
 `common/cpp-analysis.dockerfile`) still track Clang's channel and run the

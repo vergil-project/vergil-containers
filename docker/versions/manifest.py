@@ -22,8 +22,20 @@ import yaml
 SCHEMA = 1
 AUTOMATIONS = ("pr", "report")
 
+# The unversioned base image is a manifest entry, but not a language family: it
+# has its own optional `base:` section, which holds only its parent.
+BASE_KEY = "base"
+BASE_VERSION = "latest"
+# The deepest image tree the publish workflow builds (cd-docker-publish.yml runs
+# one tier per depth): `pkg-ubuntu` 0, `base` 1, language images 2.
+MAX_DEPTH = 2
+
 _TOP_KEYS = {"schema", "families"}
+_TOP_OPTIONAL = {"base"}
+_BASE_OPTIONAL = {"parent"}
 _FAMILY_KEYS = {"key", "language", "token_prefix", "build_arg", "automation", "versions"}
+_FAMILY_OPTIONAL = {"parent"}
+_PARENT_KEYS = {"name", "version"}
 _VERSION_KEYS = {"version", "ga", "eol", "in_policy", "runtime_published"}
 
 _KEY_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -31,6 +43,8 @@ _LANGUAGE_RE = re.compile(r"^[a-z0-9]+$")
 _PREFIX_RE = re.compile(r"^([a-z]+-)?$")
 _BUILD_ARG_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 _VERSION_RE = re.compile(r"^\d+(\.\d+)?$")
+# A parent's version is a family version, or `base`'s "latest".
+_PARENT_VERSION_RE = re.compile(r"^(\d+(\.\d+)?|latest)$")
 
 HEADER = (
     "# Version manifest: the single source of truth for every language version\n"
@@ -48,6 +62,11 @@ HEADER = (
     "# A null `ga` or `eol` is intentional: upstream publishes no such date. Go and\n"
     "# Rust end a release's support when a later release ships, not on a date;\n"
     "# LLVM publishes no EOL; GCC closes a series without announcing a date.\n"
+    "#\n"
+    "# A family may name a `parent:` (another entry's `name` and one of its\n"
+    "# `version`s) that its image is built FROM, and an optional top-level `base:`\n"
+    "# section names base's. No parent means an upstream image. The publish builds\n"
+    "# in tiers by depth in that tree, at most 2 deep (vergil-containers#773).\n"
 )
 
 
@@ -65,6 +84,14 @@ class ManifestVersion:
 
 
 @dataclass(frozen=True)
+class Parent:
+    """The manifest entry an image is built `FROM`: a family key or `base`, at
+    one of its versions."""
+    name: str  # "base", "pkg-ubuntu"
+    version: str  # "latest", "24.04"
+
+
+@dataclass(frozen=True)
 class Family:
     key: str  # image suffix: "python", "cpp-clang", "ts-node"
     language: str  # vergil primary-language: "python", "cpp", "typescript"
@@ -72,11 +99,13 @@ class Family:
     build_arg: str  # "PYTHON_VERSION", "CLANG_VERSION", "NODE_MAJOR"
     automation: Literal["pr", "report"]
     versions: tuple[ManifestVersion, ...]  # newest first
+    parent: Parent | None = None  # None: built on an upstream image
 
 
 @dataclass(frozen=True)
 class Manifest:
     families: tuple[Family, ...]
+    base_parent: Parent | None = None  # `base`'s parent; None: an upstream image
 
 
 def version_sort_key(version: str) -> tuple[int, ...]:
@@ -87,8 +116,8 @@ def version_sort_key(version: str) -> tuple[int, ...]:
     return tuple(int(n) for n in re.findall(r"\d+", version))
 
 
-def _check_keys(where: str, data: dict, allowed: set[str]) -> None:
-    unknown = sorted(set(data) - allowed)
+def _check_keys(where: str, data: dict, allowed: set[str], optional: frozenset[str] | set[str] = frozenset()) -> None:
+    unknown = sorted(set(data) - allowed - set(optional))
     if unknown:
         raise ManifestError(f"{where}: unknown key(s) {', '.join(map(repr, unknown))}")
     missing = sorted(allowed - set(data))
@@ -142,13 +171,33 @@ def _parse_version(family: str, index: int, data: object) -> ManifestVersion:
     )
 
 
+def _parse_parent(where: str, data: object) -> Parent:
+    where = f"{where}: parent"
+    if not isinstance(data, dict):
+        raise ManifestError(f"{where}: must be a mapping of name and version")
+    _check_keys(where, data, _PARENT_KEYS)
+    return Parent(
+        name=_string(where, "name", data["name"], _KEY_RE),
+        version=_string(where, "version", data["version"], _PARENT_VERSION_RE),
+    )
+
+
+def _parse_base(data: object) -> Parent | None:
+    if not isinstance(data, dict):
+        raise ManifestError("base: must be a mapping")
+    _check_keys("base", data, set(), _BASE_OPTIONAL)
+    return _parse_parent("base", data["parent"]) if "parent" in data else None
+
+
 def _parse_family(index: int, data: object) -> Family:
     if not isinstance(data, dict):
         raise ManifestError(f"families[{index}]: must be a mapping")
     name = data.get("key")
     where = f"family {name!r}" if isinstance(name, str) else f"families[{index}]"
-    _check_keys(where, data, _FAMILY_KEYS)
+    _check_keys(where, data, _FAMILY_KEYS, _FAMILY_OPTIONAL)
     key = _string(where, "key", data["key"], _KEY_RE)
+    if key == BASE_KEY:
+        raise ManifestError(f"{where}: key: {BASE_KEY!r} is reserved for the base image")
     automation = data["automation"]
     if automation not in AUTOMATIONS:
         raise ManifestError(
@@ -176,14 +225,53 @@ def _parse_family(index: int, data: object) -> Family:
         build_arg=_string(where, "build_arg", data["build_arg"], _BUILD_ARG_RE),
         automation=automation,
         versions=versions,
+        parent=_parse_parent(where, data["parent"]) if "parent" in data else None,
     )
+
+
+def entry_depths(m: Manifest) -> dict[str, int]:
+    """Each manifest entry's depth in the image tree, keyed by entry name (every
+    family key, then `base`): 0 for an entry with no parent, else its parent's
+    depth plus one.
+
+    Raises ManifestError naming the entry when its parent does not exist (or not
+    at that version), when the parents form a cycle, or when the depth exceeds
+    MAX_DEPTH. `parse_manifest` runs it, so a loaded manifest always passes."""
+    entries: dict[str, tuple[str, Parent | None, tuple[str, ...]]] = {
+        f.key: (f"family {f.key!r}", f.parent, tuple(v.version for v in f.versions)) for f in m.families
+    }
+    entries[BASE_KEY] = (BASE_KEY, m.base_parent, (BASE_VERSION,))
+    depths: dict[str, int] = {}
+    for name, (where, _, _) in entries.items():
+        chain = [name]
+        current = name
+        while True:
+            parent = entries[current][1]
+            if parent is None:
+                break
+            if parent.name not in entries:
+                raise ManifestError(f"{entries[current][0]}: parent: no manifest entry {parent.name!r}")
+            if parent.version not in entries[parent.name][2]:
+                raise ManifestError(
+                    f"{entries[current][0]}: parent: {parent.name!r} has no version {parent.version!r}"
+                )
+            if parent.name in chain:
+                cycle = chain[chain.index(parent.name):] + [parent.name]
+                raise ManifestError(f"{entries[cycle[0]][0]}: parent: cycle {' -> '.join(cycle)}")
+            chain.append(parent.name)
+            current = parent.name
+        depth = len(chain) - 1
+        if depth > MAX_DEPTH:
+            raise ManifestError(f"{where}: parent: depth {depth} exceeds the maximum of {MAX_DEPTH}")
+        depths[name] = depth
+    return depths
 
 
 def parse_manifest(data: object) -> Manifest:
     """Validate already-parsed YAML data and build a Manifest."""
     if not isinstance(data, dict):
         raise ManifestError("manifest: top level must be a mapping")
-    _check_keys("manifest", data, _TOP_KEYS)
+    _check_keys("manifest", data, _TOP_KEYS, _TOP_OPTIONAL)
     if data["schema"] != SCHEMA:
         raise ManifestError(f"manifest: schema {data['schema']!r} is not supported (want {SCHEMA})")
     raw_families = data["families"]
@@ -195,7 +283,10 @@ def parse_manifest(data: object) -> Manifest:
         if f.key in seen:
             raise ManifestError(f"family {f.key!r}: key: duplicate family")
         seen.add(f.key)
-    return Manifest(families=families)
+    base_parent = _parse_base(data["base"]) if "base" in data else None
+    m = Manifest(families=families, base_parent=base_parent)
+    entry_depths(m)
+    return m
 
 
 def load_manifest(path: Path) -> Manifest:
@@ -222,9 +313,20 @@ def _scalar(value: object) -> str:
     return json.dumps(value)
 
 
+def _dump_parent(p: Parent, indent: str) -> list[str]:
+    return [
+        f"{indent}parent:",
+        f"{indent}  name: {_scalar(p.name)}",
+        f"{indent}  version: {_scalar(p.version)}",
+    ]
+
+
 def dump_manifest(m: Manifest) -> str:
     """Stable YAML for `m`; `load_manifest` of the result returns `m`."""
-    lines = [HEADER.rstrip("\n"), f"schema: {SCHEMA}", "families:"]
+    lines = [HEADER.rstrip("\n"), f"schema: {SCHEMA}"]
+    if m.base_parent is not None:
+        lines += ["base:", *_dump_parent(m.base_parent, "  ")]
+    lines.append("families:")
     for f in m.families:
         lines += [
             f"  - key: {_scalar(f.key)}",
@@ -232,8 +334,10 @@ def dump_manifest(m: Manifest) -> str:
             f"    token_prefix: {_scalar(f.token_prefix)}",
             f"    build_arg: {_scalar(f.build_arg)}",
             f"    automation: {_scalar(f.automation)}",
-            "    versions:",
         ]
+        if f.parent is not None:
+            lines += _dump_parent(f.parent, "    ")
+        lines.append("    versions:")
         for v in f.versions:
             lines += [
                 f"      - version: {_scalar(v.version)}",

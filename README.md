@@ -50,7 +50,8 @@ docker pull ghcr.io/vergil-project/dev-python:3.14
 Or build all images locally:
 
 ```bash
-docker/build.sh
+docker/build.sh            # every image, parents first
+docker/build.sh python     # one family, after its parent images
 ```
 
 `build.sh` auto-detects the container runtime — it prefers `nerdctl`
