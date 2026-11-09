@@ -1,3 +1,6 @@
+# /// script
+# dependencies = ["pyyaml"]
+# ///
 """Select the images a change affects, for PR CI (epic
 vergil-project/.github#213, task T5).
 

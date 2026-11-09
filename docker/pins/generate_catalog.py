@@ -1,3 +1,6 @@
+# /// script
+# dependencies = ["pyyaml"]
+# ///
 """Join extracted image pins with pins.yml into a human-readable catalog.
 Version facts come from the Dockerfiles (single source of truth); justifications
 come from pins.yml. Run without args to write CATALOG.md; --check to verify it."""

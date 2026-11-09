@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = ["pyyaml"]
+# ///
 """Publish lifecycle check results as GitHub issues and add/drop PRs (spec §6.2).
 
-    python3 docker/versions/lifecycle/publish.py --results PATH --run-url URL
+    uv run docker/versions/lifecycle/publish.py --results PATH --run-url URL
         [--manifest PATH] [--repo OWNER/NAME] [--prs --base BRANCH]
 
 Reads the results JSON written by `check.py --json` and makes the open issues
