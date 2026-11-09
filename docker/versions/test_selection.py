@@ -7,9 +7,10 @@ import pytest
 
 import frozen
 import generate as g
+import manifest as mf
 import selection as sel
 from test_generate import _tree
-from test_includes import _synthetic_repo
+from test_includes import _synthetic_repo, _toolchain_repo
 
 # The live checkout: its templates, fragments and matrix. The assertions name
 # families, never version lists, so a lifecycle PR does not break them.
@@ -220,3 +221,14 @@ def test_cli_missing_file_exits_nonzero(tmp_path, capsys):
                      "--head-matrix", str(tmp_path / "nope.json"), "--changed-files", str(tmp_path / "nope")])
     assert code == 2
     assert "::error" in capsys.readouterr().err
+
+
+def test_toolchain_path_selects_it_and_its_descendants(tmp_path, capsys):
+    # vergil-containers#727: a toolchain is in the dependency graph, so its
+    # paths select it (and what is built FROM it), never the full set.
+    root = _toolchain_repo(tmp_path)
+    m = json.loads(g.render_matrix_json(mf.load_manifest(root / g.MANIFEST)))
+    picked = sel.select_entries(root, ["docker/pkg-ubuntu/Dockerfile.template"], m, m)
+    assert _keys(picked) == [("pkg-ubuntu", "26.04"), ("pkg-ubuntu", "24.04"), ("base", "latest"),
+                             ("python", "3.14"), ("python", "3.13"), ("python", "3.12")]
+    assert "::warning::" not in capsys.readouterr().err

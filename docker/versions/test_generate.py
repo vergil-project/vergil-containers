@@ -287,3 +287,90 @@ def test_bad_manifest_fails_loud(repo, capsys):
     path.write_text(path.read_text().replace('automation: "pr"', 'automation: "auto"', 1))
     assert g.main(["--check", "--root", str(repo)]) == 2
     assert "automation 'auto'" in capsys.readouterr().err
+
+
+# --- Toolchains (vergil-containers#727, epic vergil-project/.github#607 T3) ---
+
+PKG_UBUNTU = mf.Toolchain(key="pkg-ubuntu", build_arg="UBUNTU_VERSION", versions=("26.04", "24.04"))
+
+
+def _with_toolchain() -> mf.Manifest:
+    return replace(_seed(), toolchains=(PKG_UBUNTU,))
+
+
+def _toolchain_repo(root: Path) -> Path:
+    """The frozen repo plus a `pkg-ubuntu` template, with no smoke test."""
+    template = root / "docker/pkg-ubuntu/Dockerfile.template"
+    template.parent.mkdir(parents=True)
+    template.write_text("ARG UBUNTU_VERSION=24.04\nFROM ubuntu:${UBUNTU_VERSION}\n")
+    return root
+
+
+def test_matrix_json_appends_toolchain_entries():
+    include = json.loads(g.render_matrix_json(_with_toolchain()))["include"]
+    assert include[-3:] == [
+        {"language": "pkg-ubuntu", "version": "26.04", "build-args": {"UBUNTU_VERSION": "26.04"},
+         "parent": None, "depth": 0},
+        {"language": "pkg-ubuntu", "version": "24.04", "build-args": {"UBUNTU_VERSION": "24.04"},
+         "parent": None, "depth": 0},
+        {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-args": {}, "parent": None, "depth": 0},
+    ]
+    # Every family entry is unchanged and comes first.
+    assert include[:-3] == json.loads(g.render_matrix_json(_seed()))["include"][:-1]
+
+
+def test_matrix_json_toolchain_as_parent():
+    # Epic vergil-project/.github#649: base built FROM pkg-ubuntu:24.04.
+    m = replace(_with_toolchain(), base_parent=mf.Parent("pkg-ubuntu", "24.04"))
+    include = json.loads(g.render_matrix_json(m))["include"]
+    assert [(e["language"], e["depth"]) for e in include if e["depth"] == 0][-2:] == [
+        ("pkg-ubuntu", 0), ("pkg-ubuntu", 0)]
+    assert include[-1] == {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-args": {},
+                           "parent": {"language": "pkg-ubuntu", "version": "24.04"}, "depth": 1}
+
+
+def test_window_json_excludes_toolchains():
+    window = g.render_window_json(_with_toolchain())
+    assert "pkg-ubuntu" not in window
+    assert window == g.render_window_json(_seed())
+
+
+def test_package_cleanup_includes_toolchains():
+    text = g.render_package_cleanup(_with_toolchain(), frozen.root())
+    keys = ["base"] + [f.key for f in _seed().families] + ["pkg-ubuntu"]
+    cleanup = text.split("# BEGIN generated: versions (cleanup)\n")[1].split("# END")[0]
+    assert [line.strip() for line in cleanup.splitlines() if line.strip()] == (
+        [f"- dev-{k}" for k in keys] + [f"- prod-{k}" for k in keys]
+    )
+    reap = text.split("# BEGIN generated: versions (reap)\n")[1].split("# END")[0]
+    assert "- package: prod-pkg-ubuntu" in reap and "- package: dev-pkg-ubuntu" in reap
+    warm = g.render_package_cache_warm(_with_toolchain(), frozen.root())
+    assert "- prod-pkg-ubuntu\n" in warm
+
+
+def test_toolchain_arg_default_and_docs_row(repo):
+    root = _toolchain_repo(repo)
+    out = g.render_all(_with_toolchain(), root)
+    template = out[root / "docker/pkg-ubuntu/Dockerfile.template"]
+    assert template.startswith("ARG UBUNTU_VERSION=26.04\n")
+    for rel in g.DOC_TABLES:
+        block = out[root / rel].split("<!-- BEGIN generated: versions -->\n")[1].split("<!-- END")[0]
+        rows = block.splitlines()
+        (row,) = [r for r in rows if "`dev-pkg-ubuntu`" in r]
+        assert [c.strip() for c in row.split("|")[1:5]] == ["`dev-pkg-ubuntu`", "—", "26.04, 24.04", "`ubuntu:<v>`"]
+        # After the families, before base.
+        assert rows.index(row) == len(rows) - 2
+    # No smoke test for the toolchain, so build.sh's table is unchanged.
+    assert out[root / g.BUILD_SH] == (root / g.BUILD_SH).read_text()
+    # The whole tree regenerates, and --check then passes.
+    for path, content in out.items():
+        path.write_text(content)
+    (root / g.MANIFEST).write_text(mf.dump_manifest(_with_toolchain()))
+    assert g.main(["--check", "--root", str(root)]) == 0
+
+
+def test_toolchain_smoke_test_from_its_own_directory(repo):
+    root = _toolchain_repo(repo)
+    (root / "docker/pkg-ubuntu/smoke-test.sh").write_text("#!/bin/sh\n")
+    text = g.render_build_sh(_with_toolchain(), root)
+    assert 'smoke_tests="cpp-clang:cpp cpp-gcc:cpp ts-node:ts-node pkg-ubuntu:pkg-ubuntu"' in text

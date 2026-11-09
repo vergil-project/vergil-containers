@@ -18,6 +18,12 @@
 # `version`s) that its image is built FROM, and an optional top-level `base:`
 # section names base's. No parent means an upstream image. The publish builds
 # in tiers by depth in that tree, at most 2 deep (vergil-containers#773).
+#
+# The optional `toolchains:` section lists images that are not languages
+# (epic vergil-project/.github#607): each has a `key`, a `build_arg` and its
+# `versions`, newest first. Toolchain keys share one namespace with the
+# families and `base`, so any entry may name one as its parent. Toolchains
+# are built and published, but are never in window.json or the lifecycle.
 schema: 1
 families:
   - key: "python"

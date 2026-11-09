@@ -109,3 +109,35 @@ def test_missing_entry_template_raises(tmp_path):
     (tmp_path / "docker/go/Dockerfile.template").unlink()
     with pytest.raises(includes.IncludeError, match=r"docker/go/Dockerfile\.template"):
         includes.dependency_map(tmp_path)
+
+
+def _toolchain_repo(root: Path) -> Path:
+    """`_synthetic_repo` with `pkg-ubuntu` as a toolchain (not a family) and
+    `base` built FROM it, as epic vergil-project/.github#649 sets the manifest."""
+    _synthetic_repo(root)
+    tree = _tree()
+    m = mf.Manifest(
+        families=tuple(f for f in tree.families if f.key != "pkg-ubuntu"),
+        base_parent=tree.base_parent,
+        toolchains=(mf.Toolchain("pkg-ubuntu", "UBUNTU_VERSION", ("26.04", "24.04")),),
+    )
+    _write(root, "docker/versions/manifest.yml", mf.dump_manifest(m))
+    return root
+
+
+def test_dependency_map_includes_toolchains(tmp_path):
+    # vergil-containers#727: without the toolchain keys, #213's selector would
+    # fail every docker/pkg-*/** path closed to the full set.
+    dm = includes.dependency_map(_toolchain_repo(tmp_path))
+    pkg = {"docker/pkg-ubuntu/**", "docker/common/pkg-ubuntu-only.dockerfile"}
+    base = {"docker/base/**", "docker/common/base-only.dockerfile"}
+    assert dm["pkg-ubuntu"] == frozenset(pkg)
+    assert dm["base"] == frozenset(pkg | base)
+    assert set(dm) == {"python", "go", "pkg-ubuntu", "base"}
+
+
+def test_toolchain_smoke_dir_is_an_input(tmp_path):
+    root = _toolchain_repo(tmp_path)
+    _write(root, "docker/pkg-ubuntu/smoke-test.sh", "#!/bin/sh\n")
+    assert includes.dependency_map(root)["pkg-ubuntu"] == frozenset(
+        {"docker/pkg-ubuntu/**", "docker/common/pkg-ubuntu-only.dockerfile"})

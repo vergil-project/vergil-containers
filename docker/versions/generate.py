@@ -10,9 +10,10 @@ pins.yml). `--root` points at a different repo checkout (used by the tests).
 Generated outputs (epic vergil-project/.github#407, spec §6.1):
 
 - docker/versions/matrix.json: the build matrix cd-docker-publish.yml and
-  `docker/build.sh` read (every family version, then `base`, ordered by depth
-  in the image tree);
-- docker/versions/window.json: the published window consumers read;
+  `docker/build.sh` read (every family version, then every toolchain version,
+  then `base`, ordered by depth in the image tree);
+- docker/versions/window.json: the published window consumers read (language
+  families only: toolchains are not languages);
 - the `docker/build.sh` smoke-test table;
 - the `package-cleanup.yml` and `package-cache-warm.yml` package lists;
 - every docker/<family>/Dockerfile.template `ARG <BUILD_ARG>=` default;
@@ -103,12 +104,13 @@ def _matrix_parent(p: mf.Parent | None) -> dict[str, str] | None:
 
 
 def render_matrix_json(m: mf.Manifest) -> str:
-    """The publish matrix: one entry per family version, then `base`, ordered by
-    depth in the image tree (stable, so within a depth the order is the
-    manifest's, with `base` after the families).
+    """The publish matrix: one entry per family version, then per toolchain
+    version, then `base`, ordered by depth in the image tree (stable, so within
+    a depth the order is the manifest's: families, toolchains, then `base`).
 
-    Each entry is `language`, `version`, `build-args` (every `--build-arg` the
-    image takes, as a map: a family's version arg, and `{}` for `base`),
+    Each entry is `language` (the image key), `version`, `build-args` (every
+    `--build-arg` the image takes, as a map: a family's or toolchain's version
+    arg, and `{}` for `base`),
     `parent` (`null`, or the `language` and `version` of the entry it is built
     FROM) and `depth` (the publish tier). Raises ManifestError on a bad tree."""
     depths = mf.entry_depths(m)
@@ -122,6 +124,17 @@ def render_matrix_json(m: mf.Manifest) -> str:
         }
         for f in m.families
         for v in f.versions
+    ]
+    include += [
+        {
+            "language": t.key,
+            "version": v,
+            "build-args": {t.build_arg: v},
+            "parent": None,
+            "depth": depths[t.key],
+        }
+        for t in m.toolchains
+        for v in t.versions
     ]
     include.append({
         "language": BASE_KEY,
@@ -154,22 +167,26 @@ def render_window_json(m: mf.Manifest) -> str:
     return _json({"schema": WINDOW_SCHEMA, "languages": languages})
 
 
-def smoke_test_dir(root: Path, f: mf.Family) -> str | None:
-    """The directory under docker/ holding the family's smoke test, by
-    convention: docker/<key>/smoke-test.sh, else the one its language shares,
-    docker/<language>/smoke-test.sh. `includes.dependency_map` follows the same
-    rule, so a change to a shared smoke test selects every family it runs for."""
-    for directory in (f.key, f.language):
+def smoke_test_dir(root: Path, f: mf.Family | mf.Toolchain) -> str | None:
+    """The directory under docker/ holding the entry's smoke test, by
+    convention: docker/<key>/smoke-test.sh, else (for a family) the one its
+    language shares, docker/<language>/smoke-test.sh. A toolchain has no
+    language, so only its own directory counts. `includes.dependency_map`
+    follows the same rule, so a change to a shared smoke test selects every
+    family it runs for."""
+    directories = (f.key, f.language) if isinstance(f, mf.Family) else (f.key,)
+    for directory in directories:
         if (root / "docker" / directory / "smoke-test.sh").is_file():
             return directory
     return None
 
 
 def render_build_sh(m: mf.Manifest, root: Path) -> str:
-    """build.sh's smoke-test table: `<family>:<directory>` for each family with a
-    smoke test. The builds themselves come from matrix.json at run time."""
+    """build.sh's smoke-test table: `<entry>:<directory>` for each family, then
+    each toolchain, with a smoke test. The builds themselves come from
+    matrix.json at run time."""
     pairs = []
-    for f in m.families:
+    for f in (*m.families, *m.toolchains):
         directory = smoke_test_dir(root, f)
         if directory is not None:
             pairs.append(f"{f.key}:{directory}")
@@ -181,7 +198,12 @@ def _template(f_key: str) -> Path:
     return Path("docker") / f_key / "Dockerfile.template"
 
 
-def render_arg_default(f: mf.Family, root: Path) -> str:
+def _versions(f: mf.Family | mf.Toolchain) -> list[str]:
+    """The entry's versions, newest first."""
+    return [v.version for v in f.versions] if isinstance(f, mf.Family) else list(f.versions)
+
+
+def render_arg_default(f: mf.Family | mf.Toolchain, root: Path) -> str:
     """Set the template's `ARG <BUILD_ARG>=` default to the newest version."""
     rel = _template(f.key)
     text = _read(root, rel)
@@ -191,13 +213,17 @@ def render_arg_default(f: mf.Family, root: Path) -> str:
         raise GenerateError(
             f"{rel}: expected exactly one 'ARG {f.build_arg}=<default>' line, found {len(found)}"
         )
-    return pattern.sub(f"ARG {f.build_arg}={f.versions[0].version}", text)
+    return pattern.sub(f"ARG {f.build_arg}={_versions(f)[0]}", text)
+
+
+def _image_keys(m: mf.Manifest) -> list[str]:
+    """Every image the repo publishes: `base`, each family, each toolchain."""
+    return [BASE_KEY] + [f.key for f in m.families] + [t.key for t in m.toolchains]
 
 
 def _package_list(m: mf.Manifest) -> list[str]:
     """Every org package, as YAML list items: each prefix, then each image."""
-    keys = [BASE_KEY] + [f.key for f in m.families]
-    return [f"- {prefix}-{key}" for prefix in IMAGE_PREFIXES for key in keys]
+    return [f"- {prefix}-{key}" for prefix in IMAGE_PREFIXES for key in _image_keys(m)]
 
 
 def render_package_cache_warm(m: mf.Manifest, root: Path) -> str:
@@ -206,11 +232,10 @@ def render_package_cache_warm(m: mf.Manifest, root: Path) -> str:
 
 
 def render_package_cleanup(m: mf.Manifest, root: Path) -> str:
-    keys = [BASE_KEY] + [f.key for f in m.families]
     cleanup = _package_list(m)
     reap: list[str] = []
     for prefix, window in REAP_WINDOWS:
-        for key in keys:
+        for key in _image_keys(m):
             reap += [f"- package: {prefix}-{key}", f'  older_than: "{window}"']
     text = _read(root, PACKAGE_CLEANUP)
     text = replace_block(text, PACKAGE_CLEANUP, "versions (cleanup)", cleanup, markdown=False)
@@ -247,6 +272,13 @@ def render_doc_table(m: mf.Manifest, root: Path) -> list[str]:
             ", ".join(v.version for v in f.versions),
             f"`{_base_image(f.key, f.build_arg, root)}`",
         ])
+    for t in m.toolchains:
+        rows.append([
+            f"`dev-{t.key}`",
+            "—",
+            ", ".join(t.versions),
+            f"`{_base_image(t.key, t.build_arg, root)}`",
+        ])
     rows.append([f"`dev-{BASE_KEY}`", "—", BASE_VERSION, f"`{_base_image(BASE_KEY, None, root)}`"])
     return _table(rows)
 
@@ -260,7 +292,7 @@ def render_all(m: mf.Manifest, root: Path) -> dict[Path, str]:
         root / PACKAGE_CLEANUP: render_package_cleanup(m, root),
         root / PACKAGE_CACHE_WARM: render_package_cache_warm(m, root),
     }
-    for f in m.families:
+    for f in (*m.families, *m.toolchains):
         out[root / _template(f.key)] = render_arg_default(f, root)
     table = render_doc_table(m, root)
     for rel in DOC_TABLES:

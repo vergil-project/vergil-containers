@@ -83,7 +83,8 @@ def _own_inputs(root: Path, key: str, smoke_dir: str | None) -> frozenset[str]:
 
 
 def dependency_map(root: Path) -> dict[str, frozenset[str]]:
-    """Each manifest entry (every family key, then `base`) mapped to its build
+    """Each manifest entry (every family key, every toolchain key, then `base`)
+    mapped to its build
     inputs as repo-relative globs or paths: its `docker/<key>/**` context, every
     fragment its template includes, its smoke-test directory when it has one
     (the rule `generate.smoke_test_dir` gives build.sh, e.g. `docker/cpp/**` for
@@ -92,9 +93,13 @@ def dependency_map(root: Path) -> dict[str, frozenset[str]]:
     The manifest is `<root>/docker/versions/manifest.yml`; ManifestError and
     IncludeError propagate."""
     m = mf.load_manifest(root / gen.MANIFEST)
-    own = {f.key: _own_inputs(root, f.key, gen.smoke_test_dir(root, f)) for f in m.families}
+    own = {
+        f.key: _own_inputs(root, f.key, gen.smoke_test_dir(root, f))
+        for f in (*m.families, *m.toolchains)
+    }
     own[mf.BASE_KEY] = _own_inputs(root, mf.BASE_KEY, None)
-    parents = {f.key: f.parent for f in m.families}
+    parents: dict[str, mf.Parent | None] = {f.key: f.parent for f in m.families}
+    parents |= {t.key: None for t in m.toolchains}  # a toolchain has no parent
     parents[mf.BASE_KEY] = m.base_parent
     # load_manifest has already refused a missing parent and a cycle, so every
     # chain below ends at an entry with no parent.

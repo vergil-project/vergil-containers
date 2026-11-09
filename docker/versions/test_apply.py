@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+import yaml
 
 import frozen
 import generate as g
@@ -603,3 +604,15 @@ def test_gitcli_push_failure_raises(checkout, tmp_path):
     git = GitCli(work, remote=str(tmp_path / "missing.git"))
     with pytest.raises(PublishError, match="git"):
         git.publish_branch("lifecycle/x-add-1", {Path("docker/versions/manifest.yml"): "new\n"}, "m")
+
+
+def test_apply_keeps_toolchains_and_base_parent():
+    # Review Focus 1 (epic vergil-project/.github#607): a lifecycle PR rewrites
+    # manifest.yml from apply_change's result, so it must keep every section it
+    # does not change, not only the families.
+    toolchain = mf.Toolchain("pkg-ubuntu", "UBUNTU_VERSION", ("26.04", "24.04"))
+    m = replace(SEED, toolchains=(toolchain,), base_parent=mf.Parent("pkg-ubuntu", "24.04"))
+    after = apply_change(m, Change("python", "drop", "3.12", "EOL reached"))
+    assert after.toolchains == (toolchain,)
+    assert after.base_parent == mf.Parent("pkg-ubuntu", "24.04")
+    assert mf.parse_manifest(yaml.safe_load(mf.dump_manifest(after))) == after

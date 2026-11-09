@@ -109,7 +109,8 @@ def apply_change(m: Manifest, change: Change, target: TargetVersion | None = Non
         families.append(f)
     if not found:
         raise ApplyError(f"{change.family}: no such family in the manifest")
-    return Manifest(families=tuple(families))
+    # Every other section (base's parent, the toolchains) is kept as it is.
+    return replace(m, families=tuple(families))
 
 
 def render_change(m: Manifest, change: Change, target: TargetVersion | None, root: Path) -> dict[Path, str]:
