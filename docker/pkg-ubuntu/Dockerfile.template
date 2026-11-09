@@ -31,26 +31,25 @@ RUN apt-get update && \
 
 # --- Build-time checks -------------------------------------------------------
 # Any failure fails the build, so no published image can lack one of these:
-#   - on amd64 the Ubuntu sources point at the mirror list and the fail-fast
-#     config exists; on arm64 (ports.ubuntu.com, which the mirrors do not
-#     serve) the sources are untouched and neither file exists;
+#   - the fail-fast config exists on every arch; on amd64 the Ubuntu sources
+#     point at the mirror list; on arm64 (ports.ubuntu.com, which the mirrors
+#     do not serve) the sources are untouched and no mirror list exists;
 #   - every tool runs;
 #   - the marker lists seven tools, uv and nfpm among them;
 #   - no python3 is on PATH, and no package lists are kept.
 ARG TARGETARCH
 RUN sources=/etc/apt/sources.list.d/ubuntu.sources && \
     test -f "${sources}" && \
+    test -s /etc/apt/apt.conf.d/80-vergil-fast-fail && \
     case "${TARGETARCH}" in \
       amd64) \
         grep -q 'mirror+file:/etc/apt/apt-mirrors.txt' "${sources}" && \
         ! grep -qE 'https?://((azure\.)?archive|security)\.ubuntu\.com' "${sources}" && \
-        test -s /etc/apt/apt-mirrors.txt && \
-        test -s /etc/apt/apt.conf.d/80-vergil-fast-fail ;; \
+        test -s /etc/apt/apt-mirrors.txt ;; \
       arm64) \
         grep -q 'ports.ubuntu.com' "${sources}" && \
         ! grep -q 'mirror+file:' "${sources}" && \
-        test ! -e /etc/apt/apt-mirrors.txt && \
-        test ! -e /etc/apt/apt.conf.d/80-vergil-fast-fail ;; \
+        test ! -e /etc/apt/apt-mirrors.txt ;; \
       *) echo "check: unsupported TARGETARCH '${TARGETARCH}'" >&2; false ;; \
     esac && \
     curl --version && \

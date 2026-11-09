@@ -1,4 +1,4 @@
-# --- apt mirror and fail-fast config (amd64 only) ----------------------------
+# --- apt mirror (amd64 only) and fail-fast config (every arch) ---------------
 # The package toolchain image pkg-ubuntu (epic vergil-project/.github#607) bakes
 # in the apt configuration the vergil-actions package setup step writes today
 # (actions/package/setup/os-prereqs.sh), so every later apt call in a package
@@ -20,10 +20,10 @@
 #      retries, https://bugs.launchpad.net/ubuntu/+source/apt/+bug/2003851),
 #      20 s timeouts and a 60 s dpkg lock wait.
 #
-# amd64 only: arm64 uses ports.ubuntu.com, which none of these mirrors serve,
-# so a rewrite there would break apt. On arm64 this fragment changes nothing;
-# the template's build-time check asserts both cases. Include it before the
-# first apt-get update.
+# Steps 1 and 2 are amd64 only: arm64 uses ports.ubuntu.com, which none of
+# these mirrors serve, so a rewrite there would break apt. Step 3 runs on every
+# architecture, as it does in os-prereqs.sh. The template's build-time check
+# asserts both cases. Include it before the first apt-get update.
 ARG TARGETARCH
 
 RUN if [ "${TARGETARCH}" = "amd64" ]; then \
@@ -39,13 +39,13 @@ RUN if [ "${TARGETARCH}" = "amd64" ]; then \
             's#https?://((azure\.)?archive|security)\.ubuntu\.com/ubuntu/?([[:space:]]|$)#mirror+file:/etc/apt/apt-mirrors.txt\3#g' \
             "${sources}" || exit 1; \
         fi; \
-      done && \
-      mkdir -p /etc/apt/apt.conf.d && \
-      printf '%s\n' \
-        'Acquire::Retries "3";' \
-        'Acquire::Retries::Delay "false";' \
-        'Acquire::http::Timeout "20";' \
-        'Acquire::https::Timeout "20";' \
-        'DPkg::Lock::Timeout "60";' \
-        > /etc/apt/apt.conf.d/80-vergil-fast-fail; \
-    fi
+      done; \
+    fi && \
+    mkdir -p /etc/apt/apt.conf.d && \
+    printf '%s\n' \
+      'Acquire::Retries "3";' \
+      'Acquire::Retries::Delay "false";' \
+      'Acquire::http::Timeout "20";' \
+      'Acquire::https::Timeout "20";' \
+      'DPkg::Lock::Timeout "60";' \
+      > /etc/apt/apt.conf.d/80-vergil-fast-fail
