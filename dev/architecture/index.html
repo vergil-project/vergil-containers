@@ -3147,8 +3147,9 @@ supported).</p>
 use <code>TARGETARCH</code> (injected by Docker Buildx) to select the correct
 platform artifact.</p>
 <p>Local builds via <code>docker/build.sh</code> build for the host's native
-architecture only (for speed). The CI pipeline builds both platforms
-using QEMU emulation on the GitHub Actions runner.</p>
+architecture only (for speed). The CI pipeline builds each platform
+natively, amd64 on <code>ubuntu-24.04</code> and arm64 on <code>ubuntu-24.04-arm</code>, and
+stitches the two into one multi-arch manifest. Nothing is emulated.</p>
 <h2 id="download-integrity">Download Integrity<a class="headerlink" href="#download-integrity" title="Permanent link">&para;</a></h2>
 <p>Binary tools installed from GitHub releases are verified against
 checksums published by the upstream project. Each verified download
