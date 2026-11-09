@@ -29,10 +29,18 @@ def repo(tmp_path):
 def test_render_matrix_json_equals_current_include_list():
     data = json.loads(g.render_matrix_json(_seed()))
     assert set(data) == {"include"}
-    triples = [(e["language"], e["version"], e["build-arg"]) for e in data["include"]]
     assert all(set(e) == {"language", "version", "build-arg"} for e in data["include"])
+    families = data["include"][:-1]
+    triples = [(e["language"], e["version"], e["build-arg"]) for e in families]
     assert sorted(triples) == sorted(CURRENT_MATRIX)
     assert len(triples) == len(CURRENT_MATRIX)
+
+
+def test_render_matrix_json_base_entry_is_last_and_only_null_build_arg():
+    include = json.loads(g.render_matrix_json(_seed()))["include"]
+    assert include[-1] == {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-arg": None}
+    assert [e for e in include if e["build-arg"] is None] == [include[-1]]
+    assert [e for e in include if e["language"] == g.BASE_KEY] == [include[-1]]
 
 
 def test_render_build_sh_block():

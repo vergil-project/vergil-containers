@@ -6,7 +6,8 @@ pins.yml). `--root` points at a different repo checkout (used by the tests).
 
 Generated outputs (epic vergil-project/.github#407, spec §6.1):
 
-- docker/versions/matrix.json: the cd-docker-publish.yml build matrix;
+- docker/versions/matrix.json: the cd-docker-publish.yml build matrix (every
+  family version, then `base`);
 - docker/versions/window.json: the published window consumers read;
 - the `docker/build.sh` build and smoke-test lines;
 - the `package-cleanup.yml` and `package-cache-warm.yml` package lists;
@@ -94,11 +95,15 @@ def _json(data: object) -> str:
 
 
 def render_matrix_json(m: mf.Manifest) -> str:
+    """The publish matrix: one entry per family version, then `base` last.
+    `base` takes no version build arg, so its `build-arg` is null and the
+    publish workflow passes it none."""
     include = [
         {"language": f.key, "version": v.version, "build-arg": f.build_arg}
         for f in m.families
         for v in f.versions
     ]
+    include.append({"language": BASE_KEY, "version": BASE_VERSION, "build-arg": None})
     return _json({"include": include})
 
 
