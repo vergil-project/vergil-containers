@@ -33,6 +33,10 @@ env:
   # Bounded back-off before the single retry of a failed attestation (issue #743).
   ATTEST_RETRY_BACKOFF_BASE_SECONDS: 30
   ATTEST_RETRY_BACKOFF_JITTER_SECONDS: 30
+  # Bounded back-off (15-45s) before each retry of a failed per-arch push
+  # (issue #794).
+  PUSH_RETRY_BACKOFF_BASE_SECONDS: 15
+  PUSH_RETRY_BACKOFF_JITTER_SECONDS: 30
 
 jobs:
   hadolint:
@@ -214,10 +218,20 @@ jobs:
             echo "BUILD_ARGS_EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Build and push by digest
-        id: build
+      # GHCR sporadically refuses one per-arch push with "denied:
+      # permission_denied: write_package" while the same token pushes the same
+      # package seconds before and after (issue #794), so the push is retried
+      # in the attempt / back-off / attempt / report shape of the attestation
+      # retry (issue #743): up to three attempts, each retry after a bounded,
+      # jittered back-off that warns. Any failure is retried (matching the
+      # denial text would be fragile); a genuine build error reruns cheaply from
+      # cache and still fails. Attempt 3 has no continue-on-error, so its
+      # failure fails the job and no digest is recorded or uploaded.
+      - name: Build and push by digest (attempt 1)
+        id: build1
+        continue-on-error: true
         uses: docker/build-push-action@v7
-        with:
+        with: &push-with
           context: "docker/${{ matrix.language }}"
           platforms: "linux/${{ matrix.arch }}"
           build-args: ${{ steps.args.outputs.build-args }}
@@ -226,15 +240,75 @@ jobs:
           cache-from: type=registry,ref=${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.CACHE_TAG }},mode=max
 
+      - name: Back off before push attempt 2
+        if: steps.build1.outcome == 'failure'
+        env:
+          ARCH: ${{ matrix.arch }}
+          ATTEMPT: 2
+        run: &push-backoff |
+          delay=$(( PUSH_RETRY_BACKOFF_BASE_SECONDS + RANDOM % (PUSH_RETRY_BACKOFF_JITTER_SECONDS + 1) ))
+          echo "::warning title=Push retry::The push of ${REPO}:${VERSION} (${ARCH}) failed on attempt $(( ATTEMPT - 1 )) of 3 (often a sporadic GHCR 'denied: permission_denied: write_package' above). Backing off ${delay}s, then running attempt ${ATTEMPT}."
+          sleep "${delay}"
+
+      - name: Build and push by digest (attempt 2)
+        id: build2
+        if: steps.build1.outcome == 'failure'
+        continue-on-error: true
+        uses: docker/build-push-action@v7
+        with: *push-with
+
+      - name: Back off before push attempt 3
+        if: steps.build2.outcome == 'failure'
+        env:
+          ARCH: ${{ matrix.arch }}
+          ATTEMPT: 3
+        run: *push-backoff
+
+      - name: Build and push by digest (attempt 3)
+        id: build3
+        if: steps.build2.outcome == 'failure'
+        uses: docker/build-push-action@v7
+        with: *push-with
+
+      - name: Report persistent push failure
+        if: failure() && steps.build3.outcome == 'failure'
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          echo "::error title=Push failed three times::docker/build-push-action failed on all 3 attempts for ${REPO}:${VERSION} (${ARCH}), with a ${PUSH_RETRY_BACKOFF_BASE_SECONDS}-$(( PUSH_RETRY_BACKOFF_BASE_SECONDS + PUSH_RETRY_BACKOFF_JITTER_SECONDS ))s back-off before each retry. No digest was recorded, so this image is not published and its previous tags stay. If every attempt log shows a GHCR 'write_package' denial, re-run the failed job later; any other error is not transient, so read the attempt logs (issue #794)."
+          exit 1
+
+      # The digest is the one from the attempt that succeeded: a failed
+      # attempt's output is never recorded.
       - name: Record the pushed digest
         env:
-          DIGEST: ${{ steps.build.outputs.digest }}
+          OUTCOME_1: ${{ steps.build1.outcome }}
+          DIGEST_1: ${{ steps.build1.outputs.digest }}
+          OUTCOME_2: ${{ steps.build2.outcome }}
+          DIGEST_2: ${{ steps.build2.outputs.digest }}
+          OUTCOME_3: ${{ steps.build3.outcome }}
+          DIGEST_3: ${{ steps.build3.outputs.digest }}
           ARCH: ${{ matrix.arch }}
           DIGESTS_DIR: ${{ runner.temp }}/digests
         run: |
           set -euo pipefail
+          attempt=""
+          DIGEST=""
+          for n in 1 2 3; do
+            outcome_var="OUTCOME_${n}"
+            if [ "${!outcome_var:-}" = "success" ]; then
+              digest_var="DIGEST_${n}"
+              attempt="$n"
+              DIGEST="${!digest_var:-}"
+              break
+            fi
+          done
+          if [ -z "$attempt" ]; then
+            echo "::error title=No pushed digest::No push attempt of the ${ARCH} build of ${REPO} succeeded, so there is nothing to stitch."
+            exit 1
+          fi
           if ! [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-            echo "::error title=No pushed digest::The ${ARCH} build of ${REPO} reported digest '${DIGEST}', not a sha256 digest, so there is nothing to stitch."
+            echo "::error title=No pushed digest::The ${ARCH} build of ${REPO} (attempt ${attempt}) reported digest '${DIGEST}', not a sha256 digest, so there is nothing to stitch."
             exit 1
           fi
           mkdir -p "$DIGESTS_DIR"
