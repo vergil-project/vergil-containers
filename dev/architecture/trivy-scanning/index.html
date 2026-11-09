@@ -2555,6 +2555,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#pull-requests-the-image-scan-of-changed-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pull requests: the image scan of changed images
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#publishing-the-image-scans" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3011,6 +3022,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#pull-requests-the-image-scan-of-changed-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pull requests: the image scan of changed images
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#publishing-the-image-scans" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3083,13 +3105,14 @@
 
 
 <h1 id="trivy-scanning">Trivy Scanning<a class="headerlink" href="#trivy-scanning" title="Permanent link">&para;</a></h1>
-<p>This repository runs Trivy in two different places, and they scan two
-different things. Pull requests get a <strong>filesystem scan</strong> of the source tree.
-Publishing gets an <strong>image scan</strong> of every built image on both platforms.
-Each scan uploads SARIF to GitHub code scanning under its own category. The
-two sets of categories never meet on the same branch, so every pull request
-shows a "configurations not found" warning. That warning is expected and
-harmless.</p>
+<p>This repository runs Trivy in three places. Pull requests get a
+<strong>filesystem scan</strong> of the source tree, and an <strong>image scan</strong> of each image
+the change reaches, built locally and never published. Publishing gets an
+<strong>image scan</strong> of every built image on both platforms. The filesystem scan
+and the publish scans upload SARIF to GitHub code scanning, each under its
+own category; the pull-request image scan uploads none. The two sets of
+categories never meet on the same branch, so every pull request shows a
+"configurations not found" warning. That warning is expected and harmless.</p>
 <p>For triaging a publish that Trivy blocked, see
 <a href="../../operations/trivy-triage/">Trivy CVE Triage</a>.</p>
 <h2 id="what-runs-where">What runs where<a class="headerlink" href="#what-runs-where" title="Permanent link">&para;</a></h2>
@@ -3110,6 +3133,13 @@ harmless.</p>
 <td><code>trivy fs</code></td>
 <td>The checked-out source tree</td>
 <td><code>trivy-fs</code></td>
+</tr>
+<tr>
+<td>Pull request</td>
+<td><code>ci.yml</code> → <code>ci-images.yml</code>, jobs <code>images / build: …</code></td>
+<td><code>trivy image</code></td>
+<td>Each image the change reaches, built locally, amd64 and arm64</td>
+<td>none (no upload)</td>
 </tr>
 <tr>
 <td>Push to <code>develop</code></td>
@@ -3143,8 +3173,26 @@ scans the source tree for vulnerable dependencies, reporting <code>CRITICAL</cod
 default category <code>trivy-fs</code>. It also keeps the full, unfiltered SARIF as the
 <code>ci-evidence-security-part-trivy</code> artifact, which feeds the
 <code>security / evidence</code> gate.</p>
-<p>This scan only checks the files in the repository. No image has been built
-at this point, so the pull request cannot scan any image.</p>
+<p>This scan only checks the files in the repository.</p>
+<h3 id="pull-requests-the-image-scan-of-changed-images">Pull requests: the image scan of changed images<a class="headerlink" href="#pull-requests-the-image-scan-of-changed-images" title="Permanent link">&para;</a></h3>
+<p><code>ci.yml</code> also calls <code>ci-images.yml</code> (vergil-containers#514). Its
+<code>images / select</code> job maps the PR's changed paths and its
+<code>docker/versions/matrix.json</code> diff to the images the change reaches
+(<code>docker/versions/selection.py</code>). A path that reaches no image, such as a
+docs change, selects none; a change to the scan configuration or to the
+build-and-scan pipeline itself selects every image; an unclassified path
+under <code>docker/</code> selects every image, with a warning. Each
+<code>images / build: …</code> job then builds its images on that architecture's
+native runner, loads them into the runner's Docker daemon without pushing
+them, and scans each with <code>scripts/bin/trivy-image-scan</code> and gates it with
+<code>scripts/bin/trivy-gate</code>, the same scripts, suppressions and thresholds as
+the publish. It also runs the family's <code>smoke-test.sh</code> when there is one.</p>
+<p>A selected parent image is built in the same job as the selected images
+built FROM it, which build on the local parent; an image whose parent is not
+selected builds on the published <code>dev-</code> parent. No SARIF is uploaded, so
+these scans add no code-scanning category. The one required check is
+<code>images / evidence</code>: it passes when every selected image passed, or when
+nothing was selected, and fails otherwise.</p>
 <h3 id="publishing-the-image-scans">Publishing: the image scans<a class="headerlink" href="#publishing-the-image-scans" title="Permanent link">&para;</a></h3>
 <p><code>cd-docker-publish.yml</code> builds every image in <code>docker/versions/matrix.json</code>,
 plus <code>base</code>, and pushes each one as a <code>-candidate</code> tag. It then scans each
@@ -3185,8 +3233,9 @@ warning on the PR's <strong>Trivy</strong> code-scanning check:</p>
 pull request, because N configurations present on <code>refs/heads/develop</code>
 were not found</p>
 </blockquote>
-<p><strong>This is expected and harmless.</strong> The images do not exist until after the
-merge, so a PR cannot produce those categories. The <code>trivy-fs</code> comparison
+<p><strong>This is expected and harmless.</strong> The published images do not exist until
+after the merge, and the pull-request image scans upload no SARIF, so a PR
+cannot produce those categories. The <code>trivy-fs</code> comparison
 still works normally, and the image scans still gate every publish. The
 <strong>Trivy</strong> code-scanning check finishes as <em>neutral</em> (<code>vrg-gh pr checks</code>
 shows it as "skipping"), which does not block a merge. The scan's actual
