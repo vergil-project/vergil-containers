@@ -3053,8 +3053,11 @@
    <code># @include</code> directives with the contents of shared fragments from
    <code>docker/common/</code>.</li>
 <li><code>build.sh</code> calls <code>generate.sh</code> then runs <code>docker build</code> for every
-   language and version combination. Its version lists, like the publish
-   matrix and the Dockerfile <code>ARG</code> defaults, are generated from
+   entry of the publish matrix, <code>docker/versions/matrix.json</code>, in the
+   publish's tier order, so a parent image is built before the images built
+   <code>FROM</code> it (see <a href="#publishing">Publishing</a>). <code>build.sh &lt;family&gt;</code> builds one
+   family and its parents (<code>--pull-parents</code> pulls them instead). The matrix,
+   like the Dockerfile <code>ARG</code> defaults, is generated from
    <code>docker/versions/manifest.yml</code> by <code>docker/versions/generate.py</code> (see
    <a href="../languages/lifecycle/">Language version lifecycle</a>).</li>
 </ol>
@@ -3229,6 +3232,18 @@ via the reusable <code>cd-docker-publish.yml</code> workflow, parameterized by a
 <li>Promotes the candidate to the final tag via <code>docker buildx imagetools create</code></li>
 <li>Verifies digest preservation between candidate and final</li>
 </ol>
+<p>The pipeline runs in <strong>tiers</strong>. An image may be built <code>FROM</code> another image of
+this repository, its <em>parent</em>, named by a <code>parent:</code> entry in
+<code>docker/versions/manifest.yml</code>. Each image's depth in that tree (0 for an
+image on an upstream base, at most 2) is its tier. Every tier-0 image runs the
+steps above, then the tier-1 images run them, built <code>FROM</code> their parent's
+promoted digest from the same run, and then tier 2. An image whose parent
+failed fails its own build with an error naming the parent, and its previous
+tags stay published. Until a manifest entry names a parent, every image is in
+tier 0 and the later tiers are skipped.</p>
+<p>Each image's <code>--build-arg</code>s come from its <code>build-args</code> map in the generated
+<code>docker/versions/matrix.json</code> (a family's version argument; none for <code>base</code>),
+and a child also gets <code>PARENT_IMAGE</code>, its parent by digest.</p>
 <h3 id="image-namespace">Image namespace<a class="headerlink" href="#image-namespace" title="Permanent link">&para;</a></h3>
 <p>Image URLs use the <strong>user namespace</strong> (<code>ghcr.io/vergil-project/...</code>), not
 a repo-specific namespace. This means image paths are stable across
