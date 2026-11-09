@@ -37,7 +37,6 @@ TOOL_REPOS = {
     "nfpm": "goreleaser/nfpm",
     "trivy": "aquasecurity/trivy",
     "scorecard": "ossf/scorecard",
-    "osv-scanner": "google/osv-scanner",
 }
 
 # tool → the ARG name carrying its pinned version in a docker/common fragment.
@@ -54,7 +53,6 @@ TOOL_ARGS = {
     "nfpm": "NFPM_VERSION",
     "trivy": "TRIVY_VERSION",
     "scorecard": "SCORECARD_VERSION",
-    "osv-scanner": "OSV_SCANNER_VERSION",
 }
 
 _TAG_IN_LOCATION = re.compile(r"/releases/tag/(?P<tag>[^/\s]+)\s*$")

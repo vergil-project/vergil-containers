@@ -50,7 +50,7 @@ expand() {
 }
 
 if [[ $# -eq 0 ]]; then
-  langs=(python go rust java cpp-clang cpp-gcc ts-node base)
+  langs=(python go rust cpp-clang cpp-gcc ts-node base)
 else
   langs=("$@")
 fi

@@ -27,7 +27,6 @@ docker/
 ├── base/Dockerfile.template
 ├── python/Dockerfile.template
 ├── go/Dockerfile.template
-├── java/Dockerfile.template
 ├── rust/Dockerfile.template
 ├── cpp-clang/Dockerfile.template
 ├── cpp-gcc/Dockerfile.template
