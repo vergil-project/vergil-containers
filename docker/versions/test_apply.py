@@ -147,7 +147,6 @@ def test_apply_then_render_regenerates_all_files(repo):  # noqa: F811
         g.MANIFEST,
         g.MATRIX_JSON,
         g.WINDOW_JSON,
-        g.BUILD_SH,
         Path("docker/python/Dockerfile.template"),
         *g.DOC_TABLES,
     }
@@ -157,7 +156,9 @@ def test_apply_then_render_regenerates_all_files(repo):  # noqa: F811
     assert g.main(["--check", "--root", str(repo)]) == 0
     assert _versions(mf.load_manifest(repo / g.MANIFEST), "python") == ["3.15", "3.14", "3.13", "3.12"]
     assert "ARG PYTHON_VERSION=3.15" in (repo / "docker/python/Dockerfile.template").read_text()
-    assert "build python PYTHON_VERSION 3.15" in (repo / g.BUILD_SH).read_text()
+    include = json.loads((repo / g.MATRIX_JSON).read_text())["include"]
+    assert {"language": "python", "version": "3.15", "build-args": {"PYTHON_VERSION": "3.15"},
+            "parent": None, "depth": 0} in include
 
 
 def test_render_drop_of_an_older_version_leaves_the_arg_default(repo):  # noqa: F811

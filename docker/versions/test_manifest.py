@@ -196,3 +196,106 @@ def test_dump_roundtrip(tmp_path):
     seed = mf.load_manifest(MANIFEST)
     p.write_text(mf.dump_manifest(seed))
     assert mf.load_manifest(p) == seed
+
+
+# --- Manifest parents (vergil-containers#773, epic vergil-project/.github#213 T7b) ---
+#
+# No entry of the real manifest names a parent yet (epic vergil-project/.github#649
+# sets the first ones), so these synthetic fixtures are the only exercise of a
+# parent and of depths 1 and 2.
+
+
+def _one(key, version="1", **over):
+    return _family(key=key, language=key.replace("-", ""), build_arg=key.replace("-", "_").upper() + "_VERSION",
+                   versions=[{"version": version, "ga": None, "eol": None, "in_policy": True,
+                              "runtime_published": None}], **over)
+
+
+def _tree_doc():
+    """`pkg-ubuntu` (no parent) <- `base` <- `python`: depths 0, 1 and 2."""
+    doc = _doc(_family(parent={"name": "base", "version": "latest"}), _one("pkg-ubuntu", "24.04"))
+    doc["base"] = {"parent": {"name": "pkg-ubuntu", "version": "24.04"}}
+    return doc
+
+
+def test_no_parent_is_depth_zero(tmp_path):
+    m = _load(tmp_path, _doc(_family(), _one("go")))
+    assert all(f.parent is None for f in m.families)
+    assert m.base_parent is None
+    assert mf.entry_depths(m) == {"python": 0, "go": 0, "base": 0}
+
+
+def test_parent_depth_emitted(tmp_path):
+    m = _load(tmp_path, _tree_doc())
+    assert m.base_parent == mf.Parent(name="pkg-ubuntu", version="24.04")
+    assert m.families[0].parent == mf.Parent(name="base", version="latest")
+    assert mf.entry_depths(m) == {"pkg-ubuntu": 0, "base": 1, "python": 2}
+
+
+def test_parent_missing_refused(tmp_path):
+    with pytest.raises(mf.ManifestError, match=r"family 'python': parent: no manifest entry 'rhel'"):
+        _load(tmp_path, _doc(_family(parent={"name": "rhel", "version": "9"})))
+    # The entry exists, but not at that version.
+    with pytest.raises(mf.ManifestError, match=r"family 'python': parent: 'go' has no version '9'"):
+        _load(tmp_path, _doc(_family(parent={"name": "go", "version": "9"}), _one("go")))
+    doc = _doc()
+    doc["base"] = {"parent": {"name": "pkg-ubuntu", "version": "24.04"}}
+    with pytest.raises(mf.ManifestError, match=r"base: parent: no manifest entry 'pkg-ubuntu'"):
+        _load(tmp_path, doc)
+
+
+def test_parent_cycle_refused(tmp_path):
+    doc = _doc(_family(parent={"name": "go", "version": "1"}),
+               _one("go", parent={"name": "python", "version": "3.14"}))
+    with pytest.raises(mf.ManifestError, match=r"family 'python': parent: cycle python -> go -> python"):
+        _load(tmp_path, doc)
+    with pytest.raises(mf.ManifestError, match=r"family 'python': parent: cycle python -> python"):
+        _load(tmp_path, _doc(_family(parent={"name": "python", "version": "3.13"})))
+
+
+def test_depth_over_max_refused(tmp_path):
+    doc = _tree_doc()
+    doc["families"].append(_one("lint", parent={"name": "python", "version": "3.14"}))
+    with pytest.raises(mf.ManifestError, match=r"family 'lint': parent: depth 3 exceeds the maximum of 2"):
+        _load(tmp_path, doc)
+
+
+@pytest.mark.parametrize("parent", [
+    "base", {"name": "base"}, {"name": "base", "version": "latest", "tag": "x"},
+    {"name": 1, "version": "latest"}, {"name": "base", "version": 3},
+])
+def test_bad_parent_shape_refused(tmp_path, parent):
+    with pytest.raises(mf.ManifestError, match=r"family 'python': parent"):
+        _load(tmp_path, _doc(_family(parent=parent)))
+
+
+@pytest.mark.parametrize("base", ["x", {"colour": "blue"}, None])
+def test_bad_base_section_refused(tmp_path, base):
+    doc = _doc()
+    doc["base"] = base
+    with pytest.raises(mf.ManifestError, match=r"^base"):
+        _load(tmp_path, doc)
+
+
+def test_family_may_not_be_keyed_base(tmp_path):
+    with pytest.raises(mf.ManifestError, match=r"family 'base': key: 'base' is reserved"):
+        _load(tmp_path, _doc(_one("base")))
+
+
+def test_dataclass_manifest_is_checked_too():
+    # A Manifest built in code, not loaded, gets the same parent checks.
+    fam = mf.Family("python", "python", "", "PYTHON_VERSION", "pr",
+                    (mf.ManifestVersion("3.14", None, None, True, None),), parent=mf.Parent("rhel", "9"))
+    with pytest.raises(mf.ManifestError, match=r"no manifest entry 'rhel'"):
+        mf.entry_depths(mf.Manifest((fam,)))
+
+
+def test_dump_roundtrip_with_parents(tmp_path):
+    m = _load(tmp_path, _tree_doc())
+    p = tmp_path / "dumped.yml"
+    p.write_text(mf.dump_manifest(m))
+    assert mf.load_manifest(p) == m
+    # A manifest with no parent dumps no parent or base section.
+    seed = mf.load_manifest(MANIFEST)
+    assert "  parent:" not in mf.dump_manifest(seed)
+    assert "\nbase:" not in mf.dump_manifest(seed)

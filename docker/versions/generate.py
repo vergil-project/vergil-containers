@@ -6,10 +6,11 @@ pins.yml). `--root` points at a different repo checkout (used by the tests).
 
 Generated outputs (epic vergil-project/.github#407, spec §6.1):
 
-- docker/versions/matrix.json: the cd-docker-publish.yml build matrix (every
-  family version, then `base`);
+- docker/versions/matrix.json: the build matrix cd-docker-publish.yml and
+  `docker/build.sh` read (every family version, then `base`, ordered by depth
+  in the image tree);
 - docker/versions/window.json: the published window consumers read;
-- the `docker/build.sh` build and smoke-test lines;
+- the `docker/build.sh` smoke-test table;
 - the `package-cleanup.yml` and `package-cache-warm.yml` package lists;
 - every docker/<family>/Dockerfile.template `ARG <BUILD_ARG>=` default;
 - the version tables in README.md and the docs site.
@@ -43,8 +44,8 @@ DOC_TABLES = (
 
 # The unversioned base image is not a language family; it is listed alongside
 # the families wherever every image is enumerated.
-BASE_KEY = "base"
-BASE_VERSION = "latest"
+BASE_KEY = mf.BASE_KEY
+BASE_VERSION = mf.BASE_VERSION
 IMAGE_PREFIXES = ("dev", "prod")
 # Datestamp-alias retention per image prefix (package-cleanup.yml reap-aliases).
 REAP_WINDOWS = (("prod", "30 days"), ("dev", "7 days"))
@@ -94,16 +95,39 @@ def _json(data: object) -> str:
     return json.dumps(data, indent=2) + "\n"
 
 
+def _matrix_parent(p: mf.Parent | None) -> dict[str, str] | None:
+    return None if p is None else {"language": p.name, "version": p.version}
+
+
 def render_matrix_json(m: mf.Manifest) -> str:
-    """The publish matrix: one entry per family version, then `base` last.
-    `base` takes no version build arg, so its `build-arg` is null and the
-    publish workflow passes it none."""
+    """The publish matrix: one entry per family version, then `base`, ordered by
+    depth in the image tree (stable, so within a depth the order is the
+    manifest's, with `base` after the families).
+
+    Each entry is `language`, `version`, `build-args` (every `--build-arg` the
+    image takes, as a map: a family's version arg, and `{}` for `base`),
+    `parent` (`null`, or the `language` and `version` of the entry it is built
+    FROM) and `depth` (the publish tier). Raises ManifestError on a bad tree."""
+    depths = mf.entry_depths(m)
     include = [
-        {"language": f.key, "version": v.version, "build-arg": f.build_arg}
+        {
+            "language": f.key,
+            "version": v.version,
+            "build-args": {f.build_arg: v.version},
+            "parent": _matrix_parent(f.parent),
+            "depth": depths[f.key],
+        }
         for f in m.families
         for v in f.versions
     ]
-    include.append({"language": BASE_KEY, "version": BASE_VERSION, "build-arg": None})
+    include.append({
+        "language": BASE_KEY,
+        "version": BASE_VERSION,
+        "build-args": {},
+        "parent": _matrix_parent(m.base_parent),
+        "depth": depths[BASE_KEY],
+    })
+    include.sort(key=lambda e: e["depth"])
     return _json({"include": include})
 
 
@@ -137,15 +161,14 @@ def _smoke_test(root: Path, f: mf.Family) -> str | None:
 
 
 def render_build_sh(m: mf.Manifest, root: Path) -> str:
-    body = [f"build {f.key} {f.build_arg} {v.version}" for f in m.families for v in f.versions]
+    """build.sh's smoke-test table: `<family>:<directory>` for each family with a
+    smoke test. The builds themselves come from matrix.json at run time."""
+    pairs = []
     for f in m.families:
         directory = _smoke_test(root, f)
-        if directory is None:
-            continue
-        body += [
-            f'"${{script_dir}}/{directory}/smoke-test.sh" "dev-{f.key}:{v.version}" "$runtime"'
-            for v in f.versions
-        ]
+        if directory is not None:
+            pairs.append(f"{f.key}:{directory}")
+    body = [f'smoke_tests="{" ".join(pairs)}"']
     return replace_block(_read(root, BUILD_SH), BUILD_SH, "versions", body, markdown=False)
 
 

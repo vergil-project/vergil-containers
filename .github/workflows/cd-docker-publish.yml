@@ -54,17 +54,31 @@ jobs:
 
   # The build matrix is generated from docker/versions/manifest.yml into
   # docker/versions/matrix.json (docker/versions/generate.py); CI fails if the
-  # committed matrix.json is out of date with the manifest. `base` is its last
-  # entry, with a null build-arg.
+  # committed matrix.json is out of date with the manifest. Each entry is
+  # `language`, `version`, `build-args` (a map), `parent` (null, or the
+  # `language` and `version` of the entry it is built FROM) and `depth` (its
+  # depth in that image tree: 0 for an image on an upstream base).
   #
-  # Two outputs: `matrix` (the entries, one publish job each) and `arch-matrix`
-  # (each entry once per architecture, with the native runner that builds it).
+  # The publish runs in tiers by depth (vergil-containers#773): tier N+1's
+  # builds start once tier N's publishes have finished, so a child is built FROM
+  # its parent's digest from this same run. Per tier N (0 to 2, the manifest's
+  # MAX_DEPTH), three outputs: `matrix-N` (the entries, one publish job each),
+  # `arch-matrix-N` (each entry once per architecture, with the native runner
+  # that builds it) and `has-N` ("true" or "false"; an empty tier's jobs are
+  # skipped).
   versions:
     name: Read the version matrix
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.read.outputs.matrix }}
-      arch-matrix: ${{ steps.read.outputs.arch-matrix }}
+      matrix-0: ${{ steps.read.outputs.matrix-0 }}
+      arch-matrix-0: ${{ steps.read.outputs.arch-matrix-0 }}
+      has-0: ${{ steps.read.outputs.has-0 }}
+      matrix-1: ${{ steps.read.outputs.matrix-1 }}
+      arch-matrix-1: ${{ steps.read.outputs.arch-matrix-1 }}
+      has-1: ${{ steps.read.outputs.has-1 }}
+      matrix-2: ${{ steps.read.outputs.matrix-2 }}
+      arch-matrix-2: ${{ steps.read.outputs.arch-matrix-2 }}
+      has-2: ${{ steps.read.outputs.has-2 }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -75,36 +89,52 @@ jobs:
         id: read
         run: |
           set -euo pipefail
+          matrix_json=docker/versions/matrix.json
           # Fail loud on a missing, malformed or empty matrix: an empty build
           # list would read as a successful publish of nothing.
-          jq -e '.include | length > 0' docker/versions/matrix.json > /dev/null
-          matrix="$(jq -c . docker/versions/matrix.json)"
-          # Each architecture builds on its own native runner: no emulation.
-          # The runners match vergil-tooling's lib/package/matrix.py RUNNERS.
-          arch_matrix="$(jq -c '{include: [.include[] as $e
-            | ({arch: "amd64", runner: "ubuntu-24.04"}, {arch: "arm64", runner: "ubuntu-24.04-arm"})
-            | $e + .]}' docker/versions/matrix.json)"
-          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
-          echo "arch-matrix=${arch_matrix}" >> "$GITHUB_OUTPUT"
+          jq -e '.include | length > 0' "$matrix_json" > /dev/null
+          # The tiers below are the only ones with jobs, so an entry outside
+          # them would never be published: refuse it rather than drop it.
+          if ! jq -e 'all(.include[]; (.depth | type) == "number"
+              and .depth == (.depth | floor) and .depth >= 0 and .depth <= 2)' "$matrix_json" > /dev/null; then
+            echo "::error title=Matrix depth out of range::Every ${matrix_json} entry needs an integer depth from 0 to 2, the tiers this workflow publishes."
+            exit 1
+          fi
+          # Nothing is written until every tier has been read.
+          outputs=""
+          for tier in 0 1 2; do
+            matrix="$(jq -c --argjson t "$tier" '{include: [.include[] | select(.depth == $t)]}' "$matrix_json")"
+            # Each architecture builds on its own native runner: no emulation.
+            # The runners match vergil-tooling's lib/package/matrix.py RUNNERS.
+            arch_matrix="$(jq -c --argjson t "$tier" '{include: [.include[] | select(.depth == $t) as $e
+              | ({arch: "amd64", runner: "ubuntu-24.04"}, {arch: "arm64", runner: "ubuntu-24.04-arm"})
+              | $e + .]}' "$matrix_json")"
+            has="$(jq -r --argjson t "$tier" 'any(.include[]; .depth == $t)' "$matrix_json")"
+            outputs+="matrix-${tier}=${matrix}"$'\n'"arch-matrix-${tier}=${arch_matrix}"$'\n'"has-${tier}=${has}"$'\n'
+          done
+          printf '%s' "$outputs" >> "$GITHUB_OUTPUT"
 
-  # One native build per image and architecture, pushed by digest only (no
-  # tag). The publish job below stitches the two digests into the multi-arch
-  # candidate. To fall back to the QEMU build, restore this file from before
+  # Tier 0: one native build per image and architecture, pushed by digest only
+  # (no tag). The publish job below stitches the two digests into the
+  # multi-arch candidate. Tiers 1 and 2 run the same steps (the YAML anchors).
+  # To fall back to the QEMU build, restore this file from before
   # vergil-containers#515: nothing else depends on the split.
-  build:
-    name: "build: ${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }} (${{ matrix.arch }})"
+  build-0:
+    name: &build-name "build: ${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }} (${{ matrix.arch }})"
     needs: [hadolint, versions]
+    if: ${{ needs.versions.outputs.has-0 == 'true' }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.versions.outputs.arch-matrix) }}
+      matrix: ${{ fromJSON(needs.versions.outputs.arch-matrix-0) }}
 
-    env:
+    env: &build-env
       REPO: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}"
+      VERSION: ${{ matrix.version }}
       # Per-arch cache: each runner writes only its own platform's layers.
       CACHE_TAG: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:cache-${{ matrix.version }}-${{ matrix.arch }}"
 
-    steps:
+    steps: &build-steps
       - name: Checkout code
         uses: actions/checkout@v6
         with:
@@ -123,14 +153,74 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # `base` has a null build-arg, so it gets no --build-arg at all.
+      # A child is built FROM its parent's published digest from this run, which
+      # the parent's publish job (a tier earlier) uploaded after promoting it.
+      # A pattern, not a name: a parent that was never published downloads
+      # nothing, and the next step reports it by name.
+      - name: Download the parent's published digest
+        if: ${{ matrix.parent != null }}
+        uses: actions/download-artifact@v7
+        with:
+          pattern: "image-digest-${{ inputs.image-prefix }}-${{ matrix.parent.language }}-${{ matrix.parent.version }}"
+          path: ${{ runner.temp }}/parent
+          merge-multiple: true
+
+      # Every key of the entry's build-args map is a --build-arg (base's map is
+      # empty), and a child also gets PARENT_IMAGE, its parent by digest.
+      - name: Resolve the build arguments
+        id: args
+        env:
+          BUILD_ARGS_JSON: ${{ toJSON(matrix['build-args']) }}
+          PARENT_JSON: ${{ toJSON(matrix.parent) }}
+          PARENT_DIR: ${{ runner.temp }}/parent
+          PREFIX: ${{ inputs.image-prefix }}
+        run: |
+          set -euo pipefail
+          pairs=()
+          lines="$(jq -r 'to_entries[] | "\(.key)=\(.value)"' <<< "$BUILD_ARGS_JSON")"
+          while IFS= read -r pair; do
+            if [ -n "$pair" ]; then
+              pairs+=("$pair")
+            fi
+          done <<< "$lines"
+          if [ "$PARENT_JSON" != "null" ]; then
+            parent_language="$(jq -r .language <<< "$PARENT_JSON")"
+            parent_version="$(jq -r .version <<< "$PARENT_JSON")"
+            parent="${PREFIX}-${parent_language}:${parent_version}"
+            file="${PARENT_DIR}/digest"
+            digest=""
+            if [ -s "$file" ]; then
+              digest="$(cat "$file")"
+            fi
+            if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error title=Parent not published::${REPO}:${VERSION} is built FROM its parent ${parent}, which was not published in this run (read '${digest}' from ${file}): the parent's build, scan or promotion failed or did not run. This image is not built, and its previous tags stay published."
+              exit 1
+            fi
+            pairs+=("PARENT_IMAGE=ghcr.io/vergil-project/${PREFIX}-${parent_language}@${digest}")
+          fi
+          # One NAME=value per line, as build-push-action reads its list. The
+          # check also keeps any value from breaking the output's delimiter.
+          for pair in ${pairs[@]+"${pairs[@]}"}; do
+            if ! [[ "$pair" =~ ^[A-Z][A-Z0-9_]*=[^[:space:]]+$ ]]; then
+              echo "::error title=Bad build argument::'${pair}' for ${REPO}:${VERSION} is not a NAME=value build argument."
+              exit 1
+            fi
+          done
+          {
+            echo "build-args<<BUILD_ARGS_EOF"
+            if [ "${#pairs[@]}" -gt 0 ]; then
+              printf '%s\n' "${pairs[@]}"
+            fi
+            echo "BUILD_ARGS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v7
         with:
           context: "docker/${{ matrix.language }}"
           platforms: "linux/${{ matrix.arch }}"
-          build-args: "${{ matrix.build-arg && format('{0}={1}', matrix.build-arg, matrix.version) || '' }}"
+          build-args: ${{ steps.args.outputs.build-args }}
           outputs: "type=image,name=${{ env.REPO }},push-by-digest=true,name-canonical=true,push=true"
           no-cache: ${{ inputs.no-cache }}
           cache-from: type=registry,ref=${{ env.CACHE_TAG }}
@@ -159,20 +249,22 @@ jobs:
           retention-days: 1
           overwrite: true
 
-  # One job per image: stitch its two per-arch digests into the multi-arch
-  # candidate, then scan, gate, attest and promote it. It runs whatever the
+  # Tier 0: one job per image: stitch its two per-arch digests into the
+  # multi-arch candidate, then scan, gate, attest and promote it, and upload
+  # the promoted digest for the images built FROM it. It runs whatever the
   # other images' builds did, so one image's failed build fails only that
-  # image's publish (at the stitch, which finds its digest missing).
-  publish:
-    name: "publish: ${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
-    needs: [hadolint, versions, build]
-    if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' }}
+  # image's publish (at the stitch, which finds its digest missing), and only
+  # its descendants' builds in the later tiers.
+  publish-0:
+    name: &publish-name "publish: ${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
+    needs: [hadolint, versions, build-0]
+    if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-0 == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.versions.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix-0) }}
 
-    env:
+    env: &publish-env
       REPO: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}"
       IMAGE: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
       CANDIDATE: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}-candidate"
@@ -180,7 +272,7 @@ jobs:
       # alert history carries over: base's has no version in it.
       SARIF_STEM: "trivy-image-${{ inputs.image-prefix }}-${{ matrix.language }}${{ matrix.language != 'base' && format('-{0}', matrix.version) || '' }}"
 
-    steps:
+    steps: &publish-steps
       - name: Checkout code
         uses: actions/checkout@v6
         with:
@@ -336,3 +428,75 @@ jobs:
             echo "  Final:     $FINAL_DIGEST" >&2
             exit 1
           fi
+
+      # Only a promoted image has its digest uploaded, so a child is never
+      # built on a parent that failed its scan, gate or attestation.
+      - name: Record the published digest
+        env:
+          DIGEST: ${{ steps.digest.outputs.digest }}
+          DIGEST_DIR: ${{ runner.temp }}/image-digest
+        run: |
+          set -euo pipefail
+          if ! [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error title=No published digest::${IMAGE} was promoted with digest '${DIGEST}', not a sha256 digest, so the images built FROM it cannot be."
+            exit 1
+          fi
+          mkdir -p "$DIGEST_DIR"
+          printf '%s\n' "$DIGEST" > "${DIGEST_DIR}/digest"
+
+      - name: Upload the published digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: "image-digest-${{ inputs.image-prefix }}-${{ matrix.language }}-${{ matrix.version }}"
+          path: ${{ runner.temp }}/image-digest/digest
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+  # Tier 1: the images built FROM a tier-0 image, once every tier-0 publish has
+  # finished. It runs whatever those publishes did: an image whose parent was
+  # not published fails at "Resolve the build arguments", naming the parent.
+  build-1:
+    name: *build-name
+    needs: [hadolint, versions, publish-0]
+    if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-1 == 'true' }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.versions.outputs.arch-matrix-1) }}
+    env: *build-env
+    steps: *build-steps
+
+  publish-1:
+    name: *publish-name
+    needs: [hadolint, versions, build-1]
+    if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-1 == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix-1) }}
+    env: *publish-env
+    steps: *publish-steps
+
+  # Tier 2: the images built FROM a tier-1 image, the same way.
+  build-2:
+    name: *build-name
+    needs: [hadolint, versions, publish-1]
+    if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-2 == 'true' }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.versions.outputs.arch-matrix-2) }}
+    env: *build-env
+    steps: *build-steps
+
+  publish-2:
+    name: *publish-name
+    needs: [hadolint, versions, build-2]
+    if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-2 == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix-2) }}
+    env: *publish-env
+    steps: *publish-steps
