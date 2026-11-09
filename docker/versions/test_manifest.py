@@ -299,3 +299,112 @@ def test_dump_roundtrip_with_parents(tmp_path):
     seed = mf.load_manifest(MANIFEST)
     assert "  parent:" not in mf.dump_manifest(seed)
     assert "\nbase:" not in mf.dump_manifest(seed)
+
+
+# --- Toolchains (vergil-containers#727, epic vergil-project/.github#607 T3) ---
+#
+# The frozen seed has no toolchains, so these are synthetic manifests.
+
+
+def _toolchain(**over):
+    tc = {"key": "pkg-ubuntu", "build_arg": "UBUNTU_VERSION", "versions": ["26.04", "24.04"]}
+    tc.update(over)
+    return tc
+
+
+def _toolchain_doc(*toolchains):
+    doc = _doc()
+    doc["toolchains"] = list(toolchains) or [_toolchain()]
+    return doc
+
+
+def test_parses_toolchains_section(tmp_path):
+    doc = _toolchain_doc(_toolchain(), _toolchain(key="pkg-rhel", build_arg="RHEL_VERSION", versions=["10", "9"]))
+    m = _load(tmp_path, doc)
+    assert m.toolchains == (
+        mf.Toolchain(key="pkg-ubuntu", build_arg="UBUNTU_VERSION", versions=("26.04", "24.04")),
+        mf.Toolchain(key="pkg-rhel", build_arg="RHEL_VERSION", versions=("10", "9")),
+    )
+    # A toolchain is not a language family.
+    assert [f.key for f in m.families] == ["python"]
+
+
+def test_toolchains_optional(tmp_path):
+    assert _load(tmp_path, _doc()).toolchains == ()
+    assert mf.load_manifest(MANIFEST).toolchains == ()
+
+
+@pytest.mark.parametrize("key", ["python", "base"])
+def test_rejects_toolchain_key_colliding_with_family_or_base(tmp_path, key):
+    with pytest.raises(mf.ManifestError, match=rf"toolchain '{key}': key: "):
+        _load(tmp_path, _toolchain_doc(_toolchain(key=key)))
+
+
+def test_rejects_duplicate_toolchain(tmp_path):
+    with pytest.raises(mf.ManifestError, match=r"toolchain 'pkg-ubuntu': key: duplicates another toolchain"):
+        _load(tmp_path, _toolchain_doc(_toolchain(), _toolchain()))
+
+
+def test_rejects_toolchain_versions_not_newest_first(tmp_path):
+    with pytest.raises(mf.ManifestError, match=r"toolchain 'pkg-ubuntu': versions must be newest first"):
+        _load(tmp_path, _toolchain_doc(_toolchain(versions=["24.04", "26.04"])))
+    with pytest.raises(mf.ManifestError, match=r"toolchain 'pkg-ubuntu': versions: duplicate version '24.04'"):
+        _load(tmp_path, _toolchain_doc(_toolchain(versions=["24.04", "24.04"])))
+
+
+@pytest.mark.parametrize(("over", "pattern"), [
+    ({"colour": "blue"}, r"toolchain 'pkg-ubuntu': unknown key.*'colour'"),
+    ({"key": "Pkg"}, r"toolchain 'Pkg': key 'Pkg'"),
+    ({"build_arg": "ubuntu"}, r"toolchain 'pkg-ubuntu': build_arg 'ubuntu'"),
+    ({"versions": []}, r"toolchain 'pkg-ubuntu': versions must be a non-empty list"),
+    # An unquoted 24.04 is a YAML float, not a version string.
+    ({"versions": [24.04]}, r"toolchain 'pkg-ubuntu': versions\[0\]: version 24.04"),
+    ({"versions": ["noble"]}, r"toolchain 'pkg-ubuntu': versions\[0\]: version 'noble'"),
+])
+def test_rejects_bad_toolchain_fields(tmp_path, over, pattern):
+    with pytest.raises(mf.ManifestError, match=pattern):
+        _load(tmp_path, _toolchain_doc(_toolchain(**over)))
+
+
+def test_rejects_bad_toolchains_section(tmp_path):
+    doc = _toolchain_doc()
+    del doc["toolchains"][0]["build_arg"]
+    with pytest.raises(mf.ManifestError, match=r"toolchain 'pkg-ubuntu': missing key.*'build_arg'"):
+        _load(tmp_path, doc)
+    for bad in ([], {"key": "pkg-ubuntu"}, None):
+        doc = _doc()
+        doc["toolchains"] = bad
+        with pytest.raises(mf.ManifestError, match=r"manifest: toolchains must be a non-empty list"):
+            _load(tmp_path, doc)
+    with pytest.raises(mf.ManifestError, match=r"toolchains\[0\]: must be a mapping"):
+        _load(tmp_path, _toolchain_doc("pkg-ubuntu"))
+
+
+def test_toolchain_keys_share_the_family_namespace(tmp_path):
+    # Amendment from epic vergil-project/.github#649: `base` and a family may be
+    # built FROM a toolchain, so a `parent:` lookup finds `pkg-ubuntu`.
+    doc = _toolchain_doc()
+    doc["families"] = [_family(parent={"name": "pkg-ubuntu", "version": "24.04"}), _one("go")]
+    doc["base"] = {"parent": {"name": "pkg-ubuntu", "version": "26.04"}}
+    m = _load(tmp_path, doc)
+    assert mf.entry_depths(m) == {"python": 1, "go": 0, "pkg-ubuntu": 0, "base": 1}
+    # A child of the toolchain's child is two deep.
+    doc["families"][1] = _one("go", parent={"name": "base", "version": "latest"})
+    assert mf.entry_depths(_load(tmp_path, doc))["go"] == 2
+    # The lookup checks the toolchain's versions like a family's.
+    doc["base"] = {"parent": {"name": "pkg-ubuntu", "version": "22.04"}}
+    with pytest.raises(mf.ManifestError, match=r"base: parent: 'pkg-ubuntu' has no version '22.04'"):
+        _load(tmp_path, doc)
+
+
+def test_dump_round_trips_toolchains(tmp_path):
+    # Review Focus 1: a lifecycle PR rewrites manifest.yml through dump_manifest,
+    # so a toolchains section that did not round-trip would be deleted.
+    doc = _toolchain_doc(_toolchain(), _toolchain(key="pkg-rhel", build_arg="RHEL_VERSION", versions=["10", "9"]))
+    doc["base"] = {"parent": {"name": "pkg-ubuntu", "version": "24.04"}}
+    m = _load(tmp_path, doc)
+    dumped = mf.dump_manifest(m)
+    assert mf.parse_manifest(yaml.safe_load(dumped)) == m
+    assert dumped.index("\nfamilies:") < dumped.index("\ntoolchains:")
+    # No toolchains, no section.
+    assert "\ntoolchains:" not in mf.dump_manifest(mf.load_manifest(MANIFEST))

@@ -189,8 +189,13 @@ tags stay published. Until a manifest entry names a parent, every image is in
 tier 0 and the later tiers are skipped.
 
 Each image's `--build-arg`s come from its `build-args` map in the generated
-`docker/versions/matrix.json` (a family's version argument; none for `base`),
-and a child also gets `PARENT_IMAGE`, its parent by digest.
+`docker/versions/matrix.json` (a family's or toolchain's version argument;
+none for `base`), and a child also gets `PARENT_IMAGE`, its parent by digest.
+
+Images that are not languages, such as the package toolchain images, are
+listed in the manifest's `toolchains:` section. They are built, published and
+cleaned up like the language images, and any entry may name one as its
+parent, but they never appear in `window.json` or the version lifecycle.
 
 ### Image namespace
 

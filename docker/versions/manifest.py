@@ -2,9 +2,11 @@
 language version this repo builds (epic vergil-project/.github#407, spec §6.1).
 
 `manifest.yml` records what is built: one family per image suffix, each with its
-versions newest first. Every other version list in the repo is generated from it
-by `generate.py`. Loading is strict: any schema violation raises ManifestError
-naming the family and field, never a partial or defaulted manifest.
+versions newest first, and an optional `toolchains:` section for images that are
+not languages (epic vergil-project/.github#607). Every other version list in the
+repo is generated from it by `generate.py`. Loading is strict: any schema
+violation raises ManifestError naming the family (or toolchain) and field, never
+a partial or defaulted manifest.
 
 There are no language branches here. The language names that appear in
 `manifest.yml` are data, not code paths."""
@@ -31,10 +33,11 @@ BASE_VERSION = "latest"
 MAX_DEPTH = 2
 
 _TOP_KEYS = {"schema", "families"}
-_TOP_OPTIONAL = {"base"}
+_TOP_OPTIONAL = {"base", "toolchains"}
 _BASE_OPTIONAL = {"parent"}
 _FAMILY_KEYS = {"key", "language", "token_prefix", "build_arg", "automation", "versions"}
 _FAMILY_OPTIONAL = {"parent"}
+_TOOLCHAIN_KEYS = {"key", "build_arg", "versions"}
 _PARENT_KEYS = {"name", "version"}
 _VERSION_KEYS = {"version", "ga", "eol", "in_policy", "runtime_published"}
 
@@ -67,6 +70,12 @@ HEADER = (
     "# `version`s) that its image is built FROM, and an optional top-level `base:`\n"
     "# section names base's. No parent means an upstream image. The publish builds\n"
     "# in tiers by depth in that tree, at most 2 deep (vergil-containers#773).\n"
+    "#\n"
+    "# The optional `toolchains:` section lists images that are not languages\n"
+    "# (epic vergil-project/.github#607): each has a `key`, a `build_arg` and its\n"
+    "# `versions`, newest first. Toolchain keys share one namespace with the\n"
+    "# families and `base`, so any entry may name one as its parent. Toolchains\n"
+    "# are built and published, but are never in window.json or the lifecycle.\n"
 )
 
 
@@ -103,9 +112,19 @@ class Family:
 
 
 @dataclass(frozen=True)
+class Toolchain:
+    """An image that is not a language (epic vergil-project/.github#607): built
+    and published like a family, but never in window.json or the lifecycle."""
+    key: str  # image suffix: "pkg-ubuntu"
+    build_arg: str  # "UBUNTU_VERSION"
+    versions: tuple[str, ...]  # newest first: ("26.04", "24.04")
+
+
+@dataclass(frozen=True)
 class Manifest:
     families: tuple[Family, ...]
     base_parent: Parent | None = None  # `base`'s parent; None: an upstream image
+    toolchains: tuple[Toolchain, ...] = ()
 
 
 def version_sort_key(version: str) -> tuple[int, ...]:
@@ -189,6 +208,44 @@ def _parse_base(data: object) -> Parent | None:
     return _parse_parent("base", data["parent"]) if "parent" in data else None
 
 
+def _check_version_order(where: str, versions: list[str]) -> None:
+    """Refuse a duplicate version, or versions not listed newest first."""
+    seen: set[str] = set()
+    for v in versions:
+        if v in seen:
+            raise ManifestError(f"{where}: versions: duplicate version {v!r}")
+        seen.add(v)
+    for newer, older in zip(versions, versions[1:]):
+        if version_sort_key(newer) <= version_sort_key(older):
+            raise ManifestError(
+                f"{where}: versions must be newest first, "
+                f"but {newer!r} is listed before {older!r}"
+            )
+
+
+def _parse_toolchain(index: int, data: object) -> Toolchain:
+    if not isinstance(data, dict):
+        raise ManifestError(f"toolchains[{index}]: must be a mapping")
+    name = data.get("key")
+    where = f"toolchain {name!r}" if isinstance(name, str) else f"toolchains[{index}]"
+    _check_keys(where, data, _TOOLCHAIN_KEYS)
+    key = _string(where, "key", data["key"], _KEY_RE)
+    if key == BASE_KEY:
+        raise ManifestError(f"{where}: key: {BASE_KEY!r} is reserved for the base image")
+    raw_versions = data["versions"]
+    if not isinstance(raw_versions, list) or not raw_versions:
+        raise ManifestError(f"{where}: versions must be a non-empty list")
+    versions = tuple(
+        _string(f"{where}: versions[{i}]", "version", v, _VERSION_RE) for i, v in enumerate(raw_versions)
+    )
+    _check_version_order(where, list(versions))
+    return Toolchain(
+        key=key,
+        build_arg=_string(where, "build_arg", data["build_arg"], _BUILD_ARG_RE),
+        versions=versions,
+    )
+
+
 def _parse_family(index: int, data: object) -> Family:
     if not isinstance(data, dict):
         raise ManifestError(f"families[{index}]: must be a mapping")
@@ -207,17 +264,7 @@ def _parse_family(index: int, data: object) -> Family:
     if not isinstance(raw_versions, list) or not raw_versions:
         raise ManifestError(f"{where}: versions must be a non-empty list")
     versions = tuple(_parse_version(key, i, v) for i, v in enumerate(raw_versions))
-    seen: set[str] = set()
-    for v in versions:
-        if v.version in seen:
-            raise ManifestError(f"{where}: versions: duplicate version {v.version!r}")
-        seen.add(v.version)
-    for newer, older in zip(versions, versions[1:]):
-        if version_sort_key(newer.version) <= version_sort_key(older.version):
-            raise ManifestError(
-                f"{where}: versions must be newest first, "
-                f"but {newer.version!r} is listed before {older.version!r}"
-            )
+    _check_version_order(where, [v.version for v in versions])
     return Family(
         key=key,
         language=_string(where, "language", data["language"], _LANGUAGE_RE),
@@ -231,8 +278,9 @@ def _parse_family(index: int, data: object) -> Family:
 
 def entry_depths(m: Manifest) -> dict[str, int]:
     """Each manifest entry's depth in the image tree, keyed by entry name (every
-    family key, then `base`): 0 for an entry with no parent, else its parent's
-    depth plus one.
+    family key, then every toolchain key, then `base`): 0 for an entry with no
+    parent, else its parent's depth plus one. A toolchain never has a parent, but
+    may be one.
 
     Raises ManifestError naming the entry when its parent does not exist (or not
     at that version), when the parents form a cycle, or when the depth exceeds
@@ -240,6 +288,8 @@ def entry_depths(m: Manifest) -> dict[str, int]:
     entries: dict[str, tuple[str, Parent | None, tuple[str, ...]]] = {
         f.key: (f"family {f.key!r}", f.parent, tuple(v.version for v in f.versions)) for f in m.families
     }
+    for t in m.toolchains:
+        entries[t.key] = (f"toolchain {t.key!r}", None, t.versions)
     entries[BASE_KEY] = (BASE_KEY, m.base_parent, (BASE_VERSION,))
     depths: dict[str, int] = {}
     for name, (where, _, _) in entries.items():
@@ -283,8 +333,21 @@ def parse_manifest(data: object) -> Manifest:
         if f.key in seen:
             raise ManifestError(f"family {f.key!r}: key: duplicate family")
         seen.add(f.key)
+    toolchains: tuple[Toolchain, ...] = ()
+    if "toolchains" in data:
+        raw_toolchains = data["toolchains"]
+        if not isinstance(raw_toolchains, list) or not raw_toolchains:
+            raise ManifestError("manifest: toolchains must be a non-empty list when present")
+        toolchains = tuple(_parse_toolchain(i, t) for i, t in enumerate(raw_toolchains))
+    # One namespace: a toolchain key may not repeat a family key (or `base`,
+    # refused above) or another toolchain's, since `parent:` names either.
+    for t in toolchains:
+        if t.key in seen:
+            owner = "a family" if any(f.key == t.key for f in families) else "another toolchain"
+            raise ManifestError(f"toolchain {t.key!r}: key: duplicates {owner}")
+        seen.add(t.key)
     base_parent = _parse_base(data["base"]) if "base" in data else None
-    m = Manifest(families=families, base_parent=base_parent)
+    m = Manifest(families=families, base_parent=base_parent, toolchains=toolchains)
     entry_depths(m)
     return m
 
@@ -345,5 +408,14 @@ def dump_manifest(m: Manifest) -> str:
                 f"        eol: {_scalar(v.eol)}",
                 f"        in_policy: {_scalar(v.in_policy)}",
                 f"        runtime_published: {_scalar(v.runtime_published)}",
+            ]
+    if m.toolchains:
+        lines.append("toolchains:")
+        for t in m.toolchains:
+            lines += [
+                f"  - key: {_scalar(t.key)}",
+                f"    build_arg: {_scalar(t.build_arg)}",
+                "    versions:",
+                *(f"      - {_scalar(v)}" for v in t.versions),
             ]
     return "\n".join(lines) + "\n"
