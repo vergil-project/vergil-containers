@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = ["pyyaml"]
+# ///
 """Run the language lifecycle check against upstream (spec §6.2).
 
-    python3 docker/versions/lifecycle/check.py [--report PATH] [--json PATH]
+    uv run docker/versions/lifecycle/check.py [--report PATH] [--json PATH]
 
 Checks every manifest family with its adapter, prints the Markdown matrix
 report, and writes it to --report and the results to --json when given.

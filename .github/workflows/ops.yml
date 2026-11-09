@@ -39,7 +39,7 @@ jobs:
       - name: Report pin exposure
         working-directory: docker/pins
         run: |
-          python3 report_exposure.py --no-probe | tee -a "${GITHUB_STEP_SUMMARY}"
+          uv run report_exposure.py --no-probe | tee -a "${GITHUB_STEP_SUMMARY}"
 
   # The language version lifecycle check (epic vergil-project/.github#407,
   # spec §6.2). Every family's adapter reads upstream release metadata; the
@@ -103,7 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "${OUT}"
-          python3 docker/versions/lifecycle/check.py \
+          uv run docker/versions/lifecycle/check.py \
             --report "${OUT}/report.md" --json "${OUT}/results.json"
 
       - name: Job summary
@@ -145,7 +145,7 @@ jobs:
           GH_TOKEN: ${{ steps.issues-token.outputs.token }}
         run: |
           set -euo pipefail
-          python3 docker/versions/lifecycle/publish.py \
+          uv run docker/versions/lifecycle/publish.py \
             --results "${OUT}/results.json" \
             --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
@@ -164,7 +164,7 @@ jobs:
           BASE: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          python3 docker/versions/lifecycle/publish.py --prs --base "${BASE}" \
+          uv run docker/versions/lifecycle/publish.py --prs --base "${BASE}" \
             --results "${OUT}/results.json" \
             --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 

@@ -1,3 +1,6 @@
+# /// script
+# dependencies = ["pyyaml"]
+# ///
 """Generate every version list in the repo from docker/versions/manifest.yml.
 
 Run with no arguments to rewrite the generated files; `--check` exits 1 and
@@ -285,7 +288,7 @@ def main(argv: list[str]) -> int:
             print("Generated version files are out of date with docker/versions/manifest.yml:")
             for path in stale:
                 print(f"  {path.relative_to(root)}")
-            print("Run `python3 docker/versions/generate.py` and commit the result.")
+            print("Run `uv run docker/versions/generate.py` and commit the result.")
             return 1
         print("Generated version files are up to date.")
         return 0

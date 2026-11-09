@@ -51,7 +51,7 @@ HEADER = (
     "# this repo builds (epic vergil-project/.github#407).\n"
     "#\n"
     "# Every other version list is generated from this file. After editing it, run\n"
-    "#   python3 docker/versions/generate.py\n"
+    "#   uv run docker/versions/generate.py\n"
     "# and commit the regenerated files. CI fails if they are out of date.\n"
     "#\n"
     "# Families are image suffixes (dev-<key>); versions are newest first.\n"

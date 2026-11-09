@@ -20,4 +20,4 @@ repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "${repo_root}"
 
 python3 docker/pins/resolve_latest.py --write
-python3 docker/pins/generate_catalog.py
+uv run docker/pins/generate_catalog.py

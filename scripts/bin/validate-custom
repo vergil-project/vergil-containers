@@ -38,11 +38,11 @@ run_in() {
   ) || fail=1
 }
 
-run python3 "${ROOT}/docker/pins/check_pins.py"
-run python3 "${ROOT}/docker/pins/generate_catalog.py" --check
+run uv run "${ROOT}/docker/pins/check_pins.py"
+run uv run "${ROOT}/docker/pins/generate_catalog.py" --check
 run_in docker/pins \
   uv run --with pytest --with packaging --with pyyaml python -m pytest -q -p no:cacheprovider
-run python3 "${ROOT}/docker/versions/generate.py" --check
+run uv run "${ROOT}/docker/versions/generate.py" --check
 run_in docker/versions \
   uv run --with pytest --with pyyaml python -m pytest -q -p no:cacheprovider
 run bash "${ROOT}/scripts/tests/trivy.test.sh"

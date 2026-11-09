@@ -1,3 +1,6 @@
+# /// script
+# dependencies = ["packaging", "pyyaml"]
+# ///
 """WS4 exposure report: what is pinned, in what state, and which pins are due
 for re-evaluation (leading edge has moved past the inducing_release).
 

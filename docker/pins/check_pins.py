@@ -1,3 +1,6 @@
+# /// script
+# dependencies = ["pyyaml"]
+# ///
 """CI gate: every EXACT image pin has a pins.yml justification, and every
 pins.yml entry still corresponds to a real pin. Exit 1 (loud) on drift."""
 from __future__ import annotations
