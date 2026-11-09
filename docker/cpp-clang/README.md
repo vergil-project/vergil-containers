@@ -30,7 +30,8 @@ LINT/AUDIT stages run on it (spec §3.6, §4).
 
 If a future major is wanted, advance the matrix **only once it is available as
 a prebuilt stable binary** on this channel (§3.5). The version axis lives in
-`docker/build.sh` (the `cpp-clang` build lines) and the publish matrix.
+`docker/versions/manifest.yml` (the `cpp-clang` family); the publish matrix,
+which `docker/build.sh` reads, is generated from it.
 
 ## Structure (matches this repo's existing image idiom)
 
