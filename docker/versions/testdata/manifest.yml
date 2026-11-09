@@ -31,22 +31,6 @@ families:
         eol: null
         in_policy: true
         runtime_published: false
-  - key: "java"
-    language: "java"
-    token_prefix: ""
-    build_arg: "JDK_VERSION"
-    automation: "report"
-    versions:
-      - version: "21"
-        ga: null
-        eol: null
-        in_policy: true
-        runtime_published: null
-      - version: "17"
-        ga: null
-        eol: null
-        in_policy: true
-        runtime_published: null
   - key: "go"
     language: "go"
     token_prefix: ""

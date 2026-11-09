@@ -12,13 +12,12 @@ MANIFEST = frozen.MANIFEST
 
 # The publish matrix (image suffix, version, build-arg) the frozen manifest
 # seeds: the `include:` list cd-docker-publish.yml carried at the start of the
-# manifest work, less Ruby and GCC 13 (dropped in #619).
+# manifest work, less Ruby and GCC 13 (dropped in #619) and the family dropped
+# in vergil-project/.github#952.
 CURRENT_MATRIX = [
     ("python", "3.12", "PYTHON_VERSION"),
     ("python", "3.13", "PYTHON_VERSION"),
     ("python", "3.14", "PYTHON_VERSION"),
-    ("java", "17", "JDK_VERSION"),
-    ("java", "21", "JDK_VERSION"),
     ("go", "1.26", "GO_VERSION"),
     ("rust", "1.92", "RUST_VERSION"),
     ("rust", "1.93", "RUST_VERSION"),

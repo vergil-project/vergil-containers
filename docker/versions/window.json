@@ -35,28 +35,6 @@
         }
       ]
     },
-    "java": {
-      "families": [
-        {
-          "key": "java",
-          "token_prefix": "",
-          "versions": [
-            {
-              "version": "21",
-              "eol": "2029-12-31",
-              "in_policy": true,
-              "runtime_published": null
-            },
-            {
-              "version": "17",
-              "eol": "2027-10-31",
-              "in_policy": true,
-              "runtime_published": null
-            }
-          ]
-        }
-      ]
-    },
     "go": {
       "families": [
         {

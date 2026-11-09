@@ -8,7 +8,6 @@ from __future__ import annotations
 from lifecycle.adapters.clang import ClangAdapter
 from lifecycle.adapters.gcc import GccAdapter
 from lifecycle.adapters.go import GoAdapter
-from lifecycle.adapters.java import JavaAdapter
 from lifecycle.adapters.node import NodeAdapter
 from lifecycle.adapters.python import PythonAdapter
 from lifecycle.adapters.rust import RustAdapter
@@ -20,7 +19,6 @@ ADAPTERS: dict[str, Adapter] = {
         PythonAdapter(),
         GoAdapter(),
         RustAdapter(),
-        JavaAdapter(),
         NodeAdapter(),
         ClangAdapter(),
         GccAdapter(),

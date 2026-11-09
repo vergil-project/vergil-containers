@@ -108,10 +108,10 @@ def test_render_docs_tables(repo):
         block = text.split("<!-- BEGIN generated: versions -->\n")[1].split("<!-- END")[0]
         rows = block.splitlines()
         assert rows[0].split("|")[1:5] == [" Image           ", " Language   ",
-                                           " Versions         ", " Base                      "]
-        assert "| `dev-python`    | python     | 3.14, 3.13, 3.12 | `python:<v>-slim`         |" in rows
-        assert "| `dev-cpp-clang` | cpp        | 20, 19           | `debian:trixie-slim`      |" in rows
-        assert "| `dev-ts-node`   | typescript | 24, 22           | `debian:trixie-slim`      |" in rows
+                                           " Versions         ", " Base                 "]
+        assert "| `dev-python`    | python     | 3.14, 3.13, 3.12 | `python:<v>-slim`    |" in rows
+        assert "| `dev-cpp-clang` | cpp        | 20, 19           | `debian:trixie-slim` |" in rows
+        assert "| `dev-ts-node`   | typescript | 24, 22           | `debian:trixie-slim` |" in rows
         assert rows[-1].startswith("| `dev-base`") and "`python:3.14-slim`" in rows[-1]
         assert len(rows) == 2 + len(_seed().families) + 1
 

@@ -67,7 +67,6 @@ nav:
       - Python: languages/python.md
       - Go: languages/go.md
       - Rust: languages/rust.md
-      - Java: languages/java.md
       - TypeScript / Node.js: languages/ts-node.md
       - C++ / Clang: languages/cpp-clang.md
       - C++ / GCC: languages/cpp-gcc.md
