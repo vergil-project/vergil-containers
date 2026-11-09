@@ -151,9 +151,11 @@ def render_window_json(m: mf.Manifest) -> str:
     return _json({"schema": WINDOW_SCHEMA, "languages": languages})
 
 
-def _smoke_test(root: Path, f: mf.Family) -> str | None:
-    """The family's smoke test, by convention: docker/<key>/smoke-test.sh, else
-    the one its language shares, docker/<language>/smoke-test.sh."""
+def smoke_test_dir(root: Path, f: mf.Family) -> str | None:
+    """The directory under docker/ holding the family's smoke test, by
+    convention: docker/<key>/smoke-test.sh, else the one its language shares,
+    docker/<language>/smoke-test.sh. `includes.dependency_map` follows the same
+    rule, so a change to a shared smoke test selects every family it runs for."""
     for directory in (f.key, f.language):
         if (root / "docker" / directory / "smoke-test.sh").is_file():
             return directory
@@ -165,7 +167,7 @@ def render_build_sh(m: mf.Manifest, root: Path) -> str:
     smoke test. The builds themselves come from matrix.json at run time."""
     pairs = []
     for f in m.families:
-        directory = _smoke_test(root, f)
+        directory = smoke_test_dir(root, f)
         if directory is not None:
             pairs.append(f"{f.key}:{directory}")
     body = [f'smoke_tests="{" ".join(pairs)}"']
