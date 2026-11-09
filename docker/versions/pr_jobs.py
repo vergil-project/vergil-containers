@@ -1,3 +1,6 @@
+# /// script
+# dependencies = ["pyyaml"]
+# ///
 """Group PR CI's selected images into build jobs (epic
 vergil-project/.github#213, task T6'; vergil-containers#514).
 

@@ -20,6 +20,12 @@ on:
 permissions:
   contents: read
 
+# Every `run:` step is bash. A job in a container otherwise gets `sh -e`, where
+# the select step's `[[ =~ ]]` SHA check is not a command and fails every PR.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   select:
     name: select
@@ -71,11 +77,11 @@ jobs:
           # Both scripts report their own ::error::, and the selector's
           # ::warning:: (an unclassified path, so every image is built) reaches
           # this log on stderr.
-          python3 docker/versions/selection.py \
+          uv run docker/versions/selection.py \
             --base-matrix "$WORK/base-matrix.json" \
             --head-matrix docker/versions/matrix.json \
             --changed-files "$WORK/changed" > "$WORK/selected.json"
-          python3 docker/versions/pr_jobs.py --selected "$WORK/selected.json" > "$WORK/jobs.json"
+          uv run docker/versions/pr_jobs.py --selected "$WORK/selected.json" > "$WORK/jobs.json"
           matrix="$(jq -c . "$WORK/selected.json")"
           arch_matrix="$(jq -c . "$WORK/jobs.json")"
           has="$(jq -r '.include | length > 0' "$WORK/jobs.json")"

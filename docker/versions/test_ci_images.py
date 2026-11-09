@@ -92,6 +92,18 @@ def test_jobs_are_select_build_and_one_evidence_gate():
     assert _job("evidence")["name"] == "evidence"
 
 
+def test_every_run_step_is_bash():
+    # The select job runs in a container, where a step with no shell gets
+    # `sh -e`; its scripts use bash (`[[ =~ ]]`, `set -o pipefail`), and the
+    # tests here run them under bash.
+    wf = _workflow()
+    assert wf["defaults"] == {"run": {"shell": "bash"}}
+    for name, job in wf["jobs"].items():
+        assert "defaults" not in job, name
+        for step in job.get("steps", []):
+            assert step.get("shell", "bash") == "bash", f"{name}: {step.get('name')}"
+
+
 def test_reads_only_and_pushes_nothing():
     wf = _workflow()
     assert wf["permissions"] == {"contents": "read"}
@@ -233,9 +245,14 @@ def _commit(repo: Path, path: str, text: str) -> str:
 
 
 def _select(tmp_path, repo, base_sha, head_sha):
-    # `python3` in the step is this interpreter, which has PyYAML.
-    shim = tmp_path / "bin" / "python3"
-    _executable(shim, f'#!/bin/sh\nexec "{sys.executable}" "$@"\n')
+    # `uv run <script>` in the step runs the script with this interpreter,
+    # which has PyYAML. Any other uv use fails the step.
+    shim = tmp_path / "bin" / "uv"
+    _executable(
+        shim,
+        '#!/bin/sh\n[ "$1" = run ] || { echo "uv shim: only uv run is supported" >&2; exit 2; }\n'
+        f'shift\nexec "{sys.executable}" "$@"\n',
+    )
     out = tmp_path / "out"
     out.write_text("")
     summary = tmp_path / "summary"
