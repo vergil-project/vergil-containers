@@ -187,13 +187,13 @@ def test_every_tier_runs_tier_zeros_steps(tier):
 def test_build_runs_each_arch_on_its_native_runner():
     job = _job("build-0")
     assert job["runs-on"] == "${{ matrix.runner }}"
-    build = _step("build-0", "build")["with"]
+    build = _step("build-0", "build1")["with"]
     assert build["platforms"] == "linux/${{ matrix.arch }}"
 
 
 def test_build_pushes_by_digest_with_a_per_arch_cache():
     job = _job("build-0")
-    build = _step("build-0", "build")["with"]
+    build = _step("build-0", "build1")["with"]
     assert build["outputs"] == (
         "type=image,name=${{ env.REPO }},push-by-digest=true,name-canonical=true,push=true")
     # No tag: the only tagged ref is the stitched candidate.
@@ -207,7 +207,7 @@ def test_build_pushes_by_digest_with_a_per_arch_cache():
 
 def test_build_resolves_its_args_and_parent_before_building():
     keys = _keys("build-0")
-    assert keys.index("Download the parent's published digest") < keys.index("args") < keys.index("build")
+    assert keys.index("Download the parent's published digest") < keys.index("args") < keys.index("build1")
     download = _step("build-0", "Download the parent's published digest")
     assert download["if"] == "${{ matrix.parent != null }}"
     assert download["with"] == {
@@ -271,7 +271,7 @@ def test_resolve_refuses_a_bad_build_arg(tmp_path, build_args):
 
 def test_build_records_and_uploads_its_digest(tmp_path):
     keys = _keys("build-0")
-    assert keys.index("build") < keys.index("Record the pushed digest") < keys.index("Upload the digest")
+    assert keys.index("build1") < keys.index("Record the pushed digest") < keys.index("Upload the digest")
     upload = _step("build-0", "Upload the digest")["with"]
     assert upload["name"] == (
         "digest-${{ inputs.image-prefix }}-${{ matrix.language }}-${{ matrix.version }}-${{ matrix.arch }}")
@@ -279,7 +279,7 @@ def test_build_records_and_uploads_its_digest(tmp_path):
     assert upload["if-no-files-found"] == "error"
     script = _step("build-0", "Record the pushed digest")["run"]
     digests = tmp_path / "digests"
-    result = _bash(script, tmp_path, {"DIGEST": DIGEST_A, "ARCH": "arm64", "DIGESTS_DIR": str(digests), "REPO": REPO})
+    result = _bash(script, tmp_path, {"OUTCOME_1": "success", "DIGEST_1": DIGEST_A, "ARCH": "arm64", "DIGESTS_DIR": str(digests), "REPO": REPO})
     assert result.returncode == 0, result.stderr
     assert (digests / "arm64").read_text() == DIGEST_A + "\n"
 
@@ -288,7 +288,7 @@ def test_build_records_and_uploads_its_digest(tmp_path):
 def test_build_fails_loudly_without_a_digest(tmp_path, digest):
     script = _step("build-0", "Record the pushed digest")["run"]
     digests = tmp_path / "digests"
-    result = _bash(script, tmp_path, {"DIGEST": digest, "ARCH": "amd64", "DIGESTS_DIR": str(digests), "REPO": REPO})
+    result = _bash(script, tmp_path, {"OUTCOME_1": "success", "DIGEST_1": digest, "ARCH": "amd64", "DIGESTS_DIR": str(digests), "REPO": REPO})
     assert result.returncode != 0
     assert result.stdout.startswith("::error title=No pushed digest::")
     assert not digests.exists()
