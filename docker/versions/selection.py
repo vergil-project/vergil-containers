@@ -41,13 +41,16 @@ import includes
 import manifest as mf
 
 # Inputs of every image, or of the build-and-scan pipeline: the Dockerfile
-# expander, the publish and PR workflows, and the Trivy scan and gate with
+# expander, the publish and PR workflows, PR CI's build script (ci-images.yml
+# and pr-image-build), and the Trivy scan and gate with
 # their configuration. A scan-config change is re-proved by scanning every
 # image.
 FULL_GLOBS = (
     "docker/generate.sh",
     ".github/workflows/cd-docker-publish.yml",
     ".github/workflows/ci.yml",
+    ".github/workflows/ci-images.yml",
+    "scripts/bin/pr-image-build",
     "scripts/bin/trivy-*",
     ".trivyignore",
     "trivy.yaml",

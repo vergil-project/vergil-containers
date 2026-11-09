@@ -81,6 +81,7 @@ def test_dropped_entry_selects_nothing():
 @pytest.mark.parametrize("path", [
     ".trivyignore", "trivy.yaml", ".trivy/ignore-policy.rego", "docker/generate.sh",
     ".github/workflows/cd-docker-publish.yml", ".github/workflows/ci.yml",
+    ".github/workflows/ci-images.yml", "scripts/bin/pr-image-build",
     "scripts/bin/trivy-gate", "scripts/bin/trivy-image-scan",
 ])
 def test_full_set_paths_select_everything(path):
