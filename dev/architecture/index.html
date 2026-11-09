@@ -3242,8 +3242,12 @@ failed fails its own build with an error naming the parent, and its previous
 tags stay published. Until a manifest entry names a parent, every image is in
 tier 0 and the later tiers are skipped.</p>
 <p>Each image's <code>--build-arg</code>s come from its <code>build-args</code> map in the generated
-<code>docker/versions/matrix.json</code> (a family's version argument; none for <code>base</code>),
-and a child also gets <code>PARENT_IMAGE</code>, its parent by digest.</p>
+<code>docker/versions/matrix.json</code> (a family's or toolchain's version argument;
+none for <code>base</code>), and a child also gets <code>PARENT_IMAGE</code>, its parent by digest.</p>
+<p>Images that are not languages, such as the package toolchain images, are
+listed in the manifest's <code>toolchains:</code> section. They are built, published and
+cleaned up like the language images, and any entry may name one as its
+parent, but they never appear in <code>window.json</code> or the version lifecycle.</p>
 <h3 id="image-namespace">Image namespace<a class="headerlink" href="#image-namespace" title="Permanent link">&para;</a></h3>
 <p>Image URLs use the <strong>user namespace</strong> (<code>ghcr.io/vergil-project/...</code>), not
 a repo-specific namespace. This means image paths are stable across
