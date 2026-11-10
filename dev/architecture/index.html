@@ -3051,6 +3051,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#pull-request-builds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pull request builds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#authentication" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3141,7 +3152,11 @@
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>└── versions/
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    ├── manifest.yml            # The single source of language versions
 <a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    ├── generate.py             # Writes every derived version list
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    └── lifecycle/              # The nightly lifecycle check and adapters
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    ├── matrix.json             # The generated publish matrix (CD and nightly)
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    ├── includes.py             # Each image's input files, for PR selection
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    ├── selection.py            # The images a pull request's change reaches
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    ├── pr_jobs.py              # Groups the selected images into PR build jobs
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    └── lifecycle/              # The nightly lifecycle check and adapters
 </code></pre></div>
 <h3 id="templating">Templating<a class="headerlink" href="#templating" title="Permanent link">&para;</a></h3>
 <p>Each <code>Dockerfile.template</code> contains standard Dockerfile instructions plus
@@ -3283,15 +3298,25 @@ via the reusable <code>cd-docker-publish.yml</code> workflow, parameterized by a
   changelog, git tag, and GitHub release, and rebuilt nightly from <code>main</code>
   via <code>ops.yml</code>.</li>
 </ul>
-<p>The publish pipeline for each prefix:</p>
+<p>The publish pipeline for each image of <code>docker/versions/matrix.json</code>
+(<code>base</code> included):</p>
 <ol>
-<li>Builds a candidate tag for both platforms (amd64 + arm64)</li>
+<li>Builds each platform on its own native runner, amd64 on <code>ubuntu-24.04</code>
+   and arm64 on <code>ubuntu-24.04-arm</code>, and pushes each build by digest,
+   untagged. A failed push is retried, up to three attempts in all, after a
+   jittered back-off; GHCR sporadically refuses these pushes with
+   <code>denied: permission_denied: write_package</code>.</li>
+<li>Stitches the two digests into a multi-arch candidate tag with
+   <code>docker buildx imagetools create</code></li>
 <li>Scans each platform independently with Trivy (SARIF upload; see
    <a href="trivy-scanning/">Trivy Scanning</a>)</li>
 <li>Attests build provenance (SLSA via GitHub attestations)</li>
 <li>Promotes the candidate to the final tag via <code>docker buildx imagetools create</code></li>
 <li>Verifies digest preservation between candidate and final</li>
 </ol>
+<p>Steps 2 to 6 run in one <code>publish</code> job per image, once its tier's <code>build</code>
+jobs (below) have finished. An image whose build failed on either platform is not stitched or
+promoted, and its previous tags stay published.</p>
 <p>The pipeline runs in <strong>tiers</strong>. An image may be built <code>FROM</code> another image of
 this repository, its <em>parent</em>, named by a <code>parent:</code> entry in
 <code>docker/versions/manifest.yml</code>. Each image's depth in that tree (0 for an
@@ -3341,6 +3366,22 @@ with the registry cache disabled (<code>no-cache: true</code>):</p>
 image updates, apt package refreshes) without waiting for a code change to
 trigger a build. To trigger a rebuild manually, run the CD workflow from the
 Actions tab (<strong>Actions &gt; CD &gt; Run workflow</strong>).</p>
+<h3 id="pull-request-builds">Pull request builds<a class="headerlink" href="#pull-request-builds" title="Permanent link">&para;</a></h3>
+<p>Pull requests never publish. <code>ci.yml</code> calls <code>ci-images.yml</code>, which builds and
+scans only the images the change reaches. <code>docker/versions/selection.py</code> maps
+the changed paths and the <code>matrix.json</code> diff to those images, using each
+image's input files from <code>docker/versions/includes.py</code>. Selecting a parent
+also selects every image built <code>FROM</code> it. A change to the Trivy configuration
+or to the build-and-scan pipeline itself selects every image, and so does an
+unclassified path under <code>docker/</code> (with a warning). A docs-only change selects
+none. Each selected image is built natively on both architectures, without
+emulation, and is never pushed to GHCR. A parent reaches the images built
+<code>FROM</code> it through a registry local to the job.</p>
+<p>The required check is the one aggregating gate, <code>images / evidence</code>. It is
+required by vergil-tooling's generated <code>CI gates</code> ruleset because
+<code>vergil.toml</code> sets <code>[ci].images = true</code>. See
+<a href="trivy-scanning/#pull-requests-the-image-scan-of-changed-images">Trivy Scanning</a>
+for the scans and the evidence it uploads.</p>
 <h3 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h3>
 <p>The workflow authenticates with <code>GITHUB_TOKEN</code> using <code>packages: write</code>
 permission. No personal access token or additional secret is needed.</p>

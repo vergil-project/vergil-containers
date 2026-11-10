@@ -3248,7 +3248,8 @@ them, and scans each with <code>scripts/bin/trivy-image-scan</code> and gates it
 <code>scripts/bin/trivy-gate</code>, the same scripts, suppressions and thresholds as
 the publish. It also runs the family's <code>smoke-test.sh</code> when there is one.</p>
 <p>A selected parent image is built in the same job as the selected images
-built FROM it, which build on the local parent; an image whose parent is not
+built FROM it, which build on the local parent, pushed to a registry local to
+the job and never to GHCR; an image whose parent is not
 selected builds on the published <code>dev-</code> parent. No SARIF is uploaded, so
 these scans add no code-scanning category. The one required check is
 <code>images / evidence</code>: it passes when every selected image passed, or when
@@ -3259,9 +3260,10 @@ build jobs and each job's result. Since <code>vergil.toml</code> sets
 <code>[ci].images = true</code>, <code>images / evidence</code> is a required check and a release
 harvests that artifact into its CI-evidence bundle (vergil-tooling#4132).</p>
 <h3 id="publishing-the-image-scans">Publishing: the image scans<a class="headerlink" href="#publishing-the-image-scans" title="Permanent link">&para;</a></h3>
-<p><code>cd-docker-publish.yml</code> builds every image in <code>docker/versions/matrix.json</code>,
-plus <code>base</code>, and pushes each one as a <code>-candidate</code> tag. It then scans each
-candidate once per platform:</p>
+<p><code>cd-docker-publish.yml</code> builds every image in <code>docker/versions/matrix.json</code>
+(<code>base</code> is one of its entries) natively on each platform's runner, pushes
+each platform's build by digest, and stitches the two into a <code>-candidate</code>
+tag. It then scans each candidate once per platform:</p>
 <ul>
 <li><strong>amd64</strong> goes through the shared <code>trivy</code> action with <code>scan-type: image</code>
   and <code>sarif-category: trivy-image-&lt;prefix&gt;-&lt;language&gt;-&lt;version&gt;-amd64</code>.</li>
