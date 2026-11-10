@@ -2,7 +2,7 @@
 
 Image family: `dev-cpp-gcc`, the C++ image built with the GCC compiler. Shared
 rules: [Language version lifecycle](lifecycle.md). Upstream facts on this page
-were checked on 2026-10-21.
+were checked on 2026-10-21, and the Ubuntu packages on 2026-11-10.
 
 ## Upstream source of truth
 
@@ -10,10 +10,10 @@ were checked on 2026-10-21.
   Releases" list names the maintained release series, the [GCC
   Releases](https://gcc.gnu.org/releases.html) page, and the [GCC Development
   Plan](https://gcc.gnu.org/develop.html) for version numbering.
-- **Debian packages:** the image installs GCC from Debian, so what the base
-  can install comes from the Debian source package pages, for example
-  [`gcc-14`](https://sources.debian.org/src/gcc-14/) and
-  [`gcc-15`](https://sources.debian.org/src/gcc-15/).
+- **Ubuntu packages:** the image installs GCC from Ubuntu 24.04 (noble), its
+  base, so what the base can install comes from the Launchpad source package
+  pages, for example [`gcc-14`](https://launchpad.net/ubuntu/+source/gcc-14)
+  and [`gcc-15`](https://launchpad.net/ubuntu/+source/gcc-15).
 - **endoflife.date product:** none. endoflife.date has no product for GCC.
 
 Data, from those pages:
@@ -25,34 +25,41 @@ Data, from those pages:
   release is 13.5.
 - Since GCC 5, the major version is bumped for each release. `X.0` versions are
   development snapshots, and `X.1.0` is the first release of a major.
-- Debian trixie, the image's base, packages `gcc-12`, `gcc-13` and `gcc-14`.
-  `gcc-15` and `gcc-16` are packaged only in forky (testing) and sid
-  (unstable).
+- Ubuntu noble, the image's base, publishes `gcc-14` 14.2.0-4ubuntu2~24.04.1,
+  a released 14.2.0, in its `noble-updates` and `noble-security` pockets. Its
+  release pocket holds only `14-20240412-0ubuntu1`, a pre-release snapshot.
+  noble publishes no `gcc-15` or `gcc-16`.
 
 ## Support rule
 
 **Judgment:** the release series that gcc.gnu.org lists as maintained, limited
-to those the image's Debian base packages. GCC publishes no rule for how many
+to those the image's Ubuntu base ships as a release. GCC publishes no rule for how many
 series it maintains, or when a series closes, so this rule is the policy
 author's call. It relies on the "Supported Releases" list on the GCC home page
 as the record of what is maintained.
 
-On 2026-10-21 that is 14 only. GCC 15 and 16 are maintained upstream, but
-Debian trixie cannot install them.
+On 2026-11-10 that is 14 only. GCC 15 and 16 are maintained upstream, but
+Ubuntu noble cannot install them.
 
 ## What counts as GA
 
 The `X.1.0` release of a new major, listed on the GCC Releases page.
 Development snapshots (`X.0`) are never GA. A GA major can be added only once
-the Debian base packages it.
+the Ubuntu base ships it as a release.
 
 ## Adapter quirks
 
-- The image is built `FROM debian:trixie-slim`, and GCC is installed from
-  Debian as `gcc-<major>`. `GCC_VERSION` is the build argument.
+- The image is built on `base` (Ubuntu 24.04, noble), and GCC is installed
+  from noble as `gcc-<major>` and `g++-<major>`. `GCC_VERSION` is the build
+  argument.
+- A major counts as installable only when noble publishes a released version
+  of its `gcc-<major>` source (`<major>.<minor>.<patch>-<revision>`) in the
+  Release, Updates or Security pocket, which the image installs from. The
+  adapter reads Launchpad's published sources for noble; a pre-release
+  snapshot (`<major>-<date>`) does not count.
 - There is no endoflife.date data. The adapter reads gcc.gnu.org and must fail
   loud if the page cannot be parsed.
-- A newer GCC usually needs a newer Debian base. The adapter reports "a newer
+- A newer GCC usually needs a newer Ubuntu base. The adapter reports "a newer
   upstream version exists but the base can't install it" (blocked) separately
   from "behind".
 - Versions are compared at the major. The `gcc-` token prefix is ignored for
@@ -73,5 +80,5 @@ As of 2026-10-23: **none.** The manifest builds only 14. GCC 13, which
 gcc.gnu.org says is no longer supported, was dropped in epic
 [vergil-project/.github#407](https://github.com/vergil-project/.github/issues/407).
 
-GCC 15 and 16 are **blocked**, not behind: upstream maintains them, but Debian
-trixie does not package them.
+GCC 15 and 16 are **blocked**, not behind: upstream maintains them, but Ubuntu
+noble does not package them.

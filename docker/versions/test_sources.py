@@ -270,40 +270,56 @@ def test_github_releases_rejects_non_json():
         sources.github_releases("owner/repo", lambda url: b"<html>")
 
 
-# --- debian_source_in_suite -------------------------------------------------------
+# --- ubuntu_source_versions ------------------------------------------------------
 
 
-def _debian(*suites_per_version):
-    return {"package": "pkg", "versions": [{"version": "1", "suites": list(s)} for s in suites_per_version]}
+def _launchpad(*publications, total=None):
+    entries = [
+        {"source_package_name": "pkg", "source_package_version": version, "pocket": pocket}
+        for version, pocket in publications
+    ]
+    return {"start": 0, "total_size": len(entries) if total is None else total, "entries": entries}
 
 
-def test_debian_source_in_suite_matches_the_exact_suite():
-    fetch = _fetch_json(_debian(["sid"], ["forky", "sid"], ["trixie", "trixie-backports"]))
-    assert sources.debian_source_in_suite("pkg", "trixie", fetch) is True
-    assert fetch.calls == ["https://sources.debian.org/api/src/pkg/"]
-    assert sources.debian_source_in_suite("pkg", "trixie", _fetch_json(_debian(["trixie-backports"], ["sid"]))) is False
+def test_ubuntu_source_versions_reads_the_default_pockets():
+    fetch = _fetch_json(_launchpad(
+        ("2.0-1", "Security"), ("2.0-1", "Updates"), ("1.0-1", "Release"),
+        ("3.0-1", "Proposed"), ("2.5-1", "Backports"),
+    ))
+    assert sources.ubuntu_source_versions("pkg", "noble", fetch) == {"2.0-1", "1.0-1"}
+    assert fetch.calls == [
+        "https://api.launchpad.net/1.0/ubuntu/+archive/primary?ws.op=getPublishedSources"
+        "&source_name=pkg&exact_match=true"
+        "&distro_series=https://api.launchpad.net/1.0/ubuntu/noble&status=Published&ws.size=300"
+    ]
 
 
-def test_debian_source_unknown_package_is_no():
-    assert sources.debian_source_in_suite("pkg", "trixie", _fetch_json({"error": 404})) is False
-    assert sources.debian_source_in_suite("pkg", "trixie", _not_found) is False
+def test_ubuntu_source_unknown_package_is_none():
+    assert sources.ubuntu_source_versions("pkg", "noble", _fetch_json(_launchpad())) == set()
 
 
 @pytest.mark.parametrize(
     "body, needle",
     [
         (b"oops", "not valid JSON"),
-        (json.dumps({"error": 500}).encode(), "lists no versions"),
-        (json.dumps({"versions": []}).encode(), "lists no versions"),
-        (json.dumps([]).encode(), "lists no versions"),
-        (json.dumps({"versions": [{"version": "1"}]}).encode(), "without a `suites` list"),
+        (json.dumps([]).encode(), "not a Launchpad collection"),
+        (json.dumps({"entries": []}).encode(), "not a Launchpad collection"),
+        (json.dumps({"total_size": 0}).encode(), "not a Launchpad collection"),
+        (json.dumps(_launchpad(("1.0-1", "Release"), total=301)).encode(), "lists 1 of 301 publications"),
+        (json.dumps({"total_size": 1, "entries": [{"pocket": "Release"}]}).encode(), "no name, version or pocket"),
+        (
+            json.dumps({"total_size": 1, "entries": [
+                {"source_package_name": "pkg-extra", "source_package_version": "1", "pocket": "Release"},
+            ]}).encode(),
+            "is 'pkg-extra', not 'pkg'",
+        ),
     ],
 )
-def test_debian_source_fails_loud(body, needle):
+def test_ubuntu_source_fails_loud(body, needle):
     with pytest.raises(SourceError, match=needle):
-        sources.debian_source_in_suite("pkg", "trixie", lambda url: body)
+        sources.ubuntu_source_versions("pkg", "noble", lambda url: body)
 
 
-def test_debian_source_unreachable_is_loud():
+def test_ubuntu_source_unreachable_is_loud():
     with pytest.raises(SourceError, match="503"):
-        sources.debian_source_in_suite("pkg", "trixie", _unavailable)
+        sources.ubuntu_source_versions("pkg", "noble", _unavailable)

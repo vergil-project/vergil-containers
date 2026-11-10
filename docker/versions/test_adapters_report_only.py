@@ -1,6 +1,8 @@
 """The report-only adapters (Rust, Node, Clang, GCC) against fixtures that
 are copies of the upstream responses on 2026-10-21 (the apt.llvm.org noble
-index on 2026-11-10). No test touches the network."""
+index and Launchpad's noble gcc-14 sources on 2026-11-10). No test touches the
+network."""
+import json
 from datetime import date
 from pathlib import Path
 
@@ -11,7 +13,7 @@ import manifest as mf
 from lifecycle import core
 from lifecycle.adapters import ADAPTERS
 from lifecycle.adapters.clang import ClangAdapter
-from lifecycle.adapters.gcc import GccAdapter, parse_releases, parse_supported
+from lifecycle.adapters.gcc import GccAdapter, parse_releases, parse_supported, ubuntu_has_release
 from lifecycle.adapters.node import NodeAdapter
 from lifecycle.adapters import rust as rust_adapter
 from lifecycle.adapters.rust import RustAdapter
@@ -22,6 +24,12 @@ FIXTURES = HERE / "fixtures"
 TODAY = date(2026, 10, 21)
 SEED = frozen.SEED  # the frozen test manifest, not the live one (#654)
 
+LAUNCHPAD_NOBLE_GCC = (
+    "https://api.launchpad.net/1.0/ubuntu/+archive/primary?ws.op=getPublishedSources"
+    "&source_name=gcc-{major}&exact_match=true"
+    "&distro_series=https://api.launchpad.net/1.0/ubuntu/noble&status=Published&ws.size=300"
+)
+
 URL_FIXTURES = {
     "https://endoflife.date/api/rust.json": "endoflife-rust.json",
     "https://endoflife.date/api/nodejs.json": "endoflife-nodejs.json",
@@ -29,18 +37,18 @@ URL_FIXTURES = {
     "https://apt.llvm.org/noble/dists/": "apt-llvm-noble-index.html",
     "https://gcc.gnu.org/releases.html": "gcc-releases.html",
     "https://gcc.gnu.org/": "gcc-home.html",
-    "https://sources.debian.org/api/src/gcc-14/": "debian-src-gcc-14.json",
+    LAUNCHPAD_NOBLE_GCC.format(major=14): "launchpad-noble-gcc-14.json",
 }
 
 
 def fixture_fetch(url):
-    """Serve the recorded upstream responses. Debian source packages without a
-    fixture answer the way sources.debian.org does for gcc-15/16 on 2026-10-21:
-    packaged in forky and sid only."""
+    """Serve the recorded upstream responses. A noble GCC source package
+    without a fixture answers the way Launchpad does for gcc-15 and gcc-16 on
+    2026-11-10: no publication in noble."""
     if url in URL_FIXTURES:
         return (FIXTURES / URL_FIXTURES[url]).read_bytes()
-    if url.startswith("https://sources.debian.org/api/src/gcc-"):
-        return b'{"versions": [{"version": "x", "suites": ["forky", "sid"]}]}'
+    if url.startswith("https://api.launchpad.net/1.0/ubuntu/+archive/primary?ws.op=getPublishedSources&source_name=gcc-"):
+        return b'{"start": 0, "total_size": 0, "entries": []}'
     raise AssertionError(f"unexpected fetch: {url}")
 
 
@@ -315,12 +323,46 @@ def test_gcc_classify_against_seed_blocks_15_and_16():
 
     changes = _changes(GccAdapter(fetch=fixture_fetch, packaged=packaged))
     assert _kinds(changes) == [("blocked", "16"), ("blocked", "15")]
-    assert asked == [("gcc-16", "trixie"), ("gcc-15", "trixie"), ("gcc-14", "trixie")]
+    assert asked == [("gcc-16", "noble"), ("gcc-15", "noble"), ("gcc-14", "noble")]
 
 
-def test_gcc_default_packaged_check_reads_debian_sources():
+def test_gcc_default_packaged_check_reads_noble_sources():
     changes = _changes(GccAdapter(fetch=fixture_fetch))
     assert _kinds(changes) == [("blocked", "16"), ("blocked", "15")]
+
+
+def test_gcc_noble_has_a_released_14():
+    # noble-updates and noble-security publish 14.2.0, the release pocket a
+    # 14-20240412 snapshot (the fixture holds all three).
+    assert ubuntu_has_release("gcc-14", "noble", fixture_fetch) is True
+    assert ubuntu_has_release("gcc-15", "noble", fixture_fetch) is False
+
+
+def _launchpad(*publications):
+    entries = [
+        {"source_package_name": "gcc-14", "source_package_version": version, "pocket": pocket}
+        for version, pocket in publications
+    ]
+    body = json.dumps({"start": 0, "total_size": len(entries), "entries": entries}).encode()
+    return lambda url: body
+
+
+@pytest.mark.parametrize(
+    "publications",
+    [
+        [("14-20240412-0ubuntu1", "Release")],  # a pre-release snapshot only
+        [("14.2.0-4ubuntu2~24.04.1", "Proposed"), ("14-20240412-0ubuntu1", "Release")],
+        [("14.2.0-4ubuntu2~24.04.1", "Backports")],
+        [("140.1.0-1", "Updates")],  # another major that starts with 14
+    ],
+)
+def test_gcc_noble_snapshot_or_other_pocket_is_not_a_release(publications):
+    assert ubuntu_has_release("gcc-14", "noble", _launchpad(*publications)) is False
+
+
+@pytest.mark.parametrize("pocket", ["Release", "Updates", "Security"])
+def test_gcc_noble_release_in_a_default_pocket(pocket):
+    assert ubuntu_has_release("gcc-14", "noble", _launchpad(("14.3.0-1ubuntu1", pocket))) is True
 
 
 def test_gcc_parser_rejects_page_without_series_table():

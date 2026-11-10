@@ -1,15 +1,6 @@
 {
   "include": [
     {
-      "language": "cpp-gcc",
-      "version": "14",
-      "build-args": {
-        "GCC_VERSION": "14"
-      },
-      "parent": null,
-      "depth": 0
-    },
-    {
       "language": "ts-node",
       "version": "24",
       "build-args": {
@@ -228,6 +219,18 @@
       "version": "19",
       "build-args": {
         "CLANG_VERSION": "19"
+      },
+      "parent": {
+        "language": "base",
+        "version": "latest"
+      },
+      "depth": 2
+    },
+    {
+      "language": "cpp-gcc",
+      "version": "14",
+      "build-args": {
+        "GCC_VERSION": "14"
       },
       "parent": {
         "language": "base",
