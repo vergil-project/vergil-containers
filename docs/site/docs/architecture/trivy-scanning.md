@@ -55,7 +55,12 @@ built FROM it, which build on the local parent; an image whose parent is not
 selected builds on the published `dev-` parent. No SARIF is uploaded, so
 these scans add no code-scanning category. The one required check is
 `images / evidence`: it passes when every selected image passed, or when
-nothing was selected, and fails otherwise.
+nothing was selected, and fails otherwise. A passing run, including one
+that selected nothing, also uploads the `ci-evidence-images` artifact: an
+`evidence.json` and a `selected.json` report of the selected images, their
+build jobs and each job's result. Since `vergil.toml` sets
+`[ci].images = true`, `images / evidence` is a required check and a release
+harvests that artifact into its CI-evidence bundle (vergil-tooling#4132).
 
 ### Publishing: the image scans
 

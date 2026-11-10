@@ -11,7 +11,8 @@
 # Trivy scan and gate, and smoke-tests each image (scripts/bin/pr-image-build).
 # Nothing is pushed to GHCR: the build cache is read, never written, and a
 # parent reaches its children through a registry local to the job. `evidence`
-# is the one aggregating gate, the required status check.
+# is the one aggregating gate, the required status check, and uploads the
+# ci-evidence-images artifact a release harvests.
 name: Images
 
 on:
@@ -171,3 +172,47 @@ jobs:
               exit 1
               ;;
           esac
+
+      # The gate's report for the release's CI-evidence bundle: what was
+      # selected, the build jobs it ran, and each one's result. It runs only
+      # once the check above has passed, so a build job's result is the build's
+      # aggregate one: `success` means every job succeeded (fail-fast is off),
+      # and `skipped` means nothing was selected. Malformed select outputs fail
+      # the step, and with it the gate, rather than upload a broken report.
+      - name: Write the images report
+        id: report
+        env:
+          SELECT_RESULT: ${{ needs.select.result }}
+          HAS: ${{ needs.select.outputs.has }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          MATRIX: ${{ needs.select.outputs.matrix }}
+          JOBS: ${{ needs.select.outputs.arch-matrix }}
+          REPORT_DIR: ${{ runner.temp }}/images-report
+        run: |
+          set -euo pipefail
+          mkdir -p "$REPORT_DIR"
+          jq -n \
+            --arg select "$SELECT_RESULT" \
+            --argjson has "$HAS" \
+            --arg build "$BUILD_RESULT" \
+            --argjson matrix "$MATRIX" \
+            --argjson jobs "$JOBS" \
+            '{select: $select, has: $has, build: $build,
+              selected: $matrix.include,
+              jobs: [$jobs.include[] | {name, arch, runner, result: $build}]}' \
+            > "$REPORT_DIR/selected.json"
+          jq -c '{selected: (.selected | length), jobs: (.jobs | length), build: .build}' \
+            "$REPORT_DIR/selected.json" > "$REPORT_DIR/metrics"
+          printf 'path=%s\nmetrics=%s\n' "$REPORT_DIR/selected.json" "$(cat "$REPORT_DIR/metrics")" >> "$GITHUB_OUTPUT"
+
+      # Uploads the ci-evidence-images artifact (evidence.json and the report)
+      # that a release of this repo harvests, since vergil.toml sets
+      # [ci].images (vergil-tooling#4132). Every passing run uploads it,
+      # including one that selected nothing.
+      - name: Emit ci-evidence-images artifact
+        uses: vergil-project/vergil-actions/actions/ci/evidence/emit@v2.1
+        with:
+          gate: images
+          files: ${{ steps.report.outputs.path }}
+          tools: '[{"name": "docker-buildx"}, {"name": "trivy", "image": "aquasec/trivy:0.72.0"}]'
+          metrics: ${{ steps.report.outputs.metrics }}
