@@ -3200,8 +3200,9 @@ pinning model.</p>
 <li><strong><code>pandoc.dockerfile</code></strong> — pandoc for Markdown to <code>.docx</code>/HTML
   conversion (no TeX; PDF output is opt-in).</li>
 </ul>
-<p><code>dev-python</code> installs yamllint and uv directly via pip rather than the
-<code>python-support</code> fragment.</p>
+<p><code>dev-python</code> includes no fragment: it is built <code>FROM</code> <code>dev-base</code> and adds only
+the family Python, a pinned python-build-standalone build at
+<code>/opt/python/&lt;version&gt;</code>.</p>
 <p>The <code>dev-base</code> image is built <code>FROM</code> the package toolchain image
 <code>pkg-ubuntu:24.04</code> (epic vergil-project/.github#649), from which it takes uv
 and nFPM. It includes the common fragments plus documentation tooling (MkDocs
