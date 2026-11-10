@@ -1,9 +1,11 @@
 # --- apt mirror (amd64 only) and fail-fast config (every arch) ---------------
 # The package toolchain image pkg-ubuntu (epic vergil-project/.github#607) bakes
-# in the apt configuration the vergil-actions package setup step writes today
-# (actions/package/setup/os-prereqs.sh), so every later apt call in a package
-# job, install-test included, keeps it once setup no longer runs. It matches
-# os-prereqs.sh exactly; change both together:
+# in this apt configuration, so every apt call in a package job, install-test
+# included, runs with it. This fragment is its only definition: vergil-actions'
+# actions/package/setup, whose os-prereqs.sh once wrote it, has installed
+# nothing since vergil-actions v2.1.62. vergil-tooling's
+# lib/package/repo_setup.py passes the same fail-fast options on each apt
+# command line (APT_FAIL_FAST); keep step 3 and it in step:
 #
 #   1. The mirror list /etc/apt/apt-mirrors.txt, one "<uri><TAB>priority:<n>"
 #      line per host, in GitHub's runner-images order and priorities: the
@@ -22,7 +24,7 @@
 #
 # Steps 1 and 2 are amd64 only: arm64 uses ports.ubuntu.com, which none of
 # these mirrors serve, so a rewrite there would break apt. Step 3 runs on every
-# architecture, as it does in os-prereqs.sh. The template's build-time check
+# architecture. The template's build-time check
 # asserts both cases. Include it before the first apt-get update.
 ARG TARGETARCH
 

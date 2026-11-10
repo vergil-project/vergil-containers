@@ -2,8 +2,8 @@
 # Canonical source: https://github.com/vergil-project/vergil-containers
 # pkg-ubuntu — package toolchain image for the Ubuntu targets (epic
 # vergil-project/.github#607): the upstream image plus the OS upgrade, the
-# package-toolchain prerequisites, uv, nFPM, the amd64 apt mirror config and
-# the toolchain marker. Nothing else: no interpreter, no vergil-tooling.
+# package-toolchain prerequisites, uv, nFPM, the apt mirror (amd64) and
+# fail-fast (every architecture) config and the toolchain marker. Nothing else: no interpreter, no vergil-tooling.
 #
 # It sets no ENTRYPOINT, CMD, USER or WORKDIR (test_generate.py checks it): an
 # image built FROM it (epic vergil-project/.github#649) inherits only what
@@ -15,8 +15,10 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # @include common/apt-mirror.dockerfile
 
 # --- System packages ---------------------------------------------------------
-# The prerequisites os-prereqs.sh installs today (vergil-actions
-# actions/package/setup), in one layer with the OS upgrade. Package lists are
+# The package-toolchain prerequisites, in one layer with the OS upgrade. The
+# pkg-* templates are their only definition: vergil-actions'
+# actions/package/setup, whose os-prereqs.sh once installed them, has
+# installed nothing since vergil-actions v2.1.62. Package lists are
 # removed: kept lists go stale between nightly rebuilds, so package jobs run
 # their own apt-get update.
 RUN apt-get update && \
