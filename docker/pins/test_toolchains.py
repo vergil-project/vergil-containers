@@ -342,6 +342,23 @@ def test_resolve_python_picks_install_only_both_arches():
     assert pins["3.14"].release == "20261102"
 
 
+def test_pbs_series_builds_omits_a_series_no_release_builds():
+    # The python lifecycle adapter reads this: a series with no build for both
+    # architectures is absent (not installable), never an error.
+    fetch = _fetch(_pbs_bodies({
+        "20261102": {"3.16.0": ("amd64",), "3.15.3": ("amd64", "arm64")},
+        "20261026": {"3.15.2": ("amd64", "arm64")},
+    }))
+    builds = rt.pbs_series_builds(["3.16", "3.15"], fetch)
+    assert set(builds) == {"3.15"}
+    assert builds["3.15"].version == "3.15.3"
+
+
+def test_pbs_series_builds_raises_on_a_failed_fetch():
+    with pytest.raises(rt.ResolutionError, match="releases.atom: HTTP 404"):
+        rt.pbs_series_builds(["3.15"], _fetch({}))
+
+
 def test_resolve_python_fails_when_no_release_has_the_series():
     fetch = _fetch(_pbs_bodies({"20261026": {"3.15.2": ("amd64",)}}))
     with pytest.raises(rt.ResolutionError, match="3.15 for both amd64 and arm64"):

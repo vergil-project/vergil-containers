@@ -70,10 +70,10 @@ def _endoflife(url):
 
 
 def _python(apt=None):
-    """The Python adapter on the endoflife.date fixture, every slim tag present,
+    """The Python adapter on the endoflife.date fixture, every series built,
     reading its runtime evidence from `apt` (the captured index by default)."""
     apt = apt or apt_fetch()
-    return PythonAdapter(fetch=_endoflife, tag_exists=lambda image, tag: True, runtime_index=lambda: read_index(apt))
+    return PythonAdapter(fetch=_endoflife, built_series=set, runtime_index=lambda: read_index(apt))
 
 
 def _family(m, key="python"):
@@ -201,7 +201,7 @@ def test_python_reads_the_index_once_per_target():
         calls.append(1)
         return read_index(apt_fetch())
 
-    adapter = PythonAdapter(fetch=_endoflife, tag_exists=lambda image, tag: True, runtime_index=index)
+    adapter = PythonAdapter(fetch=_endoflife, built_series=set, runtime_index=index)
     adapter.target(adapter.fetch(), TODAY)
     assert calls == [1]
     # An empty window reads nothing (the core reports it as an error).
@@ -214,7 +214,7 @@ def test_python_default_index_reads_through_the_fetcher():
     def fetch(url):
         return _endoflife(url) if url.startswith("https://endoflife.date/") else apt(url)
 
-    adapter = PythonAdapter(fetch=fetch, tag_exists=lambda image, tag: True)
+    adapter = PythonAdapter(fetch=fetch, built_series=set)
     assert {t.version: t.runtime_published for t in adapter.target(adapter.fetch(), TODAY)}["3.14"] is True
     assert apt.calls
 

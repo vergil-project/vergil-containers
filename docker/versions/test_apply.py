@@ -50,7 +50,7 @@ def _fixture_fetch(product, extra=()):
 def _adapters(go_extra=()):
     return {
         "python": PythonAdapter(
-            fetch=_fixture_fetch("python"), tag_exists=lambda image, tag: True, runtime_index=RUNTIME_314
+            fetch=_fixture_fetch("python"), built_series=set, runtime_index=RUNTIME_314
         ),
         "go": GoAdapter(fetch=_fixture_fetch("go", go_extra), tag_exists=lambda image, tag: True),
     }

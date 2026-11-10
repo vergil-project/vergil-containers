@@ -1,3 +1,4 @@
+import hashlib
 from datetime import date
 from pathlib import Path
 
@@ -54,45 +55,118 @@ def _kinds(changes):
 # --- Python ----------------------------------------------------------------------
 
 
+class Built:
+    """A fake python-build-standalone probe: records each series list asked
+    about, and builds every series but `missing`."""
+
+    def __init__(self, missing=()):
+        self.missing = set(missing)
+        self.asked = []
+
+    def __call__(self, series):
+        self.asked.append(list(series))
+        return {s for s in series if s not in self.missing}
+
+
+PBS_FEED = "https://github.com/astral-sh/python-build-standalone/releases.atom"
+PBS_SUMS = "https://github.com/astral-sh/python-build-standalone/releases/download/{release}/SHA256SUMS"
+PBS_TRIPLES = {"amd64": "x86_64-unknown-linux-gnu", "arm64": "aarch64-unknown-linux-gnu"}
+
+
+def _pbs_bodies(releases):
+    """The python-build-standalone release feed and each release's SHA256SUMS,
+    from {release: {version: (arch, ...)}}, newest release first."""
+    entries = "".join(
+        f'<entry><link rel="alternate" href="https://github.com/astral-sh/python-build-standalone/releases/tag/{r}"/>'
+        "</entry>"
+        for r in releases
+    )
+    bodies = {PBS_FEED: f"<feed>{entries}</feed>".encode()}
+    for release, builds in releases.items():
+        lines = [
+            f"{hashlib.sha256(f'{version}-{arch}-{release}'.encode()).hexdigest()}  "
+            f"cpython-{version}+{release}-{PBS_TRIPLES[arch]}-install_only.tar.gz"
+            for version, arches in builds.items()
+            for arch in arches
+        ]
+        bodies[PBS_SUMS.format(release=release)] = ("\n".join(lines) + "\n").encode()
+    return bodies
+
+
 def test_python_target_from_fixture():
-    tags = Tags()
-    adapter = PythonAdapter(fetch=_fixture_fetch("python"), tag_exists=tags, runtime_index=RUNTIME_314)
+    built = Built()
+    adapter = PythonAdapter(fetch=_fixture_fetch("python"), built_series=built, runtime_index=RUNTIME_314)
     target = adapter.target(adapter.fetch(), TODAY)
     assert [t.version for t in target] == ["3.15", "3.14", "3.13", "3.12", "3.11"]
     assert all(t.installable for t in target)
-    assert tags.asked == [("python", f"{v}-slim") for v in ("3.15", "3.14", "3.13", "3.12", "3.11")]
+    # One probe for the whole window, never one per version.
+    assert built.asked == [["3.15", "3.14", "3.13", "3.12", "3.11"]]
     assert target[0].ga == date(2026, 10, 9)
     assert target[0].eol == date(2031, 10, 31)
 
 
 def test_python_classify_against_seed_is_add_315():
-    adapter = PythonAdapter(fetch=_fixture_fetch("python"), tag_exists=Tags(), runtime_index=RUNTIME_314)
+    adapter = PythonAdapter(fetch=_fixture_fetch("python"), built_series=Built(), runtime_index=RUNTIME_314)
     changes = core.classify(_family("python"), adapter.target(adapter.fetch(), TODAY), TODAY, 90)
     assert _kinds(changes) == [("add", "3.15")]
 
 
-def test_python_missing_slim_tag_is_blocked():
+def test_python_series_without_a_pbs_build_is_blocked():
     adapter = PythonAdapter(
-        fetch=_fixture_fetch("python"), tag_exists=Tags(missing={("python", "3.15-slim")}), runtime_index=RUNTIME_314
+        fetch=_fixture_fetch("python"), built_series=Built(missing={"3.15"}), runtime_index=RUNTIME_314
     )
     changes = core.classify(_family("python"), adapter.target(adapter.fetch(), TODAY), TODAY, 90)
     assert _kinds(changes) == [("blocked", "3.15")]
 
 
-def test_python_default_tag_check_uses_docker_hub_through_the_fetcher():
+def test_python_default_probe_reads_pbs_through_the_fetcher():
+    # The newest release builds 3.15 for amd64 only, so 3.15 is installable
+    # from the older release; no release builds 3.11 for both architectures.
+    bodies = _pbs_bodies({
+        "20261102": {"3.15.3": ("amd64",), "3.14.11": ("amd64", "arm64"), "3.11.15": ("amd64",)},
+        "20261026": {v: ("amd64", "arm64") for v in ("3.15.2", "3.14.10", "3.13.18", "3.12.16")},
+    })
+    asked = []
+
     def fetch(url):
+        asked.append(url)
         if url.startswith("https://endoflife.date/"):
             return (FIXTURES / "endoflife-python.json").read_bytes()
-        assert url.startswith("https://hub.docker.com/v2/namespaces/library/repositories/python/tags/"), url
-        tag = url.rsplit("/", 1)[1]
-        if tag == "3.11-slim":
-            raise NotFoundError(f"{url}: HTTP 404")
-        return ('{"name": "%s"}' % tag).encode()
+        if url in bodies:
+            return bodies[url]
+        raise NotFoundError(f"{url}: HTTP 404")
 
     adapter = PythonAdapter(fetch=fetch, runtime_index=RUNTIME_314)
     target = adapter.target(adapter.fetch(), TODAY)
-    assert {t.version: t.installable for t in target}["3.11"] is False
-    assert {t.version: t.installable for t in target}["3.15"] is True
+    assert {t.version: t.installable for t in target} == {
+        "3.15": True, "3.14": True, "3.13": True, "3.12": True, "3.11": False,
+    }
+    assert not [url for url in asked if "hub.docker.com" in url]
+    assert PBS_FEED in asked
+
+
+def test_python_pbs_fetch_failure_is_a_source_error():
+    # An unreachable upstream never reads as "not installable".
+    def fetch(url):
+        if url.startswith("https://endoflife.date/"):
+            return (FIXTURES / "endoflife-python.json").read_bytes()
+        raise SourceError(f"{url}: HTTP 503")
+
+    adapter = PythonAdapter(fetch=fetch, runtime_index=RUNTIME_314)
+    with pytest.raises(SourceError, match="releases.atom: HTTP 503"):
+        adapter.target(adapter.fetch(), TODAY)
+
+
+def test_python_malformed_pbs_feed_is_a_source_error():
+    def fetch(url):
+        if url.startswith("https://endoflife.date/"):
+            return (FIXTURES / "endoflife-python.json").read_bytes()
+        assert url == PBS_FEED, url
+        return b"<feed></feed>"
+
+    adapter = PythonAdapter(fetch=fetch, runtime_index=RUNTIME_314)
+    with pytest.raises(SourceError, match="python-build-standalone: .*no release tags"):
+        adapter.target(adapter.fetch(), TODAY)
 
 
 def test_python_has_no_extra_changes():
@@ -184,7 +258,7 @@ def test_go_fetch_failure_becomes_family_error():
 
     m = mf.Manifest(families=(_family("python"), _family("go")))
     adapters = {
-        "python": PythonAdapter(fetch=_fixture_fetch("python"), tag_exists=Tags(), runtime_index=RUNTIME_314),
+        "python": PythonAdapter(fetch=_fixture_fetch("python"), built_series=Built(), runtime_index=RUNTIME_314),
         "go": GoAdapter(fetch=fetch, tag_exists=Tags()),
     }
     python, go = core.run(m, adapters, TODAY)
