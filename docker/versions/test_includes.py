@@ -84,7 +84,7 @@ def test_toolchain_fragments_are_scoped_to_the_toolchain_images():
     assert {"pkg-ubuntu", "pkg-rhel", "base"} <= users("nfpm.dockerfile")
     for fragment in ("uv.dockerfile", "package-toolchain-marker.dockerfile", "apt-mirror.dockerfile",
                      "nfpm.dockerfile"):
-        assert not on_base & includers(fragment), fragment
+        assert not ({"base"} | _on_base()) & includers(fragment), fragment
 
 
 def _write(root: Path, rel: str, text: str) -> None:
