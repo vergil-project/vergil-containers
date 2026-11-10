@@ -55,3 +55,4 @@ RUN uv tool install conan && \
 # so a profile under ~/.conan2 would be invisible in one context or the other;
 # pinning CONAN_HOME makes `conan install` resolve the same baked profile in both.
 ENV CONAN_HOME=/opt/conan2
+# THROWAWAY (vergil-containers#517 selection check) - never merge.
