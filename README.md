@@ -24,7 +24,7 @@ All images are published to GitHub Container Registry at
 <!-- BEGIN generated: versions -->
 | Image            | Language   | Versions               | Base                                    |
 | ---------------- | ---------- | ---------------------- | --------------------------------------- |
-| `dev-python`     | python     | 3.15, 3.14, 3.13, 3.12 | `python:<v>-slim`                       |
+| `dev-python`     | python     | 3.15, 3.14, 3.13, 3.12 | `base:latest`                           |
 | `dev-go`         | go         | 1.27, 1.26             | `golang:<v>`                            |
 | `dev-rust`       | rust       | 1.93, 1.92             | `rust:<v>-slim`                         |
 | `dev-cpp-clang`  | cpp        | 20, 19                 | `debian:trixie-slim`                    |
@@ -61,11 +61,18 @@ docker/build.sh python     # one family, after its parent images
 `VRG_CONTAINER_RUNTIME` to force a specific one. The single-image
 commands below work with either `nerdctl build` or `docker build`.
 
-Build a single image:
+Build a single image by hand with its matrix entry's build arguments from
+`docker/versions/matrix.json`, and `PARENT_IMAGE` for an image built on a
+parent. `dev-python` is built on `dev-base` and takes its Python pin as
+build arguments, so build its parent first:
 
 ```bash
+docker/build.sh base
 docker/generate.sh python
-docker build --build-arg PYTHON_VERSION=3.14 \
+docker build --build-arg PARENT_IMAGE=dev-base:latest \
+  --build-arg PYTHON_VERSION=3.14 --build-arg TOOLCHAIN_VERSION=<pin> \
+  --build-arg PBS_RELEASE=<pin> --build-arg TOOLCHAIN_SHA256_AMD64=<pin> \
+  --build-arg TOOLCHAIN_SHA256_ARM64=<pin> \
   -t dev-python:3.14 docker/python/
 ```
 

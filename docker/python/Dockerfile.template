@@ -1,44 +1,78 @@
 # Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
 # Canonical source: https://github.com/vergil-project/vergil-containers
-ARG PYTHON_VERSION=3.15
-FROM python:${PYTHON_VERSION}-slim
+# dev-python — the Python language image, built on base (epic
+# vergil-project/.github#649, spec §5.3 and §5.3.1).
+#
+# The parent comes from docker/versions/manifest.yml (`python: parent:`):
+# docker/build.sh and the publish workflow pass it as PARENT_IMAGE. base brings
+# the common tooling and its core runtimes under /opt/vergil/; this image adds
+# only the family Python, side by side with them, and installs nothing else.
+ARG PARENT_IMAGE
+FROM ${PARENT_IMAGE}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# --- System packages ---------------------------------------------------------
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-      git curl jq openssh-client xz-utils gnupg ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+ARG PYTHON_VERSION=3.15
 
-# @include common/path-defaults.dockerfile
-# @include common/node-markdownlint.dockerfile
-# @include common/github-cli.dockerfile
-# @include common/validation-tools.dockerfile
-# @include common/nfpm.dockerfile
-# @include common/rpm.dockerfile
-# @include common/pandoc.dockerfile
-
-# --- Python tools via pip ----------------------------------------------------
-# Upgrade system pip past two advisories:
-#   - CVE-2026-3219  (TAR/ZIP polyglot in archive parsing). pip 26.0.1 is
-#     affected; 26.1 is the fix. Issue #59.
-#   - CVE-2026-8643 / PYSEC-2026-196 (entry-point path traversal). Affects
-#     pip <= 26.1.1; 26.1.2 is the fix. Issue #344.
-# The >=26.1.2 lower bound covers both; a plain >=26.1 floats to a still-
-# vulnerable pip.
-# Also upgrade the system setuptools past CVE-2025-47273 (PackageIndex path
-# traversal): python:3.x-slim ships 70.3.0, 78.1.1 is the fix. This hardens the
-# real installed setuptools. Issue #474.
-# (pip's bundled CycloneDX SBOM, pip/_vendor/bom.cdx.json, is a Trivy
-# false-positive source — excluded centrally via trivy.yaml scan.skip-files,
-# not by deleting it here. Issue #498.)
+# --- The family Python -------------------------------------------------------
+# The python-build-standalone install-only build of the series, pinned in
+# docker/pins/toolchains.yml by exact version, release and per-architecture
+# SHA-256 (spec §5.3). generate.py emits the pin as TOOLCHAIN_VERSION,
+# TOOLCHAIN_SHA256_AMD64, TOOLCHAIN_SHA256_ARM64 and PBS_RELEASE; a missing
+# arg, a version outside the series or a hash mismatch fails the build.
 #
-# pytest-xdist is installed into the image's system Python so the shared
-# `-n auto --dist worksteal` gate command (vergil-tooling languages.py)
-# resolves fleet-wide without every consumer repo declaring the dev dep.
-# Verified via `python -c "import xdist"`. Issue #588 (epic .github#333).
-RUN pip install --no-cache-dir --upgrade 'pip>=26.1.2' 'setuptools>=78.1.1' && \
-    pip install --no-cache-dir yamllint ansible-lint uv pytest-xdist
+# It is unpacked at /opt/python/<series> as a plain system interpreter, never
+# through `uv python install`: vergil-tooling runs uv with
+# UV_PYTHON_PREFERENCE=only-system, which ignores uv-managed interpreters
+# (spec §5.3.1). python3, python, python<series>, pip and pip3 in
+# /usr/local/bin link into it; the python3 link replaces base's link to the
+# core Python, whose own tools keep running on /opt/vergil/python/ by path.
+#
+# The bundled pip is the runtime's and is never upgraded in place, and nothing
+# is pip-installed into it (spec §5.8): a finding in it is fixed by moving the
+# series' pin. pytest-xdist is no longer in the image: a consumer that wants
+# parallel tests declares it in its dev dependencies.
+ARG TARGETARCH
+ARG TOOLCHAIN_VERSION
+ARG TOOLCHAIN_SHA256_AMD64
+ARG TOOLCHAIN_SHA256_ARM64
+ARG PBS_RELEASE
+
+RUN : "${PYTHON_VERSION:?python: the PYTHON_VERSION build arg is not set}" && \
+    : "${TOOLCHAIN_VERSION:?python: the TOOLCHAIN_VERSION build arg is not set}" && \
+    : "${TOOLCHAIN_SHA256_AMD64:?python: the TOOLCHAIN_SHA256_AMD64 build arg is not set}" && \
+    : "${TOOLCHAIN_SHA256_ARM64:?python: the TOOLCHAIN_SHA256_ARM64 build arg is not set}" && \
+    : "${PBS_RELEASE:?python: the PBS_RELEASE build arg is not set}" && \
+    case "${TOOLCHAIN_VERSION}" in \
+      "${PYTHON_VERSION}".*) ;; \
+      *) echo "python: TOOLCHAIN_VERSION ${TOOLCHAIN_VERSION} is not a release of Python ${PYTHON_VERSION}" >&2; exit 1 ;; \
+    esac && \
+    case "${TARGETARCH}" in \
+      amd64) triple=x86_64-unknown-linux-gnu; sha256="${TOOLCHAIN_SHA256_AMD64}" ;; \
+      arm64) triple=aarch64-unknown-linux-gnu; sha256="${TOOLCHAIN_SHA256_ARM64}" ;; \
+      *) echo "python: unsupported TARGETARCH '${TARGETARCH}'" >&2; exit 1 ;; \
+    esac && \
+    py_dir="/opt/python/${PYTHON_VERSION}" && \
+    tarball="cpython-${TOOLCHAIN_VERSION}+${PBS_RELEASE}-${triple}-install_only.tar.gz" && \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+      "https://github.com/astral-sh/python-build-standalone/releases/download/${PBS_RELEASE}/${tarball}" \
+      -o "/tmp/${tarball}" && \
+    echo "${sha256}  /tmp/${tarball}" | sha256sum -c - && \
+    mkdir -p "${py_dir}" && \
+    tar -xzf "/tmp/${tarball}" --strip-components=1 --no-same-owner -C "${py_dir}" && \
+    rm "/tmp/${tarball}" && \
+    py_bin="${py_dir}/bin/python${PYTHON_VERSION}" && \
+    got="$("${py_bin}" -c 'import platform; print(platform.python_version())')" && \
+    if [ "${got}" != "${TOOLCHAIN_VERSION}" ]; then echo "python: ${py_bin} is Python ${got}, want ${TOOLCHAIN_VERSION}" >&2; exit 1; fi && \
+    for cmd in python3 python "python${PYTHON_VERSION}"; do ln -sfn "${py_bin}" "/usr/local/bin/${cmd}"; done && \
+    for cmd in pip pip3; do ln -sfn "${py_dir}/bin/pip${PYTHON_VERSION}" "/usr/local/bin/${cmd}"; done && \
+    python3 --version && \
+    pip --version
+
+# --- Build-time checks -------------------------------------------------------
+# base's invariants, base's no-node default (python changes python3 and pip),
+# and the family's own checks (docker/python/checks.sh). It runs from the build
+# context and is not kept. Any failure fails the build.
+RUN --mount=type=bind,source=checks.sh,target=/tmp/vergil-checks.sh \
+    bash /tmp/vergil-checks.sh "${PYTHON_VERSION}"
 
 WORKDIR /workspace

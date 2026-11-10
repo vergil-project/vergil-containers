@@ -87,11 +87,16 @@ containerd) and falls back to `docker`. Set `VRG_CONTAINER_RUNTIME` to
 force one. The single-image command below works with either `nerdctl
 build` or `docker build`.
 
-Individual images can be built with:
+Individual images can be built by hand with their matrix entry's build
+arguments from `docker/versions/matrix.json`, plus `PARENT_IMAGE` for an image
+built on a parent (`dev-python` is built on `dev-base`, so build that first):
 
 ```bash
 docker/generate.sh python
-docker build --build-arg PYTHON_VERSION=3.14 -t dev-python:3.14 docker/python/
+docker build --build-arg PARENT_IMAGE=dev-base:latest --build-arg PYTHON_VERSION=3.14 \
+  --build-arg TOOLCHAIN_VERSION=<pin> --build-arg PBS_RELEASE=<pin> \
+  --build-arg TOOLCHAIN_SHA256_AMD64=<pin> --build-arg TOOLCHAIN_SHA256_ARM64=<pin> \
+  -t dev-python:3.14 docker/python/
 ```
 
 Each `Dockerfile.template` pulls shared fragments from `docker/common/` via

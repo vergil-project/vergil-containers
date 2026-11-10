@@ -92,8 +92,9 @@ Every language image includes the following shared fragments:
 - **`pandoc.dockerfile`** — pandoc for Markdown to `.docx`/HTML
   conversion (no TeX; PDF output is opt-in).
 
-`dev-python` installs yamllint and uv directly via pip rather than the
-`python-support` fragment.
+`dev-python` includes no fragment: it is built `FROM` `dev-base` and adds only
+the family Python, a pinned python-build-standalone build at
+`/opt/python/<version>`.
 
 The `dev-base` image is built `FROM` the package toolchain image
 `pkg-ubuntu:24.04` (epic vergil-project/.github#649), from which it takes uv
