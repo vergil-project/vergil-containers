@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.37] - 2026-11-10
+
+### CI
+
+- upload ci-evidence-images and set [ci].images = true (#805)
+
+### Chores
+
+- sync the managed .claude/settings.json (#804)
+
 ## [2.1.36] - 2026-11-10
 
 ### CI
