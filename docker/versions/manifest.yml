@@ -130,6 +130,9 @@ families:
     token_prefix: "gcc-"
     build_arg: "GCC_VERSION"
     automation: "report"
+    parent:
+      name: "base"
+      version: "latest"
     versions:
       - version: "14"
         ga: 2024-05-07

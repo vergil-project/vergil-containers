@@ -1,45 +1,42 @@
 # Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
 # Canonical source: https://github.com/vergil-project/vergil-containers
-# dev-cpp-gcc — C++ dev image, GCC compiler family.
+# dev-cpp-gcc — C++ dev image, GCC compiler family, built on base (epic
+# vergil-project/.github#649, spec §5.3).
 #
-# The compiler is a prebuilt stable binary from the Debian trixie apt channel
-# (the same base-image distro the other language images use) — never built from
+# The parent comes from docker/versions/manifest.yml (`cpp-gcc: parent:`):
+# docker/build.sh and the publish workflow pass it as PARENT_IMAGE. base brings
+# the shared tooling and the core runtimes; this image adds the compiler-agnostic
+# analysis toolset (common/cpp-analysis) and the GCC compiler. The compiler is a
+# prebuilt stable binary from Ubuntu 24.04 (noble) itself, never built from
 # source (spec vergil-project/.github#207 §3.5). GCC_VERSION is the
 # compiler-major matrix axis (see docker/build.sh and the version discovery
-# record in this directory's README.md). The shared, compiler-agnostic analysis
-# toolset is composed in via common/cpp-analysis.
+# record in this directory's README.md). Its toolchain comes from apt, so it has
+# no hash pin in docker/pins/toolchains.yml.
 ARG GCC_VERSION=14
-FROM debian:trixie-slim
+ARG PARENT_IMAGE
+FROM ${PARENT_IMAGE}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# --- System packages ---------------------------------------------------------
+# Build-time only: apt never prompts. An ARG, so it is not set in the image.
+ARG DEBIAN_FRONTEND=noninteractive
+
 # The GCC compiler (installed below) supplies its own GNU libstdc++
 # headers/runtime, GCC's native standard library (spec §3.3: stdlib =
 # libstdc++), so no separate stdlib package is needed here.
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-      git curl jq openssh-client pkg-config xz-utils gnupg ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
-
-# @include common/path-defaults.dockerfile
-# @include common/node-markdownlint.dockerfile
-# @include common/github-cli.dockerfile
-# @include common/validation-tools.dockerfile
-# @include common/python-support.dockerfile
 # @include common/cpp-analysis.dockerfile
-# @include common/nfpm.dockerfile
-# @include common/rpm.dockerfile
-# @include common/pandoc.dockerfile
 
-# --- GCC compiler (prebuilt, Debian trixie apt) ------------------------------
-# Install this compiler major's gcc/g++ from Debian's own channel (prebuilt
-# stable binaries — never built from source, spec §3.5). update-alternatives
-# exposes unversioned gcc/g++/gcov so CMake, Conan profile detection, and gcovr
-# resolve them without a version suffix. gcov is GCC's coverage tool, which
-# gcovr drives by default.
+# --- GCC compiler (prebuilt, Ubuntu noble apt) -------------------------------
+# Install this compiler major's gcc/g++ from noble's own archive (prebuilt
+# stable binaries, never built from source, spec §3.5). For GCC 14 that is
+# 14.2.0 from noble-updates (spike item 1): noble's release pocket holds only
+# a pre-release snapshot, which apt never prefers over it. The versioned
+# g++-<v>, not noble's unversioned g++ (13), brings libstdc++ <v>.
+# update-alternatives exposes unversioned gcc/g++/gcov so CMake, Conan profile
+# detection, and gcovr resolve them without a version suffix. gcov is GCC's
+# coverage tool, which gcovr drives by default.
 ARG GCC_VERSION
-RUN apt-get update && \
+RUN if [ -z "${GCC_VERSION}" ]; then echo "cpp-gcc: the GCC_VERSION build arg is not set" >&2; exit 1; fi && \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
       "gcc-${GCC_VERSION}" \
       "g++-${GCC_VERSION}" && \
@@ -63,5 +60,12 @@ ENV CC=gcc \
 # any HOME. build_type is left at Conan's default (Release); the tooling INSTALL
 # command passes the correct `-s build_type` explicitly per invocation.
 RUN conan profile detect
+
+# --- Build-time checks -------------------------------------------------------
+# base's invariants, all three of its defaults (cpp-gcc changes none), the
+# compiler, the analysis tools, and noble's cmake and cppcheck. checks.sh runs
+# from the build context and is not kept. Any failure fails the build.
+RUN --mount=type=bind,source=checks.sh,target=/tmp/vergil-checks.sh \
+    bash /tmp/vergil-checks.sh "${GCC_VERSION}" "${CLANG_TOOLS_VERSION}"
 
 WORKDIR /workspace
