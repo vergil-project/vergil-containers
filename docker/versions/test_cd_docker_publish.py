@@ -110,11 +110,13 @@ def test_versions_emits_a_matrix_and_arch_matrix_per_tier(tmp_path):
     outputs = _outputs(tmp_path / "out")
     assert set(outputs) == set(_job("versions")["outputs"])
     entries = json.loads(MATRIX_JSON.read_text())["include"]
-    # No real manifest entry names a parent yet (epic vergil-project/.github#649
-    # sets them): everything is tier 0, and tiers 1 and 2 are skipped.
-    assert _tier_outputs(outputs, 0) == (entries, _arch(entries), "true")
-    for tier in (1, 2):
-        assert _tier_outputs(outputs, tier) == ([], [], "false")
+    # base is built FROM pkg-ubuntu (epic vergil-project/.github#649), so it is
+    # tier 1; no language image names a parent yet, so tier 2 is skipped.
+    tiers = {t: [e for e in entries if e["depth"] == t] for t in TIERS}
+    assert [e["language"] for e in tiers[1]] == ["base"]
+    for tier in (0, 1):
+        assert _tier_outputs(outputs, tier) == (tiers[tier], _arch(tiers[tier]), "true")
+    assert _tier_outputs(outputs, 2) == ([], [], "false")
     # base is built like any other entry.
     assert {(e["language"], e["arch"]) for e in _arch(entries) if e["language"] == "base"} == {
         ("base", "amd64"), ("base", "arm64")}

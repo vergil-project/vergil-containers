@@ -280,6 +280,15 @@ def test_bad_base_section_refused(tmp_path, base):
         _load(tmp_path, doc)
 
 
+def test_base_parent_is_pkg_ubuntu():
+    # Epic vergil-project/.github#649 Task 7: the live base is built FROM the
+    # package toolchain image for Ubuntu 24.04. A structural fact, not a
+    # version list, so a lifecycle PR never changes it (#654).
+    live = mf.load_manifest(frozen.LIVE_ROOT / "docker/versions/manifest.yml")
+    assert live.base_parent == mf.Parent("pkg-ubuntu", "24.04")
+    assert mf.entry_depths(live)[mf.BASE_KEY] == 1
+
+
 def test_family_may_not_be_keyed_base(tmp_path):
     with pytest.raises(mf.ManifestError, match=r"family 'base': key: 'base' is reserved"):
         _load(tmp_path, _doc(_one("base")))

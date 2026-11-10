@@ -32,7 +32,7 @@ All images are published to GitHub Container Registry at
 | `dev-ts-node`    | typescript | 24, 22                 | `debian:trixie-slim`                    |
 | `dev-pkg-ubuntu` | —          | 26.04, 24.04           | `ubuntu:<v>`                            |
 | `dev-pkg-rhel`   | —          | 10, 9                  | `registry.access.redhat.com/ubi<v>/ubi` |
-| `dev-base`       | —          | latest                 | `python:3.14-slim`                      |
+| `dev-base`       | —          | latest                 | `pkg-ubuntu:24.04`                      |
 <!-- END generated: versions -->
 
 The table is generated from
@@ -76,11 +76,13 @@ and mike for documentation. It is the fallback image used by
 `vrg-container-run` when no language is detected, and is shared across all
 repos for documentation builds.
 
-Build locally:
+It is built `FROM` `pkg-ubuntu:24.04` and takes its core runtimes' versions
+as build arguments from `docker/versions/matrix.json`, so build it with
+`build.sh`, which builds the parent first (or pulls it with
+`--pull-parents`):
 
 ```bash
-docker/generate.sh base
-docker build -t dev-base:latest docker/base/
+docker/build.sh base
 ```
 
 Use via the `vrg-container-docs` wrapper in vergil-tooling:

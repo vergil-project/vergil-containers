@@ -192,9 +192,18 @@
     {
       "language": "base",
       "version": "latest",
-      "build-args": {},
-      "parent": null,
-      "depth": 0
+      "build-args": {
+        "CORE_PYTHON": "3.15",
+        "CORE_NODE_MAJOR": "22",
+        "CORE_NODE_VERSION": "22.23.4",
+        "CORE_NODE_SHA256_AMD64": "b8492284c76a54baf58d61668dd0e41ee0fc98adabf9503d30f05d08f55b4406",
+        "CORE_NODE_SHA256_ARM64": "f7a1e486dbc8b286847815b477d4fb5e9fb963ed4489c3e1588853d685f589f9"
+      },
+      "parent": {
+        "language": "pkg-ubuntu",
+        "version": "24.04"
+      },
+      "depth": 1
     }
   ]
 }

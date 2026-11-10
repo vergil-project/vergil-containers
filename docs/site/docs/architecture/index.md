@@ -92,14 +92,35 @@ Every language image includes the following shared fragments:
 - **`pandoc.dockerfile`** — pandoc for Markdown to `.docx`/HTML
   conversion (no TeX; PDF output is opt-in).
 
-Python-based images (`dev-python`, `dev-base`) install yamllint and uv
-directly via pip rather than the `python-support` fragment.
+`dev-python` installs yamllint and uv directly via pip rather than the
+`python-support` fragment.
 
-The `dev-base` image includes all common fragments plus documentation
-tooling (MkDocs Material, mike, semgrep) and OpenTofu
-(`opentofu.dockerfile`) for in-sandbox `tofu fmt -check` / `tofu validate`
-of OpenTofu modules. It is the fallback image for repos with no detected
-language.
+The `dev-base` image is built `FROM` the package toolchain image
+`pkg-ubuntu:24.04` (epic vergil-project/.github#649), from which it takes uv
+and nFPM. It includes the common fragments plus documentation tooling (MkDocs
+Material, mike, semgrep) and OpenTofu (`opentofu.dockerfile`) for in-sandbox
+`tofu fmt -check` / `tofu validate` of OpenTofu modules. It is the fallback
+image for repos with no detected language. Its own tools run on core runtimes
+installed side by side under `/opt/vergil/`, from four fragments only it
+includes:
+
+- **`vergil-apt.dockerfile`** — The vergil apt repository, set up only after
+  the signing key's primary fingerprint matches the pinned one.
+- **`core-python.dockerfile`** — The core Python, `vergil-python<core>` at
+  `/opt/vergil/python/<core>/`; `/usr/local/bin/python3` links to it and
+  promises the standard library only.
+- **`core-node.dockerfile`** — The core Node, the pinned nodejs.org tarball
+  at `/opt/vergil/node/<core-major>/`, and markdownlint-cli on it. No
+  `node`, `npm` or `npx` is on `PATH`; `markdownlint` is a wrapper that
+  runs the core Node by path.
+- **`core-tools.dockerfile`** — yamllint, ansible-lint, semgrep and MkDocs
+  (with mkdocs-material and mike) as uv tools on the core Python.
+
+The core series come from the manifest's `core:` section. Nothing in
+`dev-base` is pip-installed. Its last build step runs
+`docker/base/checks.sh`: the checks every image built on it keeps
+(`checks-invariants.sh`) and its defaults (`checks-defaults.sh`), both left
+in the image at `/usr/local/lib/vergil/checks/` for its children to rerun.
 
 ## Design Principles
 
@@ -200,12 +221,13 @@ image on an upstream base, at most 2) is its tier. Every tier-0 image runs the
 steps above, then the tier-1 images run them, built `FROM` their parent's
 promoted digest from the same run, and then tier 2. An image whose parent
 failed fails its own build with an error naming the parent, and its previous
-tags stay published. Until a manifest entry names a parent, every image is in
-tier 0 and the later tiers are skipped.
+tags stay published. Today `base` is the one tier-1 image, built on
+`pkg-ubuntu:24.04`, and no image is in tier 2.
 
 Each image's `--build-arg`s come from its `build-args` map in the generated
-`docker/versions/matrix.json` (a family's or toolchain's version argument;
-none for `base`), and a child also gets `PARENT_IMAGE`, its parent by digest.
+`docker/versions/matrix.json` (a family's or toolchain's version argument
+and its toolchain pins; for `base`, its core runtimes), and a child also gets
+`PARENT_IMAGE`, its parent by digest.
 
 Images that are not languages, such as the package toolchain images, are
 listed in the manifest's `toolchains:` section. They are built, published and
