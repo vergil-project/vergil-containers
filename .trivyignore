@@ -319,7 +319,8 @@ CVE-2026-84445
 CVE-2026-116587
 
 # =============================================================================
-# undici 6.29.0 bundled in npm 12.2.1 (all images), at
+# undici 6.29.0 bundled in npm 12.2.1 (every image but dev-base, whose core
+# Node keeps the npm it bundles: see the next group), at
 # /usr/lib/node_modules/npm/node_modules/undici. Fixed in 6.29.1 / 7.30.1 /
 # 8.12.2. Issue #677. The images install npm with `npm install -g npm@latest`
 # (common/node-markdownlint.dockerfile, ts-node/Dockerfile.template). npm
@@ -371,3 +372,52 @@ CVE-2026-116587
 CVE-2026-109869
 CVE-2026-87018
 CVE-2026-109383
+
+# =============================================================================
+# npm 10.9.9 bundled in the core Node 22.23.4 (dev-base, and every image built
+# on it), at /opt/vergil/node/22/lib/node_modules/npm/. Epic
+# vergil-project/.github#649 (vergil-containers#779; found by the spike,
+# vergil-project/.github#982). The core Node is the nodejs.org tarball pinned
+# in docker/pins/toolchains.yml (common/core-node.dockerfile), and its npm is
+# the runtime's: it is never upgraded in place (spec §5.8), so a fix arrives
+# only with a Node release. 22.23.4 is the newest Node 22 (nodejs.org index,
+# checked 2026-11-09), so there is no runtime to move to within the major. All
+# HIGH, all in packages npm vendors; none is in Node itself or markdownlint-cli:
+# CVE-2026-102276, CVE-2026-102278, CVE-2026-13149, CVE-2026-14257,
+# CVE-2026-69152 — brace-expansion 2.0.2 (fixed in 2.1.2 to 2.1.6 by ID):
+#   denial of service (stack, memory or CPU exhaustion) from a crafted brace
+#   pattern.
+# CVE-2026-33671 — picomatch 4.0.3 (fixed in 4.0.4): regular-expression
+#   denial of service from a crafted extglob pattern.
+# CVE-2026-48815 — sigstore 3.1.0 (fixed in 4.1.1): the certificateOIDs
+#   verification option is ignored, so an unintended certificate is accepted.
+# CVE-2026-69192 — ip-address 10.1.0 (fixed in 10.3.1): inconsistent address
+#   parsing that can bypass an SSRF or trust-boundary check.
+# CVE-2026-9496 — pacote 19.0.2 and 20.0.1 (fixed in 21.5.1): denial of
+#   service from a crafted spec.rawSpec in a git dependency.
+# The vulnerable paths are not exercised. npm runs once, at image build, to
+# install markdownlint-cli (pure JS) from the public registry by name: no
+# attacker-supplied glob or brace pattern, git spec, address or provenance check
+# reaches it. At run time the core Node is not on PATH (no node, npm or npx;
+# checks-defaults.sh asserts it), and the only thing that runs on it is the
+# markdownlint wrapper, which loads markdownlint-cli and never npm. A consumer
+# would have to call /opt/vergil/node/22/bin/npm by path, which nothing does.
+# Every finding is a denial of service of a build-time step except
+# CVE-2026-48815, and npm 10.9.9 runs no sigstore verification on that install
+# (no `npm audit signatures`, no provenance check). Moving the core Node to 24
+# would leave three of the IDs, and a core move is a reviewed PR of its own
+# (spec §5.2.1).
+# Remove each once a Node 22 release bundles an npm carrying its fixed package
+# (the daily upstream refresh moves the core Node pin to the newest 22.x), or
+# once the core Node moves to a major whose npm carries them all. Do not patch
+# npm's bundled node_modules in place.
+# =============================================================================
+CVE-2026-102276
+CVE-2026-102278
+CVE-2026-13149
+CVE-2026-14257
+CVE-2026-69152
+CVE-2026-33671
+CVE-2026-48815
+CVE-2026-69192
+CVE-2026-9496
