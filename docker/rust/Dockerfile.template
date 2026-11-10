@@ -1,30 +1,83 @@
 # Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
 # Canonical source: https://github.com/vergil-project/vergil-containers
-ARG RUST_VERSION=1.93
-FROM rust:${RUST_VERSION}-slim
+# dev-rust — the Rust dev container, built on base (epic
+# vergil-project/.github#649, spec §5.3). base carries every common tool; this
+# image adds the C linker Rust links with and the series' exact Rust release.
+#
+# The parent comes from docker/versions/manifest.yml (`rust: parent:`):
+# docker/build.sh and the publish workflow pass it as PARENT_IMAGE. The release
+# and rustup-init come from docker/pins/toolchains.yml as the TOOLCHAIN_* and
+# RUSTUP_INIT_* build args generate.py emits: the build resolves nothing itself.
+# rustup-init is checked against its pinned SHA-256 for TARGETARCH, and rustup
+# checks every component against the release's channel manifest.
+ARG PARENT_IMAGE
+FROM ${PARENT_IMAGE}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# --- System packages ---------------------------------------------------------
+# Build-time only: apt never prompts. An ARG, so it is not set in the image.
+ARG DEBIAN_FRONTEND=noninteractive
+
+# --- C linker ------------------------------------------------------------------
+# rustc links with the system C compiler. The rust:<v>-slim images this family
+# was built on carried gcc; base does not.
 RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-      git curl jq openssh-client pkg-config xz-utils gnupg ca-certificates && \
+    apt-get install -y --no-install-recommends gcc libc6-dev pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
-# @include common/path-defaults.dockerfile
-# @include common/node-markdownlint.dockerfile
-# @include common/github-cli.dockerfile
-# @include common/validation-tools.dockerfile
-# @include common/python-support.dockerfile
-# @include common/nfpm.dockerfile
-# @include common/rpm.dockerfile
-# @include common/pandoc.dockerfile
+# --- Rust ------------------------------------------------------------------------
+# The same layout as the rust:<v>-slim images: rustup and cargo under
+# /usr/local, cargo's bin on PATH, both writable by any user, and RUST_VERSION
+# the exact release (set after the install, which reads the build arg of that
+# name, the series).
+ARG TARGETARCH
+ARG RUST_VERSION=1.93
+ARG TOOLCHAIN_VERSION
+ARG RUSTUP_INIT_VERSION
+ARG RUSTUP_INIT_SHA256_AMD64
+ARG RUSTUP_INIT_SHA256_ARM64
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:${PATH}
+
+RUN : "${RUST_VERSION:?rust: the RUST_VERSION build arg is not set}" && \
+    : "${TOOLCHAIN_VERSION:?rust: the TOOLCHAIN_VERSION build arg is not set}" && \
+    : "${RUSTUP_INIT_VERSION:?rust: the RUSTUP_INIT_VERSION build arg is not set}" && \
+    : "${RUSTUP_INIT_SHA256_AMD64:?rust: the RUSTUP_INIT_SHA256_AMD64 build arg is not set}" && \
+    : "${RUSTUP_INIT_SHA256_ARM64:?rust: the RUSTUP_INIT_SHA256_ARM64 build arg is not set}" && \
+    case "${TOOLCHAIN_VERSION}" in \
+      "${RUST_VERSION}".*) ;; \
+      *) echo "rust: TOOLCHAIN_VERSION ${TOOLCHAIN_VERSION} is not a release of Rust ${RUST_VERSION}" >&2; exit 1 ;; \
+    esac && \
+    case "${TARGETARCH}" in \
+      amd64) triple=x86_64-unknown-linux-gnu; sha256="${RUSTUP_INIT_SHA256_AMD64}" ;; \
+      arm64) triple=aarch64-unknown-linux-gnu; sha256="${RUSTUP_INIT_SHA256_ARM64}" ;; \
+      *) echo "rust: unsupported TARGETARCH '${TARGETARCH}'" >&2; exit 1 ;; \
+    esac && \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+      "https://static.rust-lang.org/rustup/archive/${RUSTUP_INIT_VERSION}/${triple}/rustup-init" \
+      -o /tmp/rustup-init && \
+    echo "${sha256}  /tmp/rustup-init" | sha256sum -c - && \
+    chmod 0755 /tmp/rustup-init && \
+    /tmp/rustup-init -y --no-modify-path --profile minimal \
+      --default-toolchain "${TOOLCHAIN_VERSION}" \
+      --component clippy,rustfmt,llvm-tools && \
+    rm /tmp/rustup-init && \
+    chmod -R a+w "${RUSTUP_HOME}" "${CARGO_HOME}" && \
+    rustup --version && \
+    rustc --version
+
+ENV RUST_VERSION=${TOOLCHAIN_VERSION}
 
 # --- Rust tools --------------------------------------------------------------
-RUN rustup component add clippy rustfmt llvm-tools
-
 RUN cargo install cargo-deny && \
     cargo install cargo-llvm-cov && \
     rm -rf /usr/local/cargo/registry
+
+# --- Build-time checks -------------------------------------------------------
+# base's invariants, all three of base's defaults, and the Rust toolchain.
+# checks.sh runs from the build context and is not kept. Any failure fails the
+# build.
+RUN --mount=type=bind,source=checks.sh,target=/tmp/vergil-checks.sh \
+    bash /tmp/vergil-checks.sh
 
 WORKDIR /workspace

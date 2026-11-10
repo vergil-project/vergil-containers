@@ -1,32 +1,6 @@
 {
   "include": [
     {
-      "language": "rust",
-      "version": "1.93",
-      "build-args": {
-        "RUST_VERSION": "1.93",
-        "TOOLCHAIN_VERSION": "1.93.1",
-        "RUSTUP_INIT_VERSION": "1.29.3",
-        "RUSTUP_INIT_SHA256_AMD64": "b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55",
-        "RUSTUP_INIT_SHA256_ARM64": "9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282"
-      },
-      "parent": null,
-      "depth": 0
-    },
-    {
-      "language": "rust",
-      "version": "1.92",
-      "build-args": {
-        "RUST_VERSION": "1.92",
-        "TOOLCHAIN_VERSION": "1.92.0",
-        "RUSTUP_INIT_VERSION": "1.29.3",
-        "RUSTUP_INIT_SHA256_AMD64": "b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55",
-        "RUSTUP_INIT_SHA256_ARM64": "9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282"
-      },
-      "parent": null,
-      "depth": 0
-    },
-    {
       "language": "cpp-clang",
       "version": "20",
       "build-args": {
@@ -216,6 +190,38 @@
         "TOOLCHAIN_VERSION": "1.26.10",
         "TOOLCHAIN_SHA256_AMD64": "ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5",
         "TOOLCHAIN_SHA256_ARM64": "3f4227ce7b206a513e794f1393adb473a07b46e94d18bd15d1c684bbb7319797"
+      },
+      "parent": {
+        "language": "base",
+        "version": "latest"
+      },
+      "depth": 2
+    },
+    {
+      "language": "rust",
+      "version": "1.93",
+      "build-args": {
+        "RUST_VERSION": "1.93",
+        "TOOLCHAIN_VERSION": "1.93.1",
+        "RUSTUP_INIT_VERSION": "1.29.3",
+        "RUSTUP_INIT_SHA256_AMD64": "b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55",
+        "RUSTUP_INIT_SHA256_ARM64": "9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282"
+      },
+      "parent": {
+        "language": "base",
+        "version": "latest"
+      },
+      "depth": 2
+    },
+    {
+      "language": "rust",
+      "version": "1.92",
+      "build-args": {
+        "RUST_VERSION": "1.92",
+        "TOOLCHAIN_VERSION": "1.92.0",
+        "RUSTUP_INIT_VERSION": "1.29.3",
+        "RUSTUP_INIT_SHA256_AMD64": "b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55",
+        "RUSTUP_INIT_SHA256_ARM64": "9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282"
       },
       "parent": {
         "language": "base",
