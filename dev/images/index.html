@@ -2283,6 +2283,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#package-toolchain-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Package toolchain images
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3093,6 +3104,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#package-toolchain-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Package toolchain images
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3111,9 +3133,16 @@
 
 
 <h1 id="images">Images<a class="headerlink" href="#images" title="Permanent link">&para;</a></h1>
-<p>Every image shares a common tooling layer and adds language-specific
-runtimes and tools. Images are published as multi-architecture manifests
-(amd64 + arm64) to <code>ghcr.io/vergil-project/dev-&lt;language&gt;:&lt;version&gt;</code>.</p>
+<p>The images come in two kinds. The <strong>language images</strong> (Python, Go, Rust,
+C++, TypeScript / Node.js) and <code>base</code> share a common tooling layer and add
+language-specific runtimes and tools; they are published to
+<code>ghcr.io/vergil-project/dev-&lt;language&gt;:&lt;version&gt;</code> (and <code>dev-base:latest</code>).
+The <strong>package toolchain images</strong>, <code>pkg-ubuntu</code> and <code>pkg-rhel</code>, carry no
+common layer: they are the minimal images that package jobs build and
+install-test in, published to <code>ghcr.io/vergil-project/dev-pkg-&lt;distro&gt;:&lt;version&gt;</code>
+(see <a href="#package-toolchain-images">Package toolchain images</a>). Every image is
+published as a multi-architecture manifest (amd64 + arm64), with a <code>dev-</code>
+prefix from <code>develop</code> and a <code>prod-</code> prefix from <code>main</code>.</p>
 <div class="admonition info">
 <p class="admonition-title">Tool versions are managed, not hand-listed here</p>
 <p>This page is the <strong>inventory</strong> — what each image includes. It deliberately
@@ -3199,7 +3228,9 @@ The table is generated from <code>docker/versions/manifest.yml</code> by
 <!-- END generated: versions -->
 
 <h2 id="common-layer">Common Layer<a class="headerlink" href="#common-layer" title="Permanent link">&para;</a></h2>
-<p>All language images include:</p>
+<p>All language images include the tools below. The package toolchain images
+do not: see <a href="#package-toolchain-images">Package toolchain images</a> for what
+they carry.</p>
 <table>
 <thead>
 <tr>
@@ -3464,6 +3495,104 @@ section (epic vergil-project/.github#649):</p>
   <code>node</code>, <code>npm</code> or <code>npx</code> on <code>PATH</code>; <code>markdownlint</code> is a wrapper that runs
   the core Node by path.</li>
 </ul>
+<h2 id="package-toolchain-images">Package toolchain images<a class="headerlink" href="#package-toolchain-images" title="Permanent link">&para;</a></h2>
+<p><strong>Images</strong>: <code>pkg-ubuntu</code> (Ubuntu 26.04, 24.04) and <code>pkg-rhel</code> (RHEL 10, 9)
+<strong>Bases</strong>: <code>ubuntu:&lt;version&gt;</code> and <code>registry.access.redhat.com/ubi&lt;version&gt;/ubi</code></p>
+<p>These are the images vergil's package jobs run in (epic
+vergil-project/.github#607). vergil-tooling's package build and install-test
+cells run in the published <code>prod-pkg-ubuntu:&lt;version&gt;</code> and
+<code>prod-pkg-rhel:&lt;version&gt;</code> images (since vergil-tooling v2.1.297), one per
+package target. vergil-actions' <code>actions/package/setup</code> requires them: since
+vergil-actions v2.1.62 it installs no toolchain of its own and fails the job
+in any other image. Baking the toolchain into a nightly-rebuilt image means
+no package job downloads it at run time.</p>
+<p>Each image is the upstream image plus only what a package job needs, and
+nothing else: no common layer, no vergil-tooling.</p>
+<table>
+<thead>
+<tr>
+<th>Content</th>
+<th><code>pkg-ubuntu</code></th>
+<th><code>pkg-rhel</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OS upgrade</td>
+<td><code>apt-get upgrade</code> at build time</td>
+<td><code>dnf upgrade</code> at build time</td>
+</tr>
+<tr>
+<td>OS prerequisites</td>
+<td><code>ca-certificates</code>, <code>curl</code>, <code>git</code>, <code>tar</code>, <code>gzip</code>, <code>gnupg</code></td>
+<td><code>ca-certificates</code>, <code>curl</code>, <code>gpg</code>, <code>git</code>, <code>tar</code>, <code>gzip</code></td>
+</tr>
+<tr>
+<td>uv</td>
+<td>pinned release, in <code>/usr/local/bin</code> (with <code>uvx</code>)</td>
+<td>same</td>
+</tr>
+<tr>
+<td>nFPM</td>
+<td>pinned release, in <code>/usr/local/bin</code></td>
+<td>same</td>
+</tr>
+<tr>
+<td>apt configuration</td>
+<td>fail-fast config on every architecture; mirror list on amd64</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Toolchain marker</td>
+<td><code>/etc/vergil/package-toolchain</code></td>
+<td>same</td>
+</tr>
+<tr>
+<td>Python</td>
+<td>none</td>
+<td>only the distro's <code>python3</code>, which dnf runs on</td>
+</tr>
+</tbody>
+</table>
+<p>Notes on the rows:</p>
+<ul>
+<li><strong>OS upgrade</strong>: the packages are upgraded when the image is built, and
+  the images are rebuilt nightly, so a package job starts on a current OS.
+  Package lists and the dnf cache are not kept: they would go stale between
+  rebuilds, so a job that needs them runs its own <code>apt-get update</code>.</li>
+<li><strong>OS prerequisites on <code>pkg-rhel</code></strong>: UBI ships <code>curl-minimal</code>, which
+  conflicts with the full <code>curl</code> package, so the image asks dnf for
+  <code>/usr/bin/curl</code> and <code>/usr/bin/gpg</code> by path and accepts whichever package
+  provides them.</li>
+<li><strong>uv and nFPM</strong>: both are pinned and checksum-verified, and the daily
+  upstream refresh floats their pins; see
+  <a href="https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md">the catalog</a>.
+  The package setup action installs vergil-tooling with uv, under a Python
+  that uv fetches itself.</li>
+<li><strong>apt configuration (<code>pkg-ubuntu</code>)</strong>: on every architecture,
+  <code>/etc/apt/apt.conf.d/80-vergil-fast-fail</code> sets 3 retries with no retry
+  delay, 20 s timeouts and a 60 s dpkg lock wait, so a stalled mirror fails
+  fast instead of hanging the job. On amd64 only, the Ubuntu archive and
+  security sources are rewritten to <code>mirror+file:/etc/apt/apt-mirrors.txt</code>,
+  a list of the in-region Azure mirror first, then <code>archive.ubuntu.com</code>,
+  then <code>security.ubuntu.com</code>, so apt fails over down the list. arm64 uses
+  <code>ports.ubuntu.com</code>, which those mirrors do not serve, and is left
+  untouched. vergil-tooling passes the same fail-fast options on each apt
+  command line it runs.</li>
+<li><strong>Toolchain marker</strong>: <code>/etc/vergil/package-toolchain</code> has one
+  <code>&lt;tool&gt; &lt;version&gt;</code> line for each of <code>uv</code>, <code>nfpm</code>, <code>curl</code>, <code>git</code>, <code>gpg</code>,
+  <code>tar</code> and <code>gzip</code>, each version read from <code>&lt;tool&gt; --version</code> when the image
+  is built. <code>actions/package/setup</code> checks the image against it before
+  anything else: a missing marker, a required tool it leaves out, or a
+  listed tool missing or at another version fails the job.</li>
+<li><strong>Python</strong>: <code>pkg-ubuntu</code> has no <code>python3</code> at all. <code>pkg-rhel</code> keeps UBI's
+  own <code>/usr/bin/python3</code>, because dnf runs on it, and adds no other Python.</li>
+</ul>
+<p>Each template's build-time checks fail the build if any of this is missing,
+so no published image can lack it.</p>
+<p><code>pkg-ubuntu:24.04</code> is also the parent of <a href="#base"><code>base</code></a>, which takes uv and
+nFPM from it. <code>base</code> removes the toolchain marker, because it is not a
+package toolchain image.</p>
 
 
 
