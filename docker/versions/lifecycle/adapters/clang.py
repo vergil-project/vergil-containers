@@ -8,7 +8,7 @@ skipped; a major is GA on its first final release (`llvmorg-X.1.0` since LLVM
 18, `llvmorg-X.0.0` before). LLVM publishes no EOL dates.
 
 A major is installable when apt.llvm.org publishes the
-`llvm-toolchain-trixie-<major>` suite for the image's Debian base; a GA major
+`llvm-toolchain-noble-<major>` suite for the image's Ubuntu 24.04 base; a GA major
 it does not publish surfaces as blocked.
 """
 from __future__ import annotations
@@ -24,8 +24,8 @@ from lifecycle.sources import Fetch, fetch_url, github_releases, index_links
 Index = Callable[[str], set[str]]
 
 REPO = "llvm/llvm-project"
-APT_INDEX_URL = "https://apt.llvm.org/trixie/dists/"
-APT_SUITE = "llvm-toolchain-trixie-{major}"
+APT_INDEX_URL = "https://apt.llvm.org/noble/dists/"
+APT_SUITE = "llvm-toolchain-noble-{major}"
 _TAG_RE = re.compile(r"^llvmorg-(\d+)\.\d+\.\d+$")
 
 

@@ -1,17 +1,18 @@
 # --- Shared C++ analysis toolset (compiler-agnostic) -------------------------
 # The compiler-agnostic analysis layer every C++ image carries, regardless of
 # which compiler family (clang/gcc) it ships (spec vergil-project/.github#207
-# §3.6, §4). It is the "shared base layer" of plan T1, expressed in this repo's
-# established @include-fragment idiom rather than a separate FROM-chained base
-# image (language images here never FROM one another — they compose fragments).
-# Both docker/cpp-clang and the future docker/cpp-gcc include this fragment.
+# §3.6, §4). It is the "shared base layer" of plan T1, expressed as an @include
+# fragment so that both C++ families carry the same layer: docker/cpp-clang and
+# docker/cpp-gcc include it. Its LLVM tools source is apt.llvm.org's noble suite,
+# for the images built on base (Ubuntu 24.04, epic vergil-project/.github#649).
 #
 # Pinning: these tools follow the repo-wide floating doctrine (epic
-# vergil-project/.github#155). cmake/cppcheck are fixed by the Debian release of
-# the base image; clang-format/clang-tidy are fixed by the LLVM apt channel
-# major (CLANG_TOOLS_VERSION); conan/gcovr float on their leading edge like
-# every other uv-installed tool — none of those is an exact x.y.z pin, so this
-# fragment carries no docker/pins/pins.yml entry.
+# vergil-project/.github#155). cmake/cppcheck are fixed by the image's
+# distribution release (noble's: cmake 3.28.3, cppcheck 2.13.0, which
+# cpp-clang's checks.sh asserts); clang-format/clang-tidy are fixed by the LLVM
+# apt channel major (CLANG_TOOLS_VERSION); conan/gcovr float on their leading
+# edge like every other uv-installed tool — none of those is an exact x.y.z pin,
+# so this fragment carries no docker/pins/pins.yml entry.
 ARG CLANG_TOOLS_VERSION=20
 
 # clang-format / clang-tidy come from the official LLVM apt channel so the
@@ -23,7 +24,7 @@ ARG CLANG_TOOLS_VERSION=20
 RUN curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
       https://apt.llvm.org/llvm-snapshot.gpg.key \
       -o /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
-    echo "deb http://apt.llvm.org/trixie/ llvm-toolchain-trixie-${CLANG_TOOLS_VERSION} main" \
+    echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-${CLANG_TOOLS_VERSION} main" \
       > "/etc/apt/sources.list.d/llvm-toolchain-${CLANG_TOOLS_VERSION}.list" && \
     apt-get update && \
     apt-get install -y --no-install-recommends \

@@ -111,6 +111,9 @@ families:
     token_prefix: "clang-"
     build_arg: "CLANG_VERSION"
     automation: "report"
+    parent:
+      name: "base"
+      version: "latest"
     versions:
       - version: "20"
         ga: 2025-03-04

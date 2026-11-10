@@ -2,7 +2,8 @@
 
 Image family: `dev-cpp-clang`, the C++ image built with the Clang compiler.
 Shared rules: [Language version lifecycle](lifecycle.md). Upstream facts on
-this page were checked on 2026-10-21.
+this page were checked on 2026-10-21, and the apt.llvm.org noble listing on
+2026-11-10.
 
 ## Upstream source of truth
 
@@ -23,9 +24,10 @@ Data, from those pages:
 - The newest releases are 23.1.0 (2026-08-25) through 23.1.4 (2026-10-20). The
   last 22 release is 22.1.8 (2026-06-16), before 23.1.0 shipped.
 - apt.llvm.org says it publishes packages for "the last 2 LLVM releases" and
-  for `main`, the development branch. For Debian trixie it lists
-  `llvm-toolchain-trixie-23` (stable), `llvm-toolchain-trixie-22` (old-stable)
-  and `llvm-toolchain-trixie` (the development branch, currently 24).
+  for `main`, the development branch. For Ubuntu 24.04 (noble) it lists
+  `llvm-toolchain-noble-23` and `llvm-toolchain-noble-22`, the older suites
+  back to `llvm-toolchain-noble-17`, and `llvm-toolchain-noble` (the
+  development branch).
 - LLVM does not publish an EOL date, or a rule for how long a major is
   supported. Its release list shows that bug-fix releases stop on the older
   major once a newer major ships.
@@ -34,7 +36,7 @@ Data, from those pages:
 
 **Judgment:** the newest LLVM major and the one before it (newest and
 newest−1), limited to the majors that apt.llvm.org publishes for the image's
-Debian base. LLVM has no written support rule, so this rule is the policy
+Ubuntu 24.04 base. LLVM has no written support rule, so this rule is the policy
 author's call. It matches what apt.llvm.org publishes, and is one version wider
 than the single major that still gets bug-fix releases, for the same reason as
 [Rust](rust.md).
@@ -45,17 +47,17 @@ On 2026-10-21 that is 23 and 22.
 
 The `llvmorg-X.1.0` release on GitHub, not marked as a pre-release. Release
 candidates are never GA. A GA major can be added only once apt.llvm.org
-publishes it for the Debian base.
+publishes it for the Ubuntu 24.04 base.
 
 ## Adapter quirks
 
-- The image is built `FROM debian:trixie-slim`, and Clang is installed from the
-  `llvm-toolchain-trixie-<major>` suite on apt.llvm.org. `CLANG_VERSION` is the
+- The image is built on `base` (Ubuntu 24.04), and Clang is installed from the
+  `llvm-toolchain-noble-<major>` suite on apt.llvm.org. `CLANG_VERSION` is the
   build argument.
 - There is no endoflife.date data. The adapter reads the GitHub releases API
   for `llvm/llvm-project` and must skip pre-releases.
 - The adapter must check that apt.llvm.org publishes a suite for the major on
-  the Debian base. When it does not, the version is reported as blocked, not as
+  noble. When it does not, the version is reported as blocked, not as
   behind.
 - Versions are compared at the major. The `clang-` token prefix is ignored for
   ordering.
@@ -72,9 +74,9 @@ package.
 ## Current out-of-policy versions
 
 As of 2026-10-21: **20 and 19.** Both are built, but neither is among the two
-newest majors, and neither gets bug-fix releases from upstream. apt.llvm.org no
-longer lists them for trixie. They stay buildable under the report-only
-exception until Clang's automation is turned on.
+newest majors, and neither gets bug-fix releases from upstream. apt.llvm.org
+still lists their noble suites (2026-11-10), so they stay buildable under the
+report-only exception until Clang's automation is turned on.
 
 The manifest is also **behind**: 23 and 22, the majors the rule requires, are
 not built.

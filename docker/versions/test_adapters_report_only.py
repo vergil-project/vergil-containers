@@ -1,5 +1,6 @@
 """The report-only adapters (Rust, Node, Clang, GCC) against fixtures that
-are copies of the upstream responses on 2026-10-21. No test touches the network."""
+are copies of the upstream responses on 2026-10-21 (the apt.llvm.org noble
+index on 2026-11-10). No test touches the network."""
 from datetime import date
 from pathlib import Path
 
@@ -25,7 +26,7 @@ URL_FIXTURES = {
     "https://endoflife.date/api/rust.json": "endoflife-rust.json",
     "https://endoflife.date/api/nodejs.json": "endoflife-nodejs.json",
     "https://api.github.com/repos/llvm/llvm-project/releases?per_page=100": "llvm-releases.json",
-    "https://apt.llvm.org/trixie/dists/": "apt-llvm-trixie-index.html",
+    "https://apt.llvm.org/noble/dists/": "apt-llvm-noble-index.html",
     "https://gcc.gnu.org/releases.html": "gcc-releases.html",
     "https://gcc.gnu.org/": "gcc-home.html",
     "https://sources.debian.org/api/src/gcc-14/": "debian-src-gcc-14.json",
@@ -251,8 +252,18 @@ def test_clang_classify_against_seed():
 
 def test_clang_major_missing_from_apt_is_blocked():
     def index(url):
-        assert url == "https://apt.llvm.org/trixie/dists/"
-        return {"llvm-toolchain-trixie", "llvm-toolchain-trixie-22"}
+        assert url == "https://apt.llvm.org/noble/dists/"
+        return {"llvm-toolchain-noble", "llvm-toolchain-noble-22"}
+
+    changes = _changes(ClangAdapter(fetch=fixture_fetch, index=index))
+    assert _kinds(changes)[:2] == [("blocked", "23"), ("add", "22")]
+
+
+def test_clang_probes_the_noble_suites():
+    # The image is built on Ubuntu 24.04 (epic vergil-project/.github#649), so a
+    # major published only for Debian trixie is not installable.
+    def index(url):
+        return {"llvm-toolchain-trixie-22", "llvm-toolchain-trixie-23", "llvm-toolchain-noble-22"}
 
     changes = _changes(ClangAdapter(fetch=fixture_fetch, index=index))
     assert _kinds(changes)[:2] == [("blocked", "23"), ("add", "22")]
