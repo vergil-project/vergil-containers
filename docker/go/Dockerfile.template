@@ -46,3 +46,4 @@ RUN GTC_VERSION="latest" && \
     go install github.com/vladopajic/go-test-coverage/v2@"${GTC_VERSION}"
 
 WORKDIR /workspace
+# THROWAWAY (vergil-containers#517 selection check) - never merge.
