@@ -22,16 +22,30 @@ def test_ts_node_includes_typescript_analysis_python_does_not():
     assert {k for k, v in dm.items() if TS_ANALYSIS in v} == {"ts-node"}
 
 
-def test_nested_include_is_followed():
-    # python includes node-markdownlint, which includes nodesource-node.
-    frags = includes.fragments_of(ROOT / "docker/python/Dockerfile.template")
-    assert "docker/common/node-markdownlint.dockerfile" in frags
-    assert "docker/common/nodesource-node.dockerfile" in frags
+def test_nested_include_is_followed(tmp_path):
+    # A template that includes a fragment which itself includes another, as
+    # common/node-markdownlint includes common/nodesource-node. Synthetic, so
+    # it does not depend on which live template still includes them.
+    _write(tmp_path, "docker/common/node-markdownlint.dockerfile", "# @include common/nodesource-node.dockerfile\n")
+    _write(tmp_path, "docker/common/nodesource-node.dockerfile", "RUN true\n")
+    _write(tmp_path, "docker/x/Dockerfile.template", "# @include common/node-markdownlint.dockerfile\n")
+    frags = includes.fragments_of(tmp_path / "docker/x/Dockerfile.template")
+    assert frags == {"docker/common/node-markdownlint.dockerfile", "docker/common/nodesource-node.dockerfile"}
+
+
+def _on_base() -> set[str]:
+    """The live families built FROM base, which reach every input of base
+    through their parent (epic vergil-project/.github#649)."""
+    live = mf.load_manifest(ROOT / "docker/versions/manifest.yml")
+    return {f.key for f in live.families if f.parent is not None and f.parent.name == mf.BASE_KEY}
 
 
 def test_security_tools_scoped_to_base():
+    # Only base includes it; an image built on base reaches it through base.
     dm = includes.dependency_map(ROOT)
-    assert {k for k, v in dm.items() if SECURITY_TOOLS in v} == {"base"}
+    assert {k for k in dm if SECURITY_TOOLS in includes.fragments_of(ROOT / "docker" / k / includes.TEMPLATE)} == {
+        "base"}
+    assert {k for k, v in dm.items() if SECURITY_TOOLS in v} == {"base"} | _on_base()
 
 
 def test_cpp_families_depend_on_shared_smoke_dir():
@@ -64,9 +78,9 @@ def test_toolchain_fragments_are_scoped_to_the_toolchain_images():
         return {k for k in dm if f"docker/common/{fragment}" in includes.fragments_of(
             ROOT / "docker" / k / includes.TEMPLATE)}
 
-    assert users("uv.dockerfile") == {"pkg-ubuntu", "pkg-rhel", "base"}
-    assert users("package-toolchain-marker.dockerfile") == {"pkg-ubuntu", "pkg-rhel", "base"}
-    assert users("apt-mirror.dockerfile") == {"pkg-ubuntu", "base"}
+    assert users("uv.dockerfile") == {"pkg-ubuntu", "pkg-rhel", "base"} | _on_base()
+    assert users("package-toolchain-marker.dockerfile") == {"pkg-ubuntu", "pkg-rhel", "base"} | _on_base()
+    assert users("apt-mirror.dockerfile") == {"pkg-ubuntu", "base"} | _on_base()
     assert {"pkg-ubuntu", "pkg-rhel", "base"} <= users("nfpm.dockerfile")
     for fragment in ("uv.dockerfile", "package-toolchain-marker.dockerfile", "apt-mirror.dockerfile",
                      "nfpm.dockerfile"):

@@ -23,7 +23,7 @@ The table is generated from `docker/versions/manifest.yml` by
 <!-- BEGIN generated: versions -->
 | Image            | Language   | Versions               | Base                                    |
 | ---------------- | ---------- | ---------------------- | --------------------------------------- |
-| `dev-python`     | python     | 3.15, 3.14, 3.13, 3.12 | `python:<v>-slim`                       |
+| `dev-python`     | python     | 3.15, 3.14, 3.13, 3.12 | `base:latest`                           |
 | `dev-go`         | go         | 1.27, 1.26             | `golang:<v>`                            |
 | `dev-rust`       | rust       | 1.93, 1.92             | `rust:<v>-slim`                         |
 | `dev-cpp-clang`  | cpp        | 20, 19                 | `debian:trixie-slim`                    |
@@ -64,24 +64,33 @@ OpenTofu module validation. It is the fallback image for repos with no
 detected language.
 
 Non-Python images install Python, yamllint, ansible-lint, and uv via the
-`python-support` fragment. `dev-python` installs them directly via pip.
+`python-support` fragment. `dev-python` is built on `dev-base` and takes them
+from it: see [Python](#python).
 `dev-base` is different: see [Base](#base).
 
 ## Python
 
-**Base**: `python:<version>-slim`
+**Base**: `dev-base` (`base:latest`)
 
-| Tool         | Purpose                        |
-| ------------ | ------------------------------ |
-| uv           | Python package manager         |
-| pytest-xdist | Parallel pytest execution      |
+The family Python is the python-build-standalone install-only build of the
+series, unpacked at `/opt/python/<version>`. Its release, version and each
+architecture's SHA-256 are pinned in `docker/pins/toolchains.yml`, and the
+build checks the download against the hash. `python3`, `python`,
+`python<version>`, `pip` and `pip3` in `/usr/local/bin` link into it, so
+`python3` is the series. It is a plain system interpreter, not a uv-managed
+one, so uv finds it with `UV_PYTHON_PREFERENCE=only-system`. base's own tools
+keep running on the core Python under `/opt/vergil/python/`.
 
-`pytest-xdist` is installed into the image's system Python so the shared
-vergil-tooling validation gate's Python TEST command can fan the suite across
-cores (`-n auto --dist worksteal`) fleet-wide without every consuming repo
-declaring it as a dev dependency. Consuming repos get parallel test execution
-by default — when `pytest-xdist` resolves (as it does in this image) and their
-`[test].parallel` setting is on (the default).
+| Tool | Purpose                       |
+| ---- | ----------------------------- |
+| pip  | The series' bundled pip       |
+
+Nothing is pip-installed into the family Python, and its bundled pip is never
+upgraded in place: a fix comes with a newer pin of the series.
+
+`pytest-xdist` is no longer in the image. A consuming repo that wants
+parallel tests declares it in its dev dependencies. Without it the shared
+vergil-tooling validation gate runs the suite serially.
 
 ## Go
 

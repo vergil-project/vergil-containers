@@ -44,6 +44,9 @@ families:
     token_prefix: ""
     build_arg: "PYTHON_VERSION"
     automation: "pr"
+    parent:
+      name: "base"
+      version: "latest"
     versions:
       - version: "3.15"
         ga: 2026-10-09

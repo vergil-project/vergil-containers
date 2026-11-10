@@ -21,7 +21,8 @@ major). Without `--write` it prints what would change and writes nothing.
 **One fetcher per upstream.** `pbs_releases`, `go_releases`, `node_releases`,
 `rust_release` and `rustup_init_release` each fetch and parse one upstream,
 taking an injectable `fetch(url) -> bytes`. The lifecycle adapters import them
-rather than fetching the same upstream themselves (spec §5.4), and the tests
+rather than fetching the same upstream themselves (spec §5.4; the python
+adapter reads `pbs_series_builds`, the search `resolve_python` pins from), and the tests
 inject canned bodies, so no test touches the network.
 
 **Fail loud.** A schema violation raises ToolchainsError, a failed lookup
@@ -446,10 +447,13 @@ def pbs_builds(release: str, fetch: Fetch = fetch_url) -> dict[str, Pin]:
     return builds
 
 
-def resolve_python(series: Iterable[str], fetch: Fetch = fetch_url) -> dict[str, Pin]:
-    """Each series' pin: its build in the newest python-build-standalone
-    release that has an install-only build of the series for both
-    architectures."""
+def pbs_series_builds(series: Iterable[str], fetch: Fetch = fetch_url) -> dict[str, Pin]:
+    """The series that python-build-standalone builds, each with its build in
+    the newest recent release that has an install-only build of it for both
+    architectures. A series no recent release builds is absent from the
+    result; a failed fetch or parse raises. `resolve_python` (the pins) and the
+    python lifecycle adapter (installability, spec §5.4) both read it, so a
+    series the adapter calls installable is one the refresh can pin."""
     wanted = list(series)
     found: dict[str, Pin] = {}
     for release in pbs_releases(fetch):
@@ -459,6 +463,15 @@ def resolve_python(series: Iterable[str], fetch: Fetch = fetch_url) -> dict[str,
         for s in wanted:
             if s not in found and s in builds:
                 found[s] = builds[s]
+    return found
+
+
+def resolve_python(series: Iterable[str], fetch: Fetch = fetch_url) -> dict[str, Pin]:
+    """Each series' pin: its build in the newest python-build-standalone
+    release that has an install-only build of the series for both
+    architectures."""
+    wanted = list(series)
+    found = pbs_series_builds(wanted, fetch)
     missing = [s for s in wanted if s not in found]
     if missing:
         raise ResolutionError(

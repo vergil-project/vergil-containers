@@ -213,7 +213,9 @@ def test_render_docs_tables(repo):
         rows = block.splitlines()
         assert rows[0].split("|")[1:5] == [" Image           ", " Language   ",
                                            " Versions         ", " Base                 "]
-        assert "| `dev-python`    | python     | 3.14, 3.13, 3.12 | `python:<v>-slim`    |" in rows
+        # python is built on base (Task 8), but the frozen manifest gives it no
+        # parent, so its row shows the template's FROM as written.
+        assert "| `dev-python`    | python     | 3.14, 3.13, 3.12 | `${PARENT_IMAGE}`    |" in rows
         assert "| `dev-cpp-clang` | cpp        | 20, 19           | `debian:trixie-slim` |" in rows
         assert "| `dev-ts-node`   | typescript | 24, 22           | `debian:trixie-slim` |" in rows
         # The frozen manifest gives base no parent, so its row shows the
