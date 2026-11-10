@@ -14,6 +14,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -210,6 +211,99 @@ def test_evidence_fails_closed_otherwise(tmp_path, select, has, build, why):
     assert result.returncode != 0
     assert result.stdout.startswith("::error title=")
     assert why in result.stdout
+
+
+# --- images / evidence: the ci-evidence-images artifact ---------------------
+
+EMIT = "vergil-project/vergil-actions/actions/ci/evidence/emit"
+
+
+def test_vergil_toml_declares_the_images_gate():
+    # vergil-tooling#4132: `[ci].images` makes `images / evidence` a required
+    # check and makes a release harvest `ci-evidence-images`, which the emit
+    # step below uploads. Both live in the same commit.
+    config = tomllib.loads((frozen.LIVE_ROOT / "vergil.toml").read_text())
+    assert config["ci"]["images"] is True
+
+
+def test_evidence_steps_check_then_report_then_emit():
+    steps = _job("evidence")["steps"]
+    assert [s.get("id") or s.get("uses", "").split("@")[0] for s in steps] == ["evidence", "report", EMIT]
+    # No step carries an `if`: the report and the upload run on every passing
+    # run, whatever was selected, and never after the check has failed.
+    for step in steps:
+        assert "if" not in step, step.get("name")
+
+
+def test_emit_uploads_the_images_gate_with_the_report():
+    emit = _uses("evidence", EMIT)
+    # Pinned like the repo's other vergil-actions uses.
+    assert emit["uses"] == f"{EMIT}@v2.1"
+    assert emit["with"]["gate"] == "images"
+    assert emit["with"]["files"] == "${{ steps.report.outputs.path }}"
+    assert emit["with"]["metrics"] == "${{ steps.report.outputs.metrics }}"
+    tools = json.loads(emit["with"]["tools"])
+    trivy = next(t for t in tools if t["name"] == "trivy")
+    assert trivy["image"] == _step("build", "Build, scan and smoke-test")["env"]["TRIVY_IMAGE"]
+
+
+def test_report_reads_the_select_and_build_results():
+    env = _step("evidence", "report")["env"]
+    assert env == {
+        "SELECT_RESULT": "${{ needs.select.result }}",
+        "HAS": "${{ needs.select.outputs.has }}",
+        "BUILD_RESULT": "${{ needs.build.result }}",
+        "MATRIX": "${{ needs.select.outputs.matrix }}",
+        "JOBS": "${{ needs.select.outputs.arch-matrix }}",
+        "REPORT_DIR": "${{ runner.temp }}/images-report",
+    }
+
+
+def _report(tmp_path, has, build, matrix, jobs):
+    out = tmp_path / "out"
+    out.write_text("")
+    env = {"SELECT_RESULT": "success", "HAS": has, "BUILD_RESULT": build,
+           "MATRIX": matrix, "JOBS": jobs, "REPORT_DIR": str(tmp_path / "report"),
+           "GITHUB_OUTPUT": str(out)}
+    return _bash(_step("evidence", "report")["run"], tmp_path, env), out
+
+
+def test_report_of_a_build_lists_what_was_selected_and_each_job(tmp_path):
+    matrix = {"include": [{"language": "go", "version": "1.26"}]}
+    jobs = {"include": [{"name": "go:1.26", "arch": a, "runner": RUNNERS[a], "entries": []}
+                        for a in ("amd64", "arm64")]}
+    result, out = _report(tmp_path, "true", "success", json.dumps(matrix), json.dumps(jobs))
+    assert result.returncode == 0, result.stdout + result.stderr
+    outputs = _outputs(out)
+    report = json.loads(Path(outputs["path"]).read_text())
+    assert Path(outputs["path"]) == tmp_path / "report" / "selected.json"
+    assert report == {
+        "select": "success", "has": True, "build": "success",
+        "selected": matrix["include"],
+        "jobs": [{"name": "go:1.26", "arch": "amd64", "runner": RUNNERS["amd64"], "result": "success"},
+                 {"name": "go:1.26", "arch": "arm64", "runner": RUNNERS["arm64"], "result": "success"}],
+    }
+    assert json.loads(outputs["metrics"]) == {"selected": 1, "jobs": 2, "build": "success"}
+
+
+def test_report_is_written_when_nothing_was_selected(tmp_path):
+    empty = '{"include":[]}'
+    result, out = _report(tmp_path, "false", "skipped", empty, empty)
+    assert result.returncode == 0, result.stdout + result.stderr
+    outputs = _outputs(out)
+    report = json.loads(Path(outputs["path"]).read_text())
+    assert report == {"select": "success", "has": False, "build": "skipped", "selected": [], "jobs": []}
+    assert json.loads(outputs["metrics"]) == {"selected": 0, "jobs": 0, "build": "skipped"}
+
+
+@pytest.mark.parametrize(("matrix", "jobs"), [
+    ("", '{"include":[]}'),
+    ('{"include":[]}', "not json"),
+])
+def test_report_fails_on_malformed_select_outputs(tmp_path, matrix, jobs):
+    result, out = _report(tmp_path, "false", "skipped", matrix, jobs)
+    assert result.returncode != 0
+    assert out.read_text() == ""
 
 
 # --- images / select -------------------------------------------------------
