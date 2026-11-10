@@ -2,8 +2,9 @@
 docs/site/docs/languages/cpp-gcc.md).
 
 Window: the release series gcc.gnu.org lists as maintained, limited to those
-the image's Debian base packages. There is no endoflife.date product, so the
-adapter reads two gcc.gnu.org pages and fails loud if either cannot be parsed:
+the image's Ubuntu 24.04 (noble) base ships as a release. There is no
+endoflife.date product, so the adapter reads two gcc.gnu.org pages and fails
+loud if either cannot be parsed:
 
 - the GCC Releases page (`releases.html`), whose timeline table dates every
   release. A major is GA on its `X.1` release (since GCC 5, `X.0` is a
@@ -14,8 +15,12 @@ adapter reads two gcc.gnu.org pages and fails loud if either cannot be parsed:
   development series is listed too, but has no `X.1` release yet, so it is
   not GA.
 
-A major is installable when Debian trixie has the `gcc-<major>` source
-package; a maintained major trixie lacks surfaces as blocked, not behind.
+A major is installable when noble publishes a released `gcc-<major>` source
+package in a pocket the image installs from (Release, Updates or Security):
+a version `<major>.<minor>.<patch>-<revision>`, such as noble-updates'
+`14.2.0-4ubuntu2~24.04.1`. A pre-release snapshot such as noble's own
+`14-20240412-0ubuntu1` does not count. A maintained major noble does not ship
+as a release surfaces as blocked, not behind.
 """
 from __future__ import annotations
 
@@ -32,19 +37,27 @@ from lifecycle.core import (
     UpstreamRelease,
     ga_not_eol,
 )
-from lifecycle.sources import Fetch, debian_source_in_suite, fetch_url
+from lifecycle.sources import Fetch, fetch_url, ubuntu_source_versions
 
 Packaged = Callable[[str, str], bool]
 
 RELEASES_URL = "https://gcc.gnu.org/releases.html"
 HOME_URL = "https://gcc.gnu.org/"
-DEBIAN_SUITE = "trixie"
+UBUNTU_SERIES = "noble"
 FIRST_MODERN_MAJOR = 5  # GCC 5 started "one major per release, X.1 is the first"
 
 _TIMELINE_RE = re.compile(r'id="timeline".*?<table[^>]*>(.*?)</table>', re.S)
 _ROW_RE = re.compile(r"<tr><td><a[^>]*>GCC (\d+)\.(\d+)(?:\.\d+)?</a></td>\s*<td>([^<]+)</td></tr>")
 _SUPPORTED_RE = re.compile(r"<h2>Supported Releases</h2>(.*?)</dl>", re.S)
 _SERIES_RE = re.compile(r"<!--GCC (\d+) status below-->")
+
+
+def ubuntu_has_release(package: str, series: str, fetch: Fetch) -> bool:
+    """Whether `series` publishes a released version of `package` (`gcc-<major>`):
+    `<major>.<minor>.<patch>-<revision>`, never a `<major>-<date>` snapshot."""
+    major = package.removeprefix("gcc-")
+    released = re.compile(rf"^{re.escape(major)}\.\d+\.\d+-")
+    return any(released.match(v) for v in ubuntu_source_versions(package, series, fetch))
 
 
 def _decode(url: str, body: bytes) -> str:
@@ -99,7 +112,7 @@ class GccAdapter:
 
     def __init__(self, fetch: Fetch = fetch_url, packaged: Packaged | None = None) -> None:
         self._fetch = fetch
-        self._packaged = packaged or partial(debian_source_in_suite, fetch=fetch)
+        self._packaged = packaged or partial(ubuntu_has_release, fetch=fetch)
 
     def fetch(self) -> list[UpstreamRelease]:
         ga = parse_releases(_decode(RELEASES_URL, self._fetch(RELEASES_URL)))
@@ -111,7 +124,7 @@ class GccAdapter:
 
     def target(self, releases: list[UpstreamRelease], today: date) -> list[TargetVersion]:
         return [
-            TargetVersion(r.version, r.ga, r.eol, self._packaged(f"gcc-{r.version}", DEBIAN_SUITE))
+            TargetVersion(r.version, r.ga, r.eol, self._packaged(f"gcc-{r.version}", UBUNTU_SERIES))
             for r in ga_not_eol(releases, today)
         ]
 
