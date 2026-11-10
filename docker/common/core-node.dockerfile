@@ -24,9 +24,10 @@ ARG CORE_NODE_SHA256_ARM64
 
 # SC2016: the wrapper's "$@" is the wrapper's, written literally by printf.
 # hadolint ignore=SC2016
-RUN for arg in CORE_NODE_MAJOR CORE_NODE_VERSION CORE_NODE_SHA256_AMD64 CORE_NODE_SHA256_ARM64; do \
-      if [ -z "${!arg}" ]; then echo "core-node: the ${arg} build arg is not set" >&2; exit 1; fi; \
-    done && \
+RUN : "${CORE_NODE_MAJOR:?core-node: the CORE_NODE_MAJOR build arg is not set}" && \
+    : "${CORE_NODE_VERSION:?core-node: the CORE_NODE_VERSION build arg is not set}" && \
+    : "${CORE_NODE_SHA256_AMD64:?core-node: the CORE_NODE_SHA256_AMD64 build arg is not set}" && \
+    : "${CORE_NODE_SHA256_ARM64:?core-node: the CORE_NODE_SHA256_ARM64 build arg is not set}" && \
     case "${CORE_NODE_VERSION}" in \
       "${CORE_NODE_MAJOR}".*) ;; \
       *) echo "core-node: CORE_NODE_VERSION ${CORE_NODE_VERSION} is not a release of Node ${CORE_NODE_MAJOR}" >&2; exit 1 ;; \
