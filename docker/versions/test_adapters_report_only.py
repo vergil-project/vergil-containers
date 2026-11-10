@@ -1,6 +1,7 @@
 """The report-only adapters (Rust, Node, Clang, GCC) against fixtures that
 are copies of the upstream responses on 2026-10-21 (the apt.llvm.org noble
-index on 2026-11-10). No test touches the network."""
+index and Launchpad's noble gcc-14 sources on 2026-11-10). No test touches the
+network."""
 import json
 from datetime import date
 from pathlib import Path
