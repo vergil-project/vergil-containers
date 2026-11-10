@@ -270,8 +270,18 @@ def test_live_matrix_embeds_the_live_pins():
     root = DOCKER.parent
     pins = rt.load_toolchains(root / g.TOOLCHAINS)
     matrix = json.loads((root / g.MATRIX_JSON).read_text())
-    rows = {(e["language"], e["version"]): e["build-args"] for e in matrix["include"]}
-    assert rows[("go", "1.27")]["TOOLCHAIN_VERSION"] == pins.series["go"]["1.27"].version
+    families = {f.key: f for f in mf.load_manifest(root / g.MANIFEST).families}
+    # No live version is named (#654): every row is checked against the
+    # live pins, and the check is never vacuous.
+    pinned = 0
+    for e in matrix["include"]:
+        if e["language"] not in families:
+            continue
+        f = families[e["language"]]
+        toolchain = rt.build_args(pins, f.key, e["version"])
+        assert e["build-args"] == {f.build_arg: e["version"], **toolchain}
+        pinned += bool(toolchain)
+    assert pinned > 0
 
 
 def test_catalog_lists_every_toolchain_pin():
