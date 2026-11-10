@@ -27,8 +27,9 @@ The shared `:cache-<version>` tags from before the per-arch builds are no
 longer written; they can be deleted by hand.
 
 Multiply by every package (each image under both prefixes) and nightly
-cadence and the untagged versions pile up without bound. None of this is referenced by a consumer-facing tag, but GHCR
-keeps it forever unless told otherwise.
+cadence and the untagged versions pile up without bound. None of this is
+referenced by a consumer-facing tag, but GHCR keeps it forever unless told
+otherwise.
 
 ## Cleaning up the personal namespace (one-off)
 
