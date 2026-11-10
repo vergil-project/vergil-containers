@@ -61,11 +61,12 @@ T5's image resolution (`prod-ts-node:<major>`) and T7's CI workflows consume.
 ## Building and smoke-testing locally
 
 ```bash
-docker/generate.sh ts-node
-nerdctl build --build-arg NODE_MAJOR=24 -t dev-ts-node:24 docker/ts-node
+docker/build.sh ts-node
 docker/ts-node/smoke-test.sh dev-ts-node:24
 ```
 
-`docker/build.sh` builds the pinned major(s) and runs the smoke check for each.
-Manual builds must pass `--build-arg NODE_MAJOR=<major>`; the template's default
-(24) documents the primary.
+`docker/build.sh ts-node` builds the image's parents (`pkg-ubuntu:24.04`, then
+`base`) and every pinned major, each with the build args of its
+`docker/versions/matrix.json` entry (`NODE_MAJOR` and the `TOOLCHAIN_*` pins),
+and runs the smoke check for each. A manual `nerdctl build` must pass the same
+build args and `PARENT_IMAGE`; the build fails if any is missing.

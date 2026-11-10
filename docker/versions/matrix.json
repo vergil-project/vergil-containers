@@ -1,30 +1,6 @@
 {
   "include": [
     {
-      "language": "ts-node",
-      "version": "24",
-      "build-args": {
-        "NODE_MAJOR": "24",
-        "TOOLCHAIN_VERSION": "24.22.2",
-        "TOOLCHAIN_SHA256_AMD64": "361718c444e49af2ca5a110c83ba6a8901143f23ab285ebbef0341f391f482a9",
-        "TOOLCHAIN_SHA256_ARM64": "95c264150aceb7f3437a29fd6984924f5f8d1511ea3cbd6c508b83f6c555dae2"
-      },
-      "parent": null,
-      "depth": 0
-    },
-    {
-      "language": "ts-node",
-      "version": "22",
-      "build-args": {
-        "NODE_MAJOR": "22",
-        "TOOLCHAIN_VERSION": "22.23.4",
-        "TOOLCHAIN_SHA256_AMD64": "b8492284c76a54baf58d61668dd0e41ee0fc98adabf9503d30f05d08f55b4406",
-        "TOOLCHAIN_SHA256_ARM64": "f7a1e486dbc8b286847815b477d4fb5e9fb963ed4489c3e1588853d685f589f9"
-      },
-      "parent": null,
-      "depth": 0
-    },
-    {
       "language": "pkg-ubuntu",
       "version": "26.04",
       "build-args": {
@@ -231,6 +207,36 @@
       "version": "14",
       "build-args": {
         "GCC_VERSION": "14"
+      },
+      "parent": {
+        "language": "base",
+        "version": "latest"
+      },
+      "depth": 2
+    },
+    {
+      "language": "ts-node",
+      "version": "24",
+      "build-args": {
+        "NODE_MAJOR": "24",
+        "TOOLCHAIN_VERSION": "24.22.2",
+        "TOOLCHAIN_SHA256_AMD64": "361718c444e49af2ca5a110c83ba6a8901143f23ab285ebbef0341f391f482a9",
+        "TOOLCHAIN_SHA256_ARM64": "95c264150aceb7f3437a29fd6984924f5f8d1511ea3cbd6c508b83f6c555dae2"
+      },
+      "parent": {
+        "language": "base",
+        "version": "latest"
+      },
+      "depth": 2
+    },
+    {
+      "language": "ts-node",
+      "version": "22",
+      "build-args": {
+        "NODE_MAJOR": "22",
+        "TOOLCHAIN_VERSION": "22.23.4",
+        "TOOLCHAIN_SHA256_AMD64": "b8492284c76a54baf58d61668dd0e41ee0fc98adabf9503d30f05d08f55b4406",
+        "TOOLCHAIN_SHA256_ARM64": "f7a1e486dbc8b286847815b477d4fb5e9fb963ed4489c3e1588853d685f589f9"
       },
       "parent": {
         "language": "base",

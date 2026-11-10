@@ -1,56 +1,88 @@
 # Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
 # Canonical source: https://github.com/vergil-project/vergil-containers
-# dev-ts-node — TypeScript dev image, Node.js runtime family.
+# dev-ts-node — TypeScript dev image, Node.js runtime family, built on base
+# (epic vergil-project/.github#649, spec §5.3).
 #
-# The runtime is a prebuilt stable official Node binary from the NodeSource apt
-# channel (deb.nodesource.com) — never built from source (epic
-# vergil-project/.github#284 §3.5, "prebuilt stable toolchains only"). NODE_MAJOR
-# is the runtime-major matrix axis (see docker/build.sh and the version discovery
-# record in this directory's README.md): node-24 is the primary (T1); node-22 is
-# the second image (T2). The shared, runtime-agnostic TypeScript analysis toolset
-# is composed in via common/typescript-analysis.
+# The parent comes from docker/versions/manifest.yml (`ts-node: parent:`):
+# docker/build.sh and the publish workflow pass it as PARENT_IMAGE. base brings
+# every common tool, the core Python and the core Node that markdownlint runs on
+# (/opt/vergil/node/<core-major>); this image adds the family's own Node beside
+# them, never in their place (spec §5.2.1).
 #
-# Unlike the C++ images, this image installs its own matrix-versioned Node rather
-# than composing common/node-markdownlint.dockerfile: here Node IS the runtime,
-# so it must be the pinned matrix major (24/22), not that fragment's fixed
-# markdownlint-only Node 22. This single Node install serves both the runtime and
-# the markdownlint-cli common check.
-ARG NODE_MAJOR=24
-FROM debian:trixie-slim
+# The family Node is the nodejs.org prebuilt tarball for NODE_MAJOR, the
+# runtime-major matrix axis: never built from source (epic
+# vergil-project/.github#284 §3.5). Its release and the SHA-256 of each
+# architecture's tarball are pinned in docker/pins/toolchains.yml, which
+# generate.py emits as the TOOLCHAIN_* build args. The shared, runtime-agnostic
+# TypeScript analysis toolset is composed in via common/typescript-analysis.
+ARG PARENT_IMAGE
+FROM ${PARENT_IMAGE}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+# Build-time only: apt never prompts. An ARG, so it is not set in the image.
+ARG DEBIAN_FRONTEND=noninteractive
+
 # --- System packages ---------------------------------------------------------
+# pkg-config, for native addons a consumer's npm install builds; base has the
+# rest of today's list.
 RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-      git curl jq openssh-client pkg-config xz-utils gnupg ca-certificates && \
+    apt-get install -y --no-install-recommends pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
-# @include common/path-defaults.dockerfile
+# --- Node.js runtime (prebuilt, nodejs.org) ----------------------------------
+# The pinned tarball for TARGETARCH is downloaded, checked against its pinned
+# SHA-256 and unpacked at /opt/node/<NODE_MAJOR>; a missing build arg, a release
+# outside the major or a hash mismatch fails the build. node, npm and npx link
+# into /usr/local/bin, so this Node is the image's default. npm's global prefix
+# is /usr (the npmrc the tarball's npm reads), so `npm root -g` stays
+# /usr/lib/node_modules and global bins land in /usr/bin, as consumers expect
+# (spec §5.3, §5.5).
+#
+# The bundled npm is the runtime's and is never upgraded in place (spec §5.8):
+# a finding in it is fixed by moving this major's pin, and until a fixed release
+# exists it is a .trivyignore entry. markdownlint stays base's wrapper on the
+# core Node.
+ARG TARGETARCH
+ARG NODE_MAJOR=24
+ARG TOOLCHAIN_VERSION
+ARG TOOLCHAIN_SHA256_AMD64
+ARG TOOLCHAIN_SHA256_ARM64
+RUN : "${NODE_MAJOR:?ts-node: the NODE_MAJOR build arg is not set}" && \
+    : "${TOOLCHAIN_VERSION:?ts-node: the TOOLCHAIN_VERSION build arg is not set}" && \
+    : "${TOOLCHAIN_SHA256_AMD64:?ts-node: the TOOLCHAIN_SHA256_AMD64 build arg is not set}" && \
+    : "${TOOLCHAIN_SHA256_ARM64:?ts-node: the TOOLCHAIN_SHA256_ARM64 build arg is not set}" && \
+    case "${TOOLCHAIN_VERSION}" in \
+      "${NODE_MAJOR}".*) ;; \
+      *) echo "ts-node: TOOLCHAIN_VERSION ${TOOLCHAIN_VERSION} is not a release of Node ${NODE_MAJOR}" >&2; exit 1 ;; \
+    esac && \
+    case "${TARGETARCH}" in \
+      amd64) node_arch=x64; sha256="${TOOLCHAIN_SHA256_AMD64}" ;; \
+      arm64) node_arch=arm64; sha256="${TOOLCHAIN_SHA256_ARM64}" ;; \
+      *) echo "ts-node: unsupported TARGETARCH '${TARGETARCH}'" >&2; exit 1 ;; \
+    esac && \
+    node_dir="/opt/node/${NODE_MAJOR}" && \
+    tarball="node-v${TOOLCHAIN_VERSION}-linux-${node_arch}.tar.gz" && \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+      "https://nodejs.org/dist/v${TOOLCHAIN_VERSION}/${tarball}" -o "/tmp/${tarball}" && \
+    echo "${sha256}  /tmp/${tarball}" | sha256sum -c - && \
+    mkdir -p "${node_dir}" && \
+    tar -xzf "/tmp/${tarball}" --strip-components=1 --no-same-owner -C "${node_dir}" && \
+    rm "/tmp/${tarball}" && \
+    mkdir -p "${node_dir}/etc" && \
+    echo 'prefix=/usr' > "${node_dir}/etc/npmrc" && \
+    for cmd in node npm npx; do ln -s "${node_dir}/bin/${cmd}" "/usr/local/bin/${cmd}"; done && \
+    got="$(node --version)" && \
+    if [ "${got}" != "v${TOOLCHAIN_VERSION}" ]; then echo "ts-node: node is ${got}, want v${TOOLCHAIN_VERSION}" >&2; exit 1; fi && \
+    got="$(npm root -g)" && \
+    if [ "${got}" != /usr/lib/node_modules ]; then echo "ts-node: npm root -g is ${got}, want /usr/lib/node_modules" >&2; exit 1; fi
 
-# --- Node.js runtime (prebuilt, NodeSource apt) ------------------------------
-# Install the matrix-major Node from NodeSource (prebuilt stable binary — never
-# built from source, spec §3.5). npm ships with Node. Then upgrade the
-# NodeSource-bundled npm to the latest release: older bundled npm vendors
-# node-tar / brace-expansion versions carrying HIGH/CRITICAL CVEs, and npm@latest
-# vendors the patched versions (issue #461). npm is build-time-only tooling.
-# markdownlint-cli is installed here (not via common/node-markdownlint) because
-# this image's own Node is the one it runs on. The install fails the build
-# unless the result is NodeSource's Node NODE_MAJOR with npm (issue #657).
-ARG NODE_MAJOR
-# @include common/nodesource-node.dockerfile
-# npm@latest, matching common/node-markdownlint.dockerfile (see there for the
-# history of the temporary #605 range pin, lifted by issue #678).
-RUN npm install -g npm@latest && \
-    npm install -g markdownlint-cli && \
-    npm cache clean --force
-
-# @include common/github-cli.dockerfile
-# @include common/validation-tools.dockerfile
-# @include common/python-support.dockerfile
 # @include common/typescript-analysis.dockerfile
-# @include common/nfpm.dockerfile
-# @include common/rpm.dockerfile
-# @include common/pandoc.dockerfile
+
+# --- Build-time checks -------------------------------------------------------
+# base's invariants, the base defaults this image keeps, and the family's own
+# checks (checks.sh). It runs from the build context and is not kept. Any
+# failure fails the build.
+RUN --mount=type=bind,source=checks.sh,target=/tmp/vergil-checks.sh \
+    bash /tmp/vergil-checks.sh
 
 WORKDIR /workspace

@@ -32,7 +32,7 @@ from `develop` and the `prod-` prefix from `main`: a language image is
 | `dev-rust`       | rust       | 1.93, 1.92             | `base:latest`                           |
 | `dev-cpp-clang`  | cpp        | 20, 19                 | `base:latest`                           |
 | `dev-cpp-gcc`    | cpp        | 14                     | `base:latest`                           |
-| `dev-ts-node`    | typescript | 24, 22                 | `debian:trixie-slim`                    |
+| `dev-ts-node`    | typescript | 24, 22                 | `base:latest`                           |
 | `dev-pkg-ubuntu` | —          | 26.04, 24.04           | `ubuntu:<v>`                            |
 | `dev-pkg-rhel`   | —          | 10, 9                  | `registry.access.redhat.com/ubi<v>/ubi` |
 | `dev-base`       | —          | latest                 | `pkg-ubuntu:24.04`                      |
