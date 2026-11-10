@@ -20,14 +20,22 @@ system package manager or download the binaries.
 
 ### Required status checks on develop
 
-- **Hadolint** — lint all generated Dockerfiles
-- **ShellCheck** — lint `docker/build.sh` and `docker/generate.sh`
-- **Security and standards** (via `vergil-actions/ci-security`):
-  - Semgrep (Dockerfile language rules)
-  - Repository profile validation
-  - Markdownlint
-  - Commit message lint (conventional commits)
-  - PR issue linkage validation
+The required checks are not set by hand. They come from vergil-tooling's
+generated `CI gates` ruleset, which is computed from `vergil.toml` and kept in
+line by the daily config audit; see
+[CI gates](https://vergil-project.github.io/vergil-tooling/guides/ci-architecture/#ci-gates)
+for the rule. For this repository they are:
+
+- **`quality / evidence`** — the aggregate of the quality jobs, including the
+  repo's custom validator (`quality / custom`)
+- **`security / trivy`** and **`security / semgrep`** (via
+  `vergil-actions/ci-security`), plus the GitHub code-scanning checks
+  **`Trivy`** and **`Semgrep OSS`**
+- **`docs / docs`** — the docs build
+- **`version / version-bump`** — the version-bump gate
+- **`images / evidence`** — the aggregating gate of `ci-images.yml`, which
+  builds and scans the images a pull request changes; required because
+  `vergil.toml` sets `[ci].images = true`
 
 ### Claude Code hook guard
 

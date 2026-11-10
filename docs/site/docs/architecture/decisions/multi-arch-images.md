@@ -34,7 +34,10 @@ layer count down.
 
 CI builds each platform on its own native GitHub-hosted runner: amd64
 on `ubuntu-24.04` and arm64 on `ubuntu-24.04-arm`. Each build pushes
-its image by digest, untagged. The publish job for the image then
+its image by digest, untagged, retrying a failed push up to three
+attempts in all after a jittered back-off
+([vergil-containers#794](https://github.com/vergil-project/vergil-containers/issues/794)).
+The publish job for the image then
 stitches the two digests into the multi-arch candidate with
 `docker buildx imagetools create`, and the scan, attest and promote
 steps below run on that candidate.
@@ -44,8 +47,10 @@ under QEMU (`docker/setup-qemu-action`), because native arm64 runners
 were not available then. Compiling toolchains under emulation made the
 arm64 half dominate the nightly's no-cache build time, so
 [vergil-containers#515](https://github.com/vergil-project/vergil-containers/issues/515)
-moved it to native runners. Restoring the QEMU build is a change to
-`cd-docker-publish.yml` alone.
+moved it to native runners. Pull request CI (`ci-images.yml`,
+[vergil-containers#514](https://github.com/vergil-project/vergil-containers/issues/514))
+builds natively per arch the same way, so restoring the QEMU build would
+change both `cd-docker-publish.yml` and `ci-images.yml`.
 
 ### Staging-tag scan flow
 
