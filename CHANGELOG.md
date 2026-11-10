@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.36] - 2026-11-10
+
+### CI
+
+- build images natively per arch, stitch the multi-arch manifest and fold base into the matrix (#774)
+- retry the per-arch push by digest on a sporadic GHCR denial (#796)
+- build and scan only the images a PR changes, with one aggregating gate (#795)
+
+### Features
+
+- build images in tiers from their manifest parents, with per-entry build args (#775)
+- derive each image's @include dependency graph (#784)
+- select the images a change affects from its paths and matrix diff (#791)
+- add a toolchains section for non-language images (#793)
+- add pkg-ubuntu and pkg-rhel package toolchain images (#797)
+
+### Refactoring
+
+- declare pyyaml in each script and run them with uv run (#792)
+
 ## [2.1.35] - 2026-11-09
 
 ### Chores
