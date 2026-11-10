@@ -1,7 +1,11 @@
 """Go adapter (policy: docs/site/docs/languages/go.md).
 
 Window: the two newest GA releases (spec §5.1). Source: endoflife.date `go`.
-A version is installable when the official `golang:<v>` base image tag exists.
+A version is installable when go.dev's release list has a stable `go<v>.x`
+release with a Linux archive for both architectures: the image installs that
+download (epic vergil-project/.github#649, spec §5.4). The list is read with
+the go.dev fetcher of `docker/pins/resolve_toolchains.py`, the one the
+toolchain pin refresh uses, so go.dev is fetched and parsed in one place.
 
 Quirk: with GOTOOLCHAIN=local some tool pins depend on the Go version, so
 dropping a version also means retiring its `case go<v>*)` branch in the Go
@@ -11,17 +15,19 @@ returned by `extra_changes` as manual follow-ups for the PR body.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+import sys
 from datetime import date
-from functools import partial
 from pathlib import Path
 
 import yaml
 
 from lifecycle.core import Change, SourceError, TargetVersion, UpstreamRelease, ga_only, newest_n
-from lifecycle.sources import Fetch, docker_hub_tag_exists, endoflife, fetch_url
+from lifecycle.sources import Fetch, endoflife, fetch_url
 
-TagExists = Callable[[str, str], bool]
+_PINS_DIR = str(Path(__file__).resolve().parents[3] / "pins")
+if _PINS_DIR not in sys.path:
+    sys.path.append(_PINS_DIR)
+import resolve_toolchains as rt  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 TEMPLATE = Path("docker/go/Dockerfile.template")
@@ -32,27 +38,31 @@ class GoAdapter:
     key = "go"
     evidence_url = "https://endoflife.date/go"
     product = "go"
-    image = "golang"
     window = 2
 
-    def __init__(
-        self,
-        fetch: Fetch = fetch_url,
-        tag_exists: TagExists | None = None,
-        root: Path = REPO_ROOT,
-    ) -> None:
+    def __init__(self, fetch: Fetch = fetch_url, root: Path = REPO_ROOT) -> None:
         self._fetch = fetch
-        self._tag_exists = tag_exists or partial(docker_hub_tag_exists, fetch=fetch)
         self._root = root
 
     def fetch(self) -> list[UpstreamRelease]:
         return endoflife(self.product, self._fetch)
 
     def target(self, releases: list[UpstreamRelease], today: date) -> list[TargetVersion]:
+        published = self.published_series()
         return [
-            TargetVersion(r.version, r.ga, r.eol, self._tag_exists(self.image, r.version))
+            TargetVersion(r.version, r.ga, r.eol, r.version in published)
             for r in newest_n(ga_only(releases, today), self.window)
         ]
+
+    def published_series(self) -> set[str]:
+        """The series ("1.27") with a stable go.dev release that has a Linux
+        archive for every architecture. An unreadable or malformed listing
+        raises SourceError: it never reads as "not installable"."""
+        try:
+            releases = rt.go_releases(self._fetch)
+        except rt.ResolutionError as exc:
+            raise SourceError(f"go.dev: {exc}") from exc
+        return {version.rsplit(".", 1)[0] for version in releases}
 
     def extra_changes(self, change: Change) -> list[str]:
         """Follow-ups for a dropped version: its `case` branch and `pins.yml` holds."""

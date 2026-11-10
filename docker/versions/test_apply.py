@@ -47,12 +47,37 @@ def _fixture_fetch(product, extra=()):
     return fetch
 
 
+GO_DEV = "https://go.dev/dl/?mode=json&include=all"
+
+
+def _go_fetch(extra=()):
+    """endoflife.date's `go` fixture plus the `extra` cycles, and go.dev's
+    release list: its fixture plus each extra cycle's `latest` release, so every
+    cycle is installable."""
+    endoflife = _fixture_fetch("go", extra)
+
+    def fetch(url):
+        if url != GO_DEV:
+            return endoflife(url)
+        listing = json.loads((FIXTURES / "godev-releases.json").read_text())
+        for cycle in extra:
+            version = f"go{cycle['latest']}"
+            listing.insert(0, {"version": version, "stable": True, "files": [
+                {"filename": f"{version}.linux-{a}.tar.gz", "os": "linux", "arch": a, "kind": "archive",
+                 "sha256": "a" * 64}
+                for a in ("amd64", "arm64")
+            ]})
+        return json.dumps(listing).encode()
+
+    return fetch
+
+
 def _adapters(go_extra=()):
     return {
         "python": PythonAdapter(
-            fetch=_fixture_fetch("python"), tag_exists=lambda image, tag: True, runtime_index=RUNTIME_314
+            fetch=_fixture_fetch("python"), built_series=set, runtime_index=RUNTIME_314
         ),
-        "go": GoAdapter(fetch=_fixture_fetch("go", go_extra), tag_exists=lambda image, tag: True),
+        "go": GoAdapter(fetch=_go_fetch(go_extra)),
     }
 
 

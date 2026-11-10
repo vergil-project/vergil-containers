@@ -92,8 +92,9 @@ Every language image includes the following shared fragments:
 - **`pandoc.dockerfile`** — pandoc for Markdown to `.docx`/HTML
   conversion (no TeX; PDF output is opt-in).
 
-`dev-python` installs yamllint and uv directly via pip rather than the
-`python-support` fragment.
+`dev-python` includes no fragment: it is built `FROM` `dev-base` and adds only
+the family Python, a pinned python-build-standalone build at
+`/opt/python/<version>`.
 
 The `dev-base` image is built `FROM` the package toolchain image
 `pkg-ubuntu:24.04` (epic vergil-project/.github#649), from which it takes uv
@@ -115,6 +116,11 @@ includes:
   runs the core Node by path.
 - **`core-tools.dockerfile`** — yamllint, ansible-lint, semgrep and MkDocs
   (with mkdocs-material and mike) as uv tools on the core Python.
+  `semgrep` and `pysemgrep` are wrappers that lower the stack hard limit
+  before running the tool, so that `semgrep-core` does not crash on Python
+  3.15 ([vergil-containers#825](https://github.com/vergil-project/vergil-containers/issues/825));
+  they go once semgrep fixes its stack-limit code upstream
+  ([vergil-containers#826](https://github.com/vergil-project/vergil-containers/issues/826)).
 
 The core series come from the manifest's `core:` section. Nothing in
 `dev-base` is pip-installed. Its last build step runs
