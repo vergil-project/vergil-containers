@@ -319,14 +319,26 @@ CVE-2026-84445
 CVE-2026-116587
 
 # =============================================================================
-# undici 6.29.0 bundled in npm 12.2.1 (every image but dev-base, whose core
-# Node keeps the npm it bundles: see the next group), at
-# /usr/lib/node_modules/npm/node_modules/undici. Fixed in 6.29.1 / 7.30.1 /
-# 8.12.2. Issue #677. The images install npm with `npm install -g npm@latest`
-# (common/node-markdownlint.dockerfile, ts-node/Dockerfile.template). npm
-# 12.2.1, the newest release and now the `latest` dist-tag, still bundles undici
-# 6.29.0, and so does npm 11.21.1, the newest 11.x (both tarballs re-checked
-# 2026-10-28, issue #732). No npm release exists to bump to.
+# undici bundled in npm, fixed in 6.29.1 / 7.30.1 / 8.12.2. Issue #677.
+# Carriers:
+#   - undici 6.29.0 in npm 12.2.1, at
+#     /usr/lib/node_modules/npm/node_modules/undici, in the images that still
+#     install npm with `npm install -g npm@latest`
+#     (common/node-markdownlint.dockerfile). npm 12.2.1, the newest release and
+#     now the `latest` dist-tag, still bundles undici 6.29.0, and so does npm
+#     11.21.1, the newest 11.x (both tarballs re-checked 2026-10-28, issue
+#     #732). No npm release exists to bump to.
+#   - undici 6.28.0 in npm 11.19.1, the npm bundled in Node 24.22.2, at
+#     /opt/node/24/lib/node_modules/npm/node_modules/undici (dev-ts-node:24).
+#     Epic vergil-project/.github#649 (vergil-containers#786): the family Node
+#     is the nodejs.org tarball pinned in docker/pins/toolchains.yml, and its
+#     npm is the runtime's, never upgraded in place (spec §5.8). 24.22.2 is the
+#     newest Node 24 (nodejs.org index, checked 2026-11-10). npm 11.19.1's only
+#     undici user is node-gyp 12.4.0, whose lib/download.js has the same
+#     createDispatcher() as node-gyp 13.0.0 below (checked 2026-11-10 in the
+#     built image). dev-ts-node:22's npm 10.9.9 bundles no undici.
+# dev-base's core Node keeps the npm it bundles, which carries none of these:
+# see the npm 10.9.9 group below.
 #
 # CVE-2026-109869 — undici fetch(): a malicious server that returns a response
 #   with more than five content codings and then closes the connection before
@@ -344,10 +356,11 @@ CVE-2026-116587
 #   none: it builds a bare `new Agent()`, or an EnvHttpProxyAgent configured
 #   through `connect`, `requestTls` and `proxyTls` (the advisory's own
 #   workaround), and it sets no checkServerIdentity at all (lib/download.js in
-#   the npm 12.2.1 tarball, checked 2026-10-28). The vulnerable path is not
-#   exercised.
+#   the npm 12.2.1 tarball, checked 2026-10-28; node-gyp 12.4.0 in npm 11.19.1
+#   is the same, checked 2026-11-10). The vulnerable path is not exercised.
 # In npm's bundled tree the only package that requires undici is node-gyp
-# 13.0.0. Its lib/download.js uses undici's fetch() for one job: downloading the
+# (13.0.0 in npm 12.2.1, 12.4.0 in npm 11.19.1). Its lib/download.js uses
+# undici's fetch() for one job: downloading the
 # Node.js header tarball and SHASUMS256.txt (process.release.headersUrl, by
 # default https://nodejs.org) when an install compiles a native addon from
 # source and the headers are not yet cached. npm's registry traffic goes through
@@ -363,26 +376,62 @@ CVE-2026-116587
 # covers CVE-2026-87018 (a crash of the same short-lived install, needing a
 # malicious TLS 1.2 header server).
 #
-# Remove all three once the npm release on the `latest` dist-tag bundles
-# undici >= 6.29.1 (which fixes every one of them).
-# The images install `npm@latest` (issue #678), so the nightly rebuild picks up
-# the newest npm on that tag without a pin change. Do not patch npm's bundled
-# node_modules in place.
+# Remove all three once no carrier is left (undici >= 6.29.1 fixes every one of
+# them): the `npm@latest` images clear once the npm release on the `latest`
+# dist-tag bundles it, which the nightly rebuild picks up without a pin change
+# (issue #678), or once no image installs `npm@latest`; dev-ts-node:24 clears
+# once a Node 24 release bundles an npm that does (the daily upstream refresh
+# moves the ts-node:24 pin to the newest 24.x), or once ts-node drops Node 24.
+# Do not patch npm's bundled node_modules in place.
 # =============================================================================
 CVE-2026-109869
 CVE-2026-87018
 CVE-2026-109383
 
 # =============================================================================
-# npm 10.9.9 bundled in the core Node 22.23.4 (dev-base, and every image built
-# on it), at /opt/vergil/node/22/lib/node_modules/npm/. Epic
-# vergil-project/.github#649 (vergil-containers#779; found by the spike,
-# vergil-project/.github#982). The core Node is the nodejs.org tarball pinned
-# in docker/pins/toolchains.yml (common/core-node.dockerfile), and its npm is
-# the runtime's: it is never upgraded in place (spec §5.8), so a fix arrives
-# only with a Node release. 22.23.4 is the newest Node 22 (nodejs.org index,
-# checked 2026-11-09), so there is no runtime to move to within the major. All
-# HIGH, all in packages npm vendors; none is in Node itself or markdownlint-cli:
+# undici 6.28.0 in npm 11.19.1, the npm bundled in Node 24.22.2, at
+# /opt/node/24/lib/node_modules/npm/node_modules/undici (dev-ts-node:24 only).
+# Fixed in 6.28.1 / 7.29.1 / 8.10.2. Epic vergil-project/.github#649
+# (vergil-containers#786; found by the spike, vergil-project/.github#982). The
+# carrier is the same as in the group above: the pinned nodejs.org runtime,
+# whose npm is never upgraded in place (spec §5.8), and 24.22.2 is the newest
+# Node 24 (checked 2026-11-10). npm 12.2.1 (undici 6.29.0) does not carry it.
+#
+# CVE-2026-19534 — undici's WebSocket client crashes the Node.js process during
+#   the opening handshake when the server answers with a subprotocol the client
+#   never requested.
+# Only undici's WebSocket client is affected. npm's only undici user, node-gyp
+# 12.4.0, imports Agent, EnvHttpProxyAgent, RetryAgent and fetch from undici
+# (lib/download.js) and opens no WebSocket; nothing else in npm requires undici
+# (checked 2026-11-10 in the built image). The vulnerable path is not
+# exercised. The impact would anyway be a crash of a short-lived, user-invoked
+# npm process, with no confidentiality or integrity impact.
+# Remove once a Node 24 release bundles an npm carrying undici >= 6.28.1 (the
+# daily upstream refresh moves the ts-node:24 pin to the newest 24.x), or once
+# ts-node drops Node 24. Do not patch npm's bundled node_modules in place.
+# =============================================================================
+CVE-2026-19534
+
+# =============================================================================
+# npm bundled in the nodejs.org Node tarballs pinned in
+# docker/pins/toolchains.yml. Epic vergil-project/.github#649 (found by the
+# spike, vergil-project/.github#982). Carriers:
+#   - npm 10.9.9 in the core Node 22.23.4 (dev-base, and every image built on
+#     it), at /opt/vergil/node/22/lib/node_modules/npm/
+#     (common/core-node.dockerfile; vergil-containers#779): every ID below.
+#   - the same npm 10.9.9 in the family Node 22.23.4 of dev-ts-node:22, at
+#     /opt/node/22/lib/node_modules/npm/ (vergil-containers#786): every ID
+#     below.
+#   - npm 11.19.1 in the family Node 24.22.2 of dev-ts-node:24, at
+#     /opt/node/24/lib/node_modules/npm/ (vergil-containers#786):
+#     CVE-2026-102276 and CVE-2026-102278 only, in its brace-expansion 5.0.9
+#     (fixed in 5.0.10 and 5.0.11).
+# Each npm is its runtime's: it is never upgraded in place (spec §5.8), so a
+# fix arrives only with a Node release. 22.23.4 and 24.22.2 are the newest of
+# their majors (nodejs.org index, checked 2026-11-10), so there is no runtime
+# to move to within either major. Confirmed by Trivy 0.76.2 scans of
+# /opt/node/<major> in each locally built arm64 image (2026-11-10). All HIGH,
+# all in packages npm vendors; none is in Node itself or markdownlint-cli:
 # CVE-2026-102276, CVE-2026-102278, CVE-2026-13149, CVE-2026-14257,
 # CVE-2026-69152 — brace-expansion 2.0.2 (fixed in 2.1.2 to 2.1.6 by ID):
 #   denial of service (stack, memory or CPU exhaustion) from a crafted brace
@@ -407,10 +456,38 @@ CVE-2026-109383
 # (no `npm audit signatures`, no provenance check). Moving the core Node to 24
 # would leave three of the IDs, and a core move is a reviewed PR of its own
 # (spec §5.2.1).
-# Remove each once a Node 22 release bundles an npm carrying its fixed package
-# (the daily upstream refresh moves the core Node pin to the newest 22.x), or
-# once the core Node moves to a major whose npm carries them all. Do not patch
-# npm's bundled node_modules in place.
+# dev-ts-node is different: its family Node's npm is the image's default npm,
+# and consumers run it at container runtime (vergil-tooling's TypeScript checks
+# run `npm ci` and `npm audit --audit-level=high`, and a developer may run any
+# npm command). Per finding, in that npm (checked 2026-11-10 in the built
+# images):
+#   - brace-expansion (the five IDs) is reached through minimatch, which expands
+#     the glob patterns of the project's own `workspaces`, `npm query` and
+#     `npm diff` arguments, and the `files` and .npmignore patterns of a package
+#     npm packs: the project itself, or a git or directory dependency at
+#     install. picomatch is reached only through tinyglobby in node-gyp's
+#     build.js, with node-gyp's own fixed patterns. A crafted pattern can come
+#     only from the developer's own project or from a dependency the developer
+#     chose to install, and a git dependency already runs its own prepare
+#     script at install, which is far more than a denial of service. The impact
+#     is CPU or memory exhaustion of a short-lived, user-invoked npm process.
+#   - pacote's CVE-2026-9496 needs a crafted git dependency spec, which again
+#     comes from the project's or a chosen dependency's package.json; the
+#     impact is the same denial of service.
+#   - sigstore's CVE-2026-48815 makes sigstore ignore a caller's
+#     certificateOIDs option. npm (pacote's attestation check, used by
+#     `npm audit signatures`) passes no certificateOIDs option to
+#     sigstore.verify, so its verification is unchanged.
+#   - ip-address is required only by the socks client, which parses the address
+#     of a SOCKS proxy the developer configured; no attacker-supplied address
+#     reaches it.
+# Remove each once no carrier is left: the core Node's and dev-ts-node:22's
+# once a Node 22 release bundles an npm carrying its fixed package (the daily
+# upstream refresh moves the core Node pin and the ts-node:22 pin to the newest
+# 22.x), or once the core Node moves to a major whose npm carries them all and
+# ts-node drops Node 22; dev-ts-node:24's (CVE-2026-102276, CVE-2026-102278)
+# once a Node 24 release bundles an npm with brace-expansion >= 5.0.11, or once
+# ts-node drops Node 24. Do not patch npm's bundled node_modules in place.
 # =============================================================================
 CVE-2026-102276
 CVE-2026-102278
