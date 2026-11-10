@@ -73,6 +73,9 @@ families:
     token_prefix: ""
     build_arg: "GO_VERSION"
     automation: "pr"
+    parent:
+      name: "base"
+      version: "latest"
     versions:
       - version: "1.27"
         ga: 2026-08-19

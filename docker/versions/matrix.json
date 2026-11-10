@@ -1,30 +1,6 @@
 {
   "include": [
     {
-      "language": "go",
-      "version": "1.27",
-      "build-args": {
-        "GO_VERSION": "1.27",
-        "TOOLCHAIN_VERSION": "1.27.3",
-        "TOOLCHAIN_SHA256_AMD64": "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40",
-        "TOOLCHAIN_SHA256_ARM64": "a06e99309dbcbdca1a8ccd2282c3ee146e55930886e26b4f1193269587165f49"
-      },
-      "parent": null,
-      "depth": 0
-    },
-    {
-      "language": "go",
-      "version": "1.26",
-      "build-args": {
-        "GO_VERSION": "1.26",
-        "TOOLCHAIN_VERSION": "1.26.10",
-        "TOOLCHAIN_SHA256_AMD64": "ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5",
-        "TOOLCHAIN_SHA256_ARM64": "3f4227ce7b206a513e794f1393adb473a07b46e94d18bd15d1c684bbb7319797"
-      },
-      "parent": null,
-      "depth": 0
-    },
-    {
       "language": "rust",
       "version": "1.93",
       "build-args": {
@@ -210,6 +186,36 @@
         "TOOLCHAIN_SHA256_AMD64": "6a79e922e50006b601f29e688407659da1c2b86ebcd4e9c7254cf234be8b89de",
         "TOOLCHAIN_SHA256_ARM64": "a945427411dc6851a1393533b74a4a1ac434321ae397f2ec69897a9b4fde032b",
         "PBS_RELEASE": "20261026"
+      },
+      "parent": {
+        "language": "base",
+        "version": "latest"
+      },
+      "depth": 2
+    },
+    {
+      "language": "go",
+      "version": "1.27",
+      "build-args": {
+        "GO_VERSION": "1.27",
+        "TOOLCHAIN_VERSION": "1.27.3",
+        "TOOLCHAIN_SHA256_AMD64": "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40",
+        "TOOLCHAIN_SHA256_ARM64": "a06e99309dbcbdca1a8ccd2282c3ee146e55930886e26b4f1193269587165f49"
+      },
+      "parent": {
+        "language": "base",
+        "version": "latest"
+      },
+      "depth": 2
+    },
+    {
+      "language": "go",
+      "version": "1.26",
+      "build-args": {
+        "GO_VERSION": "1.26",
+        "TOOLCHAIN_VERSION": "1.26.10",
+        "TOOLCHAIN_SHA256_AMD64": "ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5",
+        "TOOLCHAIN_SHA256_ARM64": "3f4227ce7b206a513e794f1393adb473a07b46e94d18bd15d1c684bbb7319797"
       },
       "parent": {
         "language": "base",

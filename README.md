@@ -19,13 +19,16 @@ repositories.
 ## Available Images
 
 All images are published to GitHub Container Registry at
-`ghcr.io/vergil-project/dev-{language}:{version}`.
+`ghcr.io/vergil-project/{prefix}-{image}:{version}`, with the `dev-` prefix
+from `develop` and the `prod-` prefix from `main`: a language image is
+`dev-{language}:{version}`, a package toolchain image
+`dev-pkg-{distro}:{version}`.
 
 <!-- BEGIN generated: versions -->
 | Image            | Language   | Versions               | Base                                    |
 | ---------------- | ---------- | ---------------------- | --------------------------------------- |
 | `dev-python`     | python     | 3.15, 3.14, 3.13, 3.12 | `base:latest`                           |
-| `dev-go`         | go         | 1.27, 1.26             | `golang:<v>`                            |
+| `dev-go`         | go         | 1.27, 1.26             | `base:latest`                           |
 | `dev-rust`       | rust       | 1.93, 1.92             | `rust:<v>-slim`                         |
 | `dev-cpp-clang`  | cpp        | 20, 19                 | `debian:trixie-slim`                    |
 | `dev-cpp-gcc`    | cpp        | 14                     | `debian:trixie-slim`                    |
@@ -40,6 +43,12 @@ The table is generated from
 source of every language version this repo builds. Each language's versions
 follow its upstream support window; see
 [Language version lifecycle](https://vergil-project.github.io/vergil-containers/languages/lifecycle/).
+
+The `pkg-ubuntu` and `pkg-rhel` rows are the package toolchain images:
+the upstream image plus the OS prerequisites, uv, nFPM and a toolchain
+marker, without the common tooling. vergil-tooling's package jobs build and
+install-test in their `prod-` images. See
+[Package toolchain images](https://vergil-project.github.io/vergil-containers/images/#package-toolchain-images).
 
 ## Usage
 
