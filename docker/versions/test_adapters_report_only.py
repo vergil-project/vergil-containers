@@ -19,7 +19,7 @@ from lifecycle.adapters.gcc import GccAdapter, parse_releases, parse_supported, 
 from lifecycle.adapters.node import NodeAdapter
 from lifecycle.adapters import rust as rust_adapter
 from lifecycle.adapters.rust import RustAdapter
-from lifecycle.core import EOL_DATE_UNKNOWN, Change, SourceError, UpstreamRelease
+from lifecycle.core import EOL_DATE_UNKNOWN, Change, NotFoundError, SourceError, UpstreamRelease
 
 HERE = Path(__file__).resolve().parent
 FIXTURES = HERE / "fixtures"
