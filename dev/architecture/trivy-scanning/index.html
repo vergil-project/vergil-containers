@@ -3222,7 +3222,12 @@ built FROM it, which build on the local parent; an image whose parent is not
 selected builds on the published <code>dev-</code> parent. No SARIF is uploaded, so
 these scans add no code-scanning category. The one required check is
 <code>images / evidence</code>: it passes when every selected image passed, or when
-nothing was selected, and fails otherwise.</p>
+nothing was selected, and fails otherwise. A passing run, including one
+that selected nothing, also uploads the <code>ci-evidence-images</code> artifact: an
+<code>evidence.json</code> and a <code>selected.json</code> report of the selected images, their
+build jobs and each job's result. Since <code>vergil.toml</code> sets
+<code>[ci].images = true</code>, <code>images / evidence</code> is a required check and a release
+harvests that artifact into its CI-evidence bundle (vergil-tooling#4132).</p>
 <h3 id="publishing-the-image-scans">Publishing: the image scans<a class="headerlink" href="#publishing-the-image-scans" title="Permanent link">&para;</a></h3>
 <p><code>cd-docker-publish.yml</code> builds every image in <code>docker/versions/matrix.json</code>,
 plus <code>base</code>, and pushes each one as a <code>-candidate</code> tag. It then scans each
