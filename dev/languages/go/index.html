@@ -3168,8 +3168,12 @@ never GA. In endoflife.date, a cycle is GA once its <code>releaseDate</code> is 
 before the day of the check.</p>
 <h2 id="adapter-quirks">Adapter quirks<a class="headerlink" href="#adapter-quirks" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The image is built <code>FROM golang:&lt;version&gt;</code>, the official Docker image, with
-  <code>GO_VERSION</code> as the build argument.</li>
+<li>The image is built on <code>dev-base</code> and installs the go.dev release of the
+  series pinned in <code>docker/pins/toolchains.yml</code>, with <code>GO_VERSION</code> as the
+  build argument. A version is installable when go.dev's release list has a
+  stable <code>go&lt;version&gt;.x</code> release with a Linux archive for both <code>amd64</code> and
+  <code>arm64</code>. The adapter reads that list through the same fetcher as the pin
+  refresh (<code>docker/pins/resolve_toolchains.py</code>).</li>
 <li>The image builds with <code>GOTOOLCHAIN=local</code>, so the toolchain cannot fetch a
   newer Go to satisfy a tool's <code>go</code> directive. A Go tool whose newest release
   needs a newer Go than an image ships is held back for that image only, in a

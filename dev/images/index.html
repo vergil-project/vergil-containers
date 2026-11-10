@@ -3150,7 +3150,7 @@ The table is generated from <code>docker/versions/manifest.yml</code> by
 <td><code>dev-go</code></td>
 <td>go</td>
 <td>1.27, 1.26</td>
-<td><code>golang:&lt;v&gt;</code></td>
+<td><code>base:latest</code></td>
 </tr>
 <tr>
 <td><code>dev-rust</code></td>
@@ -3282,9 +3282,10 @@ The table is generated from <code>docker/versions/manifest.yml</code> by
 tooling (MkDocs Material, mike, semgrep) and OpenTofu for in-sandbox
 OpenTofu module validation. It is the fallback image for repos with no
 detected language.</p>
-<p>Non-Python images install Python, yamllint, ansible-lint, and uv via the
-<code>python-support</code> fragment. <code>dev-python</code> is built on <code>dev-base</code> and takes them
-from it: see <a href="#python">Python</a>.
+<p>An image built on <code>dev-base</code> (its base is <code>base:latest</code> in the table above)
+takes Python, yamllint, ansible-lint, and uv from it: see <a href="#python">Python</a> and
+<a href="#go">Go</a>. The images still built on an upstream image install them via the
+<code>python-support</code> fragment.
 <code>dev-base</code> is different: see <a href="#base">Base</a>.</p>
 <h2 id="python">Python<a class="headerlink" href="#python" title="Permanent link">&para;</a></h2>
 <p><strong>Base</strong>: <code>dev-base</code> (<code>base:latest</code>)</p>
@@ -3316,7 +3317,15 @@ upgraded in place: a fix comes with a newer pin of the series.</p>
 parallel tests declares it in its dev dependencies. Without it the shared
 vergil-tooling validation gate runs the suite serially.</p>
 <h2 id="go">Go<a class="headerlink" href="#go" title="Permanent link">&para;</a></h2>
-<p><strong>Base</strong>: <code>golang:&lt;version&gt;</code></p>
+<p><strong>Base</strong>: <code>dev-base</code>, plus the go.dev release of the series at
+<code>/usr/local/go</code>. The release and its SHA-256 for each architecture are pinned
+in
+<a href="https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/toolchains.yml"><code>docker/pins/toolchains.yml</code></a>,
+and the daily upstream refresh moves the pin to the newest patch of the
+series. The image keeps the environment the <code>golang</code> images set
+(<code>GOPATH=/go</code>, <code>GOTOOLCHAIN=local</code>, <code>/go/bin</code> and <code>/usr/local/go/bin</code> on
+<code>PATH</code>) and their C toolchain for cgo (<code>gcc</code>, <code>g++</code>, <code>libc6-dev</code>, <code>make</code>,
+<code>pkg-config</code>).</p>
 <table>
 <thead>
 <tr>
