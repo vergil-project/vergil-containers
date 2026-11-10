@@ -1,4 +1,5 @@
 import hashlib
+import json
 from datetime import date
 from pathlib import Path
 
@@ -34,18 +35,6 @@ def _fixture_fetch(product):
         return (FIXTURES / f"endoflife-{product}.json").read_bytes()
 
     return fetch
-
-
-class Tags:
-    """A fake Docker Hub: records each (image, tag) asked about."""
-
-    def __init__(self, missing=()):
-        self.missing = set(missing)
-        self.asked = []
-
-    def __call__(self, image, tag):
-        self.asked.append((image, tag))
-        return (image, tag) not in self.missing
 
 
 def _kinds(changes):
@@ -176,23 +165,76 @@ def test_python_has_no_extra_changes():
 # --- Go --------------------------------------------------------------------------
 
 
+GO_DEV = "https://go.dev/dl/?mode=json&include=all"
+
+
+def _go_fetch(releases=None, asked=None):
+    """endoflife.date's `go` fixture, and go.dev's release list: the fixture,
+    or `releases` (a list of go.dev release entries) in its place."""
+
+    def fetch(url):
+        if asked is not None:
+            asked.append(url)
+        if url == GO_DEV:
+            if releases is None:
+                return (FIXTURES / "godev-releases.json").read_bytes()
+            return json.dumps(releases).encode()
+        assert url == "https://endoflife.date/api/go.json", url
+        return (FIXTURES / "endoflife-go.json").read_bytes()
+
+    return fetch
+
+
+def _go_release(version, arches=("amd64", "arm64"), stable=True):
+    files = [
+        {"filename": f"{version}.linux-{a}.tar.gz", "os": "linux", "arch": a, "kind": "archive", "sha256": "a" * 64}
+        for a in arches
+    ]
+    return {"version": version, "stable": stable, "files": files}
+
+
 def test_go_target_from_fixture():
-    tags = Tags()
-    adapter = GoAdapter(fetch=_fixture_fetch("go"), tag_exists=tags)
+    asked = []
+    adapter = GoAdapter(fetch=_go_fetch(asked=asked))
     target = adapter.target(adapter.fetch(), TODAY)
     assert [t.version for t in target] == ["1.27", "1.26"]
-    assert tags.asked == [("golang", "1.27"), ("golang", "1.26")]
+    assert all(t.installable for t in target)
     assert target[0].eol is None
+    # The probe is go.dev's release list, read once; never Docker Hub.
+    assert asked == ["https://endoflife.date/api/go.json", GO_DEV]
 
 
 def test_go_classify_against_seed_is_add_127():
-    adapter = GoAdapter(fetch=_fixture_fetch("go"), tag_exists=Tags())
+    adapter = GoAdapter(fetch=_go_fetch())
     changes = core.classify(_family("go"), adapter.target(adapter.fetch(), TODAY), TODAY, 90)
     assert _kinds(changes) == [("add", "1.27")]
 
 
+@pytest.mark.parametrize(
+    "releases",
+    [
+        pytest.param([_go_release("go1.26.10")], id="no-1.27-release"),
+        pytest.param([_go_release("go1.27rc1", stable=False), _go_release("go1.26.10")], id="only-an-rc"),
+        pytest.param([_go_release("go1.27.0", arches=("amd64",)), _go_release("go1.26.10")], id="amd64-only"),
+    ],
+)
+def test_go_series_without_a_go_dev_release_for_both_arches_is_blocked(releases):
+    adapter = GoAdapter(fetch=_go_fetch(releases))
+    target = adapter.target(adapter.fetch(), TODAY)
+    assert {t.version: t.installable for t in target} == {"1.27": False, "1.26": True}
+    changes = core.classify(_family("go"), target, TODAY, 90)
+    assert _kinds(changes) == [("blocked", "1.27")]
+
+
+def test_go_series_match_is_exact():
+    # go1.2.x is not a release of the 1.27 series, nor go1.270.x.
+    releases = [_go_release("go1.270.1"), _go_release("go1.2.7"), _go_release("go1.26.10")]
+    adapter = GoAdapter(fetch=_go_fetch(releases))
+    assert {t.version: t.installable for t in adapter.target(adapter.fetch(), TODAY)} == {"1.27": False, "1.26": True}
+
+
 def test_go_window_ignores_a_not_yet_released_cycle():
-    adapter = GoAdapter(fetch=_fixture_fetch("go"), tag_exists=Tags())
+    adapter = GoAdapter(fetch=_go_fetch())
     releases = adapter.fetch()
     releases.insert(0, core.UpstreamRelease("1.28", date(2027, 2, 9), None, False))
     assert [t.version for t in adapter.target(releases, TODAY)] == ["1.27", "1.26"]
@@ -259,9 +301,45 @@ def test_go_fetch_failure_becomes_family_error():
     m = mf.Manifest(families=(_family("python"), _family("go")))
     adapters = {
         "python": PythonAdapter(fetch=_fixture_fetch("python"), built_series=Built(), runtime_index=RUNTIME_314),
-        "go": GoAdapter(fetch=fetch, tag_exists=Tags()),
+        "go": GoAdapter(fetch=fetch),
     }
     python, go = core.run(m, adapters, TODAY)
     assert _kinds(python.changes) == [("add", "3.15")]
     assert go.changes == ()
     assert "https://endoflife.date/api/go.json: HTTP 503" in go.error
+
+
+def _go_run(fetch):
+    m = mf.Manifest(families=(_family("go"),))
+    (go,) = core.run(m, {"go": GoAdapter(fetch=fetch)}, TODAY)
+    return go
+
+
+def test_go_dev_fetch_failure_becomes_family_error():
+    def fetch(url):
+        if url == GO_DEV:
+            raise SourceError(f"{url}: HTTP 503")
+        return _go_fetch()(url)
+
+    go = _go_run(fetch)
+    assert go.changes == ()
+    assert f"{GO_DEV}: HTTP 503" in go.error
+
+
+@pytest.mark.parametrize(
+    ("body", "needle"),
+    [
+        (b"<html>not json</html>", "not valid JSON"),
+        (b'{"version": "go1.27.3"}', "expected a list of releases"),
+        (json.dumps([{"version": "go1.27.3", "stable": True}]).encode(), "expected a release with a list of files"),
+    ],
+)
+def test_go_dev_unusable_listing_becomes_family_error(body, needle):
+    # A go.dev listing that cannot be read never reads as "not installable".
+    def fetch(url):
+        return body if url == GO_DEV else _go_fetch()(url)
+
+    go = _go_run(fetch)
+    assert go.changes == ()
+    assert needle in go.error
+    assert go.error.startswith("SourceError: go.dev: ")

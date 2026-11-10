@@ -38,7 +38,7 @@ DISTRIBUTIONS = {"yaml": "pyyaml"}
 
 # Directories a local module is imported from: each script's own directory is
 # on sys.path, report_exposure.py, resolve_toolchains.py and lifecycle/*.py add
-# docker/versions, and generate.py adds docker/pins.
+# docker/versions, and generate.py and lifecycle/adapters/go.py add docker/pins.
 LOCAL_ROOTS = [DOCKER / "pins", DOCKER / "versions"]
 
 # The reference regex from PEP 723.

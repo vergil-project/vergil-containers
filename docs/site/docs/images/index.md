@@ -24,7 +24,7 @@ The table is generated from `docker/versions/manifest.yml` by
 | Image            | Language   | Versions               | Base                                    |
 | ---------------- | ---------- | ---------------------- | --------------------------------------- |
 | `dev-python`     | python     | 3.15, 3.14, 3.13, 3.12 | `base:latest`                           |
-| `dev-go`         | go         | 1.27, 1.26             | `golang:<v>`                            |
+| `dev-go`         | go         | 1.27, 1.26             | `base:latest`                           |
 | `dev-rust`       | rust       | 1.93, 1.92             | `rust:<v>-slim`                         |
 | `dev-cpp-clang`  | cpp        | 20, 19                 | `debian:trixie-slim`                    |
 | `dev-cpp-gcc`    | cpp        | 14                     | `debian:trixie-slim`                    |
@@ -94,7 +94,15 @@ vergil-tooling validation gate runs the suite serially.
 
 ## Go
 
-**Base**: `golang:<version>`
+**Base**: `dev-base`, plus the go.dev release of the series at
+`/usr/local/go`. The release and its SHA-256 for each architecture are pinned
+in
+[`docker/pins/toolchains.yml`](https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/toolchains.yml),
+and the daily upstream refresh moves the pin to the newest patch of the
+series. The image keeps the environment the `golang` images set
+(`GOPATH=/go`, `GOTOOLCHAIN=local`, `/go/bin` and `/usr/local/go/bin` on
+`PATH`) and their C toolchain for cgo (`gcc`, `g++`, `libc6-dev`, `make`,
+`pkg-config`).
 
 | Tool             | Purpose               |
 | ---------------- | --------------------- |

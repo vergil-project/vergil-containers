@@ -114,8 +114,8 @@ def test_versions_emits_a_matrix_and_arch_matrix_per_tier(tmp_path):
     # tier 1, and the language images built FROM base are tier 2.
     tiers = {t: [e for e in entries if e["depth"] == t] for t in TIERS}
     assert [e["language"] for e in tiers[1]] == ["base"]
-    assert "python" in {e["language"] for e in tiers[2]}
-    for tier in (0, 1, 2):
+    assert tiers[2] and all(e["parent"] == {"language": "base", "version": "latest"} for e in tiers[2])
+    for tier in TIERS:
         assert _tier_outputs(outputs, tier) == (tiers[tier], _arch(tiers[tier]), "true")
     # base is built like any other entry.
     assert {(e["language"], e["arch"]) for e in _arch(entries) if e["language"] == "base"} == {
