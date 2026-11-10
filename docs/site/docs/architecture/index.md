@@ -116,6 +116,11 @@ includes:
   runs the core Node by path.
 - **`core-tools.dockerfile`** — yamllint, ansible-lint, semgrep and MkDocs
   (with mkdocs-material and mike) as uv tools on the core Python.
+  `semgrep` and `pysemgrep` are wrappers that lower the stack hard limit
+  before running the tool, so that `semgrep-core` does not crash on Python
+  3.15 ([vergil-containers#825](https://github.com/vergil-project/vergil-containers/issues/825));
+  they go once semgrep fixes its stack-limit code upstream
+  ([vergil-containers#826](https://github.com/vergil-project/vergil-containers/issues/826)).
 
 The core series come from the manifest's `core:` section. Nothing in
 `dev-base` is pip-installed. Its last build step runs
