@@ -78,3 +78,5 @@ The script detects the target branch and merge strategy automatically.
 - No primary runtime language — this repo contains Dockerfiles, shell scripts,
   and Markdown documentation.
 - No language-specific CI (no ruff, mypy, pytest, etc.).
+
+<!-- THROWAWAY (vergil-containers#517 selection check) - never merge. -->
