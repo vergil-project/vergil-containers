@@ -30,6 +30,12 @@
               "eol": "2028-10-31",
               "in_policy": true,
               "runtime_published": false
+            },
+            {
+              "version": "3.11",
+              "eol": "2027-10-31",
+              "in_policy": true,
+              "runtime_published": false
             }
           ]
         }

@@ -37,6 +37,15 @@
       "depth": 0
     },
     {
+      "language": "python",
+      "version": "3.11",
+      "build-args": {
+        "PYTHON_VERSION": "3.11"
+      },
+      "parent": null,
+      "depth": 0
+    },
+    {
       "language": "go",
       "version": "1.27",
       "build-args": {

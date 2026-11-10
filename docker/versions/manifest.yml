@@ -52,6 +52,12 @@ families:
         eol: 2028-10-31
         in_policy: true
         runtime_published: false
+      - version: "3.11"
+        # THROWAWAY (vergil-containers#517 selection check) - never merge.
+        ga: 2022-10-24
+        eol: 2027-10-31
+        in_policy: true
+        runtime_published: false
   - key: "go"
     language: "go"
     token_prefix: ""
