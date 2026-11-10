@@ -11,7 +11,10 @@ Generated outputs (epic vergil-project/.github#407, spec §6.1):
 
 - docker/versions/matrix.json: the build matrix cd-docker-publish.yml and
   `docker/build.sh` read (every family version, then every toolchain version,
-  then `base`, ordered by depth in the image tree);
+  then `base`, ordered by depth in the image tree), whose `build-args` carry
+  the toolchain pins of docker/pins/toolchains.yml (epic
+  vergil-project/.github#649), so a pin the upstream refresh moves is a matrix
+  change;
 - docker/versions/window.json: the published window consumers read (language
   families only: toolchains are not languages);
 - the `docker/build.sh` smoke-test table;
@@ -33,8 +36,12 @@ from pathlib import Path
 
 import manifest as mf
 
+sys.path.append(str(Path(__file__).resolve().parent.parent / "pins"))
+import resolve_toolchains as rt  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 MANIFEST = Path("docker/versions/manifest.yml")
+TOOLCHAINS = Path("docker/pins/toolchains.yml")
 MATRIX_JSON = Path("docker/versions/matrix.json")
 WINDOW_JSON = Path("docker/versions/window.json")
 BUILD_SH = Path("docker/build.sh")
@@ -103,22 +110,31 @@ def _matrix_parent(p: mf.Parent | None) -> dict[str, str] | None:
     return None if p is None else {"language": p.name, "version": p.version}
 
 
-def render_matrix_json(m: mf.Manifest) -> str:
+def _toolchain_args(pins: rt.Toolchains, f: mf.Family, version: str) -> dict[str, str]:
+    try:
+        return rt.build_args(pins, f.key, version)
+    except rt.ToolchainsError as exc:
+        raise GenerateError(f"{TOOLCHAINS}: {exc}") from exc
+
+
+def render_matrix_json(m: mf.Manifest, pins: rt.Toolchains) -> str:
     """The publish matrix: one entry per family version, then per toolchain
     version, then `base`, ordered by depth in the image tree (stable, so within
     a depth the order is the manifest's: families, toolchains, then `base`).
 
     Each entry is `language` (the image key), `version`, `build-args` (every
     `--build-arg` the image takes, as a map: a family's or toolchain's version
-    arg, and `{}` for `base`),
+    arg, then a family's toolchain pins from `pins` (`rt.build_args`), and
+    `{}` for `base`),
     `parent` (`null`, or the `language` and `version` of the entry it is built
-    FROM) and `depth` (the publish tier). Raises ManifestError on a bad tree."""
+    FROM) and `depth` (the publish tier). Raises ManifestError on a bad tree,
+    and GenerateError when a pinned family's series has no pin."""
     depths = mf.entry_depths(m)
     include = [
         {
             "language": f.key,
             "version": v.version,
-            "build-args": {f.build_arg: v.version},
+            "build-args": {f.build_arg: v.version, **_toolchain_args(pins, f, v.version)},
             "parent": _matrix_parent(f.parent),
             "depth": depths[f.key],
         }
@@ -283,10 +299,19 @@ def render_doc_table(m: mf.Manifest, root: Path) -> list[str]:
     return _table(rows)
 
 
+def load_pins(root: Path) -> rt.Toolchains:
+    """The toolchain pins of the checkout at `root`."""
+    try:
+        return rt.load_toolchains(root / TOOLCHAINS)
+    except rt.ToolchainsError as exc:
+        raise GenerateError(str(exc)) from exc
+
+
 def render_all(m: mf.Manifest, root: Path) -> dict[Path, str]:
-    """The full new content of every generated file, keyed by absolute path."""
+    """The full new content of every generated file, keyed by absolute path.
+    The matrix embeds the toolchain pins of `root`'s docker/pins/toolchains.yml."""
     out: dict[Path, str] = {
-        root / MATRIX_JSON: render_matrix_json(m),
+        root / MATRIX_JSON: render_matrix_json(m, load_pins(root)),
         root / WINDOW_JSON: render_window_json(m),
         root / BUILD_SH: render_build_sh(m, root),
         root / PACKAGE_CLEANUP: render_package_cleanup(m, root),

@@ -4,7 +4,11 @@
       "language": "python",
       "version": "3.15",
       "build-args": {
-        "PYTHON_VERSION": "3.15"
+        "PYTHON_VERSION": "3.15",
+        "TOOLCHAIN_VERSION": "3.15.2",
+        "TOOLCHAIN_SHA256_AMD64": "08d4ae9024a7cfbd3b70e559241afa2571cd3208d7bd5f96f88e0080dd4092aa",
+        "TOOLCHAIN_SHA256_ARM64": "6fc73e8a4c80a65d2a0ed21535c65383f7b9f96bb58a5f40ed035bd7ee318616",
+        "PBS_RELEASE": "20261026"
       },
       "parent": null,
       "depth": 0
@@ -13,7 +17,11 @@
       "language": "python",
       "version": "3.14",
       "build-args": {
-        "PYTHON_VERSION": "3.14"
+        "PYTHON_VERSION": "3.14",
+        "TOOLCHAIN_VERSION": "3.14.10",
+        "TOOLCHAIN_SHA256_AMD64": "1b38024924eb7f4cf0cab45d7b871d1f1991354190fccd2625ac7529a43786e2",
+        "TOOLCHAIN_SHA256_ARM64": "dcc31ce7b9ddbbffac160da7fff0cc069054f43eca52382a7d0eebf94e985b88",
+        "PBS_RELEASE": "20261026"
       },
       "parent": null,
       "depth": 0
@@ -22,7 +30,11 @@
       "language": "python",
       "version": "3.13",
       "build-args": {
-        "PYTHON_VERSION": "3.13"
+        "PYTHON_VERSION": "3.13",
+        "TOOLCHAIN_VERSION": "3.13.18",
+        "TOOLCHAIN_SHA256_AMD64": "126343c54daff4068efc1ac269518d0cc202d57857794948103dd1454e8881be",
+        "TOOLCHAIN_SHA256_ARM64": "b48451865bde9a39e2f3e71d7fdcbf1f32615f50f24d78dc50d04ede6501cf81",
+        "PBS_RELEASE": "20261026"
       },
       "parent": null,
       "depth": 0
@@ -31,7 +43,11 @@
       "language": "python",
       "version": "3.12",
       "build-args": {
-        "PYTHON_VERSION": "3.12"
+        "PYTHON_VERSION": "3.12",
+        "TOOLCHAIN_VERSION": "3.12.16",
+        "TOOLCHAIN_SHA256_AMD64": "6a79e922e50006b601f29e688407659da1c2b86ebcd4e9c7254cf234be8b89de",
+        "TOOLCHAIN_SHA256_ARM64": "a945427411dc6851a1393533b74a4a1ac434321ae397f2ec69897a9b4fde032b",
+        "PBS_RELEASE": "20261026"
       },
       "parent": null,
       "depth": 0
@@ -40,7 +56,10 @@
       "language": "go",
       "version": "1.27",
       "build-args": {
-        "GO_VERSION": "1.27"
+        "GO_VERSION": "1.27",
+        "TOOLCHAIN_VERSION": "1.27.3",
+        "TOOLCHAIN_SHA256_AMD64": "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40",
+        "TOOLCHAIN_SHA256_ARM64": "a06e99309dbcbdca1a8ccd2282c3ee146e55930886e26b4f1193269587165f49"
       },
       "parent": null,
       "depth": 0
@@ -49,7 +68,10 @@
       "language": "go",
       "version": "1.26",
       "build-args": {
-        "GO_VERSION": "1.26"
+        "GO_VERSION": "1.26",
+        "TOOLCHAIN_VERSION": "1.26.10",
+        "TOOLCHAIN_SHA256_AMD64": "ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5",
+        "TOOLCHAIN_SHA256_ARM64": "3f4227ce7b206a513e794f1393adb473a07b46e94d18bd15d1c684bbb7319797"
       },
       "parent": null,
       "depth": 0
@@ -58,7 +80,11 @@
       "language": "rust",
       "version": "1.93",
       "build-args": {
-        "RUST_VERSION": "1.93"
+        "RUST_VERSION": "1.93",
+        "TOOLCHAIN_VERSION": "1.93.1",
+        "RUSTUP_INIT_VERSION": "1.29.3",
+        "RUSTUP_INIT_SHA256_AMD64": "b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55",
+        "RUSTUP_INIT_SHA256_ARM64": "9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282"
       },
       "parent": null,
       "depth": 0
@@ -67,7 +93,11 @@
       "language": "rust",
       "version": "1.92",
       "build-args": {
-        "RUST_VERSION": "1.92"
+        "RUST_VERSION": "1.92",
+        "TOOLCHAIN_VERSION": "1.92.0",
+        "RUSTUP_INIT_VERSION": "1.29.3",
+        "RUSTUP_INIT_SHA256_AMD64": "b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55",
+        "RUSTUP_INIT_SHA256_ARM64": "9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282"
       },
       "parent": null,
       "depth": 0
@@ -103,7 +133,10 @@
       "language": "ts-node",
       "version": "24",
       "build-args": {
-        "NODE_MAJOR": "24"
+        "NODE_MAJOR": "24",
+        "TOOLCHAIN_VERSION": "24.22.2",
+        "TOOLCHAIN_SHA256_AMD64": "361718c444e49af2ca5a110c83ba6a8901143f23ab285ebbef0341f391f482a9",
+        "TOOLCHAIN_SHA256_ARM64": "95c264150aceb7f3437a29fd6984924f5f8d1511ea3cbd6c508b83f6c555dae2"
       },
       "parent": null,
       "depth": 0
@@ -112,7 +145,10 @@
       "language": "ts-node",
       "version": "22",
       "build-args": {
-        "NODE_MAJOR": "22"
+        "NODE_MAJOR": "22",
+        "TOOLCHAIN_VERSION": "22.23.4",
+        "TOOLCHAIN_SHA256_AMD64": "b8492284c76a54baf58d61668dd0e41ee0fc98adabf9503d30f05d08f55b4406",
+        "TOOLCHAIN_SHA256_ARM64": "f7a1e486dbc8b286847815b477d4fb5e9fb963ed4489c3e1588853d685f589f9"
       },
       "parent": null,
       "depth": 0

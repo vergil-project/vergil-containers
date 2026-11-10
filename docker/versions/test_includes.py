@@ -135,6 +135,7 @@ def _toolchain_repo(root: Path) -> Path:
         families=tuple(f for f in tree.families if f.key != "pkg-ubuntu"),
         base_parent=tree.base_parent,
         toolchains=(mf.Toolchain("pkg-ubuntu", "UBUNTU_VERSION", ("26.04", "24.04")),),
+        core=tree.core,
     )
     _write(root, "docker/versions/manifest.yml", mf.dump_manifest(m))
     return root

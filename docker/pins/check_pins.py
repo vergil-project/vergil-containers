@@ -2,7 +2,9 @@
 # dependencies = ["pyyaml"]
 # ///
 """CI gate: every EXACT image pin has a pins.yml justification, and every
-pins.yml entry still corresponds to a real pin. Exit 1 (loud) on drift."""
+pins.yml entry still corresponds to a real pin; and toolchains.yml pins exactly
+the toolchain series the version manifest lists (resolve_toolchains.py). Exit 1
+(loud) on drift."""
 from __future__ import annotations
 
 import sys
@@ -11,6 +13,7 @@ from pathlib import Path
 import yaml
 
 import extract_pins
+import resolve_toolchains as rt
 
 # States a pins.yml entry may declare. `auto-managed` (#435) is a legitimately
 # pinned entry whose version is floated to the leading edge by the daily
@@ -24,6 +27,19 @@ def load_pins(root: Path) -> dict:
     # justification catalog lives in the `pins/` subdir alongside these scripts.
     data = yaml.safe_load((root / "pins" / "pins.yml").read_text()) or {}
     return data.get("pins", {})
+
+
+def toolchain_errors(root: Path) -> list[str]:
+    """Why `root`'s toolchains.yml does not pin exactly what its manifest
+    lists: a schema violation (an entry missing an architecture's hash
+    included), a manifest series or the core Node major with no pin, or an
+    orphan pin. Empty when it does."""
+    try:
+        m = rt.mf.load_manifest(root / "versions" / "manifest.yml")
+        pins = rt.load_toolchains(root / "pins" / "toolchains.yml")
+    except (rt.mf.ManifestError, rt.ToolchainsError) as exc:
+        return [str(exc)]
+    return rt.consistency_errors(m, pins)
 
 
 def main(root: Path) -> int:
@@ -46,7 +62,10 @@ def main(root: Path) -> int:
             f"expected one of {sorted(VALID_STATES)}",
             file=sys.stderr,
         )
-    return 1 if (undocumented or stale or bad_state) else 0
+    toolchains = toolchain_errors(root)
+    for error in toolchains:
+        print(f"::error::{error}", file=sys.stderr)
+    return 1 if (undocumented or stale or bad_state or toolchains) else 0
 
 
 if __name__ == "__main__":

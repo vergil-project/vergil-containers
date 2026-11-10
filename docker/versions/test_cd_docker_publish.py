@@ -123,7 +123,7 @@ def test_versions_emits_a_matrix_and_arch_matrix_per_tier(tmp_path):
 def test_versions_splits_a_tree_into_tiers(tmp_path):
     # The synthetic tree pkg-ubuntu <- base <- python: the only exercise of
     # tiers 1 and 2 until #649 sets a real parent.
-    entries = json.loads(g.render_matrix_json(_tree()))["include"]
+    entries = json.loads(g.render_matrix_json(_tree(), frozen.PINS))["include"]
     result = _read_matrix(tmp_path, json.dumps({"include": entries}))
     assert result.returncode == 0, result.stderr
     outputs = _outputs(tmp_path / "out")

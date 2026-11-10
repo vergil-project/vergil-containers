@@ -322,7 +322,11 @@ def repo(tmp_path):
     for script in VERSIONS.glob("*.py"):
         if not script.name.startswith("test_"):
             shutil.copy(script, root / "docker" / "versions" / script.name)
-    (root / "docker" / "versions" / "matrix.json").write_text(g.render_matrix_json(_tree()))
+    # generate.py, which the selector imports, reads the toolchain pins through
+    # docker/pins/resolve_toolchains.py.
+    (root / "docker" / "pins").mkdir(parents=True, exist_ok=True)
+    shutil.copy(VERSIONS.parent / "pins" / "resolve_toolchains.py", root / "docker" / "pins" / "resolve_toolchains.py")
+    (root / "docker" / "versions" / "matrix.json").write_text(g.render_matrix_json(_tree(), frozen.PINS))
     (root / "README.md").write_text("synthetic\n")
     _git(root, "init", "-q")
     _git(root, "add", ".")
@@ -400,12 +404,12 @@ def test_select_warns_and_builds_everything_for_an_unclassified_path(tmp_path, r
     # into an annotation.
     assert "::warning::unclassified path(s) under docker/" in result.stderr
     selected = json.loads(_outputs(out)["matrix"])["include"]
-    assert selected == json.loads(g.render_matrix_json(_tree()))["include"]
+    assert selected == json.loads(g.render_matrix_json(_tree(), frozen.PINS))["include"]
 
 
 def test_select_reads_the_base_commits_matrix(tmp_path, repo):
     base = _git(repo, "rev-parse", "HEAD")
-    matrix = json.loads(g.render_matrix_json(_tree()))
+    matrix = json.loads(g.render_matrix_json(_tree(), frozen.PINS))
     go = next(e for e in matrix["include"] if e["language"] == "go")
     go["build-args"]["EXTRA"] = "1"
     head = _commit(repo, "docker/versions/matrix.json", json.dumps(matrix, indent=2) + "\n")
