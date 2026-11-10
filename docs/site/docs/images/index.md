@@ -165,6 +165,14 @@ section (epic vergil-project/.github#649):
   standard library only: nothing is pip-installed into it, and there is no
   `pip` on `PATH`. A script that needs a third-party package declares it
   inline (PEP 723) and runs with `uv run`.
+  `semgrep` and `pysemgrep` are wrappers that run the tool's entry points
+  with the stack hard limit lowered to 2929688 KiB when it is unlimited or
+  larger. semgrep sets `semgrep-core`'s stack limit to a third of the hard
+  limit, and on Python 3.15 an unlimited hard limit gives a finite limit of
+  about 5 EiB that crashes `semgrep-core`
+  ([vergil-containers#825](https://github.com/vergil-project/vergil-containers/issues/825)).
+  The wrappers go once semgrep fixes this upstream
+  ([vergil-containers#826](https://github.com/vergil-project/vergil-containers/issues/826)).
 - **Core Node**: the pinned nodejs.org release of the core major, at
   `/opt/vergil/node/<core-major>/`, which runs markdownlint-cli. There is no
   `node`, `npm` or `npx` on `PATH`; `markdownlint` is a wrapper that runs
