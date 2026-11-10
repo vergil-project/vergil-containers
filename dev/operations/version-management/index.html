@@ -2896,6 +2896,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#language-toolchain-pins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Language toolchain pins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#exposure-report-pins-due-for-re-evaluation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3138,6 +3149,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#language-toolchain-pins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Language toolchain pins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#exposure-report-pins-due-for-re-evaluation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3348,6 +3370,45 @@ tracks the leading edge:</p>
 </ul>
 <p>This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy <code>0.70.0 → 0.72.0</code> security bump landed through the bumper.</p>
+<h2 id="language-toolchain-pins">Language toolchain pins<a class="headerlink" href="#language-toolchain-pins" title="Permanent link">&para;</a></h2>
+<p>The language images download their toolchain rather than install it from a
+package: python-build-standalone for the python family, the go.dev tarballs,
+the nodejs.org tarballs (the ts-node family and <code>base</code>'s core Node), and Rust
+through a pinned <code>rustup-init</code>. Each series is pinned in
+<a href="https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/toolchains.yml"><code>docker/pins/toolchains.yml</code></a>
+by its exact release and, for every verified download, the SHA-256 of each
+architecture's file (<code>amd64</code> and <code>arm64</code>). Rust pins its exact <code>x.y.z</code> release
+with no hash, since rustup checks each component against the release's channel
+manifest; <code>rustup-init</code> itself is pinned by version and hash. The image build
+checks the download against the pin and resolves nothing over the network
+itself.</p>
+<ul>
+<li><strong>One pin per listed series.</strong> <code>check_pins.py</code> fails when a python, go, rust
+  or ts-node series in the version manifest, or the core Node major
+  (<code>core.node</code> in <code>manifest.yml</code>), has no pin; when a pin is for a series that
+  is neither; and when a python, go, node or <code>rustup-init</code> pin lacks either
+  architecture's hash. The core Python needs no pin: it is the vergil-python
+  package from the vergil apt repository.</li>
+<li><strong>The matrix carries the pins.</strong> <code>generate.py</code> puts each family's pin into its
+  <code>matrix.json</code> entry's <code>build-args</code> (<code>TOOLCHAIN_VERSION</code>,
+  <code>TOOLCHAIN_SHA256_AMD64</code>, <code>TOOLCHAIN_SHA256_ARM64</code>, plus <code>PBS_RELEASE</code> for
+  python and <code>RUSTUP_INIT_VERSION</code> with its two hashes for rust), so a moved pin
+  is a matrix change, and PR CI rebuilds the images it reaches.</li>
+<li><strong>The daily refresh moves them.</strong> The same <code>upstream-refresh.sh</code> hook runs
+  <code>uv run docker/pins/resolve_toolchains.py --write</code>, which moves every pin to
+  the newest patch of its series with both architectures' hashes, then
+  regenerates <code>matrix.json</code> and <code>CATALOG.md</code>. Any failed lookup exits non-zero,
+  so the refresh pushes nothing, and so does an upstream that lists a new hash
+  for a release already pinned: a published release's files never change, so
+  that is for a human to look into. Run the resolver without <code>--write</code> to see what
+  it would change.</li>
+<li><strong>Never hand-edit a pin.</strong> Run the resolver instead: it pins exactly the
+  series the manifest lists. The lifecycle automation does not yet write pins,
+  so its add of a pinned family's series fails that change in the lifecycle
+  run (the matrix cannot be rendered without the pin), and its drop PR fails
+  <code>check_pins.py</code> on the orphaned pin. Either is done by hand: edit the
+  manifest, run the resolver and the generators, and commit them together.</li>
+</ul>
 <h2 id="exposure-report-pins-due-for-re-evaluation">Exposure report — pins due for re-evaluation<a class="headerlink" href="#exposure-report-pins-due-for-re-evaluation" title="Permanent link">&para;</a></h2>
 <p><code>docker/pins/report_exposure.py</code> (WS4) generates the internal-state
 observability view for a daily morning-review ritual. It reports:</p>
