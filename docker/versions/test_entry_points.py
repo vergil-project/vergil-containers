@@ -25,6 +25,7 @@ ENTRY_POINTS: dict[str, list[str]] = {
     "docker/pins/check_pins.py": ["pyyaml"],
     "docker/pins/generate_catalog.py": ["pyyaml"],
     "docker/pins/report_exposure.py": ["packaging", "pyyaml"],
+    "docker/pins/resolve_toolchains.py": ["pyyaml"],
     "docker/versions/generate.py": ["pyyaml"],
     "docker/versions/selection.py": ["pyyaml"],
     "docker/versions/pr_jobs.py": ["pyyaml"],
@@ -36,7 +37,8 @@ ENTRY_POINTS: dict[str, list[str]] = {
 DISTRIBUTIONS = {"yaml": "pyyaml"}
 
 # Directories a local module is imported from: each script's own directory is
-# on sys.path, and report_exposure.py and lifecycle/*.py add docker/versions.
+# on sys.path, report_exposure.py, resolve_toolchains.py and lifecycle/*.py add
+# docker/versions, and generate.py adds docker/pins.
 LOCAL_ROOTS = [DOCKER / "pins", DOCKER / "versions"]
 
 # The reference regex from PEP 723.

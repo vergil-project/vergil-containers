@@ -167,7 +167,7 @@ class FakeAdapter:
 
 
 def _manifest(*families):
-    return mf.Manifest(families=families)
+    return mf.Manifest(families=families, core=mf.Core(python="3.15", node="22"))
 
 
 def test_run_records_releases_and_target():
@@ -317,7 +317,7 @@ def test_check_exits_1_on_family_error_after_writing_outputs(tmp_path, capsys):
 
 def test_check_bad_manifest_exits_1(tmp_path, capsys):
     path = tmp_path / "manifest.yml"
-    path.write_text("schema: 1\nfamilies: []\n")
+    path.write_text("schema: 1\ncore: {python: '3.15', node: '22'}\nfamilies: []\n")
     assert check.main(["--manifest", str(path)], adapters={}) == 1
     assert "families must be a non-empty list" in capsys.readouterr().err
 

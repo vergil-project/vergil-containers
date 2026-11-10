@@ -136,7 +136,7 @@ def test_family_context_beats_no_build_glob():
 # The synthetic tree: pkg-ubuntu:24.04 <- base:latest <- python (every
 # version), and go on an upstream image.
 def _tree_matrix():
-    return json.loads(g.render_matrix_json(_tree()))
+    return json.loads(g.render_matrix_json(_tree(), frozen.PINS))
 
 
 def test_selecting_parent_selects_descendants(tmp_path):
@@ -233,7 +233,7 @@ def test_toolchain_path_selects_it_and_its_descendants(tmp_path, capsys):
     # vergil-containers#727: a toolchain is in the dependency graph, so its
     # paths select it (and what is built FROM it), never the full set.
     root = _toolchain_repo(tmp_path)
-    m = json.loads(g.render_matrix_json(mf.load_manifest(root / g.MANIFEST)))
+    m = json.loads(g.render_matrix_json(mf.load_manifest(root / g.MANIFEST), frozen.PINS))
     picked = sel.select_entries(root, ["docker/pkg-ubuntu/Dockerfile.template"], m, m)
     assert _keys(picked) == [("pkg-ubuntu", "26.04"), ("pkg-ubuntu", "24.04"), ("base", "latest"),
                              ("python", "3.14"), ("python", "3.13"), ("python", "3.12")]

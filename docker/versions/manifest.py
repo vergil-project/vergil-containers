@@ -3,7 +3,8 @@ language version this repo builds (epic vergil-project/.github#407, spec §6.1).
 
 `manifest.yml` records what is built: one family per image suffix, each with its
 versions newest first, and an optional `toolchains:` section for images that are
-not languages (epic vergil-project/.github#607). Every other version list in the
+not languages (epic vergil-project/.github#607), and a required `core:` section
+naming the core runtimes (epic vergil-project/.github#649). Every other version list in the
 repo is generated from it by `generate.py`. Loading is strict: any schema
 violation raises ManifestError naming the family (or toolchain) and field, never
 a partial or defaulted manifest.
@@ -32,8 +33,9 @@ BASE_VERSION = "latest"
 # one tier per depth): `pkg-ubuntu` 0, `base` 1, language images 2.
 MAX_DEPTH = 2
 
-_TOP_KEYS = {"schema", "families"}
+_TOP_KEYS = {"schema", "core", "families"}
 _TOP_OPTIONAL = {"base", "toolchains"}
+_CORE_KEYS = {"python", "node"}
 _BASE_OPTIONAL = {"parent"}
 _FAMILY_KEYS = {"key", "language", "token_prefix", "build_arg", "automation", "versions"}
 _FAMILY_OPTIONAL = {"parent"}
@@ -48,6 +50,9 @@ _BUILD_ARG_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 _VERSION_RE = re.compile(r"^\d+(\.\d+)?$")
 # A parent's version is a family version, or `base`'s "latest".
 _PARENT_VERSION_RE = re.compile(r"^(\d+(\.\d+)?|latest)$")
+# The core Python is a series (`X.Y`), the core Node a major.
+_CORE_PYTHON_RE = re.compile(r"^\d+\.\d+$")
+_CORE_NODE_RE = re.compile(r"^\d+$")
 
 HEADER = (
     "# Version manifest: the single source of truth for every language version\n"
@@ -76,6 +81,12 @@ HEADER = (
     "# `versions`, newest first. Toolchain keys share one namespace with the\n"
     "# families and `base`, so any entry may name one as its parent. Toolchains\n"
     "# are built and published, but are never in window.json or the lifecycle.\n"
+    "#\n"
+    "# `core:` names the core runtimes `base` runs its own tools on (epic\n"
+    "# vergil-project/.github#649): the vergil-python series and the nodejs.org\n"
+    "# Node major. They have their own pins, separate from the family windows, and\n"
+    "# move only by a reviewed PR that edits this section. The core Node major is\n"
+    "# pinned in docker/pins/toolchains.yml.\n"
 )
 
 
@@ -121,10 +132,21 @@ class Toolchain:
 
 
 @dataclass(frozen=True)
+class Core:
+    """The core runtimes `base` runs its own tools on (spec §5.2.1). Neither has
+    to be a family series: each is checked against its own source."""
+    python: str  # the vergil-python series: "3.15"
+    node: str  # the nodejs.org Node major: "22"
+
+
+@dataclass(frozen=True)
 class Manifest:
     families: tuple[Family, ...]
     base_parent: Parent | None = None  # `base`'s parent; None: an upstream image
     toolchains: tuple[Toolchain, ...] = ()
+    # Always set by `load_manifest`, which requires the section; None only in a
+    # manifest a test builds in memory, which `dump_manifest` cannot round-trip.
+    core: Core | None = None
 
 
 def version_sort_key(version: str) -> tuple[int, ...]:
@@ -206,6 +228,16 @@ def _parse_base(data: object) -> Parent | None:
         raise ManifestError("base: must be a mapping")
     _check_keys("base", data, set(), _BASE_OPTIONAL)
     return _parse_parent("base", data["parent"]) if "parent" in data else None
+
+
+def _parse_core(data: object) -> Core:
+    if not isinstance(data, dict):
+        raise ManifestError("core: must be a mapping of python and node")
+    _check_keys("core", data, _CORE_KEYS)
+    return Core(
+        python=_string("core", "python", data["python"], _CORE_PYTHON_RE),
+        node=_string("core", "node", data["node"], _CORE_NODE_RE),
+    )
 
 
 def _check_version_order(where: str, versions: list[str]) -> None:
@@ -347,7 +379,8 @@ def parse_manifest(data: object) -> Manifest:
             raise ManifestError(f"toolchain {t.key!r}: key: duplicates {owner}")
         seen.add(t.key)
     base_parent = _parse_base(data["base"]) if "base" in data else None
-    m = Manifest(families=families, base_parent=base_parent, toolchains=toolchains)
+    core = _parse_core(data["core"])
+    m = Manifest(families=families, base_parent=base_parent, toolchains=toolchains, core=core)
     entry_depths(m)
     return m
 
@@ -387,6 +420,8 @@ def _dump_parent(p: Parent, indent: str) -> list[str]:
 def dump_manifest(m: Manifest) -> str:
     """Stable YAML for `m`; `load_manifest` of the result returns `m`."""
     lines = [HEADER.rstrip("\n"), f"schema: {SCHEMA}"]
+    if m.core is not None:
+        lines += ["core:", f"  python: {_scalar(m.core.python)}", f"  node: {_scalar(m.core.node)}"]
     if m.base_parent is not None:
         lines += ["base:", *_dump_parent(m.base_parent, "  ")]
     lines.append("families:")

@@ -32,11 +32,12 @@ MATRIX_KEYS = ["language", "version", "build-args", "parent", "depth"]
 
 
 def test_render_matrix_json_equals_current_include_list():
-    data = json.loads(g.render_matrix_json(_seed()))
+    data = json.loads(g.render_matrix_json(_seed(), frozen.PINS))
     assert set(data) == {"include"}
     assert all(list(e) == MATRIX_KEYS for e in data["include"])
     families = data["include"][:-1]
-    triples = [(e["language"], e["version"], *e["build-args"]) for e in families]
+    # The family's version arg leads its build-args; the toolchain pins follow.
+    triples = [(e["language"], e["version"], next(iter(e["build-args"]))) for e in families]
     assert sorted(triples) == sorted(CURRENT_MATRIX)
     assert len(triples) == len(CURRENT_MATRIX)
     # No entry of the frozen manifest names a parent: everything is tier 0.
@@ -44,17 +45,20 @@ def test_render_matrix_json_equals_current_include_list():
 
 
 def test_build_args_map_replaces_build_arg():
-    include = json.loads(g.render_matrix_json(_seed()))["include"]
+    include = json.loads(g.render_matrix_json(_seed(), frozen.PINS))["include"]
     assert all("build-arg" not in e for e in include)
     python = [e for e in include if e["language"] == "python"]
-    assert [e["build-args"] for e in python] == [
-        {"PYTHON_VERSION": "3.14"}, {"PYTHON_VERSION": "3.13"}, {"PYTHON_VERSION": "3.12"}]
+    # The family's version arg first, then its toolchain pins (epic
+    # vergil-project/.github#649), which docker/pins/test_toolchains.py covers.
+    assert [e["build-args"]["PYTHON_VERSION"] for e in python] == ["3.14", "3.13", "3.12"]
+    families = {f.key: f for f in _seed().families}
     for e in include[:-1]:
-        assert list(e["build-args"].values()) == [e["version"]]
+        name, value = next(iter(e["build-args"].items()))
+        assert (name, value) == (families[e["language"]].build_arg, e["version"])
 
 
 def test_base_build_args_empty():
-    include = json.loads(g.render_matrix_json(_seed()))["include"]
+    include = json.loads(g.render_matrix_json(_seed(), frozen.PINS))["include"]
     assert include[-1] == {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-args": {},
                            "parent": None, "depth": 0}
     assert [e for e in include if e["build-args"] == {}] == [include[-1]]
@@ -69,11 +73,12 @@ def _tree() -> mf.Manifest:
     pkg = replace(seed["go"], key="pkg-ubuntu", language="pkgubuntu", build_arg="UBUNTU_VERSION",
                   versions=(mf.ManifestVersion("24.04", None, None, True, None),))
     python = replace(seed["python"], parent=mf.Parent("base", "latest"))
-    return mf.Manifest(families=(python, seed["go"], pkg), base_parent=mf.Parent("pkg-ubuntu", "24.04"))
+    return mf.Manifest(families=(python, seed["go"], pkg), base_parent=mf.Parent("pkg-ubuntu", "24.04"),
+                       core=_seed().core)
 
 
 def test_matrix_parent_and_depth_emitted():
-    include = json.loads(g.render_matrix_json(_tree()))["include"]
+    include = json.loads(g.render_matrix_json(_tree(), frozen.PINS))["include"]
     by = {(e["language"], e["version"]): e for e in include}
     assert by[("pkg-ubuntu", "24.04")]["parent"] is None
     assert by[("pkg-ubuntu", "24.04")]["depth"] == 0
@@ -81,12 +86,13 @@ def test_matrix_parent_and_depth_emitted():
     assert by[("base", "latest")]["depth"] == 1
     assert by[("python", "3.14")]["parent"] == {"language": "base", "version": "latest"}
     assert by[("python", "3.14")]["depth"] == 2
-    assert by[("go", "1.26")] == {"language": "go", "version": "1.26", "build-args": {"GO_VERSION": "1.26"},
+    go_args = {"GO_VERSION": "1.26", **frozen.rt.build_args(frozen.PINS, "go", "1.26")}
+    assert by[("go", "1.26")] == {"language": "go", "version": "1.26", "build-args": go_args,
                                   "parent": None, "depth": 0}
 
 
 def test_matrix_ordered_by_depth():
-    include = json.loads(g.render_matrix_json(_tree()))["include"]
+    include = json.loads(g.render_matrix_json(_tree(), frozen.PINS))["include"]
     assert [(e["language"], e["version"], e["depth"]) for e in include] == [
         ("go", "1.26", 0),
         ("pkg-ubuntu", "24.04", 0),
@@ -101,7 +107,7 @@ def test_matrix_refuses_a_bad_tree():
     seed = _seed()
     bad = mf.Manifest(families=seed.families, base_parent=mf.Parent("pkg-ubuntu", "24.04"))
     with pytest.raises(mf.ManifestError, match=r"base: parent: no manifest entry 'pkg-ubuntu'"):
-        g.render_matrix_json(bad)
+        g.render_matrix_json(bad, frozen.PINS)
 
 
 def test_render_build_sh_block():
@@ -309,7 +315,7 @@ def _toolchain_repo(root: Path) -> Path:
 
 
 def test_matrix_json_appends_toolchain_entries():
-    include = json.loads(g.render_matrix_json(_with_toolchain()))["include"]
+    include = json.loads(g.render_matrix_json(_with_toolchain(), frozen.PINS))["include"]
     assert include[-3:] == [
         {"language": "pkg-ubuntu", "version": "26.04", "build-args": {"UBUNTU_VERSION": "26.04"},
          "parent": None, "depth": 0},
@@ -318,13 +324,13 @@ def test_matrix_json_appends_toolchain_entries():
         {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-args": {}, "parent": None, "depth": 0},
     ]
     # Every family entry is unchanged and comes first.
-    assert include[:-3] == json.loads(g.render_matrix_json(_seed()))["include"][:-1]
+    assert include[:-3] == json.loads(g.render_matrix_json(_seed(), frozen.PINS))["include"][:-1]
 
 
 def test_matrix_json_toolchain_as_parent():
     # Epic vergil-project/.github#649: base built FROM pkg-ubuntu:24.04.
     m = replace(_with_toolchain(), base_parent=mf.Parent("pkg-ubuntu", "24.04"))
-    include = json.loads(g.render_matrix_json(m))["include"]
+    include = json.loads(g.render_matrix_json(m, frozen.PINS))["include"]
     assert [(e["language"], e["depth"]) for e in include if e["depth"] == 0][-2:] == [
         ("pkg-ubuntu", 0), ("pkg-ubuntu", 0)]
     assert include[-1] == {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-args": {},

@@ -29,6 +29,9 @@ CURRENT_MATRIX = [
 ]
 
 
+CORE = {"python": "3.15", "node": "22"}
+
+
 def _family(**over):
     fam = {
         "key": "python",
@@ -48,7 +51,7 @@ def _family(**over):
 
 
 def _doc(*families):
-    return {"schema": 1, "families": list(families) or [_family()]}
+    return {"schema": 1, "core": dict(CORE), "families": list(families) or [_family()]}
 
 
 def _load(tmp_path, doc):
@@ -158,11 +161,11 @@ def test_rejects_bad_family_fields(tmp_path, field, value):
 
 def test_rejects_bad_top_level(tmp_path):
     with pytest.raises(mf.ManifestError, match="schema 2"):
-        _load(tmp_path, {"schema": 2, "families": [_family()]})
+        _load(tmp_path, {"schema": 2, "core": CORE, "families": [_family()]})
     with pytest.raises(mf.ManifestError, match="families must be a non-empty list"):
-        _load(tmp_path, {"schema": 1, "families": []})
+        _load(tmp_path, {"schema": 1, "core": CORE, "families": []})
     with pytest.raises(mf.ManifestError, match="unknown key"):
-        _load(tmp_path, {"schema": 1, "families": [_family()], "extra": 1})
+        _load(tmp_path, {"schema": 1, "core": CORE, "families": [_family()], "extra": 1})
     p = tmp_path / "bad.yml"
     p.write_text("families: [")
     with pytest.raises(mf.ManifestError, match="not valid YAML"):
@@ -408,3 +411,53 @@ def test_dump_round_trips_toolchains(tmp_path):
     assert dumped.index("\nfamilies:") < dumped.index("\ntoolchains:")
     # No toolchains, no section.
     assert "\ntoolchains:" not in mf.dump_manifest(mf.load_manifest(MANIFEST))
+
+
+# --- Core runtimes (epic vergil-project/.github#649, Task 6) ---
+
+
+def test_manifest_core_section(tmp_path):
+    m = _load(tmp_path, _doc())
+    assert m.core == mf.Core(python="3.15", node="22")
+    # A core series outside every family window is accepted: the core runtimes
+    # have their own pins (spec §5.2.1).
+    doc = _doc()
+    doc["core"] = {"python": "3.16", "node": "26"}
+    m = _load(tmp_path, doc)
+    assert m.core == mf.Core(python="3.16", node="26")
+    assert all(v.version != "3.16" for f in m.families for v in f.versions)
+    assert mf.load_manifest(MANIFEST).core == mf.Core(python="3.15", node="22")
+
+
+@pytest.mark.parametrize(
+    "core, needle",
+    [
+        (None, r"missing key\(s\) 'core'"),
+        ("3.15", "core: must be a mapping"),
+        ({"python": "3.15"}, r"core: missing key\(s\) 'node'"),
+        ({"python": "3.15", "node": "22", "ruby": "3.4"}, r"core: unknown key\(s\) 'ruby'"),
+        ({"python": "3", "node": "22"}, "core: python '3'"),
+        ({"python": "3.15.1", "node": "22"}, "core: python '3.15.1'"),
+        ({"python": "3.15", "node": "22.1"}, "core: node '22.1'"),
+        ({"python": 3.15, "node": "22"}, "core: python 3.15"),
+    ],
+)
+def test_rejects_bad_core_section(tmp_path, core, needle):
+    doc = _doc()
+    if core is None:
+        del doc["core"]
+    else:
+        doc["core"] = core
+    with pytest.raises(mf.ManifestError, match=needle):
+        _load(tmp_path, doc)
+
+
+def test_dump_round_trips_core(tmp_path):
+    doc = _doc()
+    doc["core"] = {"python": "3.14", "node": "24"}
+    m = _load(tmp_path, doc)
+    text = mf.dump_manifest(m)
+    assert '\ncore:\n  python: "3.14"\n  node: "24"\n' in text
+    p = tmp_path / "dumped.yml"
+    p.write_text(text)
+    assert mf.load_manifest(p) == m

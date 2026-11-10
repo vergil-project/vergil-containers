@@ -121,6 +121,46 @@ tracks the leading edge:
 This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy `0.70.0 → 0.72.0` security bump landed through the bumper.
 
+## Language toolchain pins
+
+The language images download their toolchain rather than install it from a
+package: python-build-standalone for the python family, the go.dev tarballs,
+the nodejs.org tarballs (the ts-node family and `base`'s core Node), and Rust
+through a pinned `rustup-init`. Each series is pinned in
+[`docker/pins/toolchains.yml`](https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/toolchains.yml)
+by its exact release and, for every verified download, the SHA-256 of each
+architecture's file (`amd64` and `arm64`). Rust pins its exact `x.y.z` release
+with no hash, since rustup checks each component against the release's channel
+manifest; `rustup-init` itself is pinned by version and hash. The image build
+checks the download against the pin and resolves nothing over the network
+itself.
+
+- **One pin per listed series.** `check_pins.py` fails when a python, go, rust
+  or ts-node series in the version manifest, or the core Node major
+  (`core.node` in `manifest.yml`), has no pin; when a pin is for a series that
+  is neither; and when a python, go, node or `rustup-init` pin lacks either
+  architecture's hash. The core Python needs no pin: it is the vergil-python
+  package from the vergil apt repository.
+- **The matrix carries the pins.** `generate.py` puts each family's pin into its
+  `matrix.json` entry's `build-args` (`TOOLCHAIN_VERSION`,
+  `TOOLCHAIN_SHA256_AMD64`, `TOOLCHAIN_SHA256_ARM64`, plus `PBS_RELEASE` for
+  python and `RUSTUP_INIT_VERSION` with its two hashes for rust), so a moved pin
+  is a matrix change, and PR CI rebuilds the images it reaches.
+- **The daily refresh moves them.** The same `upstream-refresh.sh` hook runs
+  `uv run docker/pins/resolve_toolchains.py --write`, which moves every pin to
+  the newest patch of its series with both architectures' hashes, then
+  regenerates `matrix.json` and `CATALOG.md`. Any failed lookup exits non-zero,
+  so the refresh pushes nothing, and so does an upstream that lists a new hash
+  for a release already pinned: a published release's files never change, so
+  that is for a human to look into. Run the resolver without `--write` to see what
+  it would change.
+- **Never hand-edit a pin.** Run the resolver instead: it pins exactly the
+  series the manifest lists. The lifecycle automation does not yet write pins,
+  so its add of a pinned family's series fails that change in the lifecycle
+  run (the matrix cannot be rendered without the pin), and its drop PR fails
+  `check_pins.py` on the orphaned pin. Either is done by hand: edit the
+  manifest, run the resolver and the generators, and commit them together.
+
 ## Exposure report — pins due for re-evaluation
 
 `docker/pins/report_exposure.py` (WS4) generates the internal-state
