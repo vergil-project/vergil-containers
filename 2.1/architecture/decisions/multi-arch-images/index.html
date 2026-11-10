@@ -622,6 +622,8 @@
       
         
       
+        
+      
     
     
     
@@ -674,6 +676,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../releases/v2.1.36/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.36
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2657,10 +2687,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#qemu-emulation-in-ci" class="md-nav__link">
+  <a href="#native-per-arch-builds-in-ci" class="md-nav__link">
     <span class="md-ellipsis">
       
-        QEMU emulation in CI
+        Native per-arch builds in CI
       
     </span>
   </a>
@@ -3073,10 +3103,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#qemu-emulation-in-ci" class="md-nav__link">
+  <a href="#native-per-arch-builds-in-ci" class="md-nav__link">
     <span class="md-ellipsis">
       
-        QEMU emulation in CI
+        Native per-arch builds in CI
       
     </span>
   </a>
@@ -3204,14 +3234,20 @@ rather than a silent fallback.</p>
 <p><strong>Why not individual download steps?</strong> A single case block avoids
 repeating the architecture-mapping logic five times and keeps the
 layer count down.</p>
-<h3 id="qemu-emulation-in-ci">QEMU emulation in CI<a class="headerlink" href="#qemu-emulation-in-ci" title="Permanent link">&para;</a></h3>
-<p>CI builds both platforms on amd64 GitHub Actions runners using QEMU
-via <code>docker/setup-qemu-action</code>. Native arm64 runners were not available
-(or cost-effective) at the time of implementation.</p>
-<p><strong>Trade-off:</strong> arm64 layers build under emulation, which is slower than
-native. This is acceptable because registry caching (<code>mode=max</code>) means
-subsequent builds only rebuild changed layers, and the emulation cost
-is paid in CI rather than by every developer.</p>
+<h3 id="native-per-arch-builds-in-ci">Native per-arch builds in CI<a class="headerlink" href="#native-per-arch-builds-in-ci" title="Permanent link">&para;</a></h3>
+<p>CI builds each platform on its own native GitHub-hosted runner: amd64
+on <code>ubuntu-24.04</code> and arm64 on <code>ubuntu-24.04-arm</code>. Each build pushes
+its image by digest, untagged. The publish job for the image then
+stitches the two digests into the multi-arch candidate with
+<code>docker buildx imagetools create</code>, and the scan, attest and promote
+steps below run on that candidate.</p>
+<p><strong>History:</strong> the pipeline first built both platforms on amd64 runners
+under QEMU (<code>docker/setup-qemu-action</code>), because native arm64 runners
+were not available then. Compiling toolchains under emulation made the
+arm64 half dominate the nightly's no-cache build time, so
+<a href="https://github.com/vergil-project/vergil-containers/issues/515">vergil-containers#515</a>
+moved it to native runners. Restoring the QEMU build is a change to
+<code>cd-docker-publish.yml</code> alone.</p>
 <h3 id="staging-tag-scan-flow">Staging-tag scan flow<a class="headerlink" href="#staging-tag-scan-flow" title="Permanent link">&para;</a></h3>
 <p>The pipeline builds a candidate tag, scans both platforms independently
 with Trivy, attests build provenance, then promotes the candidate to
@@ -3228,7 +3264,8 @@ rather than the GitHub Actions cache.</p>
 the repository. Multi-arch images with multiple language variants would
 exhaust this quickly. Registry cache has no size limit and persists
 across workflow runs.</p>
-<p>Cache tags follow the pattern <code>{prefix}-{language}:cache-{version}</code>.
+<p>Cache tags follow the pattern <code>{prefix}-{language}:cache-{version}-{arch}</code>
+(<code>{prefix}-base:cache-latest-{arch}</code> for base), one per native build.
 When a language version is retired from the matrix, its cache tag
 remains in GHCR — storage impact is negligible but tags accumulate.
 Periodic cleanup is tracked in <a href="https://github.com/vergil-project/vergil-docker/issues/125">#125</a>.</p>
@@ -3253,8 +3290,8 @@ tag after promotion. This was removed because:</p>
 </ul>
 <h3 id="local-builds-stay-single-platform">Local builds stay single-platform<a class="headerlink" href="#local-builds-stay-single-platform" title="Permanent link">&para;</a></h3>
 <p><code>docker/build.sh</code> builds for the host's native architecture only.
-Multi-arch builds are slow (QEMU emulation) and unnecessary for local
-iteration. The CI pipeline is the authority for multi-arch correctness.</p>
+Building the other platform locally would need emulation, and it is
+unnecessary for local iteration. The CI pipeline is the authority for multi-arch correctness.</p>
 <h2 id="failure-modes">Failure Modes<a class="headerlink" href="#failure-modes" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

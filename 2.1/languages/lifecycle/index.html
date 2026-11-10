@@ -622,6 +622,8 @@
       
         
       
+        
+      
     
     
     
@@ -674,6 +676,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.36/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.36
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3068,8 +3098,9 @@ language's upstream.</p>
 <p>The window is recorded in one file, the version manifest
 <a href="https://github.com/vergil-project/vergil-containers/blob/develop/docker/versions/manifest.yml"><code>docker/versions/manifest.yml</code></a>.
 Every other version list in this repository is generated from it: the publish
-matrix, <code>docker/build.sh</code>, the Dockerfile <code>ARG</code> defaults, the package-cleanup
-lists and the version tables in the docs. The generator also writes
+matrix (which <code>docker/build.sh</code> also reads), the Dockerfile <code>ARG</code> defaults,
+the package-cleanup lists and the version tables in the docs. The generator
+also writes
 <code>docker/versions/window.json</code>, the published window that consumer repos read
 at build time. CI fails if any generated file is out of date with the manifest.</p>
 <p>The manifest records <strong>what is built</strong>, and labels each version as in or out of
