@@ -371,3 +371,4 @@ CVE-2026-116587
 CVE-2026-109869
 CVE-2026-87018
 CVE-2026-109383
+# THROWAWAY (vergil-containers#517 selection check) - never merge.
