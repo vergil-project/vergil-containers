@@ -7,6 +7,9 @@ release-model = "tagged-release"
 [ci]
 versions = ["latest"]
 integration-tests = false
+# PR CI's images / evidence gate (ci-images.yml) is required, and a release
+# harvests its ci-evidence-images artifact (vergil-tooling#4132).
+images = true
 
 [publish]
 release = true
