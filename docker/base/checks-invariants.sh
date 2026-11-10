@@ -16,9 +16,14 @@
 #     is all it promises, spec §5.5);
 #   - each core tool runs, mike --help, a material-themed fixture builds, and
 #     markdownlint runs;
+#   - a real semgrep scan passes through both entry points, semgrep and
+#     pysemgrep: one inline rule against one file, exit 0 and one finding
+#     (vergil-project/vergil-containers#825: `semgrep --version` passed while
+#     every scan crashed);
 #   - each core tool runs on its core runtime: every uv tool environment's
-#     interpreter is under /opt/vergil/python/<core>/, and the markdownlint
-#     wrapper names /opt/vergil/node/<core-major>/bin/node;
+#     interpreter is under /opt/vergil/python/<core>/ (for a wrapped entry
+#     point, the one it execs), and the markdownlint wrapper names
+#     /opt/vergil/node/<core-major>/bin/node;
 #   - the vergil apt source is in place, no bootstrap source or key is left,
 #     and apt-get update passes.
 #
@@ -32,7 +37,9 @@ core_python_bin="${core_python_dir}/bin/python${core_python}"
 core_node_bin="/opt/vergil/node/${core_node_major}/bin/node"
 
 # The uv tools base installs, by the entry point each puts in /usr/local/bin.
-uv_tools=(yamllint ansible-lint semgrep mkdocs mike)
+# semgrep and pysemgrep are wrappers that exec their entry points in the tool
+# environment (common/core-tools.dockerfile); the rest are uv's links.
+uv_tools=(yamllint ansible-lint semgrep pysemgrep mkdocs mike)
 
 failed=()
 
@@ -151,6 +158,50 @@ material_fixture_builds() {
   return "${rc}"
 }
 
+# semgrep_scan_finds: one inline rule (`echo $X`, bash) against one `echo hi`
+# file, run through each semgrep entry point with no metrics, no version check
+# and no network rule pack, must exit 0 with exactly one finding.
+semgrep_scan_finds() {
+  local dir rc=0 tool status got
+  dir="$(mktemp -d)" || return 1
+  mkdir -p "${dir}/src"
+  # SC2016: the rule's $X is semgrep's metavariable, written literally.
+  # shellcheck disable=SC2016
+  printf '%s\n' 'rules:' '  - id: vergil-check-echo' '    pattern: echo $X' \
+    '    message: an echo' '    languages: [bash]' '    severity: INFO' >"${dir}/rule.yml"
+  printf '%s\n' '#!/bin/sh' 'echo hi' >"${dir}/src/hello.sh"
+  for tool in semgrep pysemgrep; do
+    status=0
+    "${tool}" scan --metrics=off --disable-version-check --config "${dir}/rule.yml" \
+      --json --output "${dir}/${tool}.json" "${dir}/src" >"${dir}/${tool}.log" 2>&1 || status=$?
+    if [ "${status}" -ne 0 ]; then
+      say "'${tool} scan' of the fixture exited ${status}; its last lines:"
+      tail -n 5 "${dir}/${tool}.log" | sed 's/^/    /' >&2
+      rc=1
+      continue
+    fi
+    got="$(jq '.results | length' "${dir}/${tool}.json")" || {
+      say "'${tool} scan' wrote no readable JSON to ${dir}/${tool}.json"
+      rc=1
+      continue
+    }
+    [ "${got}" = 1 ] || {
+      say "'${tool} scan' of the fixture found ${got} result(s), want 1"
+      rc=1
+    }
+  done
+  rm -rf "${dir}"
+  return "${rc}"
+}
+
+# entry_target <entry>: the file an entry point runs: what a wrapper's exec
+# line names, else what the link resolves to.
+entry_target() {
+  local target
+  target="$(sed -n 's/^exec \([^ ]*\) .*/\1/p' "$1")"
+  readlink -f "${target:-$1}"
+}
+
 uv_tools_on_core_python() {
   local rc=0 tool entry real cfg home
   for tool in "${uv_tools[@]}"; do
@@ -164,7 +215,7 @@ uv_tools_on_core_python() {
       rc=1
       continue
     }
-    real="$(readlink -f "${entry}")"
+    real="$(entry_target "${entry}")"
     cfg="$(dirname "$(dirname "${real}")")/pyvenv.cfg"
     home="$(sed -n 's/^home *= *//p' "${cfg}" 2>/dev/null)"
     case "${home}" in
@@ -226,6 +277,7 @@ check "core Python is the core series" core_python_is_core_series
 check "/usr/local/bin/python3 imports tomllib" python3_imports_tomllib
 check "core tools run" core_tools_run
 check "material fixture builds" material_fixture_builds
+check "semgrep scan finds the fixture's one result" semgrep_scan_finds
 check "uv tools run on the core Python" uv_tools_on_core_python
 check "markdownlint runs on the core Node" markdownlint_on_core_node
 check "vergil apt source, no bootstrap left" vergil_apt_source_clean
