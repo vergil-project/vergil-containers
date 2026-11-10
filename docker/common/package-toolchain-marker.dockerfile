@@ -1,9 +1,10 @@
 # --- package toolchain marker ------------------------------------------------
 # /etc/vergil/package-toolchain marks a package toolchain image (epic
-# vergil-project/.github#607). The vergil-actions package setup action skips its
-# own installs when the marker exists and checks every listed tool against it
-# (actions/package/setup/check-toolchain.sh). The contract, which that script
-# reads:
+# vergil-project/.github#607). The vergil-actions package setup action has
+# installed no toolchain of its own since vergil-actions v2.1.62: it requires
+# the marker, failing the job when it is missing, and checks every tool the
+# marker lists against it (actions/package/setup/check-toolchain.sh). The
+# contract, which that script reads:
 #   - one "<tool> <version>" line per tool, separated by a single space;
 #   - <tool> is a command name, looked up on PATH;
 #   - <version> is the first [0-9]+(\.[0-9]+)+ token of `<tool> --version`'s
