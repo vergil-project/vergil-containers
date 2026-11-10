@@ -10,14 +10,15 @@ The spec's hard rule (§3.5) is **prebuilt stable binaries only — never built
 from source** — and the durable requirement is **two recent majors**. The
 concrete majors are whatever is cleanly available prebuilt.
 
-Discovery was run empirically against `debian:trixie-slim` (the Debian release
-underlying the other images in this repo) plus the official LLVM apt channel
-(`apt.llvm.org`):
+Discovery was first run against `debian:trixie-slim`. Since epic
+[vergil-project/.github#649](https://github.com/vergil-project/.github/issues/649)
+the image is built on `base` (Ubuntu 24.04), and its spike installed both
+majors from the official LLVM apt channel (`apt.llvm.org`) for noble:
 
 | Major | Source (prebuilt) | Version observed | Decision |
 | ----- | ----------------- | ---------------- | -------- |
-| **20** | `apt.llvm.org` `llvm-toolchain-trixie-20` | 20.1.8 | **pinned (primary)** |
-| **19** | `apt.llvm.org` `llvm-toolchain-trixie-19` (also Debian trixie main, 19.1.7) | 19.1.x | **pinned (secondary)** |
+| **20** | `apt.llvm.org` `llvm-toolchain-noble-20` | 20.1.8 | **pinned (primary)** |
+| **19** | `apt.llvm.org` `llvm-toolchain-noble-19` | 19.1.7 | **pinned (secondary)** |
 
 Both majors — plus the matching `clang-tidy`, `clang-format`, `lld`, `llvm`
 (for `llvm-cov`), and the `libclang-rt` sanitizer runtime — install cleanly as
@@ -36,16 +37,21 @@ which `docker/build.sh` reads, is generated from it.
 ## Structure (matches this repo's existing image idiom)
 
 - **`docker/cpp-clang/Dockerfile.template`** — the Clang image. `FROM
-  debian:trixie-slim`, composes the shared validation fragments (the same set
-  the `rust` image uses) plus `common/cpp-analysis.dockerfile`, then installs
-  the `CLANG_VERSION` compiler + sanitizer runtime and sets `CC=clang` /
-  `CXX=clang++` with libstdc++ as the standard library.
+  ${PARENT_IMAGE}`, which is `base` (the manifest's `parent:`), so every common
+  tool comes from `base`. It installs `g++-14` for GCC 14's libstdc++ (noble's
+  unversioned `g++` is 13, and Clang would then select libstdc++ 13), composes
+  `common/cpp-analysis.dockerfile`, then installs the `CLANG_VERSION` compiler
+  + sanitizer runtime and sets `CC=clang` / `CXX=clang++` with libstdc++ as the
+  standard library.
+- **`docker/cpp-clang/checks.sh`** — the build-time checks, the template's last
+  `RUN`: `base`'s invariants and all three of its defaults, the Clang series,
+  the GCC 14 libstdc++ selection, the `clang-format`/`clang-tidy` major, and
+  noble's cmake (3.28.3) and cppcheck (2.13.0).
 - **`common/cpp-analysis.dockerfile`** — the shared, compiler-agnostic analysis
   toolset every C++ image carries (`clang-format`, `clang-tidy`, the unversioned
   `run-clang-tidy` LINT driver, `cppcheck`, `gcovr`, CMake, Conan 2). This is
-  plan T1's "shared base layer", expressed as
-  an `@include` fragment because language images in this repo compose fragments
-  rather than `FROM`-chaining a locally-built base image. The future GCC family
+  plan T1's "shared base layer", expressed as an `@include` fragment so that
+  both C++ families, each built on `base`, carry the same layer. The GCC family
   (T2) includes the same fragment.
 - **`docker/cpp/smoke/`** + **`docker/cpp/smoke-test.sh`** — the trivial
   CMake + Conan 2 project used as the build-time smoke check (shared across the
@@ -58,9 +64,9 @@ token is `cpp-clang` (the directory name == the image name).
 ## Building and smoke-testing locally
 
 ```bash
-docker/generate.sh cpp-clang
-nerdctl build --build-arg CLANG_VERSION=20 -t dev-cpp-clang:20 docker/cpp-clang
-docker/cpp/smoke-test.sh dev-cpp-clang:20
+docker/build.sh cpp-clang                 # builds pkg-ubuntu and base first
+docker/build.sh --pull-parents cpp-clang  # or pulls them from GHCR
 ```
 
-`docker/build.sh` builds both pinned majors and runs the smoke check for each.
+`docker/build.sh` builds both pinned majors on their parent (`dev-base:latest`)
+and runs the smoke check for each.

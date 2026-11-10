@@ -15,6 +15,13 @@ TS_ANALYSIS = "docker/common/typescript-analysis.dockerfile"
 SECURITY_TOOLS = "docker/common/security-tools.dockerfile"
 
 
+def _on_base() -> set[str]:
+    """The live manifest's families built FROM base (epic
+    vergil-project/.github#649): each reaches base's inputs through its parent."""
+    m = mf.load_manifest(ROOT / "docker" / "versions" / "manifest.yml")
+    return {f.key for f in m.families if f.parent is not None and f.parent.name == mf.BASE_KEY}
+
+
 def test_ts_node_includes_typescript_analysis_python_does_not():
     assert TS_ANALYSIS in includes.fragments_of(ROOT / "docker/ts-node/Dockerfile.template")
     assert TS_ANALYSIS not in includes.fragments_of(ROOT / "docker/python/Dockerfile.template")

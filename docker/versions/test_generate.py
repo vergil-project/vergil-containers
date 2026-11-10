@@ -216,7 +216,9 @@ def test_render_docs_tables(repo):
         # python is built on base (Task 8), but the frozen manifest gives it no
         # parent, so its row shows the template's FROM as written.
         assert "| `dev-python`    | python     | 3.14, 3.13, 3.12 | `${PARENT_IMAGE}`    |" in rows
-        assert "| `dev-cpp-clang` | cpp        | 20, 19           | `debian:trixie-slim` |" in rows
+        # cpp-clang is built on base (epic vergil-project/.github#649), but the
+        # frozen manifest gives it no parent: its row shows the template's FROM.
+        assert "| `dev-cpp-clang` | cpp        | 20, 19           | `${PARENT_IMAGE}`    |" in rows
         assert "| `dev-ts-node`   | typescript | 24, 22           | `debian:trixie-slim` |" in rows
         # The frozen manifest gives base no parent, so its row shows the
         # template's FROM as written.
