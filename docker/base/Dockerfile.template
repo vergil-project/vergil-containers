@@ -1,9 +1,36 @@
 # Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
 # Canonical source: https://github.com/vergil-project/vergil-containers
-# dev-base — Base dev container with all common tooling. Language-specific
-# images extend this with runtime and language-specific tools.
-FROM python:3.14-slim
+# dev-base — Base dev container with all common tooling, built on the package
+# toolchain image for Ubuntu 24.04 (epic vergil-project/.github#649, spec
+# §5.2). Language-specific images extend this with runtime and
+# language-specific tools.
+#
+# The parent comes from docker/versions/manifest.yml (`base: parent:`):
+# docker/build.sh and the publish workflow pass it as PARENT_IMAGE. uv and nFPM
+# come from it. base adds the core runtimes its own tools run on, side by side
+# under /opt/vergil/ (spec §5.2.1): vergil-python from the vergil apt repository
+# and a nodejs.org Node. Their series come from the manifest's `core:` section as
+# the CORE_* build args generate.py emits. base puts no node, npm, npx or pip on
+# PATH, and pip-installs nothing.
+ARG PARENT_IMAGE
+FROM ${PARENT_IMAGE}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# --- No package toolchain marker ---------------------------------------------
+# The parent marks itself a package toolchain image; base and every image built
+# on it is not one (spec §5.2). checks-invariants.sh asserts it stays absent.
+RUN rm -f /etc/vergil/package-toolchain
+
+# --- Core series -------------------------------------------------------------
+# Persisted for the images built on base, since a build ARG does not carry into
+# a child image: checks-invariants.sh and checks-defaults.sh read these.
+ARG CORE_PYTHON
+ARG CORE_NODE_MAJOR
+ENV VERGIL_CORE_PYTHON=${CORE_PYTHON} \
+    VERGIL_CORE_NODE_MAJOR=${CORE_NODE_MAJOR}
+
+# Build-time only: apt never prompts. An ARG, so it is not set in the image.
+ARG DEBIAN_FRONTEND=noninteractive
 
 # --- System packages ---------------------------------------------------------
 RUN apt-get update && \
@@ -12,47 +39,26 @@ RUN apt-get update && \
       git curl jq openssh-client xz-utils gnupg ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
+# @include common/vergil-apt.dockerfile
+# @include common/core-python.dockerfile
 # @include common/path-defaults.dockerfile
-# @include common/node-markdownlint.dockerfile
+# @include common/core-node.dockerfile
 # @include common/github-cli.dockerfile
 # @include common/validation-tools.dockerfile
 # @include common/security-tools.dockerfile
 # @include common/opentofu.dockerfile
-# @include common/nfpm.dockerfile
 # @include common/rpm.dockerfile
 # @include common/pandoc.dockerfile
+# @include common/core-tools.dockerfile
 
-# --- Python tools ------------------------------------------------------------
-# Upgrade system pip past two advisories:
-#   - CVE-2026-3219  (TAR/ZIP polyglot in archive parsing). pip 26.0.1 is
-#     affected; 26.1 is the fix. Issue #59.
-#   - CVE-2026-8643 / PYSEC-2026-196 (entry-point path traversal). Affects
-#     pip <= 26.1.1; 26.1.2 is the fix. Issue #344.
-# The >=26.1.2 lower bound covers both; a plain >=26.1 floats to a still-
-# vulnerable pip.
-# Also upgrade the system setuptools past CVE-2025-47273 (PackageIndex path
-# traversal): python:3.x-slim ships 70.3.0, 78.1.1 is the fix. This hardens the
-# real installed setuptools. Issue #474.
-# (pip's bundled CycloneDX SBOM, pip/_vendor/bom.cdx.json, is a Trivy
-# false-positive source — excluded centrally via trivy.yaml scan.skip-files,
-# not by deleting it here. Issue #498.)
-RUN pip install --no-cache-dir --upgrade 'pip>=26.1.2' 'setuptools>=78.1.1' && \
-    pip install --no-cache-dir yamllint ansible-lint uv
-
-# --- MkDocs ------------------------------------------------------------------
-RUN pip install --no-cache-dir \
-      mkdocs-material \
-      mike \
-      pyyaml
-
-# --- Semgrep -----------------------------------------------------------------
-# Semgrep has a native extension (semgrep-core) that requires compilation.
-# Install build-essential for gcc, build, then remove to keep the image slim.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential && \
-    uv tool install semgrep && \
-    apt-get purge -y --auto-remove build-essential && \
-    rm -rf /var/lib/apt/lists/*
+# --- Build-time checks -------------------------------------------------------
+# The invariants every image built on base keeps, and base's defaults, which a
+# language image may change; both stay in the image for its children to rerun.
+# checks.sh (every invariant and every default) runs here from the build
+# context and is not kept. Any failure fails the build.
+COPY checks-invariants.sh checks-defaults.sh /usr/local/lib/vergil/checks/
+RUN --mount=type=bind,source=checks.sh,target=/tmp/vergil-checks.sh \
+    bash /tmp/vergil-checks.sh
 
 EXPOSE 8000
 

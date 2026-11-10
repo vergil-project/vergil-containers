@@ -31,7 +31,7 @@ The table is generated from `docker/versions/manifest.yml` by
 | `dev-ts-node`    | typescript | 24, 22                 | `debian:trixie-slim`                    |
 | `dev-pkg-ubuntu` | —          | 26.04, 24.04           | `ubuntu:<v>`                            |
 | `dev-pkg-rhel`   | —          | 10, 9                  | `registry.access.redhat.com/ubi<v>/ubi` |
-| `dev-base`       | —          | latest                 | `python:3.14-slim`                      |
+| `dev-base`       | —          | latest                 | `pkg-ubuntu:24.04`                      |
 <!-- END generated: versions -->
 
 ## Common Layer
@@ -64,8 +64,8 @@ OpenTofu module validation. It is the fallback image for repos with no
 detected language.
 
 Non-Python images install Python, yamllint, ansible-lint, and uv via the
-`python-support` fragment. Python-based images (`dev-python`, `dev-base`)
-install them directly via pip.
+`python-support` fragment. `dev-python` installs them directly via pip.
+`dev-base` is different: see [Base](#base).
 
 ## Python
 
@@ -122,7 +122,7 @@ out of upstream support and its standard library carries HIGH CVEs that no Go
 
 ## Base
 
-**Base**: `python:3.14-slim`
+**Base**: `pkg-ubuntu:24.04` (Ubuntu 24.04, with uv and nFPM)
 **Version**: latest
 
 The base image includes the full common layer (all tools listed above)
@@ -134,5 +134,20 @@ plus documentation tooling. It is the fallback image used by
 | MkDocs Material | Documentation site builder |
 | mike            | Versioned doc deployment   |
 | semgrep         | Static analysis            |
-| pyyaml          | YAML parsing (MkDocs dep)  |
 | OpenTofu        | OpenTofu module validation |
+
+Its own tools run on core runtimes installed side by side under
+`/opt/vergil/`, whose series come from the version manifest's `core:`
+section (epic vergil-project/.github#649):
+
+- **Core Python**: `vergil-python<core>` from the vergil apt repository, at
+  `/opt/vergil/python/<core>/`. yamllint, ansible-lint, semgrep and MkDocs
+  (with mkdocs-material and mike) are uv tools on it, each in its own
+  environment. `/usr/local/bin/python3` links to it and promises the
+  standard library only: nothing is pip-installed into it, and there is no
+  `pip` on `PATH`. A script that needs a third-party package declares it
+  inline (PEP 723) and runs with `uv run`.
+- **Core Node**: the pinned nodejs.org release of the core major, at
+  `/opt/vergil/node/<core-major>/`, which runs markdownlint-cli. There is no
+  `node`, `npm` or `npx` on `PATH`; `markdownlint` is a wrapper that runs
+  the core Node by path.

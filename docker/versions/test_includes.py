@@ -52,16 +52,25 @@ def test_every_family_and_base_present():
 
 def test_toolchain_fragments_are_scoped_to_the_toolchain_images():
     # vergil-containers#728: uv and the marker are the package toolchain
-    # images' own; the apt mirror is pkg-ubuntu's alone; nFPM is shared.
+    # images' own; the apt mirror is pkg-ubuntu's alone; nFPM is shared. base
+    # is built FROM pkg-ubuntu (epic vergil-project/.github#649), so it reaches
+    # pkg-ubuntu's fragments through its parent, never by including them.
     dm = includes.dependency_map(ROOT)
 
     def users(fragment):
         return {k for k, v in dm.items() if f"docker/common/{fragment}" in v}
 
-    assert users("uv.dockerfile") == {"pkg-ubuntu", "pkg-rhel"}
-    assert users("package-toolchain-marker.dockerfile") == {"pkg-ubuntu", "pkg-rhel"}
-    assert users("apt-mirror.dockerfile") == {"pkg-ubuntu"}
+    def includers(fragment):
+        return {k for k in dm if f"docker/common/{fragment}" in includes.fragments_of(
+            ROOT / "docker" / k / includes.TEMPLATE)}
+
+    assert users("uv.dockerfile") == {"pkg-ubuntu", "pkg-rhel", "base"}
+    assert users("package-toolchain-marker.dockerfile") == {"pkg-ubuntu", "pkg-rhel", "base"}
+    assert users("apt-mirror.dockerfile") == {"pkg-ubuntu", "base"}
     assert {"pkg-ubuntu", "pkg-rhel", "base"} <= users("nfpm.dockerfile")
+    for fragment in ("uv.dockerfile", "package-toolchain-marker.dockerfile", "apt-mirror.dockerfile",
+                     "nfpm.dockerfile"):
+        assert "base" not in includers(fragment), fragment
 
 
 def _write(root: Path, rel: str, text: str) -> None:

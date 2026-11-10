@@ -117,6 +117,30 @@ def _toolchain_args(pins: rt.Toolchains, f: mf.Family, version: str) -> dict[str
         raise GenerateError(f"{TOOLCHAINS}: {exc}") from exc
 
 
+def _core_args(m: mf.Manifest, pins: rt.Toolchains) -> dict[str, str]:
+    """`base`'s build args: the core runtimes it runs its own tools on (epic
+    vergil-project/.github#649, spec §5.2.1). `CORE_PYTHON` is the vergil-python
+    series `base` installs from the vergil apt repository, which needs no pin;
+    the core Node is the manifest's `core.node` major and its pinned nodejs.org
+    release, with each architecture's tarball hash. Raises GenerateError when the
+    manifest has no `core:` section or the core Node major has no pin."""
+    if m.core is None:
+        raise GenerateError(f"{MANIFEST}: no core: section, so {BASE_KEY}'s core build args cannot be set")
+    toolchain = rt.CORE_PINS["node"]
+    pin = pins.series.get(toolchain, {}).get(m.core.node)
+    if pin is None or pin.sha256 is None:
+        raise GenerateError(
+            f"{TOOLCHAINS}: toolchain {toolchain!r} {m.core.node!r}: the core Node major has no hashed pin"
+        )
+    return {
+        "CORE_PYTHON": m.core.python,
+        "CORE_NODE_MAJOR": m.core.node,
+        "CORE_NODE_VERSION": pin.version,
+        "CORE_NODE_SHA256_AMD64": pin.sha256["amd64"],
+        "CORE_NODE_SHA256_ARM64": pin.sha256["arm64"],
+    }
+
+
 def render_matrix_json(m: mf.Manifest, pins: rt.Toolchains) -> str:
     """The publish matrix: one entry per family version, then per toolchain
     version, then `base`, ordered by depth in the image tree (stable, so within
@@ -125,10 +149,11 @@ def render_matrix_json(m: mf.Manifest, pins: rt.Toolchains) -> str:
     Each entry is `language` (the image key), `version`, `build-args` (every
     `--build-arg` the image takes, as a map: a family's or toolchain's version
     arg, then a family's toolchain pins from `pins` (`rt.build_args`), and
-    `{}` for `base`),
+    for `base` its core runtimes (`_core_args`)),
     `parent` (`null`, or the `language` and `version` of the entry it is built
     FROM) and `depth` (the publish tier). Raises ManifestError on a bad tree,
-    and GenerateError when a pinned family's series has no pin."""
+    and GenerateError when a pinned family's series, or the core Node, has no
+    pin."""
     depths = mf.entry_depths(m)
     include = [
         {
@@ -155,7 +180,7 @@ def render_matrix_json(m: mf.Manifest, pins: rt.Toolchains) -> str:
     include.append({
         "language": BASE_KEY,
         "version": BASE_VERSION,
-        "build-args": {},
+        "build-args": _core_args(m, pins),
         "parent": _matrix_parent(m.base_parent),
         "depth": depths[BASE_KEY],
     })
@@ -258,13 +283,28 @@ def render_package_cleanup(m: mf.Manifest, root: Path) -> str:
     return replace_block(text, PACKAGE_CLEANUP, "versions (reap)", reap, markdown=False)
 
 
-def _base_image(f_key: str, build_arg: str | None, root: Path) -> str:
-    """The upstream base image, read from the template's first FROM line."""
+# The FROM of an image built on a manifest parent: build.sh and the publish
+# workflow pass the parent as this build arg (vergil-containers#773).
+PARENT_FROM = "${PARENT_IMAGE}"
+
+
+def _base_image(f_key: str, build_arg: str | None, root: Path, parent: mf.Parent | None = None) -> str:
+    """The image the entry is built on: its manifest parent, as
+    `<name>:<version>`, else the upstream image read from the template's first
+    FROM line. An entry with a parent must be `FROM ${PARENT_IMAGE}`, or the
+    parent would never be used."""
     rel = _template(f_key)
     match = re.search(r"^FROM\s+(\S+)", _read(root, rel), re.MULTILINE)
     if match is None:
         raise GenerateError(f"{rel}: no FROM line to read the base image from")
     image = match.group(1)
+    if parent is not None:
+        if image != PARENT_FROM:
+            raise GenerateError(
+                f"{rel}: the manifest builds it on {parent.name}:{parent.version}, "
+                f"but its FROM is {image!r}, not {PARENT_FROM!r}"
+            )
+        return f"{parent.name}:{parent.version}"
     if build_arg:
         image = image.replace(f"${{{build_arg}}}", "<v>")
     return image
@@ -286,7 +326,7 @@ def render_doc_table(m: mf.Manifest, root: Path) -> list[str]:
             f"`dev-{f.key}`",
             f.language,
             ", ".join(v.version for v in f.versions),
-            f"`{_base_image(f.key, f.build_arg, root)}`",
+            f"`{_base_image(f.key, f.build_arg, root, f.parent)}`",
         ])
     for t in m.toolchains:
         rows.append([
@@ -295,7 +335,7 @@ def render_doc_table(m: mf.Manifest, root: Path) -> list[str]:
             ", ".join(t.versions),
             f"`{_base_image(t.key, t.build_arg, root)}`",
         ])
-    rows.append([f"`dev-{BASE_KEY}`", "—", BASE_VERSION, f"`{_base_image(BASE_KEY, None, root)}`"])
+    rows.append([f"`dev-{BASE_KEY}`", "—", BASE_VERSION, f"`{_base_image(BASE_KEY, None, root, m.base_parent)}`"])
     return _table(rows)
 
 

@@ -28,7 +28,7 @@ All images are published to
 | `dev-ts-node`    | typescript | 24, 22                 | `debian:trixie-slim`                    |
 | `dev-pkg-ubuntu` | —          | 26.04, 24.04           | `ubuntu:<v>`                            |
 | `dev-pkg-rhel`   | —          | 10, 9                  | `registry.access.redhat.com/ubi<v>/ubi` |
-| `dev-base`       | —          | latest                 | `python:3.14-slim`                      |
+| `dev-base`       | —          | latest                 | `pkg-ubuntu:24.04`                      |
 <!-- END generated: versions -->
 
 See [Images](images/index.md) for per-language tool details.
