@@ -46,7 +46,22 @@ def test_every_entry_depends_on_its_own_context():
 
 def test_every_family_and_base_present():
     assert set(includes.dependency_map(ROOT)) == {
-        "python", "go", "rust", "cpp-clang", "cpp-gcc", "ts-node", "base"}
+        "python", "go", "rust", "cpp-clang", "cpp-gcc", "ts-node", "base",
+        "pkg-ubuntu", "pkg-rhel"}
+
+
+def test_toolchain_fragments_are_scoped_to_the_toolchain_images():
+    # vergil-containers#728: uv and the marker are the package toolchain
+    # images' own; the apt mirror is pkg-ubuntu's alone; nFPM is shared.
+    dm = includes.dependency_map(ROOT)
+
+    def users(fragment):
+        return {k for k, v in dm.items() if f"docker/common/{fragment}" in v}
+
+    assert users("uv.dockerfile") == {"pkg-ubuntu", "pkg-rhel"}
+    assert users("package-toolchain-marker.dockerfile") == {"pkg-ubuntu", "pkg-rhel"}
+    assert users("apt-mirror.dockerfile") == {"pkg-ubuntu"}
+    assert {"pkg-ubuntu", "pkg-rhel", "base"} <= users("nfpm.dockerfile")
 
 
 def _write(root: Path, rel: str, text: str) -> None:

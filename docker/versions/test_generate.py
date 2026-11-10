@@ -1,4 +1,5 @@
 import json
+import re
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -7,6 +8,7 @@ import pytest
 
 import frozen
 import generate as g
+import includes
 import manifest as mf
 from test_manifest import CURRENT_MATRIX
 
@@ -374,3 +376,29 @@ def test_toolchain_smoke_test_from_its_own_directory(repo):
     (root / "docker/pkg-ubuntu/smoke-test.sh").write_text("#!/bin/sh\n")
     text = g.render_build_sh(_with_toolchain(), root)
     assert 'smoke_tests="cpp-clang:cpp cpp-gcc:cpp ts-node:ts-node pkg-ubuntu:pkg-ubuntu"' in text
+
+
+# --- Toolchain templates (vergil-containers#728, epic vergil-project/.github#607 T4) ---
+
+# Dockerfile instructions are case-insensitive; a comment line is not one.
+_INHERITED_CONFIG_RE = re.compile(r"^\s*(ENTRYPOINT|CMD|USER|WORKDIR)\b", re.IGNORECASE | re.MULTILINE)
+
+
+def test_pkg_templates_set_no_inherited_config():
+    # Epic vergil-project/.github#649 builds base and every language image on
+    # pkg-ubuntu:24.04, so a toolchain template must set none of the image
+    # config a child inherits: a child gets only what the upstream image sets.
+    # Every fragment the template includes is checked too, since its
+    # instructions land in the image just the same.
+    for key in ("pkg-ubuntu", "pkg-rhel"):
+        template = LIVE_ROOT / "docker" / key / "Dockerfile.template"
+        files = [template, *(LIVE_ROOT / rel for rel in sorted(includes.fragments_of(template)))]
+        for path in files:
+            found = _INHERITED_CONFIG_RE.findall(path.read_text())
+            assert found == [], f"{path.relative_to(LIVE_ROOT)} sets {found}"
+
+
+def test_inherited_config_check_catches_each_instruction():
+    for instruction in ('ENTRYPOINT ["x"]', 'CMD ["/bin/bash"]', "USER 1000", "workdir /workspace"):
+        assert _INHERITED_CONFIG_RE.findall(f"FROM ubuntu\n{instruction}\n")
+    assert not _INHERITED_CONFIG_RE.findall("FROM ubuntu\n# CMD is inherited\nRUN echo USER\n")

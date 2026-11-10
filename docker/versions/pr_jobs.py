@@ -45,7 +45,8 @@ def smoke_dirs(root: Path) -> dict[str, str | None]:
     """Each manifest entry's smoke-test directory under docker/, or None.
     ManifestError propagates."""
     m = mf.load_manifest(root / gen.MANIFEST)
-    dirs: dict[str, str | None] = {f.key: gen.smoke_test_dir(root, f) for f in m.families}
+    dirs: dict[str, str | None] = {
+        f.key: gen.smoke_test_dir(root, f) for f in (*m.families, *m.toolchains)}
     dirs[mf.BASE_KEY] = None
     return dirs
 

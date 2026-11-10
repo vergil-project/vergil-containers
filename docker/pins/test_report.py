@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import yaml
+
 import harvest_installed
 import report_exposure as r
 
@@ -44,7 +46,7 @@ def test_auto_managed_surfaced_as_own_category():
     assert "## Auto-managed" in md
     section = md.split("## Auto-managed", 1)[1]
     for tool in ("shellcheck", "shfmt", "actionlint", "git-cliff", "hadolint",
-                 "opentofu", "nfpm", "trivy", "scorecard"):
+                 "opentofu", "nfpm", "trivy", "scorecard", "uv"):
         assert f"- {tool}:" in section
 
 
@@ -140,3 +142,21 @@ def test_image_matrix_is_read_from_the_version_manifest():
     # list missed (ts-node).
     assert {"prod-python:3.14", "prod-cpp-gcc:14", "prod-ts-node:24"} <= set(images)
     assert len(images) == len(set(images))
+
+
+def test_image_matrix_includes_every_toolchain(tmp_path):
+    # vergil-containers#728: the toolchain images (manifest `toolchains:`) are
+    # published like the language images, so the per-image harvest and the
+    # exposure report must cover them too, every key at every version.
+    seed = yaml.safe_load(frozen.MANIFEST.read_text())
+    seed["toolchains"] = [
+        {"key": "pkg-ubuntu", "build_arg": "UBUNTU_VERSION", "versions": ["26.04", "24.04"]},
+        {"key": "pkg-rhel", "build_arg": "RHEL_VERSION", "versions": ["10", "9"]},
+    ]
+    (tmp_path / "versions").mkdir()
+    (tmp_path / "versions" / "manifest.yml").write_text(yaml.safe_dump(seed))
+    images = r._image_matrix("prod", tmp_path)
+    assert images[-4:] == ["prod-pkg-ubuntu:26.04", "prod-pkg-ubuntu:24.04",
+                           "prod-pkg-rhel:10", "prod-pkg-rhel:9"]
+    # Every family image is still there, before the toolchains.
+    assert images[:-4] == _frozen_image_matrix()

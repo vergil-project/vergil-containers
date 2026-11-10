@@ -1,12 +1,15 @@
 """Hermetic unit tests for the leading-edge resolver. The redirect fetch is
 INJECTED — no network (and no curl) is ever exercised here."""
+import re
+from pathlib import Path
+
 import pytest
 
 import resolve_latest as rl
 
 TOOLS = {
     "shellcheck", "shfmt", "actionlint", "git-cliff", "hadolint",
-    "opentofu", "nfpm", "trivy", "scorecard",
+    "opentofu", "nfpm", "trivy", "scorecard", "uv",
 }
 
 
@@ -85,6 +88,28 @@ def test_rewrite_args_updates_only_changed_tools(tmp_path):
     text = frag.read_text()
     assert "ARG SHELLCHECK_VERSION=0.12.0" in text
     assert "ARG TRIVY_VERSION=0.72.0" in text
+
+
+def test_uv_resolves_from_its_bare_release_tag():
+    # uv tags its releases without a `v` (vergil-containers#728).
+    fetch = _fetch({rl.TOOL_REPOS["uv"]:
+                    "https://github.com/astral-sh/uv/releases/tag/0.13.7"})
+    assert rl.resolve(rl.TOOL_REPOS["uv"], fetch=fetch) == "0.13.7"
+
+
+def test_every_tool_arg_is_in_a_live_fragment():
+    # rewrite_args with each tool's current source version changes nothing and
+    # raises if any TOOL_ARGS entry has no `ARG <NAME>=` line in docker/common.
+    docker = Path(__file__).resolve().parent.parent
+    current = {}
+    for tool, arg in rl.TOOL_ARGS.items():
+        for frag in sorted((docker / "common").glob("*.dockerfile")):
+            match = re.search(rf"^ARG {arg}=(\S+)$", frag.read_text(), re.MULTILINE)
+            if match:
+                current[tool] = match.group(1)
+                break
+    assert set(current) == TOOLS
+    assert rl.rewrite_args(docker, current) == {}
 
 
 def test_rewrite_args_fails_loud_when_arg_missing(tmp_path):

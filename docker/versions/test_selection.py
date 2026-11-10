@@ -42,7 +42,12 @@ def test_single_family_fragment_selects_that_family():
 
 
 def test_shared_fragment_fans_out_by_graph():
-    assert _languages(_select(["docker/common/validation-tools.dockerfile"])) == ALL
+    # Every dev image includes the validation tools; the package toolchain
+    # images (vergil-containers#728) carry none of them.
+    assert _languages(_select(["docker/common/validation-tools.dockerfile"])) == (
+        ALL - {"pkg-ubuntu", "pkg-rhel"})
+    # nFPM is in every image, the toolchain images included.
+    assert _languages(_select(["docker/common/nfpm.dockerfile"])) == ALL
 
 
 def test_cpp_smoke_change_selects_both_cpp_families():

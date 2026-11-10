@@ -127,3 +127,14 @@ families:
         eol: 2027-04-30
         in_policy: true
         runtime_published: null
+toolchains:
+  - key: "pkg-ubuntu"
+    build_arg: "UBUNTU_VERSION"
+    versions:
+      - "26.04"
+      - "24.04"
+  - key: "pkg-rhel"
+    build_arg: "RHEL_VERSION"
+    versions:
+      - "10"
+      - "9"
