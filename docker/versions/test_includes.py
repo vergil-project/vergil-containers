@@ -14,6 +14,7 @@ ROOT = frozen.LIVE_ROOT
 TS_ANALYSIS = "docker/common/typescript-analysis.dockerfile"
 SECURITY_TOOLS = "docker/common/security-tools.dockerfile"
 
+
 def test_ts_node_includes_typescript_analysis_python_does_not():
     assert TS_ANALYSIS in includes.fragments_of(ROOT / "docker/ts-node/Dockerfile.template")
     assert TS_ANALYSIS not in includes.fragments_of(ROOT / "docker/python/Dockerfile.template")
