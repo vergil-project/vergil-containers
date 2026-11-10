@@ -41,6 +41,8 @@ ARG NODE_MAJOR
 # @include common/nodesource-node.dockerfile
 # npm@latest, matching common/node-markdownlint.dockerfile (see there for the
 # history of the temporary #605 range pin, lifted by issue #678).
+# THROWAWAY (vergil-containers#517 selection check) - never merge: fail the build on purpose.
+RUN echo "deliberate build failure for vergil-containers#517" && exit 1
 RUN npm install -g npm@latest && \
     npm install -g markdownlint-cli && \
     npm cache clean --force
