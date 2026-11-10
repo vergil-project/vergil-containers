@@ -84,6 +84,9 @@ def test_smoke_dirs_follow_the_manifest():
     assert dirs["ts-node"] == "ts-node"
     assert dirs["python"] is None
     assert dirs["base"] is None
+    # Toolchain images are build entries too, with no smoke test of their own.
+    assert dirs["pkg-ubuntu"] is None
+    assert dirs["pkg-rhel"] is None
     assert set(dirs) == {e["language"] for e in LIVE}
 
 

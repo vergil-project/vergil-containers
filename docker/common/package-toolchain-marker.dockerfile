@@ -13,6 +13,9 @@
 # only, the same bash regex), so the marker cannot disagree with the check.
 # A tool that is missing or prints no version fails the build. Include it last,
 # after every tool it lists is installed. Needs bash (the template's SHELL).
+# SC3054 (arrays undefined in POSIX sh) does not apply: this RUN runs under
+# the template's bash SHELL, and BASH_REMATCH is what check-toolchain.sh reads.
+# hadolint ignore=SC3054
 RUN mkdir -p /etc/vergil && \
     version_re='[0-9]+(\.[0-9]+)+' && \
     : > /etc/vergil/package-toolchain && \

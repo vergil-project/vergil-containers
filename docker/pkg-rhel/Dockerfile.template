@@ -8,6 +8,10 @@
 # It sets no ENTRYPOINT, CMD, USER or WORKDIR (test_generate.py checks it): an
 # image built FROM it inherits only what the UBI image itself sets.
 ARG RHEL_VERSION=10
+# DL3006 (untagged FROM): the RHEL version is in the repository name
+# (ubi<v>/ubi), and the image floats within it by the pinning doctrine, as
+# ubuntu:<v> does; an explicit :latest would only trade this for DL3007.
+# hadolint ignore=DL3006
 FROM registry.access.redhat.com/ubi${RHEL_VERSION}/ubi
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
