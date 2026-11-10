@@ -148,12 +148,20 @@ for details.
 
 ## Publishing
 
-Images are built for both amd64 and arm64, scanned with Trivy on both
-platforms, attested with SLSA build provenance, and published to GHCR
-on push to `develop` (`dev-` images) or `main` (`prod-` images) via the
-reusable `cd-docker-publish.yml` workflow.
+Images are built for both amd64 and arm64, each on its own native runner
+(no emulation), scanned with Trivy on both platforms, attested with SLSA
+build provenance, and published to GHCR on push to `develop` (`dev-`
+images) or `main` (`prod-` images) via the reusable `cd-docker-publish.yml`
+workflow. The publish builds every entry of the generated matrix,
+`docker/versions/matrix.json`, and `ops.yml` rebuilds both prefixes nightly
+without the cache.
 Manual rebuilds can be triggered via `workflow_dispatch` in the Actions
 tab.
+
+Pull requests publish nothing. Their `images` CI job (`ci-images.yml`)
+builds and scans only the images the change reaches, and its
+`images / evidence` gate is a required check. See
+[Architecture](https://vergil-project.github.io/vergil-containers/architecture/#pull-request-builds).
 
 Image URLs use the user namespace (`ghcr.io/vergil-project/...`), not a
 repo-specific namespace, so paths remain stable across repo migrations.

@@ -37,6 +37,10 @@ docker/
 └── versions/
     ├── manifest.yml            # The single source of language versions
     ├── generate.py             # Writes every derived version list
+    ├── matrix.json             # The generated publish matrix (CD and nightly)
+    ├── includes.py             # Each image's input files, for PR selection
+    ├── selection.py            # The images a pull request's change reaches
+    ├── pr_jobs.py              # Groups the selected images into PR build jobs
     └── lifecycle/              # The nightly lifecycle check and adapters
 ```
 
@@ -169,14 +173,25 @@ via the reusable `cd-docker-publish.yml` workflow, parameterized by an
   changelog, git tag, and GitHub release, and rebuilt nightly from `main`
   via `ops.yml`.
 
-The publish pipeline for each prefix:
+The publish pipeline for each image of `docker/versions/matrix.json`
+(`base` included):
 
-1. Builds a candidate tag for both platforms (amd64 + arm64)
-2. Scans each platform independently with Trivy (SARIF upload; see
+1. Builds each platform on its own native runner, amd64 on `ubuntu-24.04`
+   and arm64 on `ubuntu-24.04-arm`, and pushes each build by digest,
+   untagged. A failed push is retried, up to three attempts in all, after a
+   jittered back-off; GHCR sporadically refuses these pushes with
+   `denied: permission_denied: write_package`.
+2. Stitches the two digests into a multi-arch candidate tag with
+   `docker buildx imagetools create`
+3. Scans each platform independently with Trivy (SARIF upload; see
    [Trivy Scanning](trivy-scanning.md))
-3. Attests build provenance (SLSA via GitHub attestations)
-4. Promotes the candidate to the final tag via `docker buildx imagetools create`
-5. Verifies digest preservation between candidate and final
+4. Attests build provenance (SLSA via GitHub attestations)
+5. Promotes the candidate to the final tag via `docker buildx imagetools create`
+6. Verifies digest preservation between candidate and final
+
+Steps 2 to 6 run in one `publish` job per image, once its tier's `build`
+jobs (below) have finished. An image whose build failed on either platform is not stitched or
+promoted, and its previous tags stay published.
 
 The pipeline runs in **tiers**. An image may be built `FROM` another image of
 this repository, its *parent*, named by a `parent:` entry in
@@ -236,6 +251,25 @@ This keeps both image sets current with upstream security patches (base
 image updates, apt package refreshes) without waiting for a code change to
 trigger a build. To trigger a rebuild manually, run the CD workflow from the
 Actions tab (**Actions > CD > Run workflow**).
+
+### Pull request builds
+
+Pull requests never publish. `ci.yml` calls `ci-images.yml`, which builds and
+scans only the images the change reaches. `docker/versions/selection.py` maps
+the changed paths and the `matrix.json` diff to those images, using each
+image's input files from `docker/versions/includes.py`. Selecting a parent
+also selects every image built `FROM` it. A change to the Trivy configuration
+or to the build-and-scan pipeline itself selects every image, and so does an
+unclassified path under `docker/` (with a warning). A docs-only change selects
+none. Each selected image is built natively on both architectures, without
+emulation, and is never pushed to GHCR. A parent reaches the images built
+`FROM` it through a registry local to the job.
+
+The required check is the one aggregating gate, `images / evidence`. It is
+required by vergil-tooling's generated `CI gates` ruleset because
+`vergil.toml` sets `[ci].images = true`. See
+[Trivy Scanning](trivy-scanning.md#pull-requests-the-image-scan-of-changed-images)
+for the scans and the evidence it uploads.
 
 ### Authentication
 

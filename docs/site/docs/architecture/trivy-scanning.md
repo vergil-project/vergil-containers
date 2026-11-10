@@ -51,7 +51,8 @@ them, and scans each with `scripts/bin/trivy-image-scan` and gates it with
 the publish. It also runs the family's `smoke-test.sh` when there is one.
 
 A selected parent image is built in the same job as the selected images
-built FROM it, which build on the local parent; an image whose parent is not
+built FROM it, which build on the local parent, pushed to a registry local to
+the job and never to GHCR; an image whose parent is not
 selected builds on the published `dev-` parent. No SARIF is uploaded, so
 these scans add no code-scanning category. The one required check is
 `images / evidence`: it passes when every selected image passed, or when
@@ -64,9 +65,10 @@ harvests that artifact into its CI-evidence bundle (vergil-tooling#4132).
 
 ### Publishing: the image scans
 
-`cd-docker-publish.yml` builds every image in `docker/versions/matrix.json`,
-plus `base`, and pushes each one as a `-candidate` tag. It then scans each
-candidate once per platform:
+`cd-docker-publish.yml` builds every image in `docker/versions/matrix.json`
+(`base` is one of its entries) natively on each platform's runner, pushes
+each platform's build by digest, and stitches the two into a `-candidate`
+tag. It then scans each candidate once per platform:
 
 - **amd64** goes through the shared `trivy` action with `scan-type: image`
   and `sarif-category: trivy-image-<prefix>-<language>-<version>-amd64`.
