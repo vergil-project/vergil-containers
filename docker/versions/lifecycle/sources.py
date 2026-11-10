@@ -23,7 +23,6 @@ USER_AGENT = "vergil-containers-lifecycle-check (+https://github.com/vergil-proj
 TIMEOUT_SECONDS = 30
 
 ENDOFLIFE_URL = "https://endoflife.date/api/{product}.json"
-DOCKER_HUB_TAG_URL = "https://hub.docker.com/v2/namespaces/library/repositories/{image}/tags/{tag}"
 
 _CYCLE_RE = re.compile(r"^\d+(\.\d+)?$")
 
@@ -126,25 +125,6 @@ def endoflife(product: str, fetch: Fetch) -> list[UpstreamRelease]:
     if not data:
         raise SourceError(f"endoflife.date {product!r}: {url} lists no release cycles")
     return [_parse_cycle(product, i, entry) for i, entry in enumerate(data)]
-
-
-def docker_hub_tag_exists(image: str, tag: str, fetch: Fetch) -> bool:
-    """Whether the official Docker Hub image `image` has tag `tag`.
-
-    A 404 is "no". Any other failure (rate limit, network) raises SourceError:
-    an unreachable registry never reads as "not installable"."""
-    url = DOCKER_HUB_TAG_URL.format(image=image, tag=tag)
-    try:
-        body = fetch(url)
-    except NotFoundError:
-        return False
-    try:
-        data = json.loads(body)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise SourceError(f"Docker Hub {image}:{tag}: {url} is not valid JSON: {exc}") from exc
-    if not isinstance(data, dict) or data.get("name") != tag:
-        raise SourceError(f"Docker Hub {image}:{tag}: {url} did not describe tag {tag!r}")
-    return True
 
 
 def url_exists(url: str, fetch: Fetch) -> bool:

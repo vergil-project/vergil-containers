@@ -190,36 +190,6 @@ def test_fetch_url_network_failure_raises(monkeypatch, exc):
         sources.fetch_url("https://example.invalid/x")
 
 
-# --- docker_hub_tag_exists -------------------------------------------------------
-
-
-def test_tag_exists_true_on_matching_tag():
-    fetch = _fetch_json({"name": "3.15-slim", "digest": "sha256:x"})
-    assert sources.docker_hub_tag_exists("img", "3.15-slim", fetch) is True
-    assert fetch.calls == ["https://hub.docker.com/v2/namespaces/library/repositories/img/tags/3.15-slim"]
-
-
-def test_tag_exists_false_on_404():
-    def fetch(url):
-        raise NotFoundError(f"{url}: HTTP 404")
-
-    assert sources.docker_hub_tag_exists("img", "9.99", fetch) is False
-
-
-def test_tag_exists_other_failure_is_loud():
-    def fetch(url):
-        raise SourceError(f"{url}: HTTP 429 Too Many Requests")
-
-    with pytest.raises(SourceError, match="429"):
-        sources.docker_hub_tag_exists("img", "3.15", fetch)
-
-
-@pytest.mark.parametrize("body", [b"not json", json.dumps({"name": "other"}).encode(), b"[]"])
-def test_tag_exists_unexpected_body_is_loud(body):
-    with pytest.raises(SourceError, match=r"img:3\.15"):
-        sources.docker_hub_tag_exists("img", "3.15", lambda url: body)
-
-
 def _not_found(url):
     raise NotFoundError(f"{url}: HTTP 404")
 
