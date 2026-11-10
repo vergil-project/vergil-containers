@@ -3192,7 +3192,7 @@ The table is generated from <code>docker/versions/manifest.yml</code> by
 <td><code>dev-base</code></td>
 <td>—</td>
 <td>latest</td>
-<td><code>python:3.14-slim</code></td>
+<td><code>pkg-ubuntu:24.04</code></td>
 </tr>
 </tbody>
 </table>
@@ -3283,8 +3283,8 @@ tooling (MkDocs Material, mike, semgrep) and OpenTofu for in-sandbox
 OpenTofu module validation. It is the fallback image for repos with no
 detected language.</p>
 <p>Non-Python images install Python, yamllint, ansible-lint, and uv via the
-<code>python-support</code> fragment. Python-based images (<code>dev-python</code>, <code>dev-base</code>)
-install them directly via pip.</p>
+<code>python-support</code> fragment. <code>dev-python</code> installs them directly via pip.
+<code>dev-base</code> is different: see <a href="#base">Base</a>.</p>
 <h2 id="python">Python<a class="headerlink" href="#python" title="Permanent link">&para;</a></h2>
 <p><strong>Base</strong>: <code>python:&lt;version&gt;-slim</code></p>
 <table>
@@ -3396,7 +3396,7 @@ out of upstream support and its standard library carries HIGH CVEs that no Go
 </tbody>
 </table>
 <h2 id="base">Base<a class="headerlink" href="#base" title="Permanent link">&para;</a></h2>
-<p><strong>Base</strong>: <code>python:3.14-slim</code>
+<p><strong>Base</strong>: <code>pkg-ubuntu:24.04</code> (Ubuntu 24.04, with uv and nFPM)
 <strong>Version</strong>: latest</p>
 <p>The base image includes the full common layer (all tools listed above)
 plus documentation tooling. It is the fallback image used by
@@ -3422,15 +3422,27 @@ plus documentation tooling. It is the fallback image used by
 <td>Static analysis</td>
 </tr>
 <tr>
-<td>pyyaml</td>
-<td>YAML parsing (MkDocs dep)</td>
-</tr>
-<tr>
 <td>OpenTofu</td>
 <td>OpenTofu module validation</td>
 </tr>
 </tbody>
 </table>
+<p>Its own tools run on core runtimes installed side by side under
+<code>/opt/vergil/</code>, whose series come from the version manifest's <code>core:</code>
+section (epic vergil-project/.github#649):</p>
+<ul>
+<li><strong>Core Python</strong>: <code>vergil-python&lt;core&gt;</code> from the vergil apt repository, at
+  <code>/opt/vergil/python/&lt;core&gt;/</code>. yamllint, ansible-lint, semgrep and MkDocs
+  (with mkdocs-material and mike) are uv tools on it, each in its own
+  environment. <code>/usr/local/bin/python3</code> links to it and promises the
+  standard library only: nothing is pip-installed into it, and there is no
+  <code>pip</code> on <code>PATH</code>. A script that needs a third-party package declares it
+  inline (PEP 723) and runs with <code>uv run</code>.</li>
+<li><strong>Core Node</strong>: the pinned nodejs.org release of the core major, at
+  <code>/opt/vergil/node/&lt;core-major&gt;/</code>, which runs markdownlint-cli. There is no
+  <code>node</code>, <code>npm</code> or <code>npx</code> on <code>PATH</code>; <code>markdownlint</code> is a wrapper that runs
+  the core Node by path.</li>
+</ul>
 
 
 

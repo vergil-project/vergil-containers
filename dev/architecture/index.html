@@ -3200,13 +3200,34 @@ pinning model.</p>
 <li><strong><code>pandoc.dockerfile</code></strong> — pandoc for Markdown to <code>.docx</code>/HTML
   conversion (no TeX; PDF output is opt-in).</li>
 </ul>
-<p>Python-based images (<code>dev-python</code>, <code>dev-base</code>) install yamllint and uv
-directly via pip rather than the <code>python-support</code> fragment.</p>
-<p>The <code>dev-base</code> image includes all common fragments plus documentation
-tooling (MkDocs Material, mike, semgrep) and OpenTofu
-(<code>opentofu.dockerfile</code>) for in-sandbox <code>tofu fmt -check</code> / <code>tofu validate</code>
-of OpenTofu modules. It is the fallback image for repos with no detected
-language.</p>
+<p><code>dev-python</code> installs yamllint and uv directly via pip rather than the
+<code>python-support</code> fragment.</p>
+<p>The <code>dev-base</code> image is built <code>FROM</code> the package toolchain image
+<code>pkg-ubuntu:24.04</code> (epic vergil-project/.github#649), from which it takes uv
+and nFPM. It includes the common fragments plus documentation tooling (MkDocs
+Material, mike, semgrep) and OpenTofu (<code>opentofu.dockerfile</code>) for in-sandbox
+<code>tofu fmt -check</code> / <code>tofu validate</code> of OpenTofu modules. It is the fallback
+image for repos with no detected language. Its own tools run on core runtimes
+installed side by side under <code>/opt/vergil/</code>, from four fragments only it
+includes:</p>
+<ul>
+<li><strong><code>vergil-apt.dockerfile</code></strong> — The vergil apt repository, set up only after
+  the signing key's primary fingerprint matches the pinned one.</li>
+<li><strong><code>core-python.dockerfile</code></strong> — The core Python, <code>vergil-python&lt;core&gt;</code> at
+  <code>/opt/vergil/python/&lt;core&gt;/</code>; <code>/usr/local/bin/python3</code> links to it and
+  promises the standard library only.</li>
+<li><strong><code>core-node.dockerfile</code></strong> — The core Node, the pinned nodejs.org tarball
+  at <code>/opt/vergil/node/&lt;core-major&gt;/</code>, and markdownlint-cli on it. No
+  <code>node</code>, <code>npm</code> or <code>npx</code> is on <code>PATH</code>; <code>markdownlint</code> is a wrapper that
+  runs the core Node by path.</li>
+<li><strong><code>core-tools.dockerfile</code></strong> — yamllint, ansible-lint, semgrep and MkDocs
+  (with mkdocs-material and mike) as uv tools on the core Python.</li>
+</ul>
+<p>The core series come from the manifest's <code>core:</code> section. Nothing in
+<code>dev-base</code> is pip-installed. Its last build step runs
+<code>docker/base/checks.sh</code>: the checks every image built on it keeps
+(<code>checks-invariants.sh</code>) and its defaults (<code>checks-defaults.sh</code>), both left
+in the image at <code>/usr/local/lib/vergil/checks/</code> for its children to rerun.</p>
 <h2 id="design-principles">Design Principles<a class="headerlink" href="#design-principles" title="Permanent link">&para;</a></h2>
 <p><strong>Thin images</strong> — Each image provides the language runtime, package
 manager, and common tooling layer. Project-specific dependencies (from
@@ -3324,11 +3345,12 @@ image on an upstream base, at most 2) is its tier. Every tier-0 image runs the
 steps above, then the tier-1 images run them, built <code>FROM</code> their parent's
 promoted digest from the same run, and then tier 2. An image whose parent
 failed fails its own build with an error naming the parent, and its previous
-tags stay published. Until a manifest entry names a parent, every image is in
-tier 0 and the later tiers are skipped.</p>
+tags stay published. Today <code>base</code> is the one tier-1 image, built on
+<code>pkg-ubuntu:24.04</code>, and no image is in tier 2.</p>
 <p>Each image's <code>--build-arg</code>s come from its <code>build-args</code> map in the generated
-<code>docker/versions/matrix.json</code> (a family's or toolchain's version argument;
-none for <code>base</code>), and a child also gets <code>PARENT_IMAGE</code>, its parent by digest.</p>
+<code>docker/versions/matrix.json</code> (a family's or toolchain's version argument
+and its toolchain pins; for <code>base</code>, its core runtimes), and a child also gets
+<code>PARENT_IMAGE</code>, its parent by digest.</p>
 <p>Images that are not languages, such as the package toolchain images, are
 listed in the manifest's <code>toolchains:</code> section. They are built, published and
 cleaned up like the language images, and any entry may name one as its
