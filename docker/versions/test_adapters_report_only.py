@@ -12,6 +12,7 @@ from lifecycle.adapters import ADAPTERS
 from lifecycle.adapters.clang import ClangAdapter
 from lifecycle.adapters.gcc import GccAdapter, parse_releases, parse_supported
 from lifecycle.adapters.node import NodeAdapter
+from lifecycle.adapters import rust as rust_adapter
 from lifecycle.adapters.rust import RustAdapter
 from lifecycle.core import EOL_DATE_UNKNOWN, Change, NotFoundError, SourceError, UpstreamRelease
 
@@ -42,18 +43,6 @@ def fixture_fetch(url):
     raise AssertionError(f"unexpected fetch: {url}")
 
 
-class Tags:
-    """A fake Docker Hub: records each (image, tag) asked about."""
-
-    def __init__(self, missing=()):
-        self.missing = set(missing)
-        self.asked = []
-
-    def __call__(self, image, tag):
-        self.asked.append((image, tag))
-        return (image, tag) not in self.missing
-
-
 def _family(key):
     (family,) = [f for f in SEED.families if f.key == key]
     return family
@@ -77,7 +66,7 @@ def test_every_manifest_family_has_an_adapter():
 
 def test_run_reports_no_missing_adapter_against_fixtures():
     adapters = {
-        "rust": RustAdapter(fetch=fixture_fetch, tag_exists=Tags()),
+        "rust": RustAdapter(fetch=RustChannel()),
         "ts-node": NodeAdapter(fetch=fixture_fetch, setup_exists=lambda url: True),
         "cpp-clang": ClangAdapter(fetch=fixture_fetch),
         "cpp-gcc": GccAdapter(fetch=fixture_fetch),
@@ -90,23 +79,47 @@ def test_run_reports_no_missing_adapter_against_fixtures():
 # --- Rust --------------------------------------------------------------------------
 
 
+class RustChannel:
+    """A fake Rust release channel in front of the fixtures: each
+    `channel-rust-<series>.toml` (the URL the toolchain pins' fetcher reads)
+    names release `<series>.1`, or the body given in `bodies`; a series in
+    `missing` answers 404. Records each series asked about, in order."""
+
+    def __init__(self, missing=(), bodies=None):
+        self.missing = set(missing)
+        self.bodies = dict(bodies or {})
+        self.asked = []
+
+    def __call__(self, url):
+        prefix, suffix = rust_adapter.rt.RUST_CHANNEL.split("{series}")
+        if not (url.startswith(prefix) and url.endswith(suffix)):
+            return fixture_fetch(url)
+        series = url[len(prefix):-len(suffix)]
+        self.asked.append(series)
+        if series in self.missing:
+            raise NotFoundError(f"{url}: HTTP 404")
+        body = self.bodies.get(series, f'[pkg.rust]\nversion = "{series}.1 (0123456789 2026-10-15)"\n')
+        return body.encode()
+
+
 def test_rust_window_is_newest_two_by_release_order():
-    tags = Tags()
-    adapter = RustAdapter(fetch=fixture_fetch, tag_exists=tags)
+    channel = RustChannel()
+    adapter = RustAdapter(fetch=channel)
     target = adapter.target(adapter.fetch(), TODAY)
     assert [t.version for t in target] == ["1.99", "1.98"]
-    assert tags.asked == [("rust", "1.99-slim"), ("rust", "1.98-slim")]
+    assert channel.asked == ["1.99", "1.98"]
+    assert all(t.installable for t in target)
     # 1.98 is EOL upstream since 1.99 shipped; the window keeps it anyway.
     assert all(t.eol is None for t in target)
 
 
 def test_rust_classify_against_seed():
-    changes = _changes(RustAdapter(fetch=fixture_fetch, tag_exists=Tags()))
+    changes = _changes(RustAdapter(fetch=RustChannel()))
     assert _kinds(changes) == [("add", "1.99"), ("add", "1.98"), ("out_of_policy", "1.93"), ("out_of_policy", "1.92")]
 
 
 def test_rust_newest_minus_one_is_not_dropped_once_built():
-    adapter = RustAdapter(fetch=fixture_fetch, tag_exists=Tags())
+    adapter = RustAdapter(fetch=RustChannel())
     family = mf.Family(
         key="rust",
         language="rust",
@@ -122,14 +135,39 @@ def test_rust_newest_minus_one_is_not_dropped_once_built():
 
 
 def test_rust_ignores_a_future_release():
-    adapter = RustAdapter(fetch=fixture_fetch, tag_exists=Tags())
+    adapter = RustAdapter(fetch=RustChannel())
     releases = [UpstreamRelease("1.100", date(2026, 11, 12), None, False), *adapter.fetch()]
     assert [t.version for t in adapter.target(releases, TODAY)] == ["1.99", "1.98"]
 
 
-def test_rust_missing_tag_is_blocked():
-    adapter = RustAdapter(fetch=fixture_fetch, tag_exists=Tags(missing={("rust", "1.99-slim")}))
+def test_rust_missing_channel_manifest_is_blocked():
+    adapter = RustAdapter(fetch=RustChannel(missing={"1.99"}))
     assert _kinds(_changes(adapter))[:2] == [("blocked", "1.99"), ("add", "1.98")]
+
+
+@pytest.mark.parametrize(
+    ("body", "needle"),
+    [
+        ('[pkg.rust]\nversion = "1.98.1 (0123456789 2026-09-03)"\n', "not a release of 1.99"),
+        ("[pkg.rust]\n", "pkg.rust.version None"),
+        ("not = toml = at all", "not valid TOML"),
+    ],
+)
+def test_rust_unusable_channel_manifest_is_loud(body, needle):
+    adapter = RustAdapter(fetch=RustChannel(bodies={"1.99": body}))
+    with pytest.raises(SourceError, match=rf"Rust channel 1\.99: .*{needle}"):
+        adapter.target(adapter.fetch(), TODAY)
+
+
+def test_rust_unreachable_channel_is_loud_not_blocked():
+    def fetch(url):
+        if "channel-rust-" in url:
+            raise SourceError(f"{url}: HTTP 503 Service Unavailable")
+        return fixture_fetch(url)
+
+    adapter = RustAdapter(fetch=fetch)
+    with pytest.raises(SourceError, match="HTTP 503"):
+        adapter.target(adapter.fetch(), TODAY)
 
 
 # --- Node --------------------------------------------------------------------------
