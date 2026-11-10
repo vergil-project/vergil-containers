@@ -58,7 +58,8 @@ RUN if [ -z "${CORE_PYTHON}" ]; then echo "core-tools: the CORE_PYTHON build arg
 # SC2016: the wrapper's $-expansions are the wrapper's, written literally by printf.
 # hadolint ignore=SC2016
 RUN for name in semgrep pysemgrep; do \
-      rm -f "/usr/local/bin/${name}" && \
+      wrapper="/usr/local/bin/${name}"; \
+      rm -f "${wrapper}" || exit 1; \
       printf '%s\n' \
         '#!/bin/sh' \
         '# Lowers the stack hard limit for semgrep-core, then runs semgrep: see' \
@@ -67,10 +68,11 @@ RUN for name in semgrep pysemgrep; do \
         'max=2929688' \
         'over() { [ "$1" = unlimited ] || [ "$1" -gt "$max" ]; }' \
         'if over "$(ulimit -H -s)"; then' \
-        '  { ! over "$(ulimit -S -s)" || ulimit -S -s "$max"; } && ulimit -H -s "$max" ||' \
+        '  if over "$(ulimit -S -s)"; then ulimit -S -s "$max"; fi' \
+        '  ulimit -H -s "$max" ||' \
         '    echo "semgrep wrapper: cannot lower the stack hard limit to $max KiB; semgrep-core may crash (vergil-project/vergil-containers#825)" >&2' \
-        'fi' > "/usr/local/bin/${name}" && \
-      printf 'exec /opt/vergil/uv/tools/semgrep/bin/%s "$@"\n' "${name}" >> "/usr/local/bin/${name}" && \
-      chmod 0755 "/usr/local/bin/${name}" || exit 1; \
+        'fi' > "${wrapper}" || exit 1; \
+      printf 'exec /opt/vergil/uv/tools/semgrep/bin/%s "$@"\n' "${name}" >> "${wrapper}" || exit 1; \
+      chmod 0755 "${wrapper}" || exit 1; \
     done && \
     semgrep --version
