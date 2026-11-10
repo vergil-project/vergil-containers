@@ -152,3 +152,13 @@ def test_report_fails_loudly_with_rate_limit_details(job, tmp_path):
     assert "Request failed with status code 429" in line
     assert "max-parallel" in line
     assert not (tmp_path / "slept").exists()
+
+
+@pytest.mark.parametrize("step_id", ["attempt1", "attempt2"])
+def test_untagged_prune_spares_in_flight_publish_digests(step_id):
+    # cd-docker-publish.yml pushes per-arch images by digest, untagged, and
+    # tags them only at the stitch once every build in the run is done
+    # (vergil-containers#515); the prune must not reap them in between.
+    with_ = _step("cleanup", step_id=step_id)["with"]
+    assert with_["delete-untagged"] is True
+    assert with_["older-than"] == "24 hours"

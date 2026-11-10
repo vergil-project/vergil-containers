@@ -31,7 +31,8 @@ same `Dockerfile.template` via the `NODE_MAJOR` build-arg.
 
 If a future major is wanted, advance the matrix **only once it is available as a
 prebuilt stable binary** on this channel (§3.5). The version axis lives in
-`docker/build.sh` (the `ts-node` build lines) and the publish matrix.
+`docker/versions/manifest.yml` (the `ts-node` family); the publish matrix,
+which `docker/build.sh` reads, is generated from it.
 
 ## Structure (matches this repo's existing image idiom)
 

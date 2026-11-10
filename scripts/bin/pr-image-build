@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+#
+# scripts/bin/pr-image-build — PR CI's build, scan and smoke test of one build
+# job's images on one architecture (the `images / build` job in
+# .github/workflows/ci-images.yml; vergil-containers#514).
+#
+# The job's entries come from docker/versions/pr_jobs.py, parents first. Each
+# is built for this runner's own platform only (no emulation) and loaded into
+# the local Docker daemon, reading the published per-arch build cache and
+# writing none. Then it is scanned and gated by the publish pipeline's own
+# scripts (trivy-image-scan, trivy-gate: same suppressions and thresholds),
+# and its family's smoke test runs on it when it has one.
+#
+# Nothing is pushed to GHCR. An entry built FROM a parent built earlier in
+# this job (`parent-local`) gets PARENT_IMAGE=localhost:5000/pr/<parent>, which
+# the parent was pushed to (`push-local`): the job's own registry service,
+# which lives and dies with the job. Any other child gets its published dev-
+# parent, ghcr.io/vergil-project/dev-<parent>:<version>. Every key of an
+# entry's build-args map is a --build-arg.
+#
+# One image's failure does not stop the others, except that an image whose
+# parent was not built here is not built either. Every failure is reported
+# with an ::error:: annotation, and a table of results goes to the job
+# summary.
+#
+# Usage: pr-image-build <arch>   (amd64 or arm64)
+# Env: ENTRIES_JSON (required): the job's entries, a JSON list.
+#      GITHUB_WORKSPACE (required): the checkout.
+#      TRIVY_IMAGE (required): the Trivy image trivy-image-scan runs.
+#      GITHUB_STEP_SUMMARY (optional): where the results table goes.
+# Exit status: 0 when every image passed, 1 otherwise, 2 on bad usage.
+set -euo pipefail
+
+here="$(cd "$(dirname "$0")" && pwd)"
+
+LOCAL_REGISTRY="localhost:5000"
+PUBLISHED="ghcr.io/vergil-project"
+
+arch="${1:-}"
+case "$arch" in
+  amd64 | arm64) ;;
+  *)
+    echo "::error title=Bad architecture::pr-image-build needs amd64 or arm64, not '${arch}'."
+    exit 2
+    ;;
+esac
+: "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}"
+: "${TRIVY_IMAGE:?TRIVY_IMAGE is required}"
+entries_json="${ENTRIES_JSON:-}"
+
+# Every entry is checked before anything is built.
+if ! jq -e 'type == "array" and length > 0 and all(.[];
+      type == "object"
+      and ((.language, .version) | type == "string" and test("^[a-z0-9][a-z0-9.-]*$"))
+      and (.["build-args"] | type == "object")
+      and (.parent == null or ((.parent.language, .parent.version)
+        | type == "string" and test("^[a-z0-9][a-z0-9.-]*$")))
+      and (.smoke == null or (.smoke | type == "string" and test("^[a-z0-9][a-z0-9.-]*$")))
+      and (.["parent-local"] | type == "boolean")
+      and (.["push-local"] | type == "boolean"))' <<<"$entries_json" >/dev/null 2>&1; then
+  echo "::error title=Bad build entries::ENTRIES_JSON is not a non-empty list of build entries from docker/versions/pr_jobs.py: ${entries_json}"
+  exit 2
+fi
+
+count="$(jq 'length' <<<"$entries_json")"
+work="$(mktemp -d)"
+trap 'rm -rf "${work}"' EXIT
+
+failed=0
+# The local parents pushed to the job's registry, one per line.
+pushed=""
+summary=()
+
+record() {
+  summary+=("| $1 | ${arch} | $2 |")
+  if [ "$2" != "passed" ]; then
+    failed=1
+  fi
+}
+
+i=0
+while [ "$i" -lt "$count" ]; do
+  entry="$(jq -c --argjson i "$i" '.[$i]' <<<"$entries_json")"
+  i=$((i + 1))
+  lang="$(jq -r '.language' <<<"$entry")"
+  version="$(jq -r '.version' <<<"$entry")"
+  image="dev-${lang}:${version}"
+  tag="${LOCAL_REGISTRY}/pr/${lang}:${version}"
+
+  args=()
+  bad=0
+  pairs="$(jq -r '.["build-args"] | to_entries[] | "\(.key)=\(.value)"' <<<"$entry")"
+  while IFS= read -r pair; do
+    if [ -z "$pair" ]; then
+      continue
+    fi
+    if ! [[ "$pair" =~ ^[A-Z][A-Z0-9_]*=[^[:space:]]+$ ]]; then
+      echo "::error title=Bad build argument::'${pair}' for ${image} (${arch}) is not a NAME=value build argument."
+      bad=1
+    fi
+    args+=(--build-arg "$pair")
+  done <<<"$pairs"
+  if [ "$bad" -ne 0 ]; then
+    record "$image" "bad build argument"
+    continue
+  fi
+
+  if [ "$(jq -r '.parent != null' <<<"$entry")" = "true" ]; then
+    parent_lang="$(jq -r '.parent.language' <<<"$entry")"
+    parent_version="$(jq -r '.parent.version' <<<"$entry")"
+    if [ "$(jq -r '.["parent-local"]' <<<"$entry")" = "true" ]; then
+      parent_tag="${LOCAL_REGISTRY}/pr/${parent_lang}:${parent_version}"
+      if ! printf '%s\n' "$pushed" | grep -qxF -- "$parent_tag"; then
+        echo "::error title=Parent not built::${image} (${arch}) is built FROM dev-${parent_lang}:${parent_version}, which this change also rebuilds and which was not built in this job (see its error above), so ${image} is not built either."
+        record "$image" "parent not built"
+        continue
+      fi
+      args+=(--build-arg "PARENT_IMAGE=${parent_tag}")
+    else
+      args+=(--build-arg "PARENT_IMAGE=${PUBLISHED}/dev-${parent_lang}:${parent_version}")
+    fi
+  fi
+
+  echo "::group::Build ${image} (${arch})"
+  built=1
+  if ! "${GITHUB_WORKSPACE}/docker/generate.sh" "$lang"; then
+    built=0
+  elif ! docker buildx build --platform "linux/${arch}" --load \
+    --cache-from "type=registry,ref=${PUBLISHED}/dev-${lang}:cache-${version}-${arch}" \
+    ${args[@]+"${args[@]}"} --tag "$tag" "${GITHUB_WORKSPACE}/docker/${lang}"; then
+    built=0
+  fi
+  echo "::endgroup::"
+  if [ "$built" -ne 1 ]; then
+    echo "::error title=Image build failed::${image} (${arch}) did not build; see the build log above."
+    record "$image" "build failed"
+    continue
+  fi
+
+  status="passed"
+  if [ "$(jq -r '.["push-local"]' <<<"$entry")" = "true" ]; then
+    if docker push "$tag"; then
+      pushed="${pushed}${tag}"$'\n'
+    else
+      echo "::error title=Local push failed::${image} (${arch}) built, but could not be pushed to the job's registry at ${LOCAL_REGISTRY}, so the images built FROM it are not built."
+      status="local push failed"
+    fi
+  fi
+
+  report="trivy-${lang}-${version}-${arch}.sarif"
+  scan_out="${work}/scan-${i}"
+  : >"$scan_out"
+  outcome="success"
+  if ! GITHUB_OUTPUT="$scan_out" "${here}/trivy-image-scan" "$tag" "linux/${arch}" "$report"; then
+    outcome="failure"
+  fi
+  result="$(sed -n 's/^result=//p' "$scan_out" | tail -n 1)"
+  if ! "${here}/trivy-gate" "$image" "$arch" "$outcome" "$result" "${GITHUB_WORKSPACE}/${report}"; then
+    if [ "$status" = "passed" ]; then
+      status="scan failed"
+    else
+      status="${status}, scan failed"
+    fi
+  fi
+
+  smoke="$(jq -r '.smoke // empty' <<<"$entry")"
+  if [ -n "$smoke" ]; then
+    if ! "${GITHUB_WORKSPACE}/docker/${smoke}/smoke-test.sh" "$tag" docker; then
+      echo "::error title=Smoke test failed::${image} (${arch}) failed docker/${smoke}/smoke-test.sh; see its output above."
+      if [ "$status" = "passed" ]; then
+        status="smoke test failed"
+      else
+        status="${status}, smoke test failed"
+      fi
+    fi
+  fi
+  record "$image" "$status"
+done
+
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+  {
+    echo "| Image | Arch | Result |"
+    echo "| --- | --- | --- |"
+    printf '%s\n' "${summary[@]}"
+  } >>"$GITHUB_STEP_SUMMARY"
+fi
+
+exit "$failed"

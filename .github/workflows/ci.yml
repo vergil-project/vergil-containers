@@ -35,6 +35,13 @@ jobs:
       - name: Run Hadolint
         run: hadolint docker/*/Dockerfile
 
+  # Builds and scans, without pushing, only the images this PR changes, on each
+  # architecture's native runner; `images / evidence` is the required check
+  # (vergil-containers#514). PR-only: it diffs the PR's base and head commits.
+  images:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/ci-images.yml
+
   # The pins and versions checks run in `quality / custom` (below), which runs
   # scripts/bin/validate-custom via `vrg-validate --check custom`.
   quality:

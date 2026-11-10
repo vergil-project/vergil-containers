@@ -8,8 +8,11 @@ All images are built from Dockerfile templates using a two-stage process:
    `# @include` directives with the contents of shared fragments from
    `docker/common/`.
 2. `build.sh` calls `generate.sh` then runs `docker build` for every
-   language and version combination. Its version lists, like the publish
-   matrix and the Dockerfile `ARG` defaults, are generated from
+   entry of the publish matrix, `docker/versions/matrix.json`, in the
+   publish's tier order, so a parent image is built before the images built
+   `FROM` it (see [Publishing](#publishing)). `build.sh <family>` builds one
+   family and its parents (`--pull-parents` pulls them instead). The matrix,
+   like the Dockerfile `ARG` defaults, is generated from
    `docker/versions/manifest.yml` by `docker/versions/generate.py` (see
    [Language version lifecycle](../languages/lifecycle.md)).
 
@@ -119,8 +122,9 @@ use `TARGETARCH` (injected by Docker Buildx) to select the correct
 platform artifact.
 
 Local builds via `docker/build.sh` build for the host's native
-architecture only (for speed). The CI pipeline builds both platforms
-using QEMU emulation on the GitHub Actions runner.
+architecture only (for speed). The CI pipeline builds each platform
+natively, amd64 on `ubuntu-24.04` and arm64 on `ubuntu-24.04-arm`, and
+stitches the two into one multi-arch manifest. Nothing is emulated.
 
 ## Download Integrity
 
@@ -173,6 +177,25 @@ The publish pipeline for each prefix:
 3. Attests build provenance (SLSA via GitHub attestations)
 4. Promotes the candidate to the final tag via `docker buildx imagetools create`
 5. Verifies digest preservation between candidate and final
+
+The pipeline runs in **tiers**. An image may be built `FROM` another image of
+this repository, its *parent*, named by a `parent:` entry in
+`docker/versions/manifest.yml`. Each image's depth in that tree (0 for an
+image on an upstream base, at most 2) is its tier. Every tier-0 image runs the
+steps above, then the tier-1 images run them, built `FROM` their parent's
+promoted digest from the same run, and then tier 2. An image whose parent
+failed fails its own build with an error naming the parent, and its previous
+tags stay published. Until a manifest entry names a parent, every image is in
+tier 0 and the later tiers are skipped.
+
+Each image's `--build-arg`s come from its `build-args` map in the generated
+`docker/versions/matrix.json` (a family's or toolchain's version argument;
+none for `base`), and a child also gets `PARENT_IMAGE`, its parent by digest.
+
+Images that are not languages, such as the package toolchain images, are
+listed in the manifest's `toolchains:` section. They are built, published and
+cleaned up like the language images, and any entry may name one as its
+parent, but they never appear in `window.json` or the version lifecycle.
 
 ### Image namespace
 

@@ -30,16 +30,22 @@ rather than a silent fallback.
 repeating the architecture-mapping logic five times and keeps the
 layer count down.
 
-### QEMU emulation in CI
+### Native per-arch builds in CI
 
-CI builds both platforms on amd64 GitHub Actions runners using QEMU
-via `docker/setup-qemu-action`. Native arm64 runners were not available
-(or cost-effective) at the time of implementation.
+CI builds each platform on its own native GitHub-hosted runner: amd64
+on `ubuntu-24.04` and arm64 on `ubuntu-24.04-arm`. Each build pushes
+its image by digest, untagged. The publish job for the image then
+stitches the two digests into the multi-arch candidate with
+`docker buildx imagetools create`, and the scan, attest and promote
+steps below run on that candidate.
 
-**Trade-off:** arm64 layers build under emulation, which is slower than
-native. This is acceptable because registry caching (`mode=max`) means
-subsequent builds only rebuild changed layers, and the emulation cost
-is paid in CI rather than by every developer.
+**History:** the pipeline first built both platforms on amd64 runners
+under QEMU (`docker/setup-qemu-action`), because native arm64 runners
+were not available then. Compiling toolchains under emulation made the
+arm64 half dominate the nightly's no-cache build time, so
+[vergil-containers#515](https://github.com/vergil-project/vergil-containers/issues/515)
+moved it to native runners. Restoring the QEMU build is a change to
+`cd-docker-publish.yml` alone.
 
 ### Staging-tag scan flow
 
@@ -63,7 +69,8 @@ the repository. Multi-arch images with multiple language variants would
 exhaust this quickly. Registry cache has no size limit and persists
 across workflow runs.
 
-Cache tags follow the pattern `{prefix}-{language}:cache-{version}`.
+Cache tags follow the pattern `{prefix}-{language}:cache-{version}-{arch}`
+(`{prefix}-base:cache-latest-{arch}` for base), one per native build.
 When a language version is retired from the matrix, its cache tag
 remains in GHCR — storage impact is negligible but tags accumulate.
 Periodic cleanup is tracked in [#125](https://github.com/vergil-project/vergil-docker/issues/125).
@@ -94,8 +101,8 @@ tag after promotion. This was removed because:
 ### Local builds stay single-platform
 
 `docker/build.sh` builds for the host's native architecture only.
-Multi-arch builds are slow (QEMU emulation) and unnecessary for local
-iteration. The CI pipeline is the authority for multi-arch correctness.
+Building the other platform locally would need emulation, and it is
+unnecessary for local iteration. The CI pipeline is the authority for multi-arch correctness.
 
 ## Failure Modes
 

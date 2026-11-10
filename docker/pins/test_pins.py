@@ -28,11 +28,24 @@ def test_extractor_drops_freed_package_manager_pins():
     # when #606 retired Go 1.25 (follow-up vergil-project/.github#403); a hold
     # lives exactly as long as the image that needs it. govulncheck and
     # goimports float on the remaining image too.
+    #
+    # uv still floats in the dev images (`pip install uv`), but the package
+    # toolchain images install it as a checksum-verified release tarball, an
+    # auto-managed mechanism pin (vergil-containers#728); see
+    # test_uv_is_an_auto_managed_pin.
     tools = {p.tool for p in extract_pins.extract(DOCKER)}
-    for freed in ("uv", "markdownlint-cli", "yamllint",
+    for freed in ("markdownlint-cli", "yamllint",
                   "cargo-deny", "mkdocs-material", "pyyaml",
                   "golangci-lint", "govulncheck", "goimports"):
         assert freed not in tools
+
+
+def test_uv_is_an_auto_managed_pin():
+    # vergil-containers#728: common/uv.dockerfile pins UV_VERSION for the
+    # package toolchain images; the daily upstream refresh floats it.
+    pins = {p.tool: p for p in extract_pins.extract(DOCKER)}
+    assert pins["uv"].source == "common/uv.dockerfile"
+    assert check_pins.load_pins(DOCKER)["uv"]["state"] == "auto-managed"
 
 
 def test_go_test_coverage_is_a_documented_pin():

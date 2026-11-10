@@ -33,6 +33,10 @@ env:
   # Bounded back-off before the single retry of a failed attestation (issue #743).
   ATTEST_RETRY_BACKOFF_BASE_SECONDS: 30
   ATTEST_RETRY_BACKOFF_JITTER_SECONDS: 30
+  # Bounded back-off (15-45s) before each retry of a failed per-arch push
+  # (issue #794).
+  PUSH_RETRY_BACKOFF_BASE_SECONDS: 15
+  PUSH_RETRY_BACKOFF_JITTER_SECONDS: 30
 
 jobs:
   hadolint:
@@ -54,12 +58,31 @@ jobs:
 
   # The build matrix is generated from docker/versions/manifest.yml into
   # docker/versions/matrix.json (docker/versions/generate.py); CI fails if the
-  # committed matrix.json is out of date with the manifest.
+  # committed matrix.json is out of date with the manifest. Each entry is
+  # `language`, `version`, `build-args` (a map), `parent` (null, or the
+  # `language` and `version` of the entry it is built FROM) and `depth` (its
+  # depth in that image tree: 0 for an image on an upstream base).
+  #
+  # The publish runs in tiers by depth (vergil-containers#773): tier N+1's
+  # builds start once tier N's publishes have finished, so a child is built FROM
+  # its parent's digest from this same run. Per tier N (0 to 2, the manifest's
+  # MAX_DEPTH), three outputs: `matrix-N` (the entries, one publish job each),
+  # `arch-matrix-N` (each entry once per architecture, with the native runner
+  # that builds it) and `has-N` ("true" or "false"; an empty tier's jobs are
+  # skipped).
   versions:
     name: Read the version matrix
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.read.outputs.matrix }}
+      matrix-0: ${{ steps.read.outputs.matrix-0 }}
+      arch-matrix-0: ${{ steps.read.outputs.arch-matrix-0 }}
+      has-0: ${{ steps.read.outputs.has-0 }}
+      matrix-1: ${{ steps.read.outputs.matrix-1 }}
+      arch-matrix-1: ${{ steps.read.outputs.arch-matrix-1 }}
+      has-1: ${{ steps.read.outputs.has-1 }}
+      matrix-2: ${{ steps.read.outputs.matrix-2 }}
+      arch-matrix-2: ${{ steps.read.outputs.arch-matrix-2 }}
+      has-2: ${{ steps.read.outputs.has-2 }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -70,26 +93,52 @@ jobs:
         id: read
         run: |
           set -euo pipefail
+          matrix_json=docker/versions/matrix.json
           # Fail loud on a missing, malformed or empty matrix: an empty build
           # list would read as a successful publish of nothing.
-          jq -e '.include | length > 0' docker/versions/matrix.json > /dev/null
-          matrix="$(jq -c . docker/versions/matrix.json)"
-          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          jq -e '.include | length > 0' "$matrix_json" > /dev/null
+          # The tiers below are the only ones with jobs, so an entry outside
+          # them would never be published: refuse it rather than drop it.
+          if ! jq -e 'all(.include[]; (.depth | type) == "number"
+              and .depth == (.depth | floor) and .depth >= 0 and .depth <= 2)' "$matrix_json" > /dev/null; then
+            echo "::error title=Matrix depth out of range::Every ${matrix_json} entry needs an integer depth from 0 to 2, the tiers this workflow publishes."
+            exit 1
+          fi
+          # Nothing is written until every tier has been read.
+          outputs=""
+          for tier in 0 1 2; do
+            matrix="$(jq -c --argjson t "$tier" '{include: [.include[] | select(.depth == $t)]}' "$matrix_json")"
+            # Each architecture builds on its own native runner: no emulation.
+            # The runners match vergil-tooling's lib/package/matrix.py RUNNERS.
+            arch_matrix="$(jq -c --argjson t "$tier" '{include: [.include[] | select(.depth == $t) as $e
+              | ({arch: "amd64", runner: "ubuntu-24.04"}, {arch: "arm64", runner: "ubuntu-24.04-arm"})
+              | $e + .]}' "$matrix_json")"
+            has="$(jq -r --argjson t "$tier" 'any(.include[]; .depth == $t)' "$matrix_json")"
+            outputs+="matrix-${tier}=${matrix}"$'\n'"arch-matrix-${tier}=${arch_matrix}"$'\n'"has-${tier}=${has}"$'\n'
+          done
+          printf '%s' "$outputs" >> "$GITHUB_OUTPUT"
 
-  build-scan-push:
-    name: "publish: ${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
+  # Tier 0: one native build per image and architecture, pushed by digest only
+  # (no tag). The publish job below stitches the two digests into the
+  # multi-arch candidate. Tiers 1 and 2 run the same steps (the YAML anchors).
+  # To fall back to the QEMU build, restore this file from before
+  # vergil-containers#515: nothing else depends on the split.
+  build-0:
+    name: &build-name "build: ${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }} (${{ matrix.arch }})"
     needs: [hadolint, versions]
-    runs-on: ubuntu-latest
+    if: ${{ needs.versions.outputs.has-0 == 'true' }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.versions.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.versions.outputs.arch-matrix-0) }}
 
-    env:
-      IMAGE: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
-      CANDIDATE: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}-candidate"
-      CACHE_TAG: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:cache-${{ matrix.version }}"
+    env: &build-env
+      REPO: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}"
+      VERSION: ${{ matrix.version }}
+      # Per-arch cache: each runner writes only its own platform's layers.
+      CACHE_TAG: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:cache-${{ matrix.version }}-${{ matrix.arch }}"
 
-    steps:
+    steps: &build-steps
       - name: Checkout code
         uses: actions/checkout@v6
         with:
@@ -97,9 +146,6 @@ jobs:
 
       - name: Generate Dockerfile from template
         run: docker/generate.sh ${{ matrix.language }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -111,17 +157,242 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push candidate
-        uses: docker/build-push-action@v7
+      # A child is built FROM its parent's published digest from this run, which
+      # the parent's publish job (a tier earlier) uploaded after promoting it.
+      # A pattern, not a name: a parent that was never published downloads
+      # nothing, and the next step reports it by name.
+      - name: Download the parent's published digest
+        if: ${{ matrix.parent != null }}
+        uses: actions/download-artifact@v7
         with:
+          pattern: "image-digest-${{ inputs.image-prefix }}-${{ matrix.parent.language }}-${{ matrix.parent.version }}"
+          path: ${{ runner.temp }}/parent
+          merge-multiple: true
+
+      # Every key of the entry's build-args map is a --build-arg (base's map is
+      # empty), and a child also gets PARENT_IMAGE, its parent by digest.
+      - name: Resolve the build arguments
+        id: args
+        env:
+          BUILD_ARGS_JSON: ${{ toJSON(matrix['build-args']) }}
+          PARENT_JSON: ${{ toJSON(matrix.parent) }}
+          PARENT_DIR: ${{ runner.temp }}/parent
+          PREFIX: ${{ inputs.image-prefix }}
+        run: |
+          set -euo pipefail
+          pairs=()
+          lines="$(jq -r 'to_entries[] | "\(.key)=\(.value)"' <<< "$BUILD_ARGS_JSON")"
+          while IFS= read -r pair; do
+            if [ -n "$pair" ]; then
+              pairs+=("$pair")
+            fi
+          done <<< "$lines"
+          if [ "$PARENT_JSON" != "null" ]; then
+            parent_language="$(jq -r .language <<< "$PARENT_JSON")"
+            parent_version="$(jq -r .version <<< "$PARENT_JSON")"
+            parent="${PREFIX}-${parent_language}:${parent_version}"
+            file="${PARENT_DIR}/digest"
+            digest=""
+            if [ -s "$file" ]; then
+              digest="$(cat "$file")"
+            fi
+            if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error title=Parent not published::${REPO}:${VERSION} is built FROM its parent ${parent}, which was not published in this run (read '${digest}' from ${file}): the parent's build, scan or promotion failed or did not run. This image is not built, and its previous tags stay published."
+              exit 1
+            fi
+            pairs+=("PARENT_IMAGE=ghcr.io/vergil-project/${PREFIX}-${parent_language}@${digest}")
+          fi
+          # One NAME=value per line, as build-push-action reads its list. The
+          # check also keeps any value from breaking the output's delimiter.
+          for pair in ${pairs[@]+"${pairs[@]}"}; do
+            if ! [[ "$pair" =~ ^[A-Z][A-Z0-9_]*=[^[:space:]]+$ ]]; then
+              echo "::error title=Bad build argument::'${pair}' for ${REPO}:${VERSION} is not a NAME=value build argument."
+              exit 1
+            fi
+          done
+          {
+            echo "build-args<<BUILD_ARGS_EOF"
+            if [ "${#pairs[@]}" -gt 0 ]; then
+              printf '%s\n' "${pairs[@]}"
+            fi
+            echo "BUILD_ARGS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # GHCR sporadically refuses one per-arch push with "denied:
+      # permission_denied: write_package" while the same token pushes the same
+      # package seconds before and after (issue #794), so the push is retried
+      # in the attempt / back-off / attempt / report shape of the attestation
+      # retry (issue #743): up to three attempts, each retry after a bounded,
+      # jittered back-off that warns. Any failure is retried (matching the
+      # denial text would be fragile); a genuine build error reruns cheaply from
+      # cache and still fails. Attempt 3 has no continue-on-error, so its
+      # failure fails the job and no digest is recorded or uploaded.
+      - name: Build and push by digest (attempt 1)
+        id: build1
+        continue-on-error: true
+        uses: docker/build-push-action@v7
+        with: &push-with
           context: "docker/${{ matrix.language }}"
-          platforms: linux/amd64,linux/arm64
-          build-args: "${{ matrix.build-arg }}=${{ matrix.version }}"
-          tags: ${{ env.CANDIDATE }}
+          platforms: "linux/${{ matrix.arch }}"
+          build-args: ${{ steps.args.outputs.build-args }}
+          outputs: "type=image,name=${{ env.REPO }},push-by-digest=true,name-canonical=true,push=true"
           no-cache: ${{ inputs.no-cache }}
           cache-from: type=registry,ref=${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.CACHE_TAG }},mode=max
-          push: true
+
+      - name: Back off before push attempt 2
+        if: steps.build1.outcome == 'failure'
+        env:
+          ARCH: ${{ matrix.arch }}
+          ATTEMPT: 2
+        run: &push-backoff |
+          delay=$(( PUSH_RETRY_BACKOFF_BASE_SECONDS + RANDOM % (PUSH_RETRY_BACKOFF_JITTER_SECONDS + 1) ))
+          echo "::warning title=Push retry::The push of ${REPO}:${VERSION} (${ARCH}) failed on attempt $(( ATTEMPT - 1 )) of 3 (often a sporadic GHCR 'denied: permission_denied: write_package' above). Backing off ${delay}s, then running attempt ${ATTEMPT}."
+          sleep "${delay}"
+
+      - name: Build and push by digest (attempt 2)
+        id: build2
+        if: steps.build1.outcome == 'failure'
+        continue-on-error: true
+        uses: docker/build-push-action@v7
+        with: *push-with
+
+      - name: Back off before push attempt 3
+        if: steps.build2.outcome == 'failure'
+        env:
+          ARCH: ${{ matrix.arch }}
+          ATTEMPT: 3
+        run: *push-backoff
+
+      - name: Build and push by digest (attempt 3)
+        id: build3
+        if: steps.build2.outcome == 'failure'
+        uses: docker/build-push-action@v7
+        with: *push-with
+
+      - name: Report persistent push failure
+        if: failure() && steps.build3.outcome == 'failure'
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          echo "::error title=Push failed three times::docker/build-push-action failed on all 3 attempts for ${REPO}:${VERSION} (${ARCH}), with a ${PUSH_RETRY_BACKOFF_BASE_SECONDS}-$(( PUSH_RETRY_BACKOFF_BASE_SECONDS + PUSH_RETRY_BACKOFF_JITTER_SECONDS ))s back-off before each retry. No digest was recorded, so this image is not published and its previous tags stay. If every attempt log shows a GHCR 'write_package' denial, re-run the failed job later; any other error is not transient, so read the attempt logs (issue #794)."
+          exit 1
+
+      # The digest is the one from the attempt that succeeded: a failed
+      # attempt's output is never recorded.
+      - name: Record the pushed digest
+        env:
+          OUTCOME_1: ${{ steps.build1.outcome }}
+          DIGEST_1: ${{ steps.build1.outputs.digest }}
+          OUTCOME_2: ${{ steps.build2.outcome }}
+          DIGEST_2: ${{ steps.build2.outputs.digest }}
+          OUTCOME_3: ${{ steps.build3.outcome }}
+          DIGEST_3: ${{ steps.build3.outputs.digest }}
+          ARCH: ${{ matrix.arch }}
+          DIGESTS_DIR: ${{ runner.temp }}/digests
+        run: |
+          set -euo pipefail
+          attempt=""
+          DIGEST=""
+          for n in 1 2 3; do
+            outcome_var="OUTCOME_${n}"
+            if [ "${!outcome_var:-}" = "success" ]; then
+              digest_var="DIGEST_${n}"
+              attempt="$n"
+              DIGEST="${!digest_var:-}"
+              break
+            fi
+          done
+          if [ -z "$attempt" ]; then
+            echo "::error title=No pushed digest::No push attempt of the ${ARCH} build of ${REPO} succeeded, so there is nothing to stitch."
+            exit 1
+          fi
+          if ! [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error title=No pushed digest::The ${ARCH} build of ${REPO} (attempt ${attempt}) reported digest '${DIGEST}', not a sha256 digest, so there is nothing to stitch."
+            exit 1
+          fi
+          mkdir -p "$DIGESTS_DIR"
+          printf '%s\n' "$DIGEST" > "${DIGESTS_DIR}/${ARCH}"
+
+      - name: Upload the digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: "digest-${{ inputs.image-prefix }}-${{ matrix.language }}-${{ matrix.version }}-${{ matrix.arch }}"
+          path: ${{ runner.temp }}/digests/${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+  # Tier 0: one job per image: stitch its two per-arch digests into the
+  # multi-arch candidate, then scan, gate, attest and promote it, and upload
+  # the promoted digest for the images built FROM it. It runs whatever the
+  # other images' builds did, so one image's failed build fails only that
+  # image's publish (at the stitch, which finds its digest missing), and only
+  # its descendants' builds in the later tiers.
+  publish-0:
+    name: &publish-name "publish: ${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
+    needs: [hadolint, versions, build-0]
+    if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-0 == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix-0) }}
+
+    env: &publish-env
+      REPO: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}"
+      IMAGE: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
+      CANDIDATE: "ghcr.io/vergil-project/${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}-candidate"
+      # Code-scanning categories keep their pre-matrix names, so each image's
+      # alert history carries over: base's has no version in it.
+      SARIF_STEM: "trivy-image-${{ inputs.image-prefix }}-${{ matrix.language }}${{ matrix.language != 'base' && format('-{0}', matrix.version) || '' }}"
+
+    steps: &publish-steps
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download the per-arch digests
+        uses: actions/download-artifact@v7
+        with:
+          pattern: "digest-${{ inputs.image-prefix }}-${{ matrix.language }}-${{ matrix.version }}-*"
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
+
+      - name: Stitch the multi-arch candidate
+        env:
+          DIGESTS_DIR: ${{ runner.temp }}/digests
+        run: |
+          set -euo pipefail
+          refs=()
+          missing=0
+          for arch in amd64 arm64; do
+            file="${DIGESTS_DIR}/${arch}"
+            digest=""
+            if [ -s "$file" ]; then
+              digest="$(cat "$file")"
+            fi
+            if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error title=No ${arch} digest::No valid ${arch} build digest for ${CANDIDATE} (read '${digest}' from ${file}). The ${arch} build of this image failed or did not run, so nothing is stitched or promoted."
+              missing=1
+              continue
+            fi
+            refs+=("${REPO}@${digest}")
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          docker buildx imagetools create --tag "$CANDIDATE" "${refs[@]}"
 
       # Provides vrg-sarif-filter, which the trivy action uses to strip
       # accepted-suppressed results from the copy uploaded to code scanning
@@ -137,7 +408,7 @@ jobs:
           scan-type: image
           scan-ref: ${{ env.CANDIDATE }}
           exit-code: "1"
-          sarif-category: "trivy-image-${{ inputs.image-prefix }}-${{ matrix.language }}-${{ matrix.version }}-amd64"
+          sarif-category: "${{ env.SARIF_STEM }}-amd64"
           trivyignores: .trivyignore
 
       # Same outcomes as the amd64 scan above: retried when it writes no report,
@@ -155,7 +426,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-arm64.sarif
-          category: "trivy-image-${{ inputs.image-prefix }}-${{ matrix.language }}-${{ matrix.version }}-arm64"
+          category: "${{ env.SARIF_STEM }}-arm64"
 
       # Tells "found CRITICAL/HIGH vulnerabilities" apart from "the scan errored
       # and produced no report", and fails closed on both (issue #721).
@@ -232,147 +503,74 @@ jobs:
             exit 1
           fi
 
-  publish-base:
-    name: "publish: ${{ inputs.image-prefix }}-base:latest"
-    needs: [hadolint]
-    runs-on: ubuntu-latest
-    env:
-      IMAGE: ghcr.io/vergil-project/${{ inputs.image-prefix }}-base:latest
-      CANDIDATE: ghcr.io/vergil-project/${{ inputs.image-prefix }}-base:latest-candidate
-      CACHE_TAG: ghcr.io/vergil-project/${{ inputs.image-prefix }}-base:cache-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref }}
-
-      - name: Generate Dockerfile from template
-        run: docker/generate.sh base
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push candidate
-        uses: docker/build-push-action@v7
-        with:
-          context: docker/base
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ env.CANDIDATE }}
-          no-cache: ${{ inputs.no-cache }}
-          cache-from: type=registry,ref=${{ env.CACHE_TAG }}
-          cache-to: type=registry,ref=${{ env.CACHE_TAG }},mode=max
-          push: true
-
-      # Provides vrg-sarif-filter, which the trivy action uses to strip
-      # accepted-suppressed results from the copy uploaded to code scanning
-      # (vergil-actions#920). trivy-results.sarif itself stays unfiltered.
-      - name: Install vergil-tooling
-        uses: vergil-project/vergil-actions/actions/shared/setup/vergil@v2.1
-
-      - name: Trivy scan (amd64)
-        id: trivy-amd64
-        continue-on-error: true
-        uses: vergil-project/vergil-actions/actions/shared/security/trivy@v2.1
-        with:
-          scan-type: image
-          scan-ref: ${{ env.CANDIDATE }}
-          exit-code: "1"
-          sarif-category: "trivy-image-${{ inputs.image-prefix }}-base-amd64"
-          trivyignores: .trivyignore
-
-      # Same outcomes as the amd64 scan above: retried when it writes no report,
-      # and never reported as findings when it errored (issue #721).
-      - name: Trivy scan (arm64)
-        id: trivy-arm64
-        continue-on-error: true
+      # Only a promoted image has its digest uploaded, so a child is never
+      # built on a parent that failed its scan, gate or attestation.
+      - name: Record the published digest
         env:
-          TRIVY_IMAGE: aquasec/trivy:0.72.0
-        run: scripts/bin/trivy-image-scan "$CANDIDATE" linux/arm64 trivy-arm64.sarif
-
-      # Skipped when the scan errored and wrote no report; the gate reports that.
-      - name: Upload SARIF (arm64)
-        if: always() && hashFiles('trivy-arm64.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-arm64.sarif
-          category: "trivy-image-${{ inputs.image-prefix }}-base-arm64"
-
-      # Tells "found CRITICAL/HIGH vulnerabilities" apart from "the scan errored
-      # and produced no report", and fails closed on both (issue #721).
-      - name: Trivy gate
-        env:
-          AMD64_OUTCOME: ${{ steps.trivy-amd64.outcome }}
-          AMD64_RESULT: ${{ steps.trivy-amd64.outputs.result }}
-          ARM64_OUTCOME: ${{ steps.trivy-arm64.outcome }}
-          ARM64_RESULT: ${{ steps.trivy-arm64.outputs.result }}
-        run: >-
-          scripts/bin/trivy-gate "$CANDIDATE"
-          amd64 "$AMD64_OUTCOME" "$AMD64_RESULT" trivy-results.sarif
-          arm64 "$ARM64_OUTCOME" "$ARM64_RESULT" trivy-arm64.sarif
-
-      - name: Get candidate digest
-        id: digest
+          DIGEST: ${{ steps.digest.outputs.digest }}
+          DIGEST_DIR: ${{ runner.temp }}/image-digest
         run: |
-          DIGEST=$(docker buildx imagetools inspect "$CANDIDATE" --format '{{.Manifest.Digest}}')
-          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
-
-      # Same bounded retry as the build-scan-push job above (issue #743).
-      - name: Attest build provenance (attempt 1)
-        id: attest1
-        continue-on-error: true
-        uses: actions/attest-build-provenance@v4
-        with:
-          subject-name: ghcr.io/vergil-project/${{ inputs.image-prefix }}-base
-          subject-digest: ${{ steps.digest.outputs.digest }}
-
-      - name: Back off before retrying attestation
-        if: steps.attest1.outcome == 'failure'
-        run: |
-          delay=$(( ATTEST_RETRY_BACKOFF_BASE_SECONDS + RANDOM % (ATTEST_RETRY_BACKOFF_JITTER_SECONDS + 1) ))
-          echo "::warning title=Attestation retry::Attempt 1 failed (often a transient Sigstore error such as 'error fetching tlog entry' above). Backing off ${delay}s, then retrying once."
-          sleep "${delay}"
-
-      - name: Attest build provenance (attempt 2)
-        id: attest2
-        if: steps.attest1.outcome == 'failure'
-        uses: actions/attest-build-provenance@v4
-        with:
-          subject-name: ghcr.io/vergil-project/${{ inputs.image-prefix }}-base
-          subject-digest: ${{ steps.digest.outputs.digest }}
-
-      - name: Report persistent attestation failure
-        if: failure() && steps.attest2.outcome == 'failure'
-        run: |
-          echo "::error title=Attestation failed twice::actions/attest-build-provenance failed on both attempts for ${CANDIDATE}, with a ${ATTEST_RETRY_BACKOFF_BASE_SECONDS}-$(( ATTEST_RETRY_BACKOFF_BASE_SECONDS + ATTEST_RETRY_BACKOFF_JITTER_SECONDS ))s back-off between them. The candidate was not promoted. If both attempt logs show a Sigstore error, re-run the failed job later; any other error is not transient, so read the attempt logs (issue #743)."
-          exit 1
-
-      - name: Compute datestamp
-        id: stamp
-        run: echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
-
-      - name: Promote to final + immutable tags
-        run: |
-          docker buildx imagetools create \
-            --tag "$IMAGE" \
-            --tag "${IMAGE}-${{ steps.stamp.outputs.date }}" \
-            "$CANDIDATE"
-
-      - name: Verify digest preservation
-        run: |
-          FINAL_DIGEST=$(docker buildx imagetools inspect "$IMAGE" --format '{{.Manifest.Digest}}')
-          if [ "$FINAL_DIGEST" != "${{ steps.digest.outputs.digest }}" ]; then
-            echo "ERROR: Digest mismatch after promotion!" >&2
-            echo "  Candidate: ${{ steps.digest.outputs.digest }}" >&2
-            echo "  Final:     $FINAL_DIGEST" >&2
+          set -euo pipefail
+          if ! [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error title=No published digest::${IMAGE} was promoted with digest '${DIGEST}', not a sha256 digest, so the images built FROM it cannot be."
             exit 1
           fi
+          mkdir -p "$DIGEST_DIR"
+          printf '%s\n' "$DIGEST" > "${DIGEST_DIR}/digest"
+
+      - name: Upload the published digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: "image-digest-${{ inputs.image-prefix }}-${{ matrix.language }}-${{ matrix.version }}"
+          path: ${{ runner.temp }}/image-digest/digest
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+  # Tier 1: the images built FROM a tier-0 image, once every tier-0 publish has
+  # finished. It runs whatever those publishes did: an image whose parent was
+  # not published fails at "Resolve the build arguments", naming the parent.
+  build-1:
+    name: *build-name
+    needs: [hadolint, versions, publish-0]
+    if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-1 == 'true' }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.versions.outputs.arch-matrix-1) }}
+    env: *build-env
+    steps: *build-steps
+
+  publish-1:
+    name: *publish-name
+    needs: [hadolint, versions, build-1]
+    if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-1 == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix-1) }}
+    env: *publish-env
+    steps: *publish-steps
+
+  # Tier 2: the images built FROM a tier-1 image, the same way.
+  build-2:
+    name: *build-name
+    needs: [hadolint, versions, publish-1]
+    if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-2 == 'true' }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.versions.outputs.arch-matrix-2) }}
+    env: *build-env
+    steps: *build-steps
+
+  publish-2:
+    name: *publish-name
+    needs: [hadolint, versions, build-2]
+    if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-2 == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix-2) }}
+    env: *publish-env
+    steps: *publish-steps

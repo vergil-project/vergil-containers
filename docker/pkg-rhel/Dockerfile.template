@@ -1,0 +1,55 @@
+# Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
+# Canonical source: https://github.com/vergil-project/vergil-containers
+# pkg-rhel — package toolchain image for the RHEL targets (epic
+# vergil-project/.github#607): the upstream UBI image plus the OS upgrade, the
+# package-toolchain prerequisites, uv, nFPM and the toolchain marker. Nothing
+# else: no interpreter, no vergil-tooling.
+#
+# It sets no ENTRYPOINT, CMD, USER or WORKDIR (test_generate.py checks it): an
+# image built FROM it inherits only what the UBI image itself sets.
+ARG RHEL_VERSION=10
+# DL3006 (untagged FROM): the RHEL version is in the repository name
+# (ubi<v>/ubi), and the image floats within it by the pinning doctrine, as
+# ubuntu:<v> does; an explicit :latest would only trade this for DL3007.
+# hadolint ignore=DL3006
+FROM registry.access.redhat.com/ubi${RHEL_VERSION}/ubi
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# --- System packages ---------------------------------------------------------
+# The prerequisites os-prereqs.sh installs today (vergil-actions
+# actions/package/setup), in one layer with the OS upgrade. curl and gpg are
+# asked for by path: UBI ships curl-minimal, which conflicts with the full curl
+# package, and /usr/bin/gpg resolves to whichever package provides it. The
+# dnf cache is removed, as package lists are on apt.
+RUN dnf upgrade -y && \
+    dnf install -y --setopt=install_weak_deps=False \
+      ca-certificates /usr/bin/curl /usr/bin/gpg git tar gzip && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf
+
+# @include common/uv.dockerfile
+# @include common/nfpm.dockerfile
+# @include common/package-toolchain-marker.dockerfile
+
+# --- Build-time checks -------------------------------------------------------
+# Any failure fails the build, so no published image can lack one of these:
+#   - every tool runs (curl included: it must work whether curl-minimal or
+#     curl provides it);
+#   - the marker lists seven tools, uv and nfpm among them;
+#   - no python3 is added: UBI's own /usr/bin/python3 stays, because dnf runs
+#     on it (/usr/bin/dnf is a python3 script, and removing python3 breaks
+#     python3-dnf), so the check pins python3 on PATH to that one file, owned
+#     by the distro python3 RPM, and refuses any python in /usr/local/bin;
+#   - no dnf metadata or package cache is kept.
+RUN curl --version && \
+    git --version && \
+    gpg --version && \
+    uv --version && \
+    nfpm --version && \
+    test "$(wc -l < /etc/vergil/package-toolchain)" -eq 7 && \
+    grep -q '^uv ' /etc/vergil/package-toolchain && \
+    grep -q '^nfpm ' /etc/vergil/package-toolchain && \
+    test "$(command -v python3)" = /usr/bin/python3 && \
+    rpm -qf --queryformat '%{NAME}\n' /usr/bin/python3 | grep -qx python3 && \
+    test -z "$(find /usr/local/bin -name 'python*' -print -quit)" && \
+    test -z "$(find /var/cache/dnf -mindepth 1 -print -quit 2>/dev/null)"

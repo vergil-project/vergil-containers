@@ -1,3 +1,6 @@
+# /// script
+# dependencies = ["packaging", "pyyaml"]
+# ///
 """WS4 exposure report: what is pinned, in what state, and which pins are due
 for re-evaluation (leading edge has moved past the inducing_release).
 
@@ -169,11 +172,16 @@ def _matrix(root: Path) -> dict[str, list[str]]:
     """Image matrix read from docker/versions/manifest.yml (`root` is docker/).
 
     Base carries no runtime and is not a manifest family, so it is added here.
-    A manifest that cannot be loaded raises ManifestError: never a stale list."""
+    The toolchain images (the manifest's `toolchains:`, vergil-containers#728)
+    are published like the families, so they follow them, every key at every
+    version. A manifest that cannot be loaded raises ManifestError: never a
+    stale list."""
     m = manifest.load_manifest(root / "versions" / "manifest.yml")
     matrix = {"base": ["latest"]}
     for family in m.families:
         matrix[family.key] = [v.version for v in family.versions]
+    for toolchain in m.toolchains:
+        matrix[toolchain.key] = list(toolchain.versions)
     return matrix
 
 

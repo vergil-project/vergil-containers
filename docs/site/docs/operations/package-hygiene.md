@@ -15,8 +15,16 @@ for both. Each run, **per image**, pushes:
   child manifests** appear as untagged versions;
 - a **provenance attestation** manifest (`attest-build-provenance`), another
   untagged version;
-- a registry build cache (`cache-to ... mode=max`) tagged `:cache-<version>` —
-  each run produces a new digest, leaving the previous cache digest untagged.
+- a registry build cache (`cache-to ... mode=max`) per architecture, tagged
+  `:cache-<version>-<arch>` — each run produces a new digest, leaving the
+  previous cache digest untagged.
+
+Each architecture's image is pushed by digest, untagged, and is only tagged
+(through the stitched multi-arch candidate) once every build in the run has
+finished. The `cleanup` job therefore prunes only untagged versions older than
+24 hours, so it never reaps a digest a publish in flight is about to stitch.
+The shared `:cache-<version>` tags from before the per-arch builds are no
+longer written; they can be deleted by hand.
 
 Multiply by 12 packages and nightly cadence and the untagged versions pile up
 without bound. None of this is referenced by a consumer-facing tag, but GHCR

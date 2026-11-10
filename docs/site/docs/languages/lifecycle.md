@@ -15,8 +15,9 @@ The design behind this page is epic
 The window is recorded in one file, the version manifest
 [`docker/versions/manifest.yml`](https://github.com/vergil-project/vergil-containers/blob/develop/docker/versions/manifest.yml).
 Every other version list in this repository is generated from it: the publish
-matrix, `docker/build.sh`, the Dockerfile `ARG` defaults, the package-cleanup
-lists and the version tables in the docs. The generator also writes
+matrix (which `docker/build.sh` also reads), the Dockerfile `ARG` defaults,
+the package-cleanup lists and the version tables in the docs. The generator
+also writes
 `docker/versions/window.json`, the published window that consumer repos read
 at build time. CI fails if any generated file is out of date with the manifest.
 

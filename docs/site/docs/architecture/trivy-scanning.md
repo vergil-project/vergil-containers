@@ -1,12 +1,13 @@
 # Trivy Scanning
 
-This repository runs Trivy in two different places, and they scan two
-different things. Pull requests get a **filesystem scan** of the source tree.
-Publishing gets an **image scan** of every built image on both platforms.
-Each scan uploads SARIF to GitHub code scanning under its own category. The
-two sets of categories never meet on the same branch, so every pull request
-shows a "configurations not found" warning. That warning is expected and
-harmless.
+This repository runs Trivy in three places. Pull requests get a
+**filesystem scan** of the source tree, and an **image scan** of each image
+the change reaches, built locally and never published. Publishing gets an
+**image scan** of every built image on both platforms. The filesystem scan
+and the publish scans upload SARIF to GitHub code scanning, each under its
+own category; the pull-request image scan uploads none. The two sets of
+categories never meet on the same branch, so every pull request shows a
+"configurations not found" warning. That warning is expected and harmless.
 
 For triaging a publish that Trivy blocked, see
 [Trivy CVE Triage](../operations/trivy-triage.md).
@@ -16,6 +17,7 @@ For triaging a publish that Trivy blocked, see
 | Context | Workflow | Scan | What it scans | SARIF category |
 |---------|----------|------|---------------|----------------|
 | Pull request | `ci.yml` → `ci-security.yml` (vergil-actions), job `security / trivy` | `trivy fs` | The checked-out source tree | `trivy-fs` |
+| Pull request | `ci.yml` → `ci-images.yml`, jobs `images / build: …` | `trivy image` | Each image the change reaches, built locally, amd64 and arm64 | none (no upload) |
 | Push to `develop` | `cd.yml` → `cd-docker-publish.yml` (`image-prefix: dev`) | `trivy image` | Each `dev-*` candidate image, amd64 and arm64 | `trivy-image-dev-<language>-<version>-<arch>` and `trivy-image-dev-base-<arch>` |
 | Push to `main` | `cd.yml` → release, then `cd-docker-publish.yml` (`image-prefix: prod`) | `trivy image` | Each `prod-*` candidate image, amd64 and arm64 | `trivy-image-prod-<language>-<version>-<arch>` and `trivy-image-prod-base-<arch>` |
 | Nightly (`ops.yml`) | `nightly-rebuild-dev` and `nightly-rebuild-prod` → `cd-docker-publish.yml` (`no-cache: true`) | `trivy image` | Fresh rebuilds of every `dev-*` and `prod-*` image | the `dev` or `prod` categories above, by image prefix |
@@ -31,8 +33,29 @@ default category `trivy-fs`. It also keeps the full, unfiltered SARIF as the
 `ci-evidence-security-part-trivy` artifact, which feeds the
 `security / evidence` gate.
 
-This scan only checks the files in the repository. No image has been built
-at this point, so the pull request cannot scan any image.
+This scan only checks the files in the repository.
+
+### Pull requests: the image scan of changed images
+
+`ci.yml` also calls `ci-images.yml` (vergil-containers#514). Its
+`images / select` job maps the PR's changed paths and its
+`docker/versions/matrix.json` diff to the images the change reaches
+(`docker/versions/selection.py`). A path that reaches no image, such as a
+docs change, selects none; a change to the scan configuration or to the
+build-and-scan pipeline itself selects every image; an unclassified path
+under `docker/` selects every image, with a warning. Each
+`images / build: …` job then builds its images on that architecture's
+native runner, loads them into the runner's Docker daemon without pushing
+them, and scans each with `scripts/bin/trivy-image-scan` and gates it with
+`scripts/bin/trivy-gate`, the same scripts, suppressions and thresholds as
+the publish. It also runs the family's `smoke-test.sh` when there is one.
+
+A selected parent image is built in the same job as the selected images
+built FROM it, which build on the local parent; an image whose parent is not
+selected builds on the published `dev-` parent. No SARIF is uploaded, so
+these scans add no code-scanning category. The one required check is
+`images / evidence`: it passes when every selected image passed, or when
+nothing was selected, and fails otherwise.
 
 ### Publishing: the image scans
 
@@ -79,8 +102,9 @@ warning on the PR's **Trivy** code-scanning check:
 > pull request, because N configurations present on `refs/heads/develop`
 > were not found
 
-**This is expected and harmless.** The images do not exist until after the
-merge, so a PR cannot produce those categories. The `trivy-fs` comparison
+**This is expected and harmless.** The published images do not exist until
+after the merge, and the pull-request image scans upload no SARIF, so a PR
+cannot produce those categories. The `trivy-fs` comparison
 still works normally, and the image scans still gate every publish. The
 **Trivy** code-scanning check finishes as *neutral* (`vrg-gh pr checks`
 shows it as "skipping"), which does not block a merge. The scan's actual

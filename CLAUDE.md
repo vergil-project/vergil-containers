@@ -79,6 +79,7 @@ inventory: [images](docs/site/docs/images/index.md). Host setup for the
 
 ```bash
 docker/build.sh                 # Build all images for every version in the matrix
+docker/build.sh python          # Build one family, after its parent images
 ```
 
 `build.sh` auto-detects the runtime — it prefers `nerdctl` (Lima +
