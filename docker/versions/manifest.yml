@@ -92,6 +92,9 @@ families:
     token_prefix: ""
     build_arg: "RUST_VERSION"
     automation: "report"
+    parent:
+      name: "base"
+      version: "latest"
     versions:
       - version: "1.93"
         ga: 2026-01-22

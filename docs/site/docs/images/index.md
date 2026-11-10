@@ -25,7 +25,7 @@ The table is generated from `docker/versions/manifest.yml` by
 | ---------------- | ---------- | ---------------------- | --------------------------------------- |
 | `dev-python`     | python     | 3.15, 3.14, 3.13, 3.12 | `base:latest`                           |
 | `dev-go`         | go         | 1.27, 1.26             | `base:latest`                           |
-| `dev-rust`       | rust       | 1.93, 1.92             | `rust:<v>-slim`                         |
+| `dev-rust`       | rust       | 1.93, 1.92             | `base:latest`                           |
 | `dev-cpp-clang`  | cpp        | 20, 19                 | `debian:trixie-slim`                    |
 | `dev-cpp-gcc`    | cpp        | 14                     | `debian:trixie-slim`                    |
 | `dev-ts-node`    | typescript | 24, 22                 | `debian:trixie-slim`                    |
@@ -128,10 +128,17 @@ out of upstream support and its standard library carries HIGH CVEs that no Go
 
 ## Rust
 
-**Base**: `rust:<version>-slim`
+**Base**: `base:latest`
+
+The series' exact Rust release, pinned in `docker/pins/toolchains.yml`, is
+installed with a pinned `rustup-init` (its SHA-256 checked per architecture)
+on rustup's minimal profile, under `/usr/local/rustup` and `/usr/local/cargo`
+as in the `rust:<version>-slim` images it replaces. `gcc`, `libc6-dev` and
+`pkg-config` come from Ubuntu as the C linker.
 
 | Tool           | Source           | Purpose                     |
 | -------------- | ---------------- | --------------------------- |
+| gcc            | Ubuntu apt       | C linker for rustc          |
 | clippy         | rustup component | Rust linter                 |
 | rustfmt        | rustup component | Code formatter              |
 | llvm-tools     | rustup component | Coverage instrumentation    |

@@ -47,8 +47,12 @@ day of the check.
 
 ## Adapter quirks
 
-- The image is built `FROM rust:<version>-slim`, the official Docker image,
-  with `RUST_VERSION` as the build argument.
+- The image is built on `base`, with `RUST_VERSION` (the series) as the build
+  argument. It installs the series' exact Rust release, pinned in
+  `docker/pins/toolchains.yml`, with a pinned `rustup-init` whose SHA-256 is
+  checked per architecture. A version is installable when the Rust release
+  channel has a manifest for it (`channel-rust-<version>.toml`); the adapter
+  reads it with the toolchain pins' own fetcher.
 - Rust has the fastest cadence of any supported language, a new stable release
   every six weeks. That is where an automated add and drop pull request saves
   the most effort.
