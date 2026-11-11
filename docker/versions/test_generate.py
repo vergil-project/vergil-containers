@@ -519,7 +519,7 @@ def test_base_template_shape():
     fragments = includes.fragments_of(template)
     for name in _CORE_FRAGMENTS:
         assert f"docker/common/{name}.dockerfile" in fragments
-    for name in ("uv", "nfpm", "node-markdownlint", "nodesource-node", "python-support"):
+    for name in ("uv", "nfpm", "python-support"):
         assert f"docker/common/{name}.dockerfile" not in fragments
     text = template.read_text()
     assert "VERGIL_CORE_PYTHON=${CORE_PYTHON}" in text and "VERGIL_CORE_NODE_MAJOR=${CORE_NODE_MAJOR}" in text

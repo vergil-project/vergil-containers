@@ -26,9 +26,9 @@ generate() {
 }
 
 # expand FILE DEPTH — print FILE with every include line replaced by the
-# expanded fragment. Fragments may include other fragments (for example
-# common/node-markdownlint includes common/nodesource-node); the depth cap
-# turns an include cycle into an error instead of unbounded recursion.
+# expanded fragment. A fragment may include other fragments, which are
+# expanded in turn; the depth cap turns an include cycle into an error instead
+# of unbounded recursion.
 expand() {
   local file="$1" depth="$2" line fragment
   if (( depth > 8 )); then

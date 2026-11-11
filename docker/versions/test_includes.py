@@ -24,8 +24,8 @@ def test_ts_node_includes_typescript_analysis_python_does_not():
 
 def test_nested_include_is_followed(tmp_path):
     # A template that includes a fragment which itself includes another, as
-    # common/node-markdownlint includes common/nodesource-node. Synthetic, so
-    # it does not depend on which live template still includes them.
+    # common/node-markdownlint once included common/nodesource-node. Synthetic:
+    # neither file exists in the live tree any more.
     _write(tmp_path, "docker/common/node-markdownlint.dockerfile", "# @include common/nodesource-node.dockerfile\n")
     _write(tmp_path, "docker/common/nodesource-node.dockerfile", "RUN true\n")
     _write(tmp_path, "docker/x/Dockerfile.template", "# @include common/node-markdownlint.dockerfile\n")

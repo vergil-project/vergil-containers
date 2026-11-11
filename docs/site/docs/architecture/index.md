@@ -20,13 +20,9 @@ All images are built from Dockerfile templates using a two-stage process:
 docker/
 ├── build.sh                    # Builds all images
 ├── generate.sh                 # Expands templates into Dockerfiles
-├── common/
-│   ├── github-cli.dockerfile
-│   ├── node-markdownlint.dockerfile
-│   ├── path-defaults.dockerfile
-│   ├── python-support.dockerfile
-│   ├── security-tools.dockerfile
-│   └── validation-tools.dockerfile
+├── common/                     # Shared fragments (<name>.dockerfile)
+├── pkg-ubuntu/Dockerfile.template
+├── pkg-rhel/Dockerfile.template
 ├── base/Dockerfile.template
 ├── python/Dockerfile.template
 ├── go/Dockerfile.template
@@ -49,13 +45,14 @@ docker/
 Each `Dockerfile.template` contains standard Dockerfile instructions plus
 `# @include common/<fragment>.dockerfile` directives. `generate.sh`
 replaces each directive with the full contents of the referenced fragment,
-producing a final `Dockerfile` in the same directory. Includes nest: a
-fragment may include another fragment (for example
-`node-markdownlint.dockerfile` includes `nodesource-node.dockerfile`).
+producing a final `Dockerfile` in the same directory. Includes may nest: a
+fragment may include another fragment, and `generate.sh` caps the depth so
+that an include cycle is an error.
 
 This eliminates duplication — shared tool installations (GitHub CLI,
-Node.js, markdownlint, validation tools) are maintained once in
-`docker/common/` and included by every template that needs them.
+markdownlint, validation tools) are maintained once in `docker/common/`.
+Since epic vergil-project/.github#649 the common fragments are included by
+`base` alone, and every language image gets them by being built `FROM` it.
 
 ### Version management
 
@@ -68,33 +65,33 @@ pinning model.
 
 ## Common Tooling Layer
 
-Every language image includes the following shared fragments:
+`dev-base` includes the following shared fragments, and every language image
+carries them because it is built `FROM` `dev-base`:
 
 - **`path-defaults.dockerfile`** — Sets PATH for `uv tool install`
   entry points across GitHub Actions and local contexts.
-- **`node-markdownlint.dockerfile`** — Node.js via NodeSource apt repo
-  (installed by the nested `nodesource-node.dockerfile`, which fails the
-  build unless it gets NodeSource Node `NODE_MAJOR` with npm)
-  and markdownlint-cli via npm.
 - **`github-cli.dockerfile`** — GitHub CLI via the official apt repo.
 - **`validation-tools.dockerfile`** — Architecture-aware binary
   installs of shellcheck, shfmt, actionlint, git-cliff, and hadolint.
   Uses `TARGETARCH` (injected by Docker Buildx) to select the correct
   binary for amd64 or arm64.
 - **`security-tools.dockerfile`** — Security analysis tools installed
-  from binary releases. Currently includes scorecard (OpenSSF).
-- **`python-support.dockerfile`** — Minimal Python plus yamllint and
-  uv, used by non-Python images.
-- **`nfpm.dockerfile`** — nfpm release binary, which builds `.deb` and
-  `.rpm` packages from one declarative config.
+  from binary releases: scorecard (OpenSSF) and trivy.
 - **`rpm.dockerfile`** — The distro's `rpm`, the peer of `dpkg`, for
   inspecting `.rpm` packages and comparing versions (`rpm.vercmp`).
 - **`pandoc.dockerfile`** — pandoc for Markdown to `.docx`/HTML
   conversion (no TeX; PDF output is opt-in).
 
-`dev-python` includes no fragment: it is built `FROM` `dev-base` and adds only
-the family Python, a pinned python-build-standalone build at
-`/opt/python/<version>`.
+uv and nFPM (`uv.dockerfile`, `nfpm.dockerfile`) are included by the package
+toolchain images, and `dev-base` takes them from its parent.
+
+A language image adds only its family's own toolchain. `dev-python`,
+`dev-go` and `dev-rust` include no fragment. The two C++ families include
+`cpp-analysis.dockerfile`, and `dev-ts-node` includes
+`typescript-analysis.dockerfile`. `dev-python` adds the family Python, a
+pinned python-build-standalone build at `/opt/python/<version>`, and
+`dev-ts-node` adds the family Node, a pinned nodejs.org tarball at
+`/opt/node/<major>`.
 
 The `dev-base` image is built `FROM` the package toolchain image
 `pkg-ubuntu:24.04` (epic vergil-project/.github#649), from which it takes uv
