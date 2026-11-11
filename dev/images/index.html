@@ -3579,16 +3579,27 @@ nothing else: no common layer, no vergil-tooling.</p>
   <a href="https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md">the catalog</a>.
   The package setup action installs vergil-tooling with uv, under a Python
   that uv fetches itself.</li>
-<li><strong>apt configuration (<code>pkg-ubuntu</code>)</strong>: on every architecture,
+<li><strong>apt configuration (<code>pkg-ubuntu</code>)</strong>: on amd64 and arm64,
   <code>/etc/apt/apt.conf.d/80-vergil-fast-fail</code> sets 3 retries with no retry
   delay, 20 s timeouts and a 60 s dpkg lock wait, so a stalled mirror fails
-  fast instead of hanging the job. On amd64 only, the Ubuntu archive and
-  security sources are rewritten to <code>mirror+file:/etc/apt/apt-mirrors.txt</code>,
-  a list of the in-region Azure mirror first, then <code>archive.ubuntu.com</code>,
-  then <code>security.ubuntu.com</code>, so apt fails over down the list. arm64 uses
-  <code>ports.ubuntu.com</code>, which those mirrors do not serve, and is left
-  untouched. vergil-tooling passes the same fail-fast options on each apt
-  command line it runs.</li>
+  fast instead of hanging the job, and <code>APT::Update::Error-Mode "any"</code>, so
+  <code>apt-get update</code> fails when no mirror serves an index instead of warning
+  and leaving the job to fail later on a missing package. The Ubuntu
+  sources are rewritten to <code>mirror+file:/etc/apt/apt-mirrors.txt</code>, so apt
+  fails over down a list that starts with Canonical's hosts and ends with
+  mirrors outside <code>ubuntu.com</code>, so a DNS failure of that zone does not
+  stop the build. On amd64 the list is the in-region Azure mirror,
+  <code>archive.ubuntu.com</code> and <code>security.ubuntu.com</code>, then
+  <code>mirrors.edge.kernel.org</code> and <code>mirrors.dotsrc.org</code>; on arm64 it is
+  <code>ports.ubuntu.com</code>, then <code>mirrors.dotsrc.org</code> and <code>mirrors.mit.edu</code>
+  (their <code>ubuntu-ports</code> archives). apt checks every index against the
+  archive's signed <code>InRelease</code>, so a third-party mirror cannot alter a
+  package. For a local build,
+  <code>VRG_APT_MIRROR=http://&lt;mirror&gt;/ubuntu/ docker/build.sh</code> (an
+  <code>ubuntu-ports</code> URI on arm64) puts a nearer mirror first; CI and publish
+  never set it. vergil-tooling passes the retry, timeout and lock options
+  on each apt command line it runs; in <code>pkg-ubuntu</code> its apt calls also
+  read the error mode from this file.</li>
 <li><strong>Toolchain marker</strong>: <code>/etc/vergil/package-toolchain</code> has one
   <code>&lt;tool&gt; &lt;version&gt;</code> line for each of <code>uv</code>, <code>nfpm</code>, <code>curl</code>, <code>git</code>, <code>gpg</code>,
   <code>tar</code> and <code>gzip</code>, each version read from <code>&lt;tool&gt; --version</code> when the image
