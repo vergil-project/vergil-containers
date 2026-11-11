@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.38] - 2026-11-11
+
+### Bug fixes
+
+- wrap semgrep to cap the stack hard limit, and scan at build time (#827)
+
+### Documentation
+
+- reflect epic 213's native per-arch publish and PR image selection (#817)
+- describe the pkg-ubuntu and pkg-rhel package toolchain images (#828)
+- state the setup action's current marker contract in the marker fragment (#829)
+- publish the OS-usage table and update CVE triage (#834)
+
+### Features
+
+- pin the language toolchains by version and hash, refreshed daily (#816)
+- build base on pkg-ubuntu 24.04 with vergil-python and a side-by-side Node (#818)
+- build python images on base, with a pinned toolchain (#822)
+- build go images on base, with a pinned toolchain (#823)
+- build rust images on base, with a pinned toolchain (#830)
+- build cpp-clang images on base, with a pinned toolchain (#831)
+- build cpp-gcc images on base, with a pinned toolchain (#832)
+- build ts-node images on base, with a pinned toolchain (#833)
+- fallback mirrors outside Canonical's domain for both architectures (#838)
+
 ## [2.1.37] - 2026-11-10
 
 ### CI
