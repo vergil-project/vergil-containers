@@ -33,8 +33,7 @@ def test_python_template_is_from_its_parent():
 
 def test_python_includes_nothing_base_installs():
     # base brings the common tooling and the core runtimes; the python image
-    # adds only the family Python, so it includes no fragment at all (the
-    # python-support fragment included).
+    # adds only the family Python, so it includes no fragment at all.
     assert includes.fragments_of(TEMPLATE) == frozenset()
 
 
