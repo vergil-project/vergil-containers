@@ -8,11 +8,11 @@
 #
 # Pinning: these tools follow the repo-wide floating doctrine (epic
 # vergil-project/.github#155). cmake/cppcheck are fixed by the image's
-# distribution release (noble's: cmake 3.28.3, cppcheck 2.13.0, which
-# cpp-clang's checks.sh asserts); clang-format/clang-tidy are fixed by the LLVM
-# apt channel major (CLANG_TOOLS_VERSION); conan/gcovr float on their leading
-# edge like every other uv-installed tool — none of those is an exact x.y.z pin,
-# so this fragment carries no docker/pins/pins.yml entry.
+# distribution release (noble's: cmake 3.28.3, cppcheck 2.13.0, which the
+# checks.sh of both cpp-clang and cpp-gcc assert); clang-format/clang-tidy are
+# fixed by the LLVM apt channel major (CLANG_TOOLS_VERSION); conan/gcovr float on
+# their leading edge like every other uv-installed tool — none of those is an
+# exact x.y.z pin, so this fragment carries no docker/pins/pins.yml entry.
 ARG CLANG_TOOLS_VERSION=20
 
 # clang-format / clang-tidy come from the official LLVM apt channel so the

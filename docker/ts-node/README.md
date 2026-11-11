@@ -10,37 +10,52 @@ The spec's hard rule (§3.5) is **prebuilt stable binaries only — never built
 from source** — and the durable requirement is **two recent LTS majors**. The
 concrete majors are whatever is cleanly available prebuilt.
 
-Discovery was run empirically against `debian:trixie-slim` (the Debian release
-underlying the other images in this repo) plus the official NodeSource apt
-channel (`deb.nodesource.com`):
+Discovery was first run against `debian:trixie-slim` and the NodeSource apt
+channel. Since epic
+[vergil-project/.github#649](https://github.com/vergil-project/.github/issues/649)
+the image is built on `base` (Ubuntu 24.04), and each major is the official
+nodejs.org prebuilt tarball, which its spike installed for both majors on both
+architectures:
 
-| Major | Source (prebuilt) | Version observed | npm | Decision |
-| ----- | ----------------- | ---------------- | --- | -------- |
-| **24** | NodeSource `setup_24.x` | 24.19.0 | 11.17.0 | **pinned (primary)** |
-| **22** | NodeSource `setup_22.x` | 22.23.2 | 10.9.8 | **pinned (secondary, T2)** |
+| Major | Source (prebuilt) | Decision |
+| ----- | ----------------- | -------- |
+| **24** | nodejs.org tarballs, `linux-x64` and `linux-arm64` | **pinned (primary)** |
+| **22** | nodejs.org tarballs, `linux-x64` and `linux-arm64` | **pinned (secondary)** |
 
-Both majors install cleanly as prebuilt stable binaries with npm bundled, so the
-target pins (24 and 22) qualify and no fallback is needed. `node-20` is excluded
-(EOL Apr 2026) and `node-26` (Oct 2026) is deferred, per the epic's global
-constraints.
+The exact release of each major, and the SHA-256 of each architecture's
+tarball, are pinned in `docker/pins/toolchains.yml`; the daily upstream refresh
+moves each pin to the newest release of its major. npm is the one each tarball
+bundles: it is never upgraded in place, so it changes only when the pin moves
+(the site's Trivy CVE triage page, `docs/site/docs/operations/trivy-triage.md`).
+`node-20` is excluded (EOL Apr 2026), per the epic's global constraints.
 
 **Node 24 is the primary major** — `versions[0]`; the `[once]` TYPECHECK / LINT /
-AUDIT stages run on it, and only TEST runs per Node version (spec §3.6). This
-image (T1) ships node-24; the node-22 second image is added in T2, reusing this
-same `Dockerfile.template` via the `NODE_MAJOR` build-arg.
+AUDIT stages run on it, and only TEST runs per Node version (spec §3.6). Both
+majors are built from the same `Dockerfile.template` via the `NODE_MAJOR`
+build-arg.
 
 If a future major is wanted, advance the matrix **only once it is available as a
-prebuilt stable binary** on this channel (§3.5). The version axis lives in
+prebuilt stable binary** (§3.5): the `ts-node` lifecycle adapter proposes a
+major only once nodejs.org's release index has a release of it with `linux-x64`
+and `linux-arm64` tarballs. The version axis lives in
 `docker/versions/manifest.yml` (the `ts-node` family); the publish matrix,
 which `docker/build.sh` reads, is generated from it.
 
 ## Structure (matches this repo's existing image idiom)
 
 - **`docker/ts-node/Dockerfile.template`** — the Node image. `FROM
-  debian:trixie-slim`, installs the `NODE_MAJOR` runtime from NodeSource, then
-  composes the shared validation fragments (the same set the `rust` image uses,
-  minus `node-markdownlint` since this image installs its own runtime Node) plus
-  `common/typescript-analysis.dockerfile`.
+  ${PARENT_IMAGE}`, which is `base` (the manifest's `parent:`), so every common
+  tool comes from `base`. It unpacks the `NODE_MAJOR` tarball at
+  `/opt/node/<major>` after checking its pinned SHA-256, links `node`, `npm` and
+  `npx` into `/usr/local/bin`, and sets npm's global prefix to `/usr`, so
+  `npm root -g` is `/usr/lib/node_modules`. It then composes
+  `common/typescript-analysis.dockerfile`. `markdownlint` stays `base`'s
+  wrapper on the core Node at `/opt/vergil/node/<core-major>`, never on this
+  family Node.
+- **`docker/ts-node/checks.sh`** — the build-time checks, the template's last
+  `RUN`: `base`'s invariants, the two `base` defaults the image keeps (`python3`
+  is the core Python, no `pip`), the family Node's release and paths, `npm root
+  -g`, the `markdownlint` wrapper on the core Node, and the TypeScript tools.
 - **`common/typescript-analysis.dockerfile`** — the shared, runtime-agnostic
   analysis toolset every TypeScript image carries (`typescript`/`tsc`, `eslint` +
   `typescript-eslint`, `prettier`, `vitest` + `@vitest/coverage-v8`,
