@@ -626,6 +626,8 @@
       
         
       
+        
+      
     
     
     
@@ -678,6 +680,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.38/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.38
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2283,6 +2313,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#package-toolchain-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Package toolchain images
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2809,6 +2850,8 @@
       
         
       
+        
+      
     
     
     
@@ -2973,6 +3016,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../operations/os-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OS Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../operations/rollback/" class="md-nav__link">
         
   
@@ -3093,6 +3164,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#package-toolchain-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Package toolchain images
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3111,9 +3193,16 @@
 
 
 <h1 id="images">Images<a class="headerlink" href="#images" title="Permanent link">&para;</a></h1>
-<p>Every image shares a common tooling layer and adds language-specific
-runtimes and tools. Images are published as multi-architecture manifests
-(amd64 + arm64) to <code>ghcr.io/vergil-project/dev-&lt;language&gt;:&lt;version&gt;</code>.</p>
+<p>The images come in two kinds. The <strong>language images</strong> (Python, Go, Rust,
+C++, TypeScript / Node.js) and <code>base</code> share a common tooling layer and add
+language-specific runtimes and tools; they are published to
+<code>ghcr.io/vergil-project/dev-&lt;language&gt;:&lt;version&gt;</code> (and <code>dev-base:latest</code>).
+The <strong>package toolchain images</strong>, <code>pkg-ubuntu</code> and <code>pkg-rhel</code>, carry no
+common layer: they are the minimal images that package jobs build and
+install-test in, published to <code>ghcr.io/vergil-project/dev-pkg-&lt;distro&gt;:&lt;version&gt;</code>
+(see <a href="#package-toolchain-images">Package toolchain images</a>). Every image is
+published as a multi-architecture manifest (amd64 + arm64), with a <code>dev-</code>
+prefix from <code>develop</code> and a <code>prod-</code> prefix from <code>main</code>.</p>
 <div class="admonition info">
 <p class="admonition-title">Tool versions are managed, not hand-listed here</p>
 <p>This page is the <strong>inventory</strong> — what each image includes. It deliberately
@@ -3144,37 +3233,37 @@ The table is generated from <code>docker/versions/manifest.yml</code> by
 <td><code>dev-python</code></td>
 <td>python</td>
 <td>3.15, 3.14, 3.13, 3.12</td>
-<td><code>python:&lt;v&gt;-slim</code></td>
+<td><code>base:latest</code></td>
 </tr>
 <tr>
 <td><code>dev-go</code></td>
 <td>go</td>
 <td>1.27, 1.26</td>
-<td><code>golang:&lt;v&gt;</code></td>
+<td><code>base:latest</code></td>
 </tr>
 <tr>
 <td><code>dev-rust</code></td>
 <td>rust</td>
 <td>1.93, 1.92</td>
-<td><code>rust:&lt;v&gt;-slim</code></td>
+<td><code>base:latest</code></td>
 </tr>
 <tr>
 <td><code>dev-cpp-clang</code></td>
 <td>cpp</td>
 <td>20, 19</td>
-<td><code>debian:trixie-slim</code></td>
+<td><code>base:latest</code></td>
 </tr>
 <tr>
 <td><code>dev-cpp-gcc</code></td>
 <td>cpp</td>
 <td>14</td>
-<td><code>debian:trixie-slim</code></td>
+<td><code>base:latest</code></td>
 </tr>
 <tr>
 <td><code>dev-ts-node</code></td>
 <td>typescript</td>
 <td>24, 22</td>
-<td><code>debian:trixie-slim</code></td>
+<td><code>base:latest</code></td>
 </tr>
 <tr>
 <td><code>dev-pkg-ubuntu</code></td>
@@ -3192,14 +3281,16 @@ The table is generated from <code>docker/versions/manifest.yml</code> by
 <td><code>dev-base</code></td>
 <td>—</td>
 <td>latest</td>
-<td><code>python:3.14-slim</code></td>
+<td><code>pkg-ubuntu:24.04</code></td>
 </tr>
 </tbody>
 </table>
 <!-- END generated: versions -->
 
 <h2 id="common-layer">Common Layer<a class="headerlink" href="#common-layer" title="Permanent link">&para;</a></h2>
-<p>All language images include:</p>
+<p>All language images include the tools below. The package toolchain images
+do not: see <a href="#package-toolchain-images">Package toolchain images</a> for what
+they carry.</p>
 <table>
 <thead>
 <tr>
@@ -3282,11 +3373,20 @@ The table is generated from <code>docker/versions/manifest.yml</code> by
 tooling (MkDocs Material, mike, semgrep) and OpenTofu for in-sandbox
 OpenTofu module validation. It is the fallback image for repos with no
 detected language.</p>
-<p>Non-Python images install Python, yamllint, ansible-lint, and uv via the
-<code>python-support</code> fragment. Python-based images (<code>dev-python</code>, <code>dev-base</code>)
-install them directly via pip.</p>
+<p>Every language image is built on <code>dev-base</code> (its base is <code>base:latest</code> in the
+table above) and takes Python, yamllint, ansible-lint, and uv from it: see
+<a href="#python">Python</a> and <a href="#go">Go</a>.
+<code>dev-base</code> is different: see <a href="#base">Base</a>.</p>
 <h2 id="python">Python<a class="headerlink" href="#python" title="Permanent link">&para;</a></h2>
-<p><strong>Base</strong>: <code>python:&lt;version&gt;-slim</code></p>
+<p><strong>Base</strong>: <code>dev-base</code> (<code>base:latest</code>)</p>
+<p>The family Python is the python-build-standalone install-only build of the
+series, unpacked at <code>/opt/python/&lt;version&gt;</code>. Its release, version and each
+architecture's SHA-256 are pinned in <code>docker/pins/toolchains.yml</code>, and the
+build checks the download against the hash. <code>python3</code>, <code>python</code>,
+<code>python&lt;version&gt;</code>, <code>pip</code> and <code>pip3</code> in <code>/usr/local/bin</code> link into it, so
+<code>python3</code> is the series. It is a plain system interpreter, not a uv-managed
+one, so uv finds it with <code>UV_PYTHON_PREFERENCE=only-system</code>. base's own tools
+keep running on the core Python under <code>/opt/vergil/python/</code>.</p>
 <table>
 <thead>
 <tr>
@@ -3296,23 +3396,26 @@ install them directly via pip.</p>
 </thead>
 <tbody>
 <tr>
-<td>uv</td>
-<td>Python package manager</td>
-</tr>
-<tr>
-<td>pytest-xdist</td>
-<td>Parallel pytest execution</td>
+<td>pip</td>
+<td>The series' bundled pip</td>
 </tr>
 </tbody>
 </table>
-<p><code>pytest-xdist</code> is installed into the image's system Python so the shared
-vergil-tooling validation gate's Python TEST command can fan the suite across
-cores (<code>-n auto --dist worksteal</code>) fleet-wide without every consuming repo
-declaring it as a dev dependency. Consuming repos get parallel test execution
-by default — when <code>pytest-xdist</code> resolves (as it does in this image) and their
-<code>[test].parallel</code> setting is on (the default).</p>
+<p>Nothing is pip-installed into the family Python, and its bundled pip is never
+upgraded in place: a fix comes with a newer pin of the series.</p>
+<p><code>pytest-xdist</code> is no longer in the image. A consuming repo that wants
+parallel tests declares it in its dev dependencies. Without it the shared
+vergil-tooling validation gate runs the suite serially.</p>
 <h2 id="go">Go<a class="headerlink" href="#go" title="Permanent link">&para;</a></h2>
-<p><strong>Base</strong>: <code>golang:&lt;version&gt;</code></p>
+<p><strong>Base</strong>: <code>dev-base</code>, plus the go.dev release of the series at
+<code>/usr/local/go</code>. The release and its SHA-256 for each architecture are pinned
+in
+<a href="https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/toolchains.yml"><code>docker/pins/toolchains.yml</code></a>,
+and the daily upstream refresh moves the pin to the newest patch of the
+series. The image keeps the environment the <code>golang</code> images set
+(<code>GOPATH=/go</code>, <code>GOTOOLCHAIN=local</code>, <code>/go/bin</code> and <code>/usr/local/go/bin</code> on
+<code>PATH</code>) and their C toolchain for cgo (<code>gcc</code>, <code>g++</code>, <code>libc6-dev</code>, <code>make</code>,
+<code>pkg-config</code>).</p>
 <table>
 <thead>
 <tr>
@@ -3358,7 +3461,12 @@ out of upstream support and its standard library carries HIGH CVEs that no Go
 <code>dev-go:1.25</code> tags remain in GHCR but are no longer rebuilt. Follow-up:
 <a href="https://github.com/vergil-project/.github/issues/403">vergil-project/.github#403</a>.</p>
 <h2 id="rust">Rust<a class="headerlink" href="#rust" title="Permanent link">&para;</a></h2>
-<p><strong>Base</strong>: <code>rust:&lt;version&gt;-slim</code></p>
+<p><strong>Base</strong>: <code>base:latest</code></p>
+<p>The series' exact Rust release, pinned in <code>docker/pins/toolchains.yml</code>, is
+installed with a pinned <code>rustup-init</code> (its SHA-256 checked per architecture)
+on rustup's minimal profile, under <code>/usr/local/rustup</code> and <code>/usr/local/cargo</code>
+as in the <code>rust:&lt;version&gt;-slim</code> images it replaces. <code>gcc</code>, <code>libc6-dev</code> and
+<code>pkg-config</code> come from Ubuntu as the C linker.</p>
 <table>
 <thead>
 <tr>
@@ -3368,6 +3476,11 @@ out of upstream support and its standard library carries HIGH CVEs that no Go
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>gcc</td>
+<td>Ubuntu apt</td>
+<td>C linker for rustc</td>
+</tr>
 <tr>
 <td>clippy</td>
 <td>rustup component</td>
@@ -3396,7 +3509,7 @@ out of upstream support and its standard library carries HIGH CVEs that no Go
 </tbody>
 </table>
 <h2 id="base">Base<a class="headerlink" href="#base" title="Permanent link">&para;</a></h2>
-<p><strong>Base</strong>: <code>python:3.14-slim</code>
+<p><strong>Base</strong>: <code>pkg-ubuntu:24.04</code> (Ubuntu 24.04, with uv and nFPM)
 <strong>Version</strong>: latest</p>
 <p>The base image includes the full common layer (all tools listed above)
 plus documentation tooling. It is the fallback image used by
@@ -3422,15 +3535,144 @@ plus documentation tooling. It is the fallback image used by
 <td>Static analysis</td>
 </tr>
 <tr>
-<td>pyyaml</td>
-<td>YAML parsing (MkDocs dep)</td>
-</tr>
-<tr>
 <td>OpenTofu</td>
 <td>OpenTofu module validation</td>
 </tr>
 </tbody>
 </table>
+<p>Its own tools run on core runtimes installed side by side under
+<code>/opt/vergil/</code>, whose series come from the version manifest's <code>core:</code>
+section (epic vergil-project/.github#649):</p>
+<ul>
+<li><strong>Core Python</strong>: <code>vergil-python&lt;core&gt;</code> from the vergil apt repository, at
+  <code>/opt/vergil/python/&lt;core&gt;/</code>. yamllint, ansible-lint, semgrep and MkDocs
+  (with mkdocs-material and mike) are uv tools on it, each in its own
+  environment. <code>/usr/local/bin/python3</code> links to it and promises the
+  standard library only: nothing is pip-installed into it, and there is no
+  <code>pip</code> on <code>PATH</code>. A script that needs a third-party package declares it
+  inline (PEP 723) and runs with <code>uv run</code>.
+  <code>semgrep</code> and <code>pysemgrep</code> are wrappers that run the tool's entry points
+  with the stack hard limit lowered to 2929688 KiB when it is unlimited or
+  larger. semgrep sets <code>semgrep-core</code>'s stack limit to a third of the hard
+  limit, and on Python 3.15 an unlimited hard limit gives a finite limit of
+  about 5 EiB that crashes <code>semgrep-core</code>
+  (<a href="https://github.com/vergil-project/vergil-containers/issues/825">vergil-containers#825</a>).
+  The wrappers go once semgrep fixes this upstream
+  (<a href="https://github.com/vergil-project/vergil-containers/issues/826">vergil-containers#826</a>).</li>
+<li><strong>Core Node</strong>: the pinned nodejs.org release of the core major, at
+  <code>/opt/vergil/node/&lt;core-major&gt;/</code>, which runs markdownlint-cli. There is no
+  <code>node</code>, <code>npm</code> or <code>npx</code> on <code>PATH</code>; <code>markdownlint</code> is a wrapper that runs
+  the core Node by path.</li>
+</ul>
+<h2 id="package-toolchain-images">Package toolchain images<a class="headerlink" href="#package-toolchain-images" title="Permanent link">&para;</a></h2>
+<p><strong>Images</strong>: <code>pkg-ubuntu</code> (Ubuntu 26.04, 24.04) and <code>pkg-rhel</code> (RHEL 10, 9)
+<strong>Bases</strong>: <code>ubuntu:&lt;version&gt;</code> and <code>registry.access.redhat.com/ubi&lt;version&gt;/ubi</code></p>
+<p>These are the images vergil's package jobs run in (epic
+vergil-project/.github#607). vergil-tooling's package build and install-test
+cells run in the published <code>prod-pkg-ubuntu:&lt;version&gt;</code> and
+<code>prod-pkg-rhel:&lt;version&gt;</code> images (since vergil-tooling v2.1.297), one per
+package target. vergil-actions' <code>actions/package/setup</code> requires them: since
+vergil-actions v2.1.62 it installs no toolchain of its own and fails the job
+in any other image. Baking the toolchain into a nightly-rebuilt image means
+no package job downloads it at run time.</p>
+<p>Each image is the upstream image plus only what a package job needs, and
+nothing else: no common layer, no vergil-tooling.</p>
+<table>
+<thead>
+<tr>
+<th>Content</th>
+<th><code>pkg-ubuntu</code></th>
+<th><code>pkg-rhel</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OS upgrade</td>
+<td><code>apt-get upgrade</code> at build time</td>
+<td><code>dnf upgrade</code> at build time</td>
+</tr>
+<tr>
+<td>OS prerequisites</td>
+<td><code>ca-certificates</code>, <code>curl</code>, <code>git</code>, <code>tar</code>, <code>gzip</code>, <code>gnupg</code></td>
+<td><code>ca-certificates</code>, <code>curl</code>, <code>gpg</code>, <code>git</code>, <code>tar</code>, <code>gzip</code></td>
+</tr>
+<tr>
+<td>uv</td>
+<td>pinned release, in <code>/usr/local/bin</code> (with <code>uvx</code>)</td>
+<td>same</td>
+</tr>
+<tr>
+<td>nFPM</td>
+<td>pinned release, in <code>/usr/local/bin</code></td>
+<td>same</td>
+</tr>
+<tr>
+<td>apt configuration</td>
+<td>fail-fast config on every architecture; mirror list on amd64</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Toolchain marker</td>
+<td><code>/etc/vergil/package-toolchain</code></td>
+<td>same</td>
+</tr>
+<tr>
+<td>Python</td>
+<td>none</td>
+<td>only the distro's <code>python3</code>, which dnf runs on</td>
+</tr>
+</tbody>
+</table>
+<p>Notes on the rows:</p>
+<ul>
+<li><strong>OS upgrade</strong>: the packages are upgraded when the image is built, and
+  the images are rebuilt nightly, so a package job starts on a current OS.
+  Package lists and the dnf cache are not kept: they would go stale between
+  rebuilds, so a job that needs them runs its own <code>apt-get update</code>.</li>
+<li><strong>OS prerequisites on <code>pkg-rhel</code></strong>: UBI ships <code>curl-minimal</code>, which
+  conflicts with the full <code>curl</code> package, so the image asks dnf for
+  <code>/usr/bin/curl</code> and <code>/usr/bin/gpg</code> by path and accepts whichever package
+  provides them.</li>
+<li><strong>uv and nFPM</strong>: both are pinned and checksum-verified, and the daily
+  upstream refresh floats their pins; see
+  <a href="https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md">the catalog</a>.
+  The package setup action installs vergil-tooling with uv, under a Python
+  that uv fetches itself.</li>
+<li><strong>apt configuration (<code>pkg-ubuntu</code>)</strong>: on amd64 and arm64,
+  <code>/etc/apt/apt.conf.d/80-vergil-fast-fail</code> sets 3 retries with no retry
+  delay, 20 s timeouts and a 60 s dpkg lock wait, so a stalled mirror fails
+  fast instead of hanging the job, and <code>APT::Update::Error-Mode "any"</code>, so
+  <code>apt-get update</code> fails when no mirror serves an index instead of warning
+  and leaving the job to fail later on a missing package. The Ubuntu
+  sources are rewritten to <code>mirror+file:/etc/apt/apt-mirrors.txt</code>, so apt
+  fails over down a list that starts with Canonical's hosts and ends with
+  mirrors outside <code>ubuntu.com</code>, so a DNS failure of that zone does not
+  stop the build. On amd64 the list is the in-region Azure mirror,
+  <code>archive.ubuntu.com</code> and <code>security.ubuntu.com</code>, then
+  <code>mirrors.edge.kernel.org</code> and <code>mirrors.dotsrc.org</code>; on arm64 it is
+  <code>ports.ubuntu.com</code>, then <code>mirrors.dotsrc.org</code> and <code>mirrors.mit.edu</code>
+  (their <code>ubuntu-ports</code> archives). apt checks every index against the
+  archive's signed <code>InRelease</code>, so a third-party mirror cannot alter a
+  package. For a local build,
+  <code>VRG_APT_MIRROR=http://&lt;mirror&gt;/ubuntu/ docker/build.sh</code> (an
+  <code>ubuntu-ports</code> URI on arm64) puts a nearer mirror first; CI and publish
+  never set it. vergil-tooling passes the retry, timeout and lock options
+  on each apt command line it runs; in <code>pkg-ubuntu</code> its apt calls also
+  read the error mode from this file.</li>
+<li><strong>Toolchain marker</strong>: <code>/etc/vergil/package-toolchain</code> has one
+  <code>&lt;tool&gt; &lt;version&gt;</code> line for each of <code>uv</code>, <code>nfpm</code>, <code>curl</code>, <code>git</code>, <code>gpg</code>,
+  <code>tar</code> and <code>gzip</code>, each version read from <code>&lt;tool&gt; --version</code> when the image
+  is built. <code>actions/package/setup</code> checks the image against it before
+  anything else: a missing marker, a required tool it leaves out, or a
+  listed tool missing or at another version fails the job.</li>
+<li><strong>Python</strong>: <code>pkg-ubuntu</code> has no <code>python3</code> at all. <code>pkg-rhel</code> keeps UBI's
+  own <code>/usr/bin/python3</code>, because dnf runs on it, and adds no other Python.</li>
+</ul>
+<p>Each template's build-time checks fail the build if any of this is missing,
+so no published image can lack it.</p>
+<p><code>pkg-ubuntu:24.04</code> is also the parent of <a href="#base"><code>base</code></a>, which takes uv and
+nFPM from it. <code>base</code> removes the toolchain marker, because it is not a
+package toolchain image.</p>
 
 
 

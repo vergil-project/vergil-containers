@@ -626,6 +626,8 @@
       
         
       
+        
+      
     
     
     
@@ -678,6 +680,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.38/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.38
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2825,6 +2855,8 @@
       
         
       
+        
+      
     
     
     
@@ -2969,6 +3001,34 @@
     
   
     Package Hygiene
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/os-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OS Usage
   
 
     
@@ -3178,8 +3238,12 @@ GA. In endoflife.date, a cycle is GA once its <code>releaseDate</code> is on or 
 day of the check.</p>
 <h2 id="adapter-quirks">Adapter quirks<a class="headerlink" href="#adapter-quirks" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The image is built <code>FROM rust:&lt;version&gt;-slim</code>, the official Docker image,
-  with <code>RUST_VERSION</code> as the build argument.</li>
+<li>The image is built on <code>base</code>, with <code>RUST_VERSION</code> (the series) as the build
+  argument. It installs the series' exact Rust release, pinned in
+  <code>docker/pins/toolchains.yml</code>, with a pinned <code>rustup-init</code> whose SHA-256 is
+  checked per architecture. A version is installable when the Rust release
+  channel has a manifest for it (<code>channel-rust-&lt;version&gt;.toml</code>); the adapter
+  reads it with the toolchain pins' own fetcher.</li>
 <li>Rust has the fastest cadence of any supported language, a new stable release
   every six weeks. That is where an automated add and drop pull request saves
   the most effort.</li>

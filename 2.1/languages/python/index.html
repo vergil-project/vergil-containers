@@ -626,6 +626,8 @@
       
         
       
+        
+      
     
     
     
@@ -678,6 +680,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.38/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.38
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2825,6 +2855,8 @@
       
         
       
+        
+      
     
     
     
@@ -2969,6 +3001,34 @@
     
   
     Package Hygiene
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/os-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OS Usage
   
 
     
@@ -3184,9 +3244,13 @@ GA.</p>
 day of the check.</p>
 <h2 id="adapter-quirks">Adapter quirks<a class="headerlink" href="#adapter-quirks" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The image is built <code>FROM python:&lt;version&gt;-slim</code>, the official Docker image,
-  with <code>PYTHON_VERSION</code> as the build argument. A new version can be added only
-  once that tag exists.</li>
+<li>The image is built on <code>base</code> and unpacks the python-build-standalone
+  install-only build of the series, with <code>PYTHON_VERSION</code> as the build
+  argument and the series' pin from <code>docker/pins/toolchains.yml</code>. A new
+  version can be added only once a recent python-build-standalone release has
+  an install-only build of it for both amd64 and arm64. The adapter checks that
+  with the same python-build-standalone lookup the daily upstream refresh pins
+  from, so a version it adds is one the refresh can pin.</li>
 <li>Deployed Python code needs a <code>vergil-python</code> runtime for its version (see
   below). Containers and runtimes are released separately, so there can be a
   gap of a few days between them. A packaged Python app or library deploys on

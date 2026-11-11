@@ -626,6 +626,8 @@
       
         
       
+        
+      
     
     
     
@@ -678,6 +680,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.38/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.38
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2825,6 +2855,8 @@
       
         
       
+        
+      
     
     
     
@@ -2969,6 +3001,34 @@
     
   
     Package Hygiene
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/os-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OS Usage
   
 
     
@@ -3140,17 +3200,17 @@
 <h1 id="c-gcc-support-policy">C++ / GCC support policy<a class="headerlink" href="#c-gcc-support-policy" title="Permanent link">&para;</a></h1>
 <p>Image family: <code>dev-cpp-gcc</code>, the C++ image built with the GCC compiler. Shared
 rules: <a href="../lifecycle/">Language version lifecycle</a>. Upstream facts on this page
-were checked on 2026-10-21.</p>
+were checked on 2026-10-21, and the Ubuntu packages on 2026-11-10.</p>
 <h2 id="upstream-source-of-truth">Upstream source of truth<a class="headerlink" href="#upstream-source-of-truth" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Official:</strong> the <a href="https://gcc.gnu.org/">GCC home page</a>, whose "Supported
   Releases" list names the maintained release series, the <a href="https://gcc.gnu.org/releases.html">GCC
   Releases</a> page, and the <a href="https://gcc.gnu.org/develop.html">GCC Development
   Plan</a> for version numbering.</li>
-<li><strong>Debian packages:</strong> the image installs GCC from Debian, so what the base
-  can install comes from the Debian source package pages, for example
-  <a href="https://sources.debian.org/src/gcc-14/"><code>gcc-14</code></a> and
-  <a href="https://sources.debian.org/src/gcc-15/"><code>gcc-15</code></a>.</li>
+<li><strong>Ubuntu packages:</strong> the image installs GCC from Ubuntu 24.04 (noble), its
+  base, so what the base can install comes from the Launchpad source package
+  pages, for example <a href="https://launchpad.net/ubuntu/+source/gcc-14"><code>gcc-14</code></a>
+  and <a href="https://launchpad.net/ubuntu/+source/gcc-15"><code>gcc-15</code></a>.</li>
 <li><strong>endoflife.date product:</strong> none. endoflife.date has no product for GCC.</li>
 </ul>
 <p>Data, from those pages:</p>
@@ -3162,29 +3222,36 @@ were checked on 2026-10-21.</p>
   release is 13.5.</li>
 <li>Since GCC 5, the major version is bumped for each release. <code>X.0</code> versions are
   development snapshots, and <code>X.1.0</code> is the first release of a major.</li>
-<li>Debian trixie, the image's base, packages <code>gcc-12</code>, <code>gcc-13</code> and <code>gcc-14</code>.
-  <code>gcc-15</code> and <code>gcc-16</code> are packaged only in forky (testing) and sid
-  (unstable).</li>
+<li>Ubuntu noble, the image's base, publishes <code>gcc-14</code> 14.2.0-4ubuntu2~24.04.1,
+  a released 14.2.0, in its <code>noble-updates</code> and <code>noble-security</code> pockets. Its
+  release pocket holds only <code>14-20240412-0ubuntu1</code>, a pre-release snapshot.
+  noble publishes no <code>gcc-15</code> or <code>gcc-16</code>.</li>
 </ul>
 <h2 id="support-rule">Support rule<a class="headerlink" href="#support-rule" title="Permanent link">&para;</a></h2>
 <p><strong>Judgment:</strong> the release series that gcc.gnu.org lists as maintained, limited
-to those the image's Debian base packages. GCC publishes no rule for how many
+to those the image's Ubuntu base ships as a release. GCC publishes no rule for how many
 series it maintains, or when a series closes, so this rule is the policy
 author's call. It relies on the "Supported Releases" list on the GCC home page
 as the record of what is maintained.</p>
-<p>On 2026-10-21 that is 14 only. GCC 15 and 16 are maintained upstream, but
-Debian trixie cannot install them.</p>
+<p>On 2026-11-10 that is 14 only. GCC 15 and 16 are maintained upstream, but
+Ubuntu noble cannot install them.</p>
 <h2 id="what-counts-as-ga">What counts as GA<a class="headerlink" href="#what-counts-as-ga" title="Permanent link">&para;</a></h2>
 <p>The <code>X.1.0</code> release of a new major, listed on the GCC Releases page.
 Development snapshots (<code>X.0</code>) are never GA. A GA major can be added only once
-the Debian base packages it.</p>
+the Ubuntu base ships it as a release.</p>
 <h2 id="adapter-quirks">Adapter quirks<a class="headerlink" href="#adapter-quirks" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The image is built <code>FROM debian:trixie-slim</code>, and GCC is installed from
-  Debian as <code>gcc-&lt;major&gt;</code>. <code>GCC_VERSION</code> is the build argument.</li>
+<li>The image is built on <code>base</code> (Ubuntu 24.04, noble), and GCC is installed
+  from noble as <code>gcc-&lt;major&gt;</code> and <code>g++-&lt;major&gt;</code>. <code>GCC_VERSION</code> is the build
+  argument.</li>
+<li>A major counts as installable only when noble publishes a released version
+  of its <code>gcc-&lt;major&gt;</code> source (<code>&lt;major&gt;.&lt;minor&gt;.&lt;patch&gt;-&lt;revision&gt;</code>) in the
+  Release, Updates or Security pocket, which the image installs from. The
+  adapter reads Launchpad's published sources for noble; a pre-release
+  snapshot (<code>&lt;major&gt;-&lt;date&gt;</code>) does not count.</li>
 <li>There is no endoflife.date data. The adapter reads gcc.gnu.org and must fail
   loud if the page cannot be parsed.</li>
-<li>A newer GCC usually needs a newer Debian base. The adapter reports "a newer
+<li>A newer GCC usually needs a newer Ubuntu base. The adapter reports "a newer
   upstream version exists but the base can't install it" (blocked) separately
   from "behind".</li>
 <li>Versions are compared at the major. The <code>gcc-</code> token prefix is ignored for
@@ -3199,8 +3266,8 @@ package.</p>
 <p>As of 2026-10-23: <strong>none.</strong> The manifest builds only 14. GCC 13, which
 gcc.gnu.org says is no longer supported, was dropped in epic
 <a href="https://github.com/vergil-project/.github/issues/407">vergil-project/.github#407</a>.</p>
-<p>GCC 15 and 16 are <strong>blocked</strong>, not behind: upstream maintains them, but Debian
-trixie does not package them.</p>
+<p>GCC 15 and 16 are <strong>blocked</strong>, not behind: upstream maintains them, but Ubuntu
+noble does not package them.</p>
 
 
 

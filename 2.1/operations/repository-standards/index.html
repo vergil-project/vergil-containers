@@ -626,6 +626,8 @@
       
         
       
+        
+      
     
     
     
@@ -678,6 +680,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.38/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.38
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2698,6 +2728,8 @@
       
         
       
+        
+      
     
     
     
@@ -3012,6 +3044,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../os-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OS Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../rollback/" class="md-nav__link">
         
   
@@ -3199,15 +3259,22 @@ For local development outside containers, install them via your
 system package manager or download the binaries.</p>
 <h2 id="ci-gates">CI Gates<a class="headerlink" href="#ci-gates" title="Permanent link">&para;</a></h2>
 <h3 id="required-status-checks-on-develop">Required status checks on develop<a class="headerlink" href="#required-status-checks-on-develop" title="Permanent link">&para;</a></h3>
+<p>The required checks are not set by hand. They come from vergil-tooling's
+generated <code>CI gates</code> ruleset, which is computed from <code>vergil.toml</code> and kept in
+line by the daily config audit; see
+<a href="https://vergil-project.github.io/vergil-tooling/guides/ci-architecture/#ci-gates">CI gates</a>
+for the rule. For this repository they are:</p>
 <ul>
-<li><strong>Hadolint</strong> — lint all generated Dockerfiles</li>
-<li><strong>ShellCheck</strong> — lint <code>docker/build.sh</code> and <code>docker/generate.sh</code></li>
-<li><strong>Security and standards</strong> (via <code>vergil-actions/ci-security</code>):</li>
-<li>Semgrep (Dockerfile language rules)</li>
-<li>Repository profile validation</li>
-<li>Markdownlint</li>
-<li>Commit message lint (conventional commits)</li>
-<li>PR issue linkage validation</li>
+<li><strong><code>quality / evidence</code></strong> — the aggregate of the quality jobs, including the
+  repo's custom validator (<code>quality / custom</code>)</li>
+<li><strong><code>security / trivy</code></strong> and <strong><code>security / semgrep</code></strong> (via
+  <code>vergil-actions/ci-security</code>), plus the GitHub code-scanning checks
+  <strong><code>Trivy</code></strong> and <strong><code>Semgrep OSS</code></strong></li>
+<li><strong><code>docs / docs</code></strong> — the docs build</li>
+<li><strong><code>version / version-bump</code></strong> — the version-bump gate</li>
+<li><strong><code>images / evidence</code></strong> — the aggregating gate of <code>ci-images.yml</code>, which
+  builds and scans the images a pull request changes; required because
+  <code>vergil.toml</code> sets <code>[ci].images = true</code></li>
 </ul>
 <h3 id="claude-code-hook-guard">Claude Code hook guard<a class="headerlink" href="#claude-code-hook-guard" title="Permanent link">&para;</a></h3>
 <p>The <code>.claude/hooks/guard.sh</code> PreToolUse hook blocks raw <code>git</code> and

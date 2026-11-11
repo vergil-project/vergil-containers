@@ -14,7 +14,7 @@
         <link rel="prev" href="../trivy-triage/">
       
       
-        <link rel="next" href="../rollback/">
+        <link rel="next" href="../os-usage/">
       
       
         
@@ -626,6 +626,8 @@
       
         
       
+        
+      
     
     
     
@@ -678,6 +680,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.38/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.38
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2698,6 +2728,8 @@
       
         
       
+        
+      
     
     
     
@@ -3006,6 +3038,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../os-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OS Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../rollback/" class="md-nav__link">
         
   
@@ -3195,9 +3255,10 @@ finished. The <code>cleanup</code> job therefore prunes only untagged versions o
 24 hours, so it never reaps a digest a publish in flight is about to stitch.
 The shared <code>:cache-&lt;version&gt;</code> tags from before the per-arch builds are no
 longer written; they can be deleted by hand.</p>
-<p>Multiply by 12 packages and nightly cadence and the untagged versions pile up
-without bound. None of this is referenced by a consumer-facing tag, but GHCR
-keeps it forever unless told otherwise.</p>
+<p>Multiply by every package (each image under both prefixes) and nightly
+cadence and the untagged versions pile up without bound. None of this is
+referenced by a consumer-facing tag, but GHCR keeps it forever unless told
+otherwise.</p>
 <h2 id="cleaning-up-the-personal-namespace-one-off">Cleaning up the personal namespace (one-off)<a class="headerlink" href="#cleaning-up-the-personal-namespace-one-off" title="Permanent link">&para;</a></h2>
 <p>The <code>dev-*</code>/<code>prod-*</code> packages were migrated to the <code>vergil-project</code> org and are
 served from the stable <code>ghcr.io/vergil-project/*</code> URLs. Any copies left under a

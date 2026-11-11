@@ -626,6 +626,8 @@
       
         
       
+        
+      
     
     
     
@@ -678,6 +680,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.38/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.38
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2825,6 +2855,8 @@
       
         
       
+        
+      
     
     
     
@@ -2969,6 +3001,34 @@
     
   
     Package Hygiene
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/os-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OS Usage
   
 
     
@@ -3209,10 +3269,14 @@ start date, or <code>false</code> for a major that never becomes LTS. A major is
 that date is on or before the day of the check.</p>
 <h2 id="adapter-quirks">Adapter quirks<a class="headerlink" href="#adapter-quirks" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The image is built <code>FROM debian:trixie-slim</code>, and Node.js is installed from
-  the NodeSource apt channel with its <code>setup_&lt;major&gt;.x</code> script. <code>NODE_MAJOR</code> is
-  the build argument. A new major can be added only once NodeSource publishes
-  it, which the adapter must check before proposing an add.</li>
+<li>The image is built on <code>base</code>, and Node.js is the nodejs.org prebuilt
+  tarball for the major, unpacked at <code>/opt/node/&lt;major&gt;</code>. The release and the
+  SHA-256 of each architecture's tarball are pinned in
+  <code>docker/pins/toolchains.yml</code>, which the daily upstream refresh moves to the
+  newest release of the major. <code>NODE_MAJOR</code> is the build argument. A new major
+  can be added only once nodejs.org's release index has a release of it with
+  <code>linux-x64</code> and <code>linux-arm64</code> tarballs, which the adapter checks before
+  proposing an add. It reads the index with the same fetcher the refresh uses.</li>
 <li>endoflife.date's <code>lts</code> field is either a date or <code>false</code>, and the adapter
   must handle both.</li>
 <li>The separate Node.js pin in <code>vergil-vm</code> must line up with this window.</li>
