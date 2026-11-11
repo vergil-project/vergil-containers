@@ -72,10 +72,9 @@ tooling (MkDocs Material, mike, semgrep) and OpenTofu for in-sandbox
 OpenTofu module validation. It is the fallback image for repos with no
 detected language.
 
-An image built on `dev-base` (its base is `base:latest` in the table above)
-takes Python, yamllint, ansible-lint, and uv from it: see [Python](#python) and
-[Go](#go). The images still built on an upstream image install them via the
-`python-support` fragment.
+Every language image is built on `dev-base` (its base is `base:latest` in the
+table above) and takes Python, yamllint, ansible-lint, and uv from it: see
+[Python](#python) and [Go](#go).
 `dev-base` is different: see [Base](#base).
 
 ## Python

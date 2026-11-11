@@ -41,8 +41,8 @@ def _on_base() -> set[str]:
 
 
 def test_ts_node_is_built_on_base_and_adds_only_its_own_fragments():
-    # Plan Task 13: ts-node gets every common tool from base, and drops
-    # python-support and the NodeSource Node.
+    # Plan Task 13: ts-node gets every common tool from base, and includes
+    # only its own analysis fragment.
     assert "ts-node" in _on_base()
     template = ROOT / "docker/ts-node/Dockerfile.template"
     assert includes.fragments_of(template) == {TS_ANALYSIS}
