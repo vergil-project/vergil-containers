@@ -144,6 +144,9 @@ families:
     token_prefix: "node-"
     build_arg: "NODE_MAJOR"
     automation: "report"
+    parent:
+      name: "base"
+      version: "latest"
     versions:
       - version: "24"
         ga: 2025-10-28

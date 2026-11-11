@@ -54,10 +54,14 @@ that date is on or before the day of the check.
 
 ## Adapter quirks
 
-- The image is built `FROM debian:trixie-slim`, and Node.js is installed from
-  the NodeSource apt channel with its `setup_<major>.x` script. `NODE_MAJOR` is
-  the build argument. A new major can be added only once NodeSource publishes
-  it, which the adapter must check before proposing an add.
+- The image is built on `base`, and Node.js is the nodejs.org prebuilt
+  tarball for the major, unpacked at `/opt/node/<major>`. The release and the
+  SHA-256 of each architecture's tarball are pinned in
+  `docker/pins/toolchains.yml`, which the daily upstream refresh moves to the
+  newest release of the major. `NODE_MAJOR` is the build argument. A new major
+  can be added only once nodejs.org's release index has a release of it with
+  `linux-x64` and `linux-arm64` tarballs, which the adapter checks before
+  proposing an add. It reads the index with the same fetcher the refresh uses.
 - endoflife.date's `lts` field is either a date or `false`, and the adapter
   must handle both.
 - The separate Node.js pin in `vergil-vm` must line up with this window.

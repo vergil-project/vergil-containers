@@ -212,14 +212,16 @@ def test_render_docs_tables(repo):
         block = text.split("<!-- BEGIN generated: versions -->\n")[1].split("<!-- END")[0]
         rows = block.splitlines()
         assert rows[0].split("|")[1:5] == [" Image           ", " Language   ",
-                                           " Versions         ", " Base                 "]
+                                           " Versions         ", " Base              "]
         # python is built on base (Task 8), but the frozen manifest gives it no
         # parent, so its row shows the template's FROM as written.
-        assert "| `dev-python`    | python     | 3.14, 3.13, 3.12 | `${PARENT_IMAGE}`    |" in rows
+        assert "| `dev-python`    | python     | 3.14, 3.13, 3.12 | `${PARENT_IMAGE}` |" in rows
         # cpp-clang is built on base (epic vergil-project/.github#649), but the
         # frozen manifest gives it no parent: its row shows the template's FROM.
-        assert "| `dev-cpp-clang` | cpp        | 20, 19           | `${PARENT_IMAGE}`    |" in rows
-        assert "| `dev-ts-node`   | typescript | 24, 22           | `debian:trixie-slim` |" in rows
+        assert "| `dev-cpp-clang` | cpp        | 20, 19           | `${PARENT_IMAGE}` |" in rows
+        # ts-node is built on base (Task 13), but the frozen manifest gives it no
+        # parent, so its row shows the template's FROM as written.
+        assert "| `dev-ts-node`   | typescript | 24, 22           | `${PARENT_IMAGE}` |" in rows
         # The frozen manifest gives base no parent, so its row shows the
         # template's FROM as written.
         assert rows[-1].startswith("| `dev-base`") and "`${PARENT_IMAGE}`" in rows[-1]

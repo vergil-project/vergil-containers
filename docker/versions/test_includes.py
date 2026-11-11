@@ -40,6 +40,15 @@ def _on_base() -> set[str]:
     return {f.key for f in live.families if f.parent is not None and f.parent.name == mf.BASE_KEY}
 
 
+def test_ts_node_is_built_on_base_and_adds_only_its_own_fragments():
+    # Plan Task 13: ts-node gets every common tool from base, and drops
+    # python-support and the NodeSource Node.
+    assert "ts-node" in _on_base()
+    template = ROOT / "docker/ts-node/Dockerfile.template"
+    assert includes.fragments_of(template) == {TS_ANALYSIS}
+    assert includes.fragments_of(ROOT / "docker/base/Dockerfile.template") <= includes.dependency_map(ROOT)["ts-node"]
+
+
 def test_security_tools_scoped_to_base():
     # Only base includes it; an image built on base reaches it through base.
     dm = includes.dependency_map(ROOT)
@@ -68,7 +77,8 @@ def test_toolchain_fragments_are_scoped_to_the_toolchain_images():
     # vergil-containers#728: uv and the marker are the package toolchain
     # images' own; the apt mirror is pkg-ubuntu's alone; nFPM is shared. base
     # is built FROM pkg-ubuntu (epic vergil-project/.github#649), so it reaches
-    # pkg-ubuntu's fragments through its parent, never by including them.
+    # pkg-ubuntu's fragments through its parent, never by including them, and so
+    # does every family built on base.
     dm = includes.dependency_map(ROOT)
 
     def users(fragment):

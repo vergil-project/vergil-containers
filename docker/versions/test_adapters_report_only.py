@@ -10,8 +10,10 @@ import pytest
 
 import frozen
 import manifest as mf
+import resolve_toolchains
 from lifecycle import core
 from lifecycle.adapters import ADAPTERS
+from lifecycle.adapters import node as adapters_node
 from lifecycle.adapters.clang import ClangAdapter
 from lifecycle.adapters.gcc import GccAdapter, parse_releases, parse_supported, ubuntu_has_release
 from lifecycle.adapters.node import NodeAdapter
@@ -33,6 +35,10 @@ LAUNCHPAD_NOBLE_GCC = (
 URL_FIXTURES = {
     "https://endoflife.date/api/rust.json": "endoflife-rust.json",
     "https://endoflife.date/api/nodejs.json": "endoflife-nodejs.json",
+    # nodejs.org's release index, trimmed to the two newest releases of each of
+    # 26, 25, 24, 22 and 20 published by 2026-10-21 (epic
+    # vergil-project/.github#649).
+    "https://nodejs.org/dist/index.json": "nodejs-index.json",
     "https://api.github.com/repos/llvm/llvm-project/releases?per_page=100": "llvm-releases.json",
     "https://apt.llvm.org/noble/dists/": "apt-llvm-noble-index.html",
     "https://gcc.gnu.org/releases.html": "gcc-releases.html",
@@ -76,7 +82,7 @@ def test_every_manifest_family_has_an_adapter():
 def test_run_reports_no_missing_adapter_against_fixtures():
     adapters = {
         "rust": RustAdapter(fetch=RustChannel()),
-        "ts-node": NodeAdapter(fetch=fixture_fetch, setup_exists=lambda url: True),
+        "ts-node": NodeAdapter(fetch=fixture_fetch),
         "cpp-clang": ClangAdapter(fetch=fixture_fetch),
         "cpp-gcc": GccAdapter(fetch=fixture_fetch),
     }
@@ -182,54 +188,87 @@ def test_rust_unreachable_channel_is_loud_not_blocked():
 # --- Node --------------------------------------------------------------------------
 
 
-class Setups:
-    def __init__(self, missing=()):
-        self.missing = set(missing)
-        self.asked = []
+NODE_INDEX = "https://nodejs.org/dist/index.json"
+
+
+class IndexFetch:
+    """The fixture fetcher, counting the reads of nodejs.org's release index.
+    `drop` maps a release ("v26.12.1") to the files to remove from its entry."""
+
+    def __init__(self, drop=None):
+        self.drop = drop or {}
+        self.index_reads = 0
 
     def __call__(self, url):
-        self.asked.append(url)
-        return url not in self.missing
+        if url != NODE_INDEX:
+            return fixture_fetch(url)
+        self.index_reads += 1
+        index = json.loads(fixture_fetch(url))
+        for entry in index:
+            entry["files"] = [f for f in entry["files"] if f not in self.drop.get(entry["version"], ())]
+        return json.dumps(index).encode()
 
 
 def test_node_before_lts_start_is_in_sync():
-    setups = Setups()
-    adapter = NodeAdapter(fetch=fixture_fetch, setup_exists=setups)
+    fetch = IndexFetch()
+    adapter = NodeAdapter(fetch=fetch)
     target = adapter.target(adapter.fetch(), TODAY)
     # 26 is not LTS until 2026-10-28; odd majors are never LTS.
-    assert [t.version for t in target] == ["24", "22"]
-    assert setups.asked == ["https://deb.nodesource.com/setup_24.x", "https://deb.nodesource.com/setup_22.x"]
+    assert [(t.version, t.installable) for t in target] == [("24", True), ("22", True)]
+    assert fetch.index_reads == 1  # one read for the whole window
     assert _changes(adapter) == []
 
 
 def test_node_26_is_added_once_lts():
-    adapter = NodeAdapter(fetch=fixture_fetch, setup_exists=Setups())
+    adapter = NodeAdapter(fetch=fixture_fetch)
     after = date(2026, 10, 29)
     target = adapter.target(adapter.fetch(), after)
     assert target[0].version == "26"
     assert target[0].ga == date(2026, 10, 28)  # GA is the LTS start, not the 2026-05-05 release
+    assert target[0].installable
     assert _kinds(_changes(adapter, after)) == [("add", "26")]
 
 
-def test_node_unpublished_nodesource_setup_is_blocked():
-    adapter = NodeAdapter(fetch=fixture_fetch, setup_exists=Setups(missing={"https://deb.nodesource.com/setup_26.x"}))
+def test_node_major_without_both_tarballs_is_blocked():
+    # The image downloads linux-x64 and linux-arm64: a major whose releases
+    # lack either one is not installable.
+    fetch = IndexFetch(drop={"v26.12.1": ["linux-arm64"], "v26.12.0": ["linux-x64"]})
+    adapter = NodeAdapter(fetch=fetch)
     assert _kinds(_changes(adapter, date(2026, 10, 29))) == [("blocked", "26")]
 
 
-def test_node_default_setup_check_goes_through_the_fetcher():
+def test_node_major_missing_from_the_index_is_blocked():
+    adapter = NodeAdapter(fetch=fixture_fetch, releases=lambda: ["24.22.1", "22.23.4"])
+    assert _kinds(_changes(adapter, date(2026, 10, 29))) == [("blocked", "26")]
+
+
+def test_node_index_is_read_with_the_pins_fetcher():
+    # The probe and the upstream refresh share one nodejs.org fetcher (spec §5.4).
+    assert adapters_node.rt.node_releases is resolve_toolchains.node_releases
+
+
+def test_node_malformed_index_is_a_source_error():
     def fetch(url):
-        if url == "https://deb.nodesource.com/setup_22.x":
-            raise NotFoundError(f"{url}: HTTP 404")
-        if url.startswith("https://deb.nodesource.com/"):
-            return b"#!/bin/bash"
-        return fixture_fetch(url)
+        return b"{}" if url == NODE_INDEX else fixture_fetch(url)
 
     adapter = NodeAdapter(fetch=fetch)
-    assert {t.version: t.installable for t in adapter.target(adapter.fetch(), TODAY)} == {"24": True, "22": False}
+    with pytest.raises(SourceError, match="nodejs.org release index"):
+        adapter.target(adapter.fetch(), TODAY)
+
+
+def test_node_index_fetch_failure_is_the_familys_error():
+    def fetch(url):
+        if url == NODE_INDEX:
+            raise SourceError(f"{url}: HTTP 503 Service Unavailable")
+        return fixture_fetch(url)
+
+    family = mf.Manifest(families=(_family("ts-node"),))
+    (result,) = core.run(family, {"ts-node": NodeAdapter(fetch=fetch)}, TODAY)
+    assert result.error is not None and "HTTP 503" in result.error
 
 
 def test_node_lts_without_a_start_date_is_an_error():
-    adapter = NodeAdapter(fetch=fixture_fetch, setup_exists=Setups())
+    adapter = NodeAdapter(fetch=fixture_fetch, releases=lambda: ["24.22.1"])
     with pytest.raises(SourceError, match="no LTS start date"):
         adapter.target([UpstreamRelease("24", date(2025, 5, 6), None, True)], TODAY)
 
