@@ -236,16 +236,27 @@ Notes on the rows:
   [the catalog](https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md).
   The package setup action installs vergil-tooling with uv, under a Python
   that uv fetches itself.
-- **apt configuration (`pkg-ubuntu`)**: on every architecture,
+- **apt configuration (`pkg-ubuntu`)**: on amd64 and arm64,
   `/etc/apt/apt.conf.d/80-vergil-fast-fail` sets 3 retries with no retry
   delay, 20 s timeouts and a 60 s dpkg lock wait, so a stalled mirror fails
-  fast instead of hanging the job. On amd64 only, the Ubuntu archive and
-  security sources are rewritten to `mirror+file:/etc/apt/apt-mirrors.txt`,
-  a list of the in-region Azure mirror first, then `archive.ubuntu.com`,
-  then `security.ubuntu.com`, so apt fails over down the list. arm64 uses
-  `ports.ubuntu.com`, which those mirrors do not serve, and is left
-  untouched. vergil-tooling passes the same fail-fast options on each apt
-  command line it runs.
+  fast instead of hanging the job, and `APT::Update::Error-Mode "any"`, so
+  `apt-get update` fails when no mirror serves an index instead of warning
+  and leaving the job to fail later on a missing package. The Ubuntu
+  sources are rewritten to `mirror+file:/etc/apt/apt-mirrors.txt`, so apt
+  fails over down a list that starts with Canonical's hosts and ends with
+  mirrors outside `ubuntu.com`, so a DNS failure of that zone does not
+  stop the build. On amd64 the list is the in-region Azure mirror,
+  `archive.ubuntu.com` and `security.ubuntu.com`, then
+  `mirrors.edge.kernel.org` and `mirrors.dotsrc.org`; on arm64 it is
+  `ports.ubuntu.com`, then `mirrors.dotsrc.org` and `mirrors.mit.edu`
+  (their `ubuntu-ports` archives). apt checks every index against the
+  archive's signed `InRelease`, so a third-party mirror cannot alter a
+  package. For a local build,
+  `VRG_APT_MIRROR=http://<mirror>/ubuntu/ docker/build.sh` (an
+  `ubuntu-ports` URI on arm64) puts a nearer mirror first; CI and publish
+  never set it. vergil-tooling passes the retry, timeout and lock options
+  on each apt command line it runs; in `pkg-ubuntu` its apt calls also
+  read the error mode from this file.
 - **Toolchain marker**: `/etc/vergil/package-toolchain` has one
   `<tool> <version>` line for each of `uv`, `nfpm`, `curl`, `git`, `gpg`,
   `tar` and `gzip`, each version read from `<tool> --version` when the image
