@@ -81,4 +81,5 @@ nav:
       - Tool Version Management: operations/version-management.md
       - Trivy CVE Triage: operations/trivy-triage.md
       - Package Hygiene: operations/package-hygiene.md
+      - OS Usage: operations/os-usage.md
       - Image Rollback (Repoint): operations/rollback.md
