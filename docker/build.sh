@@ -14,6 +14,12 @@
 # entry's build-args, and a child gets PARENT_IMAGE=dev-<parent>:<version>, the
 # local tag of its parent.
 #
+# VRG_APT_MIRROR, when set, is passed as the APT_MIRROR build arg to each image
+# that declares it (pkg-ubuntu, through common/apt-mirror.dockerfile): an http
+# Ubuntu mirror for this host's architecture (an ubuntu-ports one on arm64) that
+# apt tries before the default mirror list. It is for local builds only; CI and
+# publish never set it.
+#
 # Each image is defined by a Dockerfile.template that may contain
 # "# @include common/<fragment>.dockerfile" lines.  generate.sh
 # expands these includes to produce the final Dockerfile before
@@ -104,6 +110,9 @@ build() {
     cmd+=(--build-arg "PARENT_IMAGE=dev-${parent}")
   fi
   "${script_dir}/generate.sh" "$lang"
+  if [ -n "${VRG_APT_MIRROR:-}" ] && grep -q '^ARG APT_MIRROR=' "${script_dir}/${lang}/Dockerfile"; then
+    cmd+=(--build-arg "APT_MIRROR=${VRG_APT_MIRROR}")
+  fi
   echo "Building dev-${lang}:${version} ..."
   "${cmd[@]}" -t "dev-${lang}:${version}" "${script_dir}/${lang}"
 }

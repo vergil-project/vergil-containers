@@ -67,7 +67,9 @@ docker/build.sh python     # one family, after its parent images
 
 `build.sh` auto-detects the container runtime — it prefers `nerdctl`
 (Lima + containerd) and falls back to `docker`. Set
-`VRG_CONTAINER_RUNTIME` to force a specific one. The single-image
+`VRG_CONTAINER_RUNTIME` to force a specific one. Set `VRG_APT_MIRROR`
+to an http Ubuntu mirror for your architecture (an `ubuntu-ports` one on
+arm64) to have apt try it before the images' default mirror list. The single-image
 commands below work with either `nerdctl build` or `docker build`.
 
 Build a single image by hand with its matrix entry's build arguments from

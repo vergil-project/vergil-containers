@@ -2,8 +2,8 @@
 # Canonical source: https://github.com/vergil-project/vergil-containers
 # pkg-ubuntu — package toolchain image for the Ubuntu targets (epic
 # vergil-project/.github#607): the upstream image plus the OS upgrade, the
-# package-toolchain prerequisites, uv, nFPM, the apt mirror (amd64) and
-# fail-fast (every architecture) config and the toolchain marker. Nothing else: no interpreter, no vergil-tooling.
+# package-toolchain prerequisites, uv, nFPM, the apt mirror list and
+# fail-fast config (amd64 and arm64) and the toolchain marker. Nothing else: no interpreter, no vergil-tooling.
 #
 # It sets no ENTRYPOINT, CMD, USER or WORKDIR (test_generate.py checks it): an
 # image built FROM it (epic vergil-project/.github#649) inherits only what
@@ -33,27 +33,32 @@ RUN apt-get update && \
 
 # --- Build-time checks -------------------------------------------------------
 # Any failure fails the build, so no published image can lack one of these:
-#   - the fail-fast config exists on every arch; on amd64 the Ubuntu sources
-#     point at the mirror list; on arm64 (ports.ubuntu.com, which the mirrors
-#     do not serve) the sources are untouched and no mirror list exists;
+#   - the fail-fast config exists and makes apt-get update fail on an index
+#     no mirror serves; on both amd64 and arm64 the Ubuntu sources point at
+#     the mirror list and name no Canonical host directly, and the list
+#     holds the architecture's Canonical hosts and at least two hosts outside
+#     ubuntu.com;
 #   - every tool runs;
 #   - the marker lists seven tools, uv and nfpm among them;
 #   - no python3 is on PATH, and no package lists are kept.
 ARG TARGETARCH
 RUN sources=/etc/apt/sources.list.d/ubuntu.sources && \
     test -f "${sources}" && \
+    mirror_list=/etc/apt/apt-mirrors.txt && \
     test -s /etc/apt/apt.conf.d/80-vergil-fast-fail && \
+    test "$(apt-config dump APT::Update::Error-Mode)" = 'APT::Update::Error-Mode "any";' && \
+    grep -q "^URIs: mirror+file:${mirror_list}\$" "${sources}" && \
+    ! grep -qE '^URIs:.*ubuntu\.com' "${sources}" && \
     case "${TARGETARCH}" in \
       amd64) \
-        grep -q 'mirror+file:/etc/apt/apt-mirrors.txt' "${sources}" && \
-        ! grep -qE 'https?://((azure\.)?archive|security)\.ubuntu\.com' "${sources}" && \
-        test -s /etc/apt/apt-mirrors.txt ;; \
+        grep -q '^http://azure\.archive\.ubuntu\.com/ubuntu/[[:space:]]' "${mirror_list}" && \
+        grep -q '^http://archive\.ubuntu\.com/ubuntu/[[:space:]]' "${mirror_list}" && \
+        grep -q '^http://security\.ubuntu\.com/ubuntu/[[:space:]]' "${mirror_list}" ;; \
       arm64) \
-        grep -q 'ports.ubuntu.com' "${sources}" && \
-        ! grep -q 'mirror+file:' "${sources}" && \
-        test ! -e /etc/apt/apt-mirrors.txt ;; \
+        grep -q '^http://ports\.ubuntu\.com/ubuntu-ports/[[:space:]]' "${mirror_list}" ;; \
       *) echo "check: unsupported TARGETARCH '${TARGETARCH}'" >&2; false ;; \
     esac && \
+    test "$(grep -cvE '^https?://[^/]*\.ubuntu\.com/' "${mirror_list}")" -ge 2 && \
     curl --version && \
     git --version && \
     gpg --version && \
