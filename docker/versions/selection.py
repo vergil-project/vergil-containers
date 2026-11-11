@@ -58,8 +58,9 @@ FULL_GLOBS = (
 )
 
 # Paths that are no image's input, or are re-checked by another CI job.
-# `manifest.yml` and `matrix.json` reach the images through the matrix diff
-# (and the regenerated templates, which the graph sees).
+# `manifest.yml`, `matrix.json` and `docker/pins/toolchains.yml` reach the
+# images through the matrix diff (the matrix embeds the toolchain pins as build
+# args), and the regenerated templates, which the graph sees.
 NO_BUILD_GLOBS = (
     "docs/**",
     "*.md",

@@ -6,7 +6,8 @@ PR the lifecycle automation opened broke its own CI. They now read
 `testdata/manifest.yml`, a snapshot that does not change when the real manifest
 does, and a repo tree whose generated files match it. The pins report tests
 (`docker/pins/test_report.py`, vergil-containers#656) read their image matrix
-from the same frozen tree.
+from the same frozen tree. `testdata/toolchains.yml` freezes the toolchain pins
+the matrix embeds (epic vergil-project/.github#649) the same way.
 
 The one check on the real manifest (it loads, is canonical, and the generated
 files are up to date) is `test_generate.test_real_manifest_is_valid`; it asserts
@@ -19,11 +20,14 @@ from pathlib import Path
 
 import generate as g
 import manifest as mf
+import resolve_toolchains as rt
 
 HERE = Path(__file__).resolve().parent
 LIVE_ROOT = HERE.parent.parent
 MANIFEST = HERE / "testdata" / "manifest.yml"
 SEED = mf.load_manifest(MANIFEST)
+TOOLCHAINS = HERE / "testdata" / "toolchains.yml"
+PINS = rt.load_toolchains(TOOLCHAINS)
 
 
 class FrozenRepoError(Exception):
@@ -42,6 +46,8 @@ def make_repo(dest: Path) -> Path:
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(LIVE_ROOT / rel, dest / rel)
     shutil.copy2(MANIFEST, dest / g.MANIFEST)
+    (dest / g.TOOLCHAINS).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(TOOLCHAINS, dest / g.TOOLCHAINS)
     for path, content in g.render_all(SEED, dest).items():
         path.write_text(content)
     stale = [p for p, c in g.render_all(mf.load_manifest(dest / g.MANIFEST), dest).items() if p.read_text() != c]

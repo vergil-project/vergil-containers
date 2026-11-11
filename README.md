@@ -19,20 +19,23 @@ repositories.
 ## Available Images
 
 All images are published to GitHub Container Registry at
-`ghcr.io/vergil-project/dev-{language}:{version}`.
+`ghcr.io/vergil-project/{prefix}-{image}:{version}`, with the `dev-` prefix
+from `develop` and the `prod-` prefix from `main`: a language image is
+`dev-{language}:{version}`, a package toolchain image
+`dev-pkg-{distro}:{version}`.
 
 <!-- BEGIN generated: versions -->
 | Image            | Language   | Versions               | Base                                    |
 | ---------------- | ---------- | ---------------------- | --------------------------------------- |
-| `dev-python`     | python     | 3.15, 3.14, 3.13, 3.12 | `python:<v>-slim`                       |
-| `dev-go`         | go         | 1.27, 1.26             | `golang:<v>`                            |
-| `dev-rust`       | rust       | 1.93, 1.92             | `rust:<v>-slim`                         |
-| `dev-cpp-clang`  | cpp        | 20, 19                 | `debian:trixie-slim`                    |
-| `dev-cpp-gcc`    | cpp        | 14                     | `debian:trixie-slim`                    |
-| `dev-ts-node`    | typescript | 24, 22                 | `debian:trixie-slim`                    |
+| `dev-python`     | python     | 3.15, 3.14, 3.13, 3.12 | `base:latest`                           |
+| `dev-go`         | go         | 1.27, 1.26             | `base:latest`                           |
+| `dev-rust`       | rust       | 1.93, 1.92             | `base:latest`                           |
+| `dev-cpp-clang`  | cpp        | 20, 19                 | `base:latest`                           |
+| `dev-cpp-gcc`    | cpp        | 14                     | `base:latest`                           |
+| `dev-ts-node`    | typescript | 24, 22                 | `base:latest`                           |
 | `dev-pkg-ubuntu` | —          | 26.04, 24.04           | `ubuntu:<v>`                            |
 | `dev-pkg-rhel`   | —          | 10, 9                  | `registry.access.redhat.com/ubi<v>/ubi` |
-| `dev-base`       | —          | latest                 | `python:3.14-slim`                      |
+| `dev-base`       | —          | latest                 | `pkg-ubuntu:24.04`                      |
 <!-- END generated: versions -->
 
 The table is generated from
@@ -40,6 +43,12 @@ The table is generated from
 source of every language version this repo builds. Each language's versions
 follow its upstream support window; see
 [Language version lifecycle](https://vergil-project.github.io/vergil-containers/languages/lifecycle/).
+
+The `pkg-ubuntu` and `pkg-rhel` rows are the package toolchain images:
+the upstream image plus the OS prerequisites, uv, nFPM and a toolchain
+marker, without the common tooling. vergil-tooling's package jobs build and
+install-test in their `prod-` images. See
+[Package toolchain images](https://vergil-project.github.io/vergil-containers/images/#package-toolchain-images).
 
 ## Usage
 
@@ -58,14 +67,23 @@ docker/build.sh python     # one family, after its parent images
 
 `build.sh` auto-detects the container runtime — it prefers `nerdctl`
 (Lima + containerd) and falls back to `docker`. Set
-`VRG_CONTAINER_RUNTIME` to force a specific one. The single-image
+`VRG_CONTAINER_RUNTIME` to force a specific one. Set `VRG_APT_MIRROR`
+to an http Ubuntu mirror for your architecture (an `ubuntu-ports` one on
+arm64) to have apt try it before the images' default mirror list. The single-image
 commands below work with either `nerdctl build` or `docker build`.
 
-Build a single image:
+Build a single image by hand with its matrix entry's build arguments from
+`docker/versions/matrix.json`, and `PARENT_IMAGE` for an image built on a
+parent. `dev-python` is built on `dev-base` and takes its Python pin as
+build arguments, so build its parent first:
 
 ```bash
+docker/build.sh base
 docker/generate.sh python
-docker build --build-arg PYTHON_VERSION=3.14 \
+docker build --build-arg PARENT_IMAGE=dev-base:latest \
+  --build-arg PYTHON_VERSION=3.14 --build-arg TOOLCHAIN_VERSION=<pin> \
+  --build-arg PBS_RELEASE=<pin> --build-arg TOOLCHAIN_SHA256_AMD64=<pin> \
+  --build-arg TOOLCHAIN_SHA256_ARM64=<pin> \
   -t dev-python:3.14 docker/python/
 ```
 
@@ -76,11 +94,13 @@ and mike for documentation. It is the fallback image used by
 `vrg-container-run` when no language is detected, and is shared across all
 repos for documentation builds.
 
-Build locally:
+It is built `FROM` `pkg-ubuntu:24.04` and takes its core runtimes' versions
+as build arguments from `docker/versions/matrix.json`, so build it with
+`build.sh`, which builds the parent first (or pulls it with
+`--pull-parents`):
 
 ```bash
-docker/generate.sh base
-docker build -t dev-base:latest docker/base/
+docker/build.sh base
 ```
 
 Use via the `vrg-container-docs` wrapper in vergil-tooling:
@@ -148,12 +168,20 @@ for details.
 
 ## Publishing
 
-Images are built for both amd64 and arm64, scanned with Trivy on both
-platforms, attested with SLSA build provenance, and published to GHCR
-on push to `develop` (`dev-` images) or `main` (`prod-` images) via the
-reusable `cd-docker-publish.yml` workflow.
+Images are built for both amd64 and arm64, each on its own native runner
+(no emulation), scanned with Trivy on both platforms, attested with SLSA
+build provenance, and published to GHCR on push to `develop` (`dev-`
+images) or `main` (`prod-` images) via the reusable `cd-docker-publish.yml`
+workflow. The publish builds every entry of the generated matrix,
+`docker/versions/matrix.json`, and `ops.yml` rebuilds both prefixes nightly
+without the cache.
 Manual rebuilds can be triggered via `workflow_dispatch` in the Actions
 tab.
+
+Pull requests publish nothing. Their `images` CI job (`ci-images.yml`)
+builds and scans only the images the change reaches, and its
+`images / evidence` gate is a required check. See
+[Architecture](https://vergil-project.github.io/vergil-containers/architecture/#pull-request-builds).
 
 Image URLs use the user namespace (`ghcr.io/vergil-project/...`), not a
 repo-specific namespace, so paths remain stable across repo migrations.

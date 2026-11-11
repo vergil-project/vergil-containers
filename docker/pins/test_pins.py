@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import extract_pins
@@ -94,6 +95,11 @@ def _write_fixture(tmp_path, state):
         f"  foo: {{constraint: latest, inducing_release: null, "
         f"deterministic: false, reason: r, state: {state}, tracking_issue: null}}\n"
     )
+    # check_pins also checks the toolchain pins against the manifest: give the
+    # fixture the live pair, which pins exactly what the manifest lists.
+    (tmp_path / "versions").mkdir()
+    shutil.copy2(DOCKER / "versions" / "manifest.yml", tmp_path / "versions" / "manifest.yml")
+    shutil.copy2(DOCKER / "pins" / "toolchains.yml", tmp_path / "pins" / "toolchains.yml")
 
 
 def test_check_accepts_auto_managed_state(tmp_path):

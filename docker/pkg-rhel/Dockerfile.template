@@ -16,8 +16,10 @@ FROM registry.access.redhat.com/ubi${RHEL_VERSION}/ubi
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # --- System packages ---------------------------------------------------------
-# The prerequisites os-prereqs.sh installs today (vergil-actions
-# actions/package/setup), in one layer with the OS upgrade. curl and gpg are
+# The package-toolchain prerequisites, in one layer with the OS upgrade. The
+# pkg-* templates are their only definition: vergil-actions'
+# actions/package/setup, whose os-prereqs.sh once installed them, has
+# installed nothing since vergil-actions v2.1.62. curl and gpg are
 # asked for by path: UBI ships curl-minimal, which conflicts with the full curl
 # package, and /usr/bin/gpg resolves to whichever package provides it. The
 # dnf cache is removed, as package lists are on apt.

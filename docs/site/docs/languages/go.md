@@ -36,8 +36,12 @@ before the day of the check.
 
 ## Adapter quirks
 
-- The image is built `FROM golang:<version>`, the official Docker image, with
-  `GO_VERSION` as the build argument.
+- The image is built on `dev-base` and installs the go.dev release of the
+  series pinned in `docker/pins/toolchains.yml`, with `GO_VERSION` as the
+  build argument. A version is installable when go.dev's release list has a
+  stable `go<version>.x` release with a Linux archive for both `amd64` and
+  `arm64`. The adapter reads that list through the same fetcher as the pin
+  refresh (`docker/pins/resolve_toolchains.py`).
 - The image builds with `GOTOOLCHAIN=local`, so the toolchain cannot fetch a
   newer Go to satisfy a tool's `go` directive. A Go tool whose newest release
   needs a newer Go than an image ships is held back for that image only, in a

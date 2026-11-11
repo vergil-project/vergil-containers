@@ -3,7 +3,8 @@
 # ///
 """Join extracted image pins with pins.yml into a human-readable catalog.
 Version facts come from the Dockerfiles (single source of truth); justifications
-come from pins.yml. Run without args to write CATALOG.md; --check to verify it."""
+come from pins.yml. A second table lists the language toolchain pins of
+toolchains.yml. Run without args to write CATALOG.md; --check to verify it."""
 from __future__ import annotations
 
 import sys
@@ -11,6 +12,37 @@ from pathlib import Path
 
 import check_pins
 import extract_pins
+import resolve_toolchains as rt
+
+
+def render_toolchains(pins: rt.Toolchains) -> str:
+    """The toolchain pins table: one row per series, then per tool."""
+    rows = []
+
+    def row(name: str, series: str, pin: rt.Pin) -> str:
+        hashes = pin.sha256 or {}
+        return (
+            f"| {name} | {series} | {pin.version} | {pin.release or '—'} | "
+            + " | ".join(f"`{hashes[a]}`" if a in hashes else "— (rustup verifies)" for a in rt.ARCHES)
+            + " |"
+        )
+
+    for key in rt.KINDS:
+        for series in sorted(pins.series.get(key, {}), key=rt.mf.version_sort_key, reverse=True):
+            rows.append(row(key, series, pins.series[key][series]))
+    for name in rt.TOOLS:
+        if name in pins.tools:
+            rows.append(row(name, "—", pins.tools[name]))
+    return (
+        "## Toolchain pins\n\n"
+        "Generated from `docker/pins/toolchains.yml`, which the daily upstream refresh "
+        "moves to the newest patch of each series (`docker/pins/resolve_toolchains.py`). "
+        "The python release is the python-build-standalone release tag.\n\n"
+        "| toolchain | series | version | release | sha256 amd64 | sha256 arm64 |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        + "\n".join(rows)
+        + "\n"
+    )
 
 
 def render(root: Path) -> str:
@@ -33,7 +65,8 @@ def render(root: Path) -> str:
         "`pins.yml`. Run `docker/pins/generate_catalog.py` to refresh.\n\n"
         "| tool | version | state | inducing release | deterministic | reason |\n"
         "| --- | --- | --- | --- | --- | --- |\n"
-        f"{body}\n"
+        f"{body}\n\n"
+        + render_toolchains(rt.load_toolchains(root / "pins" / "toolchains.yml"))
     )
 
 
@@ -42,7 +75,11 @@ def main(argv: list[str]) -> int:
     # and the committed catalog lives alongside pins.yml under pins/.
     root = Path(__file__).resolve().parent.parent
     out = root / "pins" / "CATALOG.md"
-    md = render(root)
+    try:
+        md = render(root)
+    except rt.ToolchainsError as exc:
+        print(f"::error::{exc}", file=sys.stderr)
+        return 1
     if "--check" in argv:
         if out.read_text() != md:
             print("::error::CATALOG.md is stale; run docker/pins/generate_catalog.py", file=sys.stderr)

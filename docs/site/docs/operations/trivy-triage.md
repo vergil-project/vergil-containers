@@ -57,7 +57,7 @@ action. It applies two categorical filters so the gate only fires on
 - **`ignore-policy: .trivy/ignore-policy.rego`** — drops all `linux-libc-dev`
   (kernel header) findings, which are always false positives (containers use
   the host kernel, not the baked-in headers), including the rare one that
-  carries a Debian fix.
+  carries a distribution fix.
 
 **Consequence for triage:** with these filters, a gate failure now means a
 **fixed, non-kernel** CVE that is not yet in `.trivyignore`. That is either
@@ -124,21 +124,55 @@ context. Common patterns:
 | **linux-libc-dev / kernel CVEs** | Containers use the host kernel, not the kernel headers in the image. These are always false positives. |
 | **Library not exercised** | The vulnerable library is present but the affected code path is never invoked (e.g., DTLS in a TLS-only image, Kerberos in a container with no Kerberos services). |
 | **No untrusted input** | The vulnerability requires attacker-controlled input, but the image only processes trusted data (e.g., XML parsing CVE in an image that never parses untrusted XML). |
-| **No Debian fix available** | Status is `affected` with no fixed version. The vulnerability exists in the upstream Debian package and cannot be patched by the image build. |
+| **No fixed release of the carrier** | The fix exists upstream, but no release of the binary or runtime that carries the vulnerable code ships it yet, so neither a rebuild nor a bump can reach it. The entry's removal condition names the release that will. |
 | **Go binary transitive dependency** | A Go binary (scorecard, shfmt, etc.) includes a vulnerable dependency that the binary never exercises. |
+
+A finding with no fix at all (`affected`) needs no entry: `ignore-unfixed`
+already keeps it from gating.
 
 ### Fix (bump the dependency)
 
 Fix when:
 
-- A patched version exists in Debian and can be pulled by rebuilding
-  the image (base image update).
+- A patched Ubuntu package exists and a rebuild picks it up: `base` and
+  the package toolchain images run `apt-get upgrade` when they are built,
+  and every image is rebuilt nightly.
+- A finding is inside a runtime and a fixed release of that runtime exists:
+  move the runtime as
+  [Findings inside a runtime](#findings-inside-a-runtime) says, never
+  patch it in place.
 - A tool version bump resolves the CVE and is low-risk.
 - The vulnerability is in a package we install directly (not inherited
   from the base image).
 
 Fixing typically means bumping a version pin in a common fragment and
 rebuilding. This is a separate PR from the triage suppression.
+
+### Findings inside a runtime
+
+A runtime in an image belongs to one owner, and a finding inside it, including
+in the `npm` or `pip` the runtime bundles, is fixed only by that owner
+(spec §5.8 of epic
+[vergil-project/.github#649](https://github.com/vergil-project/.github/issues/649)).
+vergil-containers never patches or upgrades anything inside a runtime: no
+`npm install -g npm`, no `pip install --upgrade pip`, no edit of a bundled
+`node_modules` or `site-packages`. Find the owner by the path Trivy reports:
+
+| Path | Runtime | Fixed by |
+| ---- | ------- | -------- |
+| `/opt/vergil/python/<core>/` | The core Python, the `vergil-python<core>` package (`base` and every image built on it) | A vergil-python release, triaged in [vergil-python](https://github.com/vergil-project/vergil-python) |
+| `/opt/vergil/node/<core-major>/` | The core Node, a pinned nodejs.org tarball (`base` and every image built on it) | Moving the core Node pin: the `node` entry for the manifest's `core.node` major in `docker/pins/toolchains.yml`, or the `core.node` major itself in a reviewed PR |
+| `/opt/vergil/vergil-tooling/venv` | vergil-tooling's package venv, installed when a repo's container cache is built, so not in a published image | A vergil-tooling release |
+| `/opt/python/<series>/` | A python family runtime, a pinned python-build-standalone release (`dev-python:<series>`) | Moving that series' pin in `docker/pins/toolchains.yml` |
+| `/opt/node/<major>/` | A ts-node family runtime, a pinned nodejs.org tarball (`dev-ts-node:<major>`) | Moving that major's pin in `docker/pins/toolchains.yml` |
+
+The daily upstream refresh moves each pin in `docker/pins/toolchains.yml` to
+the newest release of its series or major, so a fix in a newer release
+usually arrives as that refresh's PR. When no fixed release of the runtime
+exists yet, the finding gets a `.trivyignore` entry under that file's rules: a
+carrier group naming the runtime and its path, why the vulnerable code is not
+exercised, and the removal condition (the release that fixes it). The groups
+for the `npm` bundled in the Node tarballs are the model.
 
 ### Escalate
 
@@ -169,7 +203,7 @@ Each entry must include a comment block explaining why the CVE is
 suppressed. Follow the existing format:
 
 ```text
-# <package> (<distro>) — <brief description of the vulnerability>.
+# <package> (<carrier>) — <brief description of the vulnerability>.
 # <Why it is safe to suppress in this context>. <Fix status>.
 # Issue #<N>.
 CVE-XXXX-XXXXX
@@ -192,10 +226,11 @@ package or category, not chronologically.
 
 ### Remove stale suppressions
 
-When a Debian package ships a fix for a previously-suppressed CVE, the
+When the carrier of a previously-suppressed CVE ships a fix (a new tool
+release, a runtime release its pin moves to, or an Ubuntu package update), the
 entry should be removed from `.trivyignore` on the next triage pass.
-Trivy will no longer flag the CVE (since the fixed package is pulled
-during image build), so the suppression becomes dead weight.
+Trivy will no longer flag the CVE once the image is built with the fixed
+carrier, so the suppression becomes dead weight.
 
 ### Track fixable CVEs
 

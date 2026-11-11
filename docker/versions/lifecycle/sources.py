@@ -23,7 +23,6 @@ USER_AGENT = "vergil-containers-lifecycle-check (+https://github.com/vergil-proj
 TIMEOUT_SECONDS = 30
 
 ENDOFLIFE_URL = "https://endoflife.date/api/{product}.json"
-DOCKER_HUB_TAG_URL = "https://hub.docker.com/v2/namespaces/library/repositories/{image}/tags/{tag}"
 
 _CYCLE_RE = re.compile(r"^\d+(\.\d+)?$")
 
@@ -128,25 +127,6 @@ def endoflife(product: str, fetch: Fetch) -> list[UpstreamRelease]:
     return [_parse_cycle(product, i, entry) for i, entry in enumerate(data)]
 
 
-def docker_hub_tag_exists(image: str, tag: str, fetch: Fetch) -> bool:
-    """Whether the official Docker Hub image `image` has tag `tag`.
-
-    A 404 is "no". Any other failure (rate limit, network) raises SourceError:
-    an unreachable registry never reads as "not installable"."""
-    url = DOCKER_HUB_TAG_URL.format(image=image, tag=tag)
-    try:
-        body = fetch(url)
-    except NotFoundError:
-        return False
-    try:
-        data = json.loads(body)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise SourceError(f"Docker Hub {image}:{tag}: {url} is not valid JSON: {exc}") from exc
-    if not isinstance(data, dict) or data.get("name") != tag:
-        raise SourceError(f"Docker Hub {image}:{tag}: {url} did not describe tag {tag!r}")
-    return True
-
-
 def url_exists(url: str, fetch: Fetch) -> bool:
     """Whether `url` answers at all. A 404 is "no"; any other failure raises
     SourceError, so an unreachable host never reads as "does not exist"."""
@@ -221,33 +201,48 @@ def github_releases(repo: str, fetch: Fetch) -> list[tuple[str, date]]:
     return releases
 
 
-DEBIAN_SOURCE_URL = "https://sources.debian.org/api/src/{package}/"
+UBUNTU_SOURCES_URL = (
+    "https://api.launchpad.net/1.0/ubuntu/+archive/primary?ws.op=getPublishedSources"
+    "&source_name={package}&exact_match=true"
+    "&distro_series=https://api.launchpad.net/1.0/ubuntu/{series}&status=Published&ws.size=300"
+)
+# The pockets an `ubuntu:<v>` image installs from by default. Backports is
+# listed in its sources but pinned below the others, and Proposed is not listed.
+UBUNTU_DEFAULT_POCKETS = frozenset({"Release", "Updates", "Security"})
 
 
-def debian_source_in_suite(package: str, suite: str, fetch: Fetch) -> bool:
-    """Whether Debian source package `package` has a version in `suite` (that
-    suite exactly: `trixie-backports` is not `trixie`).
+def ubuntu_source_versions(package: str, series: str, fetch: Fetch) -> set[str]:
+    """The versions of Ubuntu source package `package` published in `series`
+    (a codename such as `noble`) in the pockets an `ubuntu` image installs from
+    by default (Release, Updates, Security), read from Launchpad's
+    `getPublishedSources` for the primary archive.
 
-    sources.debian.org answers an unknown package with `{"error": 404}` (or an
-    HTTP 404), which is "no". Any other error or shape raises SourceError."""
-    url = DEBIAN_SOURCE_URL.format(package=package)
-    try:
-        body = fetch(url)
-    except NotFoundError:
-        return False
+    An unknown package is an empty collection, so "none". A body that is not
+    the collection, or a collection longer than the page read, raises
+    SourceError: a partial listing is never read as "not published"."""
+    url = UBUNTU_SOURCES_URL.format(package=package, series=series)
+    body = fetch(url)
     try:
         data = json.loads(body)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise SourceError(f"Debian sources {package}: {url} is not valid JSON: {exc}") from exc
-    if isinstance(data, dict) and data.get("error") == 404:
-        return False
-    versions = data.get("versions") if isinstance(data, dict) else None
-    if not isinstance(versions, list) or not versions:
-        raise SourceError(f"Debian sources {package}: {url} lists no versions")
-    for v in versions:
-        suites = v.get("suites") if isinstance(v, dict) else None
-        if not isinstance(suites, list):
-            raise SourceError(f"Debian sources {package}: {url} has a version without a `suites` list")
-        if suite in suites:
-            return True
-    return False
+        raise SourceError(f"Ubuntu sources {package} ({series}): {url} is not valid JSON: {exc}") from exc
+    entries = data.get("entries") if isinstance(data, dict) else None
+    total = data.get("total_size") if isinstance(data, dict) else None
+    if not isinstance(entries, list) or not isinstance(total, int):
+        raise SourceError(f"Ubuntu sources {package} ({series}): {url} is not a Launchpad collection")
+    if total != len(entries):
+        raise SourceError(
+            f"Ubuntu sources {package} ({series}): {url} lists {len(entries)} of {total} publications"
+        )
+    versions: set[str] = set()
+    for i, entry in enumerate(entries):
+        fields = [entry.get(k) if isinstance(entry, dict) else None
+                  for k in ("source_package_name", "source_package_version", "pocket")]
+        if not all(isinstance(v, str) for v in fields):
+            raise SourceError(f"Ubuntu sources {package} ({series}): entry {i} has no name, version or pocket")
+        name, version, pocket = fields
+        if name != package:
+            raise SourceError(f"Ubuntu sources {package} ({series}): entry {i} is {name!r}, not {package!r}")
+        if pocket in UBUNTU_DEFAULT_POCKETS:
+            versions.add(version)
+    return versions

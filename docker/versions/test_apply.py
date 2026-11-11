@@ -47,12 +47,37 @@ def _fixture_fetch(product, extra=()):
     return fetch
 
 
+GO_DEV = "https://go.dev/dl/?mode=json&include=all"
+
+
+def _go_fetch(extra=()):
+    """endoflife.date's `go` fixture plus the `extra` cycles, and go.dev's
+    release list: its fixture plus each extra cycle's `latest` release, so every
+    cycle is installable."""
+    endoflife = _fixture_fetch("go", extra)
+
+    def fetch(url):
+        if url != GO_DEV:
+            return endoflife(url)
+        listing = json.loads((FIXTURES / "godev-releases.json").read_text())
+        for cycle in extra:
+            version = f"go{cycle['latest']}"
+            listing.insert(0, {"version": version, "stable": True, "files": [
+                {"filename": f"{version}.linux-{a}.tar.gz", "os": "linux", "arch": a, "kind": "archive",
+                 "sha256": "a" * 64}
+                for a in ("amd64", "arm64")
+            ]})
+        return json.dumps(listing).encode()
+
+    return fetch
+
+
 def _adapters(go_extra=()):
     return {
         "python": PythonAdapter(
-            fetch=_fixture_fetch("python"), tag_exists=lambda image, tag: True, runtime_index=RUNTIME_314
+            fetch=_fixture_fetch("python"), built_series=set, runtime_index=RUNTIME_314
         ),
-        "go": GoAdapter(fetch=_fixture_fetch("go", go_extra), tag_exists=lambda image, tag: True),
+        "go": GoAdapter(fetch=_go_fetch(go_extra)),
     }
 
 
@@ -158,8 +183,8 @@ def test_apply_then_render_regenerates_all_files(repo):  # noqa: F811
     assert _versions(mf.load_manifest(repo / g.MANIFEST), "python") == ["3.15", "3.14", "3.13", "3.12"]
     assert "ARG PYTHON_VERSION=3.15" in (repo / "docker/python/Dockerfile.template").read_text()
     include = json.loads((repo / g.MATRIX_JSON).read_text())["include"]
-    assert {"language": "python", "version": "3.15", "build-args": {"PYTHON_VERSION": "3.15"},
-            "parent": None, "depth": 0} in include
+    args = {"PYTHON_VERSION": "3.15", **frozen.rt.build_args(frozen.PINS, "python", "3.15")}
+    assert {"language": "python", "version": "3.15", "build-args": args, "parent": None, "depth": 0} in include
 
 
 def test_render_drop_of_an_older_version_leaves_the_arg_default(repo):  # noqa: F811
@@ -616,3 +641,22 @@ def test_apply_keeps_toolchains_and_base_parent():
     assert after.toolchains == (toolchain,)
     assert after.base_parent == mf.Parent("pkg-ubuntu", "24.04")
     assert mf.parse_manifest(yaml.safe_load(mf.dump_manifest(after))) == after
+
+
+def test_apply_change_keeps_core():
+    m = replace(SEED, core=mf.Core(python="3.16", node="24"))
+    for change, target in (
+        (Change("python", "drop", "3.12", "EOL reached"), None),
+        (Change("python", "add", "3.15", ""), TargetVersion("3.15", None, None, True)),
+    ):
+        after = apply_change(m, change, target)
+        assert after.core == mf.Core(python="3.16", node="24")
+        assert mf.parse_manifest(yaml.safe_load(mf.dump_manifest(after))) == after
+
+
+def test_render_add_without_a_toolchain_pin_fails_as_an_apply_error(repo):  # noqa: F811
+    # A lifecycle add of a series toolchains.yml does not pin cannot render its
+    # matrix: it fails that one change (an ApplyError), never the whole run.
+    m = mf.load_manifest(repo / g.MANIFEST)
+    with pytest.raises(ApplyError, match=r"python: add 3.16: .*toolchain 'python' '3.16'"):
+        render_change(m, Change("python", "add", "3.16", ""), TargetVersion("3.16", None, None, True), repo)

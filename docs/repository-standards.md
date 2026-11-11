@@ -15,16 +15,18 @@
 
 ## CI gates
 
-Hard gates (required status checks on `develop`):
+Hard gates (required status checks on `develop` and `main`), from
+vergil-tooling's generated `CI gates` ruleset, computed from `vergil.toml`
+(never set by hand):
 
-- Hadolint: lint all generated Dockerfiles
-- ShellCheck: lint `docker/build.sh` and `docker/generate.sh`
-- Security and standards (`vergil-actions/ci-security`):
-  - Semgrep (Dockerfile language)
-  - Repository profile validation (`repo-profile`)
-  - Markdownlint (`markdown-standards`)
-  - Commit message lint (CI validator)
-  - Issue linkage validation (`pr-issue-linkage`)
+- `quality / evidence`: the aggregate of the quality jobs, including
+  `quality / custom`
+- `security / trivy`, `security / semgrep` (`vergil-actions/ci-security`),
+  and the code-scanning checks `Trivy` and `Semgrep OSS`
+- `docs / docs`: the docs build
+- `version / version-bump`: the version-bump gate
+- `images / evidence`: the aggregating gate of `ci-images.yml`, which builds
+  and scans the images a pull request changes (`[ci].images = true`)
 
 Local hard gates (pre-commit hooks):
 

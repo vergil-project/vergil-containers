@@ -20,13 +20,9 @@ All images are built from Dockerfile templates using a two-stage process:
 docker/
 ├── build.sh                    # Builds all images
 ├── generate.sh                 # Expands templates into Dockerfiles
-├── common/
-│   ├── github-cli.dockerfile
-│   ├── node-markdownlint.dockerfile
-│   ├── path-defaults.dockerfile
-│   ├── python-support.dockerfile
-│   ├── security-tools.dockerfile
-│   └── validation-tools.dockerfile
+├── common/                     # Shared fragments (<name>.dockerfile)
+├── pkg-ubuntu/Dockerfile.template
+├── pkg-rhel/Dockerfile.template
 ├── base/Dockerfile.template
 ├── python/Dockerfile.template
 ├── go/Dockerfile.template
@@ -37,6 +33,10 @@ docker/
 └── versions/
     ├── manifest.yml            # The single source of language versions
     ├── generate.py             # Writes every derived version list
+    ├── matrix.json             # The generated publish matrix (CD and nightly)
+    ├── includes.py             # Each image's input files, for PR selection
+    ├── selection.py            # The images a pull request's change reaches
+    ├── pr_jobs.py              # Groups the selected images into PR build jobs
     └── lifecycle/              # The nightly lifecycle check and adapters
 ```
 
@@ -45,13 +45,14 @@ docker/
 Each `Dockerfile.template` contains standard Dockerfile instructions plus
 `# @include common/<fragment>.dockerfile` directives. `generate.sh`
 replaces each directive with the full contents of the referenced fragment,
-producing a final `Dockerfile` in the same directory. Includes nest: a
-fragment may include another fragment (for example
-`node-markdownlint.dockerfile` includes `nodesource-node.dockerfile`).
+producing a final `Dockerfile` in the same directory. Includes may nest: a
+fragment may include another fragment, and `generate.sh` caps the depth so
+that an include cycle is an error.
 
 This eliminates duplication — shared tool installations (GitHub CLI,
-Node.js, markdownlint, validation tools) are maintained once in
-`docker/common/` and included by every template that needs them.
+markdownlint, validation tools) are maintained once in `docker/common/`.
+Since epic vergil-project/.github#649 the common fragments are included by
+`base` alone, and every language image gets them by being built `FROM` it.
 
 ### Version management
 
@@ -64,38 +65,65 @@ pinning model.
 
 ## Common Tooling Layer
 
-Every language image includes the following shared fragments:
+`dev-base` includes the following shared fragments, and every language image
+carries them because it is built `FROM` `dev-base`:
 
 - **`path-defaults.dockerfile`** — Sets PATH for `uv tool install`
   entry points across GitHub Actions and local contexts.
-- **`node-markdownlint.dockerfile`** — Node.js via NodeSource apt repo
-  (installed by the nested `nodesource-node.dockerfile`, which fails the
-  build unless it gets NodeSource Node `NODE_MAJOR` with npm)
-  and markdownlint-cli via npm.
 - **`github-cli.dockerfile`** — GitHub CLI via the official apt repo.
 - **`validation-tools.dockerfile`** — Architecture-aware binary
   installs of shellcheck, shfmt, actionlint, git-cliff, and hadolint.
   Uses `TARGETARCH` (injected by Docker Buildx) to select the correct
   binary for amd64 or arm64.
 - **`security-tools.dockerfile`** — Security analysis tools installed
-  from binary releases. Currently includes scorecard (OpenSSF).
-- **`python-support.dockerfile`** — Minimal Python plus yamllint and
-  uv, used by non-Python images.
-- **`nfpm.dockerfile`** — nfpm release binary, which builds `.deb` and
-  `.rpm` packages from one declarative config.
+  from binary releases: scorecard (OpenSSF) and trivy.
 - **`rpm.dockerfile`** — The distro's `rpm`, the peer of `dpkg`, for
   inspecting `.rpm` packages and comparing versions (`rpm.vercmp`).
 - **`pandoc.dockerfile`** — pandoc for Markdown to `.docx`/HTML
   conversion (no TeX; PDF output is opt-in).
 
-Python-based images (`dev-python`, `dev-base`) install yamllint and uv
-directly via pip rather than the `python-support` fragment.
+uv and nFPM (`uv.dockerfile`, `nfpm.dockerfile`) are included by the package
+toolchain images, and `dev-base` takes them from its parent.
 
-The `dev-base` image includes all common fragments plus documentation
-tooling (MkDocs Material, mike, semgrep) and OpenTofu
-(`opentofu.dockerfile`) for in-sandbox `tofu fmt -check` / `tofu validate`
-of OpenTofu modules. It is the fallback image for repos with no detected
-language.
+A language image adds only its family's own toolchain. `dev-python`,
+`dev-go` and `dev-rust` include no fragment. The two C++ families include
+`cpp-analysis.dockerfile`, and `dev-ts-node` includes
+`typescript-analysis.dockerfile`. `dev-python` adds the family Python, a
+pinned python-build-standalone build at `/opt/python/<version>`, and
+`dev-ts-node` adds the family Node, a pinned nodejs.org tarball at
+`/opt/node/<major>`.
+
+The `dev-base` image is built `FROM` the package toolchain image
+`pkg-ubuntu:24.04` (epic vergil-project/.github#649), from which it takes uv
+and nFPM. It includes the common fragments plus documentation tooling (MkDocs
+Material, mike, semgrep) and OpenTofu (`opentofu.dockerfile`) for in-sandbox
+`tofu fmt -check` / `tofu validate` of OpenTofu modules. It is the fallback
+image for repos with no detected language. Its own tools run on core runtimes
+installed side by side under `/opt/vergil/`, from four fragments only it
+includes:
+
+- **`vergil-apt.dockerfile`** — The vergil apt repository, set up only after
+  the signing key's primary fingerprint matches the pinned one.
+- **`core-python.dockerfile`** — The core Python, `vergil-python<core>` at
+  `/opt/vergil/python/<core>/`; `/usr/local/bin/python3` links to it and
+  promises the standard library only.
+- **`core-node.dockerfile`** — The core Node, the pinned nodejs.org tarball
+  at `/opt/vergil/node/<core-major>/`, and markdownlint-cli on it. No
+  `node`, `npm` or `npx` is on `PATH`; `markdownlint` is a wrapper that
+  runs the core Node by path.
+- **`core-tools.dockerfile`** — yamllint, ansible-lint, semgrep and MkDocs
+  (with mkdocs-material and mike) as uv tools on the core Python.
+  `semgrep` and `pysemgrep` are wrappers that lower the stack hard limit
+  before running the tool, so that `semgrep-core` does not crash on Python
+  3.15 ([vergil-containers#825](https://github.com/vergil-project/vergil-containers/issues/825));
+  they go once semgrep fixes its stack-limit code upstream
+  ([vergil-containers#826](https://github.com/vergil-project/vergil-containers/issues/826)).
+
+The core series come from the manifest's `core:` section. Nothing in
+`dev-base` is pip-installed. Its last build step runs
+`docker/base/checks.sh`: the checks every image built on it keeps
+(`checks-invariants.sh`) and its defaults (`checks-defaults.sh`), both left
+in the image at `/usr/local/lib/vergil/checks/` for its children to rerun.
 
 ## Design Principles
 
@@ -169,14 +197,25 @@ via the reusable `cd-docker-publish.yml` workflow, parameterized by an
   changelog, git tag, and GitHub release, and rebuilt nightly from `main`
   via `ops.yml`.
 
-The publish pipeline for each prefix:
+The publish pipeline for each image of `docker/versions/matrix.json`
+(`base` included):
 
-1. Builds a candidate tag for both platforms (amd64 + arm64)
-2. Scans each platform independently with Trivy (SARIF upload; see
+1. Builds each platform on its own native runner, amd64 on `ubuntu-24.04`
+   and arm64 on `ubuntu-24.04-arm`, and pushes each build by digest,
+   untagged. A failed push is retried, up to three attempts in all, after a
+   jittered back-off; GHCR sporadically refuses these pushes with
+   `denied: permission_denied: write_package`.
+2. Stitches the two digests into a multi-arch candidate tag with
+   `docker buildx imagetools create`
+3. Scans each platform independently with Trivy (SARIF upload; see
    [Trivy Scanning](trivy-scanning.md))
-3. Attests build provenance (SLSA via GitHub attestations)
-4. Promotes the candidate to the final tag via `docker buildx imagetools create`
-5. Verifies digest preservation between candidate and final
+4. Attests build provenance (SLSA via GitHub attestations)
+5. Promotes the candidate to the final tag via `docker buildx imagetools create`
+6. Verifies digest preservation between candidate and final
+
+Steps 2 to 6 run in one `publish` job per image, once its tier's `build`
+jobs (below) have finished. An image whose build failed on either platform is not stitched or
+promoted, and its previous tags stay published.
 
 The pipeline runs in **tiers**. An image may be built `FROM` another image of
 this repository, its *parent*, named by a `parent:` entry in
@@ -185,12 +224,13 @@ image on an upstream base, at most 2) is its tier. Every tier-0 image runs the
 steps above, then the tier-1 images run them, built `FROM` their parent's
 promoted digest from the same run, and then tier 2. An image whose parent
 failed fails its own build with an error naming the parent, and its previous
-tags stay published. Until a manifest entry names a parent, every image is in
-tier 0 and the later tiers are skipped.
+tags stay published. Today `base` is the one tier-1 image, built on
+`pkg-ubuntu:24.04`, and no image is in tier 2.
 
 Each image's `--build-arg`s come from its `build-args` map in the generated
-`docker/versions/matrix.json` (a family's or toolchain's version argument;
-none for `base`), and a child also gets `PARENT_IMAGE`, its parent by digest.
+`docker/versions/matrix.json` (a family's or toolchain's version argument
+and its toolchain pins; for `base`, its core runtimes), and a child also gets
+`PARENT_IMAGE`, its parent by digest.
 
 Images that are not languages, such as the package toolchain images, are
 listed in the manifest's `toolchains:` section. They are built, published and
@@ -236,6 +276,25 @@ This keeps both image sets current with upstream security patches (base
 image updates, apt package refreshes) without waiting for a code change to
 trigger a build. To trigger a rebuild manually, run the CD workflow from the
 Actions tab (**Actions > CD > Run workflow**).
+
+### Pull request builds
+
+Pull requests never publish. `ci.yml` calls `ci-images.yml`, which builds and
+scans only the images the change reaches. `docker/versions/selection.py` maps
+the changed paths and the `matrix.json` diff to those images, using each
+image's input files from `docker/versions/includes.py`. Selecting a parent
+also selects every image built `FROM` it. A change to the Trivy configuration
+or to the build-and-scan pipeline itself selects every image, and so does an
+unclassified path under `docker/` (with a warning). A docs-only change selects
+none. Each selected image is built natively on both architectures, without
+emulation, and is never pushed to GHCR. A parent reaches the images built
+`FROM` it through a registry local to the job.
+
+The required check is the one aggregating gate, `images / evidence`. It is
+required by vergil-tooling's generated `CI gates` ruleset because
+`vergil.toml` sets `[ci].images = true`. See
+[Trivy Scanning](trivy-scanning.md#pull-requests-the-image-scan-of-changed-images)
+for the scans and the evidence it uploads.
 
 ### Authentication
 

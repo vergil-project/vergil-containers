@@ -13,8 +13,22 @@ from test_generate import _tree
 
 def _write(tmp_path, m: mf.Manifest):
     path = tmp_path / "matrix.json"
-    path.write_text(g.render_matrix_json(m))
+    path.write_text(g.render_matrix_json(m, frozen.PINS))
     return path
+
+
+def _pins(family: str, version: str) -> str:
+    """The toolchain build args generate.py appends for `family` at `version`."""
+    args = frozen.rt.build_args(frozen.PINS, family, version)
+    return "".join(f" {name}={value}" for name, value in args.items())
+
+
+def _core() -> str:
+    """base's build args: the core runtimes generate.py emits from core:."""
+    include = json.loads(g.render_matrix_json(frozen.SEED, frozen.PINS))["include"]
+    (base,) = [e for e in include if e["language"] == g.BASE_KEY]
+    assert base["build-args"]
+    return " ".join(f"{name}={value}" for name, value in base["build-args"].items())
 
 
 def _run(capsys, *argv):
@@ -29,9 +43,9 @@ def test_every_entry_in_matrix_order_by_default(tmp_path, capsys):
     assert code == 0
     include = json.loads(path.read_text())["include"]
     assert [tuple(line.split("\t")[1:3]) for line in lines] == [(e["language"], e["version"]) for e in include]
-    assert lines[0] == "build\tpython\t3.14\t-\tPYTHON_VERSION=3.14"
-    # base takes no build argument.
-    assert lines[-1] == "build\tbase\tlatest\t-\t-"
+    assert lines[0] == "build\tpython\t3.14\t-\tPYTHON_VERSION=3.14" + _pins("python", "3.14")
+    # base takes its core runtimes' build args.
+    assert lines[-1] == "build\tbase\tlatest\t-\t" + _core()
     assert all(line.startswith("build\t") for line in lines)
 
 
@@ -39,12 +53,12 @@ def test_tree_builds_in_tier_order(tmp_path, capsys):
     code, lines, _ = _run(capsys, "--matrix", str(_write(tmp_path, _tree())))
     assert code == 0
     assert lines == [
-        "build\tgo\t1.26\t-\tGO_VERSION=1.26",
+        "build\tgo\t1.26\t-\tGO_VERSION=1.26" + _pins("go", "1.26"),
         "build\tpkg-ubuntu\t24.04\t-\tUBUNTU_VERSION=24.04",
-        "build\tbase\tlatest\tpkg-ubuntu:24.04\t-",
-        "build\tpython\t3.14\tbase:latest\tPYTHON_VERSION=3.14",
-        "build\tpython\t3.13\tbase:latest\tPYTHON_VERSION=3.13",
-        "build\tpython\t3.12\tbase:latest\tPYTHON_VERSION=3.12",
+        "build\tbase\tlatest\tpkg-ubuntu:24.04\t" + _core(),
+        "build\tpython\t3.14\tbase:latest\tPYTHON_VERSION=3.14" + _pins("python", "3.14"),
+        "build\tpython\t3.13\tbase:latest\tPYTHON_VERSION=3.13" + _pins("python", "3.13"),
+        "build\tpython\t3.12\tbase:latest\tPYTHON_VERSION=3.12" + _pins("python", "3.12"),
     ]
 
 
@@ -69,7 +83,7 @@ def test_a_named_parent_is_built_not_pulled(tmp_path, capsys):
 def test_a_family_with_no_parent_is_alone(tmp_path, capsys):
     code, lines, _ = _run(capsys, "--matrix", str(_write(tmp_path, _tree())), "go")
     assert code == 0
-    assert lines == ["build\tgo\t1.26\t-\tGO_VERSION=1.26"]
+    assert lines == ["build\tgo\t1.26\t-\tGO_VERSION=1.26" + _pins("go", "1.26")]
 
 
 def test_unknown_family_refused(tmp_path, capsys):

@@ -1,24 +1,67 @@
 # Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
 # Canonical source: https://github.com/vergil-project/vergil-containers
-ARG GO_VERSION=1.27
-FROM golang:${GO_VERSION}
+# dev-go — the Go dev container, built on base (epic vergil-project/.github#649,
+# spec §5.3): base's tooling and core runtimes, plus the go.dev release of the
+# series and the Go tools.
+#
+# The parent comes from docker/versions/manifest.yml (`go: parent:`):
+# docker/build.sh and the publish workflow pass it as PARENT_IMAGE. Everything
+# but Go comes from it.
+ARG PARENT_IMAGE
+FROM ${PARENT_IMAGE}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# --- System packages ---------------------------------------------------------
+# Build-time only: apt never prompts. An ARG, so it is not set in the image.
+ARG DEBIAN_FRONTEND=noninteractive
+
+# --- C toolchain for cgo -----------------------------------------------------
+# The golang images this replaces ship these, and cgo (and so `go test -race`)
+# needs a C compiler.
 RUN apt-get update && \
-    apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
-      git jq openssh-client xz-utils gnupg ca-certificates && \
+      g++ gcc libc6-dev make pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
-# @include common/path-defaults.dockerfile
-# @include common/node-markdownlint.dockerfile
-# @include common/github-cli.dockerfile
-# @include common/validation-tools.dockerfile
-# @include common/python-support.dockerfile
-# @include common/nfpm.dockerfile
-# @include common/rpm.dockerfile
-# @include common/pandoc.dockerfile
+# --- Go ----------------------------------------------------------------------
+# The go.dev release pinned in docker/pins/toolchains.yml for the series
+# (GO_VERSION), unpacked at /usr/local/go after its SHA-256 for TARGETARCH is
+# checked. generate.py emits the TOOLCHAIN_* build args; a missing one, a
+# release outside the series or a hash mismatch fails the build.
+ARG TARGETARCH
+ARG GO_VERSION=1.27
+ARG TOOLCHAIN_VERSION
+ARG TOOLCHAIN_SHA256_AMD64
+ARG TOOLCHAIN_SHA256_ARM64
+
+RUN : "${GO_VERSION:?go: the GO_VERSION build arg is not set}" && \
+    : "${TOOLCHAIN_VERSION:?go: the TOOLCHAIN_VERSION build arg is not set}" && \
+    : "${TOOLCHAIN_SHA256_AMD64:?go: the TOOLCHAIN_SHA256_AMD64 build arg is not set}" && \
+    : "${TOOLCHAIN_SHA256_ARM64:?go: the TOOLCHAIN_SHA256_ARM64 build arg is not set}" && \
+    case "${TOOLCHAIN_VERSION}" in \
+      "${GO_VERSION}".*) ;; \
+      *) echo "go: TOOLCHAIN_VERSION ${TOOLCHAIN_VERSION} is not a release of Go ${GO_VERSION}" >&2; exit 1 ;; \
+    esac && \
+    case "${TARGETARCH}" in \
+      amd64) sha256="${TOOLCHAIN_SHA256_AMD64}" ;; \
+      arm64) sha256="${TOOLCHAIN_SHA256_ARM64}" ;; \
+      *) echo "go: unsupported TARGETARCH '${TARGETARCH}'" >&2; exit 1 ;; \
+    esac && \
+    tarball="go${TOOLCHAIN_VERSION}.linux-${TARGETARCH}.tar.gz" && \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+      "https://go.dev/dl/${tarball}" -o "/tmp/${tarball}" && \
+    echo "${sha256}  /tmp/${tarball}" | sha256sum -c - && \
+    tar -xzf "/tmp/${tarball}" --no-same-owner -C /usr/local && \
+    rm "/tmp/${tarball}" && \
+    got="$(/usr/local/go/bin/go version)" && \
+    if [ "${got}" != "go version go${TOOLCHAIN_VERSION} linux/${TARGETARCH}" ]; then echo "go: /usr/local/go/bin/go is '${got}', want go${TOOLCHAIN_VERSION} linux/${TARGETARCH}" >&2; exit 1; fi && \
+    mkdir -p /go/src /go/bin && \
+    chmod -R 1777 /go
+
+# The environment the golang images set: the toolchain never fetches another Go
+# (GOTOOLCHAIN=local), and `go install` puts tools in /go/bin, on PATH.
+ENV GOTOOLCHAIN=local \
+    GOPATH=/go \
+    PATH="/go/bin:/usr/local/go/bin:${PATH}"
 
 # --- Go tools ----------------------------------------------------------------
 # The image builds with GOTOOLCHAIN=local, so the toolchain cannot fetch a newer
@@ -44,5 +87,12 @@ RUN GTC_VERSION="latest" && \
     go install github.com/fzipp/gocyclo/cmd/gocyclo@latest && \
     go install golang.org/x/tools/cmd/goimports@latest && \
     go install github.com/vladopajic/go-test-coverage/v2@"${GTC_VERSION}"
+
+# --- Build-time checks -------------------------------------------------------
+# base's invariants and all three of its defaults, then the Go toolchain and
+# tools (docker/go/checks.sh, run from the build context and not kept). Any
+# failure fails the build.
+RUN --mount=type=bind,source=checks.sh,target=/tmp/vergil-checks.sh \
+    bash /tmp/vergil-checks.sh "${TOOLCHAIN_VERSION}"
 
 WORKDIR /workspace

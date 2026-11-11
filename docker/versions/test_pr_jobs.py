@@ -12,7 +12,7 @@ from test_generate import _tree
 
 ROOT = frozen.LIVE_ROOT
 LIVE = json.loads((ROOT / g.MATRIX_JSON).read_text())["include"]
-TREE = json.loads(g.render_matrix_json(_tree()))["include"]
+TREE = json.loads(g.render_matrix_json(_tree(), frozen.PINS))["include"]
 # vergil-tooling lib/package/matrix.py RUNNERS: the native runner per arch.
 RUNNERS = {"amd64": "ubuntu-24.04", "arm64": "ubuntu-24.04-arm"}
 NO_SMOKE = {"pkg-ubuntu": None, "base": None, "python": None, "go": None}

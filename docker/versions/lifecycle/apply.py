@@ -109,7 +109,7 @@ def apply_change(m: Manifest, change: Change, target: TargetVersion | None = Non
         families.append(f)
     if not found:
         raise ApplyError(f"{change.family}: no such family in the manifest")
-    # Every other section (base's parent, the toolchains) is kept as it is.
+    # Every other section (core, base's parent, the toolchains) is kept as it is.
     return replace(m, families=tuple(families))
 
 
@@ -120,7 +120,13 @@ def render_change(m: Manifest, change: Change, target: TargetVersion | None, roo
     `root` is a checkout whose files match `m` (the PR's base)."""
     after = apply_change(m, change, target)
     files: dict[Path, str] = {MANIFEST: dump_manifest(after)}
-    for path, content in generate.render_all(after, root).items():
+    try:
+        rendered = generate.render_all(after, root)
+    except generate.GenerateError as exc:
+        # An add of a series with no toolchain pin lands here: one change that
+        # cannot be rendered must not hold back the others (publish.py).
+        raise ApplyError(f"{change.family}: {change.kind} {change.version}: {exc}") from exc
+    for path, content in rendered.items():
         rel = path.relative_to(root)
         if not path.is_file() or path.read_text() != content:
             files[rel] = content

@@ -32,11 +32,12 @@ MATRIX_KEYS = ["language", "version", "build-args", "parent", "depth"]
 
 
 def test_render_matrix_json_equals_current_include_list():
-    data = json.loads(g.render_matrix_json(_seed()))
+    data = json.loads(g.render_matrix_json(_seed(), frozen.PINS))
     assert set(data) == {"include"}
     assert all(list(e) == MATRIX_KEYS for e in data["include"])
     families = data["include"][:-1]
-    triples = [(e["language"], e["version"], *e["build-args"]) for e in families]
+    # The family's version arg leads its build-args; the toolchain pins follow.
+    triples = [(e["language"], e["version"], next(iter(e["build-args"]))) for e in families]
     assert sorted(triples) == sorted(CURRENT_MATRIX)
     assert len(triples) == len(CURRENT_MATRIX)
     # No entry of the frozen manifest names a parent: everything is tier 0.
@@ -44,21 +45,64 @@ def test_render_matrix_json_equals_current_include_list():
 
 
 def test_build_args_map_replaces_build_arg():
-    include = json.loads(g.render_matrix_json(_seed()))["include"]
+    include = json.loads(g.render_matrix_json(_seed(), frozen.PINS))["include"]
     assert all("build-arg" not in e for e in include)
     python = [e for e in include if e["language"] == "python"]
-    assert [e["build-args"] for e in python] == [
-        {"PYTHON_VERSION": "3.14"}, {"PYTHON_VERSION": "3.13"}, {"PYTHON_VERSION": "3.12"}]
+    # The family's version arg first, then its toolchain pins (epic
+    # vergil-project/.github#649), which docker/pins/test_toolchains.py covers.
+    assert [e["build-args"]["PYTHON_VERSION"] for e in python] == ["3.14", "3.13", "3.12"]
+    families = {f.key: f for f in _seed().families}
     for e in include[:-1]:
-        assert list(e["build-args"].values()) == [e["version"]]
+        name, value = next(iter(e["build-args"].items()))
+        assert (name, value) == (families[e["language"]].build_arg, e["version"])
 
 
-def test_base_build_args_empty():
-    include = json.loads(g.render_matrix_json(_seed()))["include"]
-    assert include[-1] == {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-args": {},
+def _core_args(m: mf.Manifest = frozen.SEED) -> dict[str, str]:
+    """`base`'s build args for `m`'s core runtimes, from the frozen pins."""
+    assert m.core is not None
+    node = frozen.PINS.series["node"][m.core.node]
+    assert node.sha256 is not None
+    return {
+        "CORE_PYTHON": m.core.python,
+        "CORE_NODE_MAJOR": m.core.node,
+        "CORE_NODE_VERSION": node.version,
+        "CORE_NODE_SHA256_AMD64": node.sha256["amd64"],
+        "CORE_NODE_SHA256_ARM64": node.sha256["arm64"],
+    }
+
+
+def test_generate_emits_core_args():
+    # Epic vergil-project/.github#649 Task 7: base installs the core runtimes
+    # from its build args, in this order.
+    include = json.loads(g.render_matrix_json(_seed(), frozen.PINS))["include"]
+    assert include[-1] == {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-args": _core_args(),
                            "parent": None, "depth": 0}
-    assert [e for e in include if e["build-args"] == {}] == [include[-1]]
+    assert list(include[-1]["build-args"]) == [
+        "CORE_PYTHON", "CORE_NODE_MAJOR", "CORE_NODE_VERSION", "CORE_NODE_SHA256_AMD64", "CORE_NODE_SHA256_ARM64",
+    ]
+    assert include[-1]["build-args"]["CORE_PYTHON"] == "3.15"
+    assert include[-1]["build-args"]["CORE_NODE_VERSION"].startswith("22.")
     assert [e for e in include if e["language"] == g.BASE_KEY] == [include[-1]]
+
+
+def test_core_args_follow_the_core_section():
+    # A core move is a manifest edit: the args follow core:, not a family window.
+    m = replace(_seed(), core=mf.Core(python="3.14", node="24"))
+    base = json.loads(g.render_matrix_json(m, frozen.PINS))["include"][-1]
+    assert base["build-args"] == _core_args(m)
+    assert base["build-args"]["CORE_NODE_VERSION"].startswith("24.")
+
+
+def test_core_args_fail_loud_without_a_core_node_pin():
+    m = replace(_seed(), core=mf.Core(python="3.15", node="26"))
+    with pytest.raises(g.GenerateError, match=r"toolchain 'node' '26': the core Node major has no hashed pin"):
+        g.render_matrix_json(m, frozen.PINS)
+
+
+def test_core_args_fail_loud_without_a_core_section():
+    m = replace(_seed(), core=None)
+    with pytest.raises(g.GenerateError, match="no core: section"):
+        g.render_matrix_json(m, frozen.PINS)
 
 
 def _tree() -> mf.Manifest:
@@ -69,11 +113,12 @@ def _tree() -> mf.Manifest:
     pkg = replace(seed["go"], key="pkg-ubuntu", language="pkgubuntu", build_arg="UBUNTU_VERSION",
                   versions=(mf.ManifestVersion("24.04", None, None, True, None),))
     python = replace(seed["python"], parent=mf.Parent("base", "latest"))
-    return mf.Manifest(families=(python, seed["go"], pkg), base_parent=mf.Parent("pkg-ubuntu", "24.04"))
+    return mf.Manifest(families=(python, seed["go"], pkg), base_parent=mf.Parent("pkg-ubuntu", "24.04"),
+                       core=_seed().core)
 
 
 def test_matrix_parent_and_depth_emitted():
-    include = json.loads(g.render_matrix_json(_tree()))["include"]
+    include = json.loads(g.render_matrix_json(_tree(), frozen.PINS))["include"]
     by = {(e["language"], e["version"]): e for e in include}
     assert by[("pkg-ubuntu", "24.04")]["parent"] is None
     assert by[("pkg-ubuntu", "24.04")]["depth"] == 0
@@ -81,12 +126,13 @@ def test_matrix_parent_and_depth_emitted():
     assert by[("base", "latest")]["depth"] == 1
     assert by[("python", "3.14")]["parent"] == {"language": "base", "version": "latest"}
     assert by[("python", "3.14")]["depth"] == 2
-    assert by[("go", "1.26")] == {"language": "go", "version": "1.26", "build-args": {"GO_VERSION": "1.26"},
+    go_args = {"GO_VERSION": "1.26", **frozen.rt.build_args(frozen.PINS, "go", "1.26")}
+    assert by[("go", "1.26")] == {"language": "go", "version": "1.26", "build-args": go_args,
                                   "parent": None, "depth": 0}
 
 
 def test_matrix_ordered_by_depth():
-    include = json.loads(g.render_matrix_json(_tree()))["include"]
+    include = json.loads(g.render_matrix_json(_tree(), frozen.PINS))["include"]
     assert [(e["language"], e["version"], e["depth"]) for e in include] == [
         ("go", "1.26", 0),
         ("pkg-ubuntu", "24.04", 0),
@@ -101,7 +147,7 @@ def test_matrix_refuses_a_bad_tree():
     seed = _seed()
     bad = mf.Manifest(families=seed.families, base_parent=mf.Parent("pkg-ubuntu", "24.04"))
     with pytest.raises(mf.ManifestError, match=r"base: parent: no manifest entry 'pkg-ubuntu'"):
-        g.render_matrix_json(bad)
+        g.render_matrix_json(bad, frozen.PINS)
 
 
 def test_render_build_sh_block():
@@ -166,11 +212,19 @@ def test_render_docs_tables(repo):
         block = text.split("<!-- BEGIN generated: versions -->\n")[1].split("<!-- END")[0]
         rows = block.splitlines()
         assert rows[0].split("|")[1:5] == [" Image           ", " Language   ",
-                                           " Versions         ", " Base                 "]
-        assert "| `dev-python`    | python     | 3.14, 3.13, 3.12 | `python:<v>-slim`    |" in rows
-        assert "| `dev-cpp-clang` | cpp        | 20, 19           | `debian:trixie-slim` |" in rows
-        assert "| `dev-ts-node`   | typescript | 24, 22           | `debian:trixie-slim` |" in rows
-        assert rows[-1].startswith("| `dev-base`") and "`python:3.14-slim`" in rows[-1]
+                                           " Versions         ", " Base              "]
+        # python is built on base (Task 8), but the frozen manifest gives it no
+        # parent, so its row shows the template's FROM as written.
+        assert "| `dev-python`    | python     | 3.14, 3.13, 3.12 | `${PARENT_IMAGE}` |" in rows
+        # cpp-clang is built on base (epic vergil-project/.github#649), but the
+        # frozen manifest gives it no parent: its row shows the template's FROM.
+        assert "| `dev-cpp-clang` | cpp        | 20, 19           | `${PARENT_IMAGE}` |" in rows
+        # ts-node is built on base (Task 13), but the frozen manifest gives it no
+        # parent, so its row shows the template's FROM as written.
+        assert "| `dev-ts-node`   | typescript | 24, 22           | `${PARENT_IMAGE}` |" in rows
+        # The frozen manifest gives base no parent, so its row shows the
+        # template's FROM as written.
+        assert rows[-1].startswith("| `dev-base`") and "`${PARENT_IMAGE}`" in rows[-1]
         assert len(rows) == 2 + len(_seed().families) + 1
 
 
@@ -309,25 +363,26 @@ def _toolchain_repo(root: Path) -> Path:
 
 
 def test_matrix_json_appends_toolchain_entries():
-    include = json.loads(g.render_matrix_json(_with_toolchain()))["include"]
+    include = json.loads(g.render_matrix_json(_with_toolchain(), frozen.PINS))["include"]
     assert include[-3:] == [
         {"language": "pkg-ubuntu", "version": "26.04", "build-args": {"UBUNTU_VERSION": "26.04"},
          "parent": None, "depth": 0},
         {"language": "pkg-ubuntu", "version": "24.04", "build-args": {"UBUNTU_VERSION": "24.04"},
          "parent": None, "depth": 0},
-        {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-args": {}, "parent": None, "depth": 0},
+        {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-args": _core_args(), "parent": None,
+         "depth": 0},
     ]
     # Every family entry is unchanged and comes first.
-    assert include[:-3] == json.loads(g.render_matrix_json(_seed()))["include"][:-1]
+    assert include[:-3] == json.loads(g.render_matrix_json(_seed(), frozen.PINS))["include"][:-1]
 
 
 def test_matrix_json_toolchain_as_parent():
     # Epic vergil-project/.github#649: base built FROM pkg-ubuntu:24.04.
     m = replace(_with_toolchain(), base_parent=mf.Parent("pkg-ubuntu", "24.04"))
-    include = json.loads(g.render_matrix_json(m))["include"]
+    include = json.loads(g.render_matrix_json(m, frozen.PINS))["include"]
     assert [(e["language"], e["depth"]) for e in include if e["depth"] == 0][-2:] == [
         ("pkg-ubuntu", 0), ("pkg-ubuntu", 0)]
-    assert include[-1] == {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-args": {},
+    assert include[-1] == {"language": g.BASE_KEY, "version": g.BASE_VERSION, "build-args": _core_args(),
                            "parent": {"language": "pkg-ubuntu", "version": "24.04"}, "depth": 1}
 
 
@@ -371,6 +426,26 @@ def test_toolchain_arg_default_and_docs_row(repo):
     assert g.main(["--check", "--root", str(root)]) == 0
 
 
+def test_docs_base_column_names_the_parent(repo):
+    # Epic vergil-project/.github#649: base is FROM ${PARENT_IMAGE}, so its row
+    # names the manifest parent, not the build arg.
+    root = _toolchain_repo(repo)
+    template = root / "docker" / g.BASE_KEY / "Dockerfile.template"
+    assert re.search(r"^FROM \$\{PARENT_IMAGE\}$", template.read_text(), re.MULTILINE)
+    m = replace(_with_toolchain(), base_parent=mf.Parent("pkg-ubuntu", "24.04"))
+    (row,) = [r for r in g.render_doc_table(m, root) if "`dev-base`" in r]
+    assert [c.strip() for c in row.split("|")[1:5]] == ["`dev-base`", "—", "latest", "`pkg-ubuntu:24.04`"]
+
+
+def test_docs_base_column_refuses_a_parent_the_template_ignores(repo):
+    root = _toolchain_repo(repo)
+    template = root / "docker" / g.BASE_KEY / "Dockerfile.template"
+    template.write_text(template.read_text().replace("FROM ${PARENT_IMAGE}", "FROM ubuntu:24.04"))
+    m = replace(_with_toolchain(), base_parent=mf.Parent("pkg-ubuntu", "24.04"))
+    with pytest.raises(g.GenerateError, match=r"builds it on pkg-ubuntu:24.04, but its FROM is 'ubuntu:24.04'"):
+        g.render_doc_table(m, root)
+
+
 def test_toolchain_smoke_test_from_its_own_directory(repo):
     root = _toolchain_repo(repo)
     (root / "docker/pkg-ubuntu/smoke-test.sh").write_text("#!/bin/sh\n")
@@ -402,3 +477,69 @@ def test_inherited_config_check_catches_each_instruction():
     for instruction in ('ENTRYPOINT ["x"]', 'CMD ["/bin/bash"]', "USER 1000", "workdir /workspace"):
         assert _INHERITED_CONFIG_RE.findall(f"FROM ubuntu\n{instruction}\n")
     assert not _INHERITED_CONFIG_RE.findall("FROM ubuntu\n# CMD is inherited\nRUN echo USER\n")
+
+
+# --- base on pkg-ubuntu (epic vergil-project/.github#649 Task 7) ---
+
+_PIP_INSTALL_RE = re.compile(r"\bpip3?\s+install\b")
+_CORE_FRAGMENTS = ("vergil-apt", "core-python", "core-node", "core-tools")
+
+
+def _base_sources() -> list[Path]:
+    template = LIVE_ROOT / "docker" / g.BASE_KEY / "Dockerfile.template"
+    return [template, *(LIVE_ROOT / rel for rel in sorted(includes.fragments_of(template)))]
+
+
+def _code_lines(path: Path) -> list[str]:
+    return [line for line in path.read_text().splitlines() if not line.lstrip().startswith("#")]
+
+
+def test_base_installs_nothing_with_pip():
+    # Spec §5.2: no image runs pip install; base's Python tools are uv tools.
+    for path in _base_sources():
+        found = [line for line in _code_lines(path) if _PIP_INSTALL_RE.search(line)]
+        assert found == [], f"{path.relative_to(LIVE_ROOT)} runs pip install: {found}"
+
+
+def test_pip_install_check_catches_it():
+    assert _PIP_INSTALL_RE.search("RUN pip install --no-cache-dir uv")
+    assert _PIP_INSTALL_RE.search("    pip3 install yamllint && \\")
+    assert not _PIP_INSTALL_RE.search("RUN uv tool install yamllint")
+
+
+def test_base_template_shape():
+    # FROM its manifest parent, the marker removed in the first layer, the core
+    # runtimes and the checks included, and uv and nFPM left to the parent.
+    template = LIVE_ROOT / "docker" / g.BASE_KEY / "Dockerfile.template"
+    code = _code_lines(template)
+    instructions = [line for line in code if re.match(r"^[A-Z]+ ", line)]
+    assert instructions[:3] == ["ARG PARENT_IMAGE", "FROM ${PARENT_IMAGE}",
+                                'SHELL ["/bin/bash", "-o", "pipefail", "-c"]']
+    assert instructions[3] == "RUN rm -f /etc/vergil/package-toolchain"
+    fragments = includes.fragments_of(template)
+    for name in _CORE_FRAGMENTS:
+        assert f"docker/common/{name}.dockerfile" in fragments
+    for name in ("uv", "nfpm"):
+        assert f"docker/common/{name}.dockerfile" not in fragments
+    text = template.read_text()
+    assert "VERGIL_CORE_PYTHON=${CORE_PYTHON}" in text and "VERGIL_CORE_NODE_MAJOR=${CORE_NODE_MAJOR}" in text
+    assert re.search(r"^RUN --mount=type=bind,source=checks.sh,", text, re.MULTILINE)
+    for script in ("checks.sh", "checks-invariants.sh", "checks-defaults.sh"):
+        assert (template.parent / script).stat().st_mode & 0o111, f"{script} is not executable"
+
+
+def test_core_fragments_are_base_only():
+    # The core runtimes are base's: no language image installs them itself.
+    dm = includes.dependency_map(LIVE_ROOT)
+    for name in _CORE_FRAGMENTS:
+        includers = {k for k in dm if f"docker/common/{name}.dockerfile" in includes.fragments_of(
+            LIVE_ROOT / "docker" / k / includes.TEMPLATE)}
+        assert includers == {g.BASE_KEY}, name
+
+
+def test_core_args_match_the_fragments():
+    # Every CORE_* build arg generate.py emits is one a base fragment declares.
+    declared = {m.group(1) for path in _base_sources()
+                for m in re.finditer(r"^ARG (CORE_[A-Z0-9_]+)$", path.read_text(), re.MULTILINE)}
+    assert declared == set(_core_args())
+

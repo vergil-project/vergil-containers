@@ -22,16 +22,39 @@ def test_ts_node_includes_typescript_analysis_python_does_not():
     assert {k for k, v in dm.items() if TS_ANALYSIS in v} == {"ts-node"}
 
 
-def test_nested_include_is_followed():
-    # python includes node-markdownlint, which includes nodesource-node.
-    frags = includes.fragments_of(ROOT / "docker/python/Dockerfile.template")
-    assert "docker/common/node-markdownlint.dockerfile" in frags
-    assert "docker/common/nodesource-node.dockerfile" in frags
+def test_nested_include_is_followed(tmp_path):
+    # A template that includes a fragment which itself includes another, as
+    # common/node-markdownlint once included common/nodesource-node. Synthetic:
+    # neither file exists in the live tree any more.
+    _write(tmp_path, "docker/common/node-markdownlint.dockerfile", "# @include common/nodesource-node.dockerfile\n")
+    _write(tmp_path, "docker/common/nodesource-node.dockerfile", "RUN true\n")
+    _write(tmp_path, "docker/x/Dockerfile.template", "# @include common/node-markdownlint.dockerfile\n")
+    frags = includes.fragments_of(tmp_path / "docker/x/Dockerfile.template")
+    assert frags == {"docker/common/node-markdownlint.dockerfile", "docker/common/nodesource-node.dockerfile"}
+
+
+def _on_base() -> set[str]:
+    """The live families built FROM base, which reach every input of base
+    through their parent (epic vergil-project/.github#649)."""
+    live = mf.load_manifest(ROOT / "docker/versions/manifest.yml")
+    return {f.key for f in live.families if f.parent is not None and f.parent.name == mf.BASE_KEY}
+
+
+def test_ts_node_is_built_on_base_and_adds_only_its_own_fragments():
+    # Plan Task 13: ts-node gets every common tool from base, and includes
+    # only its own analysis fragment.
+    assert "ts-node" in _on_base()
+    template = ROOT / "docker/ts-node/Dockerfile.template"
+    assert includes.fragments_of(template) == {TS_ANALYSIS}
+    assert includes.fragments_of(ROOT / "docker/base/Dockerfile.template") <= includes.dependency_map(ROOT)["ts-node"]
 
 
 def test_security_tools_scoped_to_base():
+    # Only base includes it; an image built on base reaches it through base.
     dm = includes.dependency_map(ROOT)
-    assert {k for k, v in dm.items() if SECURITY_TOOLS in v} == {"base"}
+    assert {k for k in dm if SECURITY_TOOLS in includes.fragments_of(ROOT / "docker" / k / includes.TEMPLATE)} == {
+        "base"}
+    assert {k for k, v in dm.items() if SECURITY_TOOLS in v} == {"base"} | _on_base()
 
 
 def test_cpp_families_depend_on_shared_smoke_dir():
@@ -52,16 +75,26 @@ def test_every_family_and_base_present():
 
 def test_toolchain_fragments_are_scoped_to_the_toolchain_images():
     # vergil-containers#728: uv and the marker are the package toolchain
-    # images' own; the apt mirror is pkg-ubuntu's alone; nFPM is shared.
+    # images' own; the apt mirror is pkg-ubuntu's alone; nFPM is shared. base
+    # is built FROM pkg-ubuntu (epic vergil-project/.github#649), so it reaches
+    # pkg-ubuntu's fragments through its parent, never by including them, and so
+    # does every family built on base.
     dm = includes.dependency_map(ROOT)
 
     def users(fragment):
         return {k for k, v in dm.items() if f"docker/common/{fragment}" in v}
 
-    assert users("uv.dockerfile") == {"pkg-ubuntu", "pkg-rhel"}
-    assert users("package-toolchain-marker.dockerfile") == {"pkg-ubuntu", "pkg-rhel"}
-    assert users("apt-mirror.dockerfile") == {"pkg-ubuntu"}
+    def includers(fragment):
+        return {k for k in dm if f"docker/common/{fragment}" in includes.fragments_of(
+            ROOT / "docker" / k / includes.TEMPLATE)}
+
+    assert users("uv.dockerfile") == {"pkg-ubuntu", "pkg-rhel", "base"} | _on_base()
+    assert users("package-toolchain-marker.dockerfile") == {"pkg-ubuntu", "pkg-rhel", "base"} | _on_base()
+    assert users("apt-mirror.dockerfile") == {"pkg-ubuntu", "base"} | _on_base()
     assert {"pkg-ubuntu", "pkg-rhel", "base"} <= users("nfpm.dockerfile")
+    for fragment in ("uv.dockerfile", "package-toolchain-marker.dockerfile", "apt-mirror.dockerfile",
+                     "nfpm.dockerfile"):
+        assert not ({"base"} | _on_base()) & includers(fragment), fragment
 
 
 def _write(root: Path, rel: str, text: str) -> None:
@@ -135,6 +168,7 @@ def _toolchain_repo(root: Path) -> Path:
         families=tuple(f for f in tree.families if f.key != "pkg-ubuntu"),
         base_parent=tree.base_parent,
         toolchains=(mf.Toolchain("pkg-ubuntu", "UBUNTU_VERSION", ("26.04", "24.04")),),
+        core=tree.core,
     )
     _write(root, "docker/versions/manifest.yml", mf.dump_manifest(m))
     return root

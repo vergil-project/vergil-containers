@@ -1,35 +1,41 @@
 # Generated from Dockerfile.template — DO NOT EDIT the Dockerfile directly.
 # Canonical source: https://github.com/vergil-project/vergil-containers
-# dev-cpp-clang — C++ dev image, Clang/LLVM compiler family.
+# dev-cpp-clang — C++ dev image, Clang/LLVM compiler family, built on base
+# (Ubuntu 24.04; epic vergil-project/.github#649, spec §5.3).
+#
+# The parent comes from docker/versions/manifest.yml (`cpp-clang: parent:`):
+# docker/build.sh and the publish workflow pass it as PARENT_IMAGE. base carries
+# every common tool (git, gh, the validation and security tools, rpm, pandoc,
+# the core Python and Node, markdownlint), and its parent carries uv and nFPM,
+# so this image adds only the C++ toolchain.
 #
 # The compiler is a prebuilt stable binary from the official LLVM apt channel
-# (apt.llvm.org) — never built from source (spec vergil-project/.github#207
-# §3.5). CLANG_VERSION is the compiler-major matrix axis (see docker/build.sh
-# and the version discovery record in this directory's README.md). The shared,
+# (apt.llvm.org, the `llvm-toolchain-noble-<v>` suite) — never built from source
+# (spec vergil-project/.github#207 §3.5). It comes from apt, so it has no hash
+# pin in docker/pins/toolchains.yml: apt checks it against the channel's signed
+# index. CLANG_VERSION is the compiler-major matrix axis (see docker/build.sh and
+# the version discovery record in this directory's README.md). The shared,
 # compiler-agnostic analysis toolset is composed in via common/cpp-analysis.
 ARG CLANG_VERSION=20
-FROM debian:trixie-slim
+ARG PARENT_IMAGE
+FROM ${PARENT_IMAGE}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# --- System packages ---------------------------------------------------------
-# g++ supplies the GNU libstdc++ headers/runtime that Clang targets as its
-# default standard library (spec §3.3: stdlib = libstdc++).
+# Build-time only: apt never prompts. An ARG, so it is not set in the image.
+ARG DEBIAN_FRONTEND=noninteractive
+
+# --- GNU libstdc++ -----------------------------------------------------------
+# g++-14 supplies the GNU libstdc++ headers/runtime that Clang targets as its
+# default standard library (spec vergil-project/.github#207 §3.3: stdlib =
+# libstdc++). It is g++-14, not noble's unversioned g++ (13): Clang selects the
+# newest GCC installation that has a g++, so with only g++ it would build
+# against libstdc++ 13 (spike, epic vergil-project/.github#649, item 1).
+# checks.sh asserts the GCC 14 selection.
 RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-      git curl jq openssh-client pkg-config xz-utils gnupg ca-certificates \
-      g++ && \
+    apt-get install -y --no-install-recommends g++-14 && \
     rm -rf /var/lib/apt/lists/*
 
-# @include common/path-defaults.dockerfile
-# @include common/node-markdownlint.dockerfile
-# @include common/github-cli.dockerfile
-# @include common/validation-tools.dockerfile
-# @include common/python-support.dockerfile
 # @include common/cpp-analysis.dockerfile
-# @include common/nfpm.dockerfile
-# @include common/rpm.dockerfile
-# @include common/pandoc.dockerfile
 
 # --- Clang/LLVM compiler (prebuilt, apt.llvm.org) ----------------------------
 # The LLVM apt key + tools channel are already configured by the cpp-analysis
@@ -39,7 +45,7 @@ RUN apt-get update && \
 # 'llvm-cov gcov'`). update-alternatives exposes unversioned clang/clang++/
 # llvm-cov so CMake and gcovr resolve them without a version suffix.
 ARG CLANG_VERSION
-RUN echo "deb http://apt.llvm.org/trixie/ llvm-toolchain-trixie-${CLANG_VERSION} main" \
+RUN echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-${CLANG_VERSION} main" \
       > "/etc/apt/sources.list.d/llvm-toolchain-${CLANG_VERSION}.list" && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -64,9 +70,10 @@ ENV CC=clang \
 # `llvm-cov gcov` can read, but gcovr (and the compiler-agnostic coverage command)
 # invoke a bare `gcov`. Ship a `gcov` on PATH that dispatches to `llvm-cov gcov` so
 # coverage works in the Clang family without a compiler dimension in the tooling
-# registry (issue #487). /usr/local/bin precedes /usr/bin on PATH, and the Clang
-# image ships no native gcov, so this shim is the sole `gcov`. The GCC images keep
-# their native gcov (via update-alternatives) and are deliberately left untouched.
+# registry (issue #487). /usr/local/bin precedes /usr/bin on PATH, so this shim
+# shadows the gcov-14 that g++-14 brings (it installs no unversioned gcov). The
+# GCC images keep their native gcov (via update-alternatives) and are
+# deliberately left untouched.
 RUN printf '#!/bin/sh\nexec llvm-cov gcov "$@"\n' > /usr/local/bin/gcov && \
     chmod +x /usr/local/bin/gcov
 
@@ -77,5 +84,14 @@ RUN printf '#!/bin/sh\nexec llvm-cov gcov "$@"\n' > /usr/local/bin/gcov && \
 # any HOME. build_type is left at Conan's default (Release); the tooling INSTALL
 # command passes the correct `-s build_type` explicitly per invocation.
 RUN conan profile detect
+
+# --- Build-time checks -------------------------------------------------------
+# base's invariants, all three of base's defaults (this image changes none),
+# then the family's own: the Clang series, GCC 14's libstdc++, the tools major
+# and noble's cmake and cppcheck. checks.sh runs from the build context and is
+# not kept. Any failure fails the build. CLANG_TOOLS_VERSION is the
+# cpp-analysis fragment's build arg.
+RUN --mount=type=bind,source=checks.sh,target=/tmp/vergil-checks.sh \
+    bash /tmp/vergil-checks.sh "${CLANG_VERSION}" "${CLANG_TOOLS_VERSION}"
 
 WORKDIR /workspace

@@ -24,13 +24,29 @@
 # `versions`, newest first. Toolchain keys share one namespace with the
 # families and `base`, so any entry may name one as its parent. Toolchains
 # are built and published, but are never in window.json or the lifecycle.
+#
+# `core:` names the core runtimes `base` runs its own tools on (epic
+# vergil-project/.github#649): the vergil-python series and the nodejs.org
+# Node major. They have their own pins, separate from the family windows, and
+# move only by a reviewed PR that edits this section. The core Node major is
+# pinned in docker/pins/toolchains.yml.
 schema: 1
+core:
+  python: "3.15"
+  node: "22"
+base:
+  parent:
+    name: "pkg-ubuntu"
+    version: "24.04"
 families:
   - key: "python"
     language: "python"
     token_prefix: ""
     build_arg: "PYTHON_VERSION"
     automation: "pr"
+    parent:
+      name: "base"
+      version: "latest"
     versions:
       - version: "3.15"
         ga: 2026-10-09
@@ -57,6 +73,9 @@ families:
     token_prefix: ""
     build_arg: "GO_VERSION"
     automation: "pr"
+    parent:
+      name: "base"
+      version: "latest"
     versions:
       - version: "1.27"
         ga: 2026-08-19
@@ -73,6 +92,9 @@ families:
     token_prefix: ""
     build_arg: "RUST_VERSION"
     automation: "report"
+    parent:
+      name: "base"
+      version: "latest"
     versions:
       - version: "1.93"
         ga: 2026-01-22
@@ -89,6 +111,9 @@ families:
     token_prefix: "clang-"
     build_arg: "CLANG_VERSION"
     automation: "report"
+    parent:
+      name: "base"
+      version: "latest"
     versions:
       - version: "20"
         ga: 2025-03-04
@@ -105,6 +130,9 @@ families:
     token_prefix: "gcc-"
     build_arg: "GCC_VERSION"
     automation: "report"
+    parent:
+      name: "base"
+      version: "latest"
     versions:
       - version: "14"
         ga: 2024-05-07
@@ -116,6 +144,9 @@ families:
     token_prefix: "node-"
     build_arg: "NODE_MAJOR"
     automation: "report"
+    parent:
+      name: "base"
+      version: "latest"
     versions:
       - version: "24"
         ga: 2025-10-28

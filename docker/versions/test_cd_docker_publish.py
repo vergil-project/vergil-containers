@@ -110,11 +110,13 @@ def test_versions_emits_a_matrix_and_arch_matrix_per_tier(tmp_path):
     outputs = _outputs(tmp_path / "out")
     assert set(outputs) == set(_job("versions")["outputs"])
     entries = json.loads(MATRIX_JSON.read_text())["include"]
-    # No real manifest entry names a parent yet (epic vergil-project/.github#649
-    # sets them): everything is tier 0, and tiers 1 and 2 are skipped.
-    assert _tier_outputs(outputs, 0) == (entries, _arch(entries), "true")
-    for tier in (1, 2):
-        assert _tier_outputs(outputs, tier) == ([], [], "false")
+    # base is built FROM pkg-ubuntu (epic vergil-project/.github#649), so it is
+    # tier 1, and the language images built FROM base are tier 2.
+    tiers = {t: [e for e in entries if e["depth"] == t] for t in TIERS}
+    assert [e["language"] for e in tiers[1]] == ["base"]
+    assert tiers[2] and all(e["parent"] == {"language": "base", "version": "latest"} for e in tiers[2])
+    for tier in TIERS:
+        assert _tier_outputs(outputs, tier) == (tiers[tier], _arch(tiers[tier]), "true")
     # base is built like any other entry.
     assert {(e["language"], e["arch"]) for e in _arch(entries) if e["language"] == "base"} == {
         ("base", "amd64"), ("base", "arm64")}
@@ -123,7 +125,7 @@ def test_versions_emits_a_matrix_and_arch_matrix_per_tier(tmp_path):
 def test_versions_splits_a_tree_into_tiers(tmp_path):
     # The synthetic tree pkg-ubuntu <- base <- python: the only exercise of
     # tiers 1 and 2 until #649 sets a real parent.
-    entries = json.loads(g.render_matrix_json(_tree()))["include"]
+    entries = json.loads(g.render_matrix_json(_tree(), frozen.PINS))["include"]
     result = _read_matrix(tmp_path, json.dumps({"include": entries}))
     assert result.returncode == 0, result.stderr
     outputs = _outputs(tmp_path / "out")

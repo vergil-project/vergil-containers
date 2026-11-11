@@ -54,9 +54,13 @@ day of the check.
 
 ## Adapter quirks
 
-- The image is built `FROM python:<version>-slim`, the official Docker image,
-  with `PYTHON_VERSION` as the build argument. A new version can be added only
-  once that tag exists.
+- The image is built on `base` and unpacks the python-build-standalone
+  install-only build of the series, with `PYTHON_VERSION` as the build
+  argument and the series' pin from `docker/pins/toolchains.yml`. A new
+  version can be added only once a recent python-build-standalone release has
+  an install-only build of it for both amd64 and arm64. The adapter checks that
+  with the same python-build-standalone lookup the daily upstream refresh pins
+  from, so a version it adds is one the refresh can pin.
 - Deployed Python code needs a `vergil-python` runtime for its version (see
   below). Containers and runtimes are released separately, so there can be a
   gap of a few days between them. A packaged Python app or library deploys on
