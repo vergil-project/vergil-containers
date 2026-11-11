@@ -2820,6 +2820,8 @@
       
         
       
+        
+      
     
     
     
@@ -2964,6 +2966,34 @@
     
   
     Package Hygiene
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/os-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OS Usage
   
 
     
@@ -3313,10 +3343,9 @@ they carry.</p>
 tooling (MkDocs Material, mike, semgrep) and OpenTofu for in-sandbox
 OpenTofu module validation. It is the fallback image for repos with no
 detected language.</p>
-<p>An image built on <code>dev-base</code> (its base is <code>base:latest</code> in the table above)
-takes Python, yamllint, ansible-lint, and uv from it: see <a href="#python">Python</a> and
-<a href="#go">Go</a>. The images still built on an upstream image install them via the
-<code>python-support</code> fragment.
+<p>Every language image is built on <code>dev-base</code> (its base is <code>base:latest</code> in the
+table above) and takes Python, yamllint, ansible-lint, and uv from it: see
+<a href="#python">Python</a> and <a href="#go">Go</a>.
 <code>dev-base</code> is different: see <a href="#base">Base</a>.</p>
 <h2 id="python">Python<a class="headerlink" href="#python" title="Permanent link">&para;</a></h2>
 <p><strong>Base</strong>: <code>dev-base</code> (<code>base:latest</code>)</p>

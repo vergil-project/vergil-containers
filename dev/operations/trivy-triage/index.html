@@ -2698,6 +2698,8 @@
       
         
       
+        
+      
     
     
     
@@ -2947,6 +2949,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#findings-inside-a-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Findings inside a runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#escalate" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3106,6 +3119,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../os-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OS Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../rollback/" class="md-nav__link">
         
   
@@ -3232,6 +3273,17 @@
     <span class="md-ellipsis">
       
         Fix (bump the dependency)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#findings-inside-a-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Findings inside a runtime
       
     </span>
   </a>
@@ -3423,7 +3475,7 @@ action. It applies two categorical filters so the gate only fires on
 <li><strong><code>ignore-policy: .trivy/ignore-policy.rego</code></strong> — drops all <code>linux-libc-dev</code>
   (kernel header) findings, which are always false positives (containers use
   the host kernel, not the baked-in headers), including the rare one that
-  carries a Debian fix.</li>
+  carries a distribution fix.</li>
 </ul>
 <p><strong>Consequence for triage:</strong> with these filters, a gate failure now means a
 <strong>fixed, non-kernel</strong> CVE that is not yet in <code>.trivyignore</code>. That is either
@@ -3492,8 +3544,8 @@ context. Common patterns:</p>
 <td>The vulnerability requires attacker-controlled input, but the image only processes trusted data (e.g., XML parsing CVE in an image that never parses untrusted XML).</td>
 </tr>
 <tr>
-<td><strong>No Debian fix available</strong></td>
-<td>Status is <code>affected</code> with no fixed version. The vulnerability exists in the upstream Debian package and cannot be patched by the image build.</td>
+<td><strong>No fixed release of the carrier</strong></td>
+<td>The fix exists upstream, but no release of the binary or runtime that carries the vulnerable code ships it yet, so neither a rebuild nor a bump can reach it. The entry's removal condition names the release that will.</td>
 </tr>
 <tr>
 <td><strong>Go binary transitive dependency</strong></td>
@@ -3501,17 +3553,75 @@ context. Common patterns:</p>
 </tr>
 </tbody>
 </table>
+<p>A finding with no fix at all (<code>affected</code>) needs no entry: <code>ignore-unfixed</code>
+already keeps it from gating.</p>
 <h3 id="fix-bump-the-dependency">Fix (bump the dependency)<a class="headerlink" href="#fix-bump-the-dependency" title="Permanent link">&para;</a></h3>
 <p>Fix when:</p>
 <ul>
-<li>A patched version exists in Debian and can be pulled by rebuilding
-  the image (base image update).</li>
+<li>A patched Ubuntu package exists and a rebuild picks it up: <code>base</code> and
+  the package toolchain images run <code>apt-get upgrade</code> when they are built,
+  and every image is rebuilt nightly.</li>
+<li>A finding is inside a runtime and a fixed release of that runtime exists:
+  move the runtime as
+  <a href="#findings-inside-a-runtime">Findings inside a runtime</a> says, never
+  patch it in place.</li>
 <li>A tool version bump resolves the CVE and is low-risk.</li>
 <li>The vulnerability is in a package we install directly (not inherited
   from the base image).</li>
 </ul>
 <p>Fixing typically means bumping a version pin in a common fragment and
 rebuilding. This is a separate PR from the triage suppression.</p>
+<h3 id="findings-inside-a-runtime">Findings inside a runtime<a class="headerlink" href="#findings-inside-a-runtime" title="Permanent link">&para;</a></h3>
+<p>A runtime in an image belongs to one owner, and a finding inside it, including
+in the <code>npm</code> or <code>pip</code> the runtime bundles, is fixed only by that owner
+(spec §5.8 of epic
+<a href="https://github.com/vergil-project/.github/issues/649">vergil-project/.github#649</a>).
+vergil-containers never patches or upgrades anything inside a runtime: no
+<code>npm install -g npm</code>, no <code>pip install --upgrade pip</code>, no edit of a bundled
+<code>node_modules</code> or <code>site-packages</code>. Find the owner by the path Trivy reports:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Runtime</th>
+<th>Fixed by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/opt/vergil/python/&lt;core&gt;/</code></td>
+<td>The core Python, the <code>vergil-python&lt;core&gt;</code> package (<code>base</code> and every image built on it)</td>
+<td>A vergil-python release, triaged in <a href="https://github.com/vergil-project/vergil-python">vergil-python</a></td>
+</tr>
+<tr>
+<td><code>/opt/vergil/node/&lt;core-major&gt;/</code></td>
+<td>The core Node, a pinned nodejs.org tarball (<code>base</code> and every image built on it)</td>
+<td>Moving the core Node pin: the <code>node</code> entry for the manifest's <code>core.node</code> major in <code>docker/pins/toolchains.yml</code>, or the <code>core.node</code> major itself in a reviewed PR</td>
+</tr>
+<tr>
+<td><code>/opt/vergil/vergil-tooling/venv</code></td>
+<td>vergil-tooling's package venv, installed when a repo's container cache is built, so not in a published image</td>
+<td>A vergil-tooling release</td>
+</tr>
+<tr>
+<td><code>/opt/python/&lt;series&gt;/</code></td>
+<td>A python family runtime, a pinned python-build-standalone release (<code>dev-python:&lt;series&gt;</code>)</td>
+<td>Moving that series' pin in <code>docker/pins/toolchains.yml</code></td>
+</tr>
+<tr>
+<td><code>/opt/node/&lt;major&gt;/</code></td>
+<td>A ts-node family runtime, a pinned nodejs.org tarball (<code>dev-ts-node:&lt;major&gt;</code>)</td>
+<td>Moving that major's pin in <code>docker/pins/toolchains.yml</code></td>
+</tr>
+</tbody>
+</table>
+<p>The daily upstream refresh moves each pin in <code>docker/pins/toolchains.yml</code> to
+the newest release of its series or major, so a fix in a newer release
+usually arrives as that refresh's PR. When no fixed release of the runtime
+exists yet, the finding gets a <code>.trivyignore</code> entry under that file's rules: a
+carrier group naming the runtime and its path, why the vulnerable code is not
+exercised, and the removal condition (the release that fixes it). The groups
+for the <code>npm</code> bundled in the Node tarballs are the model.</p>
 <h3 id="escalate">Escalate<a class="headerlink" href="#escalate" title="Permanent link">&para;</a></h3>
 <p>Escalate when:</p>
 <ul>
@@ -3531,7 +3641,7 @@ and rationale for each decision.</p>
 <h3 id="add-suppressions-to-trivyignore">Add suppressions to .trivyignore<a class="headerlink" href="#add-suppressions-to-trivyignore" title="Permanent link">&para;</a></h3>
 <p>Each entry must include a comment block explaining why the CVE is
 suppressed. Follow the existing format:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a># &lt;package&gt; (&lt;distro&gt;) — &lt;brief description of the vulnerability&gt;.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a># &lt;package&gt; (&lt;carrier&gt;) — &lt;brief description of the vulnerability&gt;.
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a># &lt;Why it is safe to suppress in this context&gt;. &lt;Fix status&gt;.
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a># Issue #&lt;N&gt;.
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>CVE-XXXX-XXXXX
@@ -3550,10 +3660,11 @@ package or category, not chronologically.</p>
 </ol>
 <h2 id="step-5-post-triage-hygiene">Step 5: Post-triage hygiene<a class="headerlink" href="#step-5-post-triage-hygiene" title="Permanent link">&para;</a></h2>
 <h3 id="remove-stale-suppressions">Remove stale suppressions<a class="headerlink" href="#remove-stale-suppressions" title="Permanent link">&para;</a></h3>
-<p>When a Debian package ships a fix for a previously-suppressed CVE, the
+<p>When the carrier of a previously-suppressed CVE ships a fix (a new tool
+release, a runtime release its pin moves to, or an Ubuntu package update), the
 entry should be removed from <code>.trivyignore</code> on the next triage pass.
-Trivy will no longer flag the CVE (since the fixed package is pulled
-during image build), so the suppression becomes dead weight.</p>
+Trivy will no longer flag the CVE once the image is built with the fixed
+carrier, so the suppression becomes dead weight.</p>
 <h3 id="track-fixable-cves">Track fixable CVEs<a class="headerlink" href="#track-fixable-cves" title="Permanent link">&para;</a></h3>
 <p>If a CVE has a fix available but suppressing is the expedient choice
 (e.g., the fix requires a base image rebuild or a tool version bump),

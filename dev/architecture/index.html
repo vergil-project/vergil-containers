@@ -2704,6 +2704,8 @@
       
         
       
+        
+      
     
     
     
@@ -2848,6 +2850,34 @@
     
   
     Package Hygiene
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/os-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OS Usage
   
 
     
@@ -3135,39 +3165,36 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker/
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── build.sh                    # Builds all images
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── generate.sh                 # Expands templates into Dockerfiles
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── common/
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   ├── github-cli.dockerfile
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   ├── node-markdownlint.dockerfile
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│   ├── path-defaults.dockerfile
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   ├── python-support.dockerfile
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│   ├── security-tools.dockerfile
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│   └── validation-tools.dockerfile
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── base/Dockerfile.template
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── python/Dockerfile.template
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── go/Dockerfile.template
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>├── rust/Dockerfile.template
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>├── cpp-clang/Dockerfile.template
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>├── cpp-gcc/Dockerfile.template
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>├── ts-node/Dockerfile.template
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>└── versions/
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    ├── manifest.yml            # The single source of language versions
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    ├── generate.py             # Writes every derived version list
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    ├── matrix.json             # The generated publish matrix (CD and nightly)
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    ├── includes.py             # Each image's input files, for PR selection
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    ├── selection.py            # The images a pull request's change reaches
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    ├── pr_jobs.py              # Groups the selected images into PR build jobs
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    └── lifecycle/              # The nightly lifecycle check and adapters
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── common/                     # Shared fragments (&lt;name&gt;.dockerfile)
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├── pkg-ubuntu/Dockerfile.template
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>├── pkg-rhel/Dockerfile.template
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── base/Dockerfile.template
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>├── python/Dockerfile.template
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── go/Dockerfile.template
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── rust/Dockerfile.template
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── cpp-clang/Dockerfile.template
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── cpp-gcc/Dockerfile.template
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── ts-node/Dockerfile.template
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>└── versions/
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    ├── manifest.yml            # The single source of language versions
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    ├── generate.py             # Writes every derived version list
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    ├── matrix.json             # The generated publish matrix (CD and nightly)
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    ├── includes.py             # Each image's input files, for PR selection
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    ├── selection.py            # The images a pull request's change reaches
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    ├── pr_jobs.py              # Groups the selected images into PR build jobs
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    └── lifecycle/              # The nightly lifecycle check and adapters
 </code></pre></div>
 <h3 id="templating">Templating<a class="headerlink" href="#templating" title="Permanent link">&para;</a></h3>
 <p>Each <code>Dockerfile.template</code> contains standard Dockerfile instructions plus
 <code># @include common/&lt;fragment&gt;.dockerfile</code> directives. <code>generate.sh</code>
 replaces each directive with the full contents of the referenced fragment,
-producing a final <code>Dockerfile</code> in the same directory. Includes nest: a
-fragment may include another fragment (for example
-<code>node-markdownlint.dockerfile</code> includes <code>nodesource-node.dockerfile</code>).</p>
+producing a final <code>Dockerfile</code> in the same directory. Includes may nest: a
+fragment may include another fragment, and <code>generate.sh</code> caps the depth so
+that an include cycle is an error.</p>
 <p>This eliminates duplication — shared tool installations (GitHub CLI,
-Node.js, markdownlint, validation tools) are maintained once in
-<code>docker/common/</code> and included by every template that needs them.</p>
+markdownlint, validation tools) are maintained once in <code>docker/common/</code>.
+Since epic vergil-project/.github#649 the common fragments are included by
+<code>base</code> alone, and every language image gets them by being built <code>FROM</code> it.</p>
 <h3 id="version-management">Version management<a class="headerlink" href="#version-management" title="Permanent link">&para;</a></h3>
 <p>Most tools are unpinned and resolve their latest release at build time.
 Each tool held at a version carries a justification in
@@ -3176,33 +3203,32 @@ to the leading edge by the daily <code>upstream-refresh</code> job. See
 <a href="../operations/version-management/">Tool Version Management</a> for the
 pinning model.</p>
 <h2 id="common-tooling-layer">Common Tooling Layer<a class="headerlink" href="#common-tooling-layer" title="Permanent link">&para;</a></h2>
-<p>Every language image includes the following shared fragments:</p>
+<p><code>dev-base</code> includes the following shared fragments, and every language image
+carries them because it is built <code>FROM</code> <code>dev-base</code>:</p>
 <ul>
 <li><strong><code>path-defaults.dockerfile</code></strong> — Sets PATH for <code>uv tool install</code>
   entry points across GitHub Actions and local contexts.</li>
-<li><strong><code>node-markdownlint.dockerfile</code></strong> — Node.js via NodeSource apt repo
-  (installed by the nested <code>nodesource-node.dockerfile</code>, which fails the
-  build unless it gets NodeSource Node <code>NODE_MAJOR</code> with npm)
-  and markdownlint-cli via npm.</li>
 <li><strong><code>github-cli.dockerfile</code></strong> — GitHub CLI via the official apt repo.</li>
 <li><strong><code>validation-tools.dockerfile</code></strong> — Architecture-aware binary
   installs of shellcheck, shfmt, actionlint, git-cliff, and hadolint.
   Uses <code>TARGETARCH</code> (injected by Docker Buildx) to select the correct
   binary for amd64 or arm64.</li>
 <li><strong><code>security-tools.dockerfile</code></strong> — Security analysis tools installed
-  from binary releases. Currently includes scorecard (OpenSSF).</li>
-<li><strong><code>python-support.dockerfile</code></strong> — Minimal Python plus yamllint and
-  uv, used by non-Python images.</li>
-<li><strong><code>nfpm.dockerfile</code></strong> — nfpm release binary, which builds <code>.deb</code> and
-  <code>.rpm</code> packages from one declarative config.</li>
+  from binary releases: scorecard (OpenSSF) and trivy.</li>
 <li><strong><code>rpm.dockerfile</code></strong> — The distro's <code>rpm</code>, the peer of <code>dpkg</code>, for
   inspecting <code>.rpm</code> packages and comparing versions (<code>rpm.vercmp</code>).</li>
 <li><strong><code>pandoc.dockerfile</code></strong> — pandoc for Markdown to <code>.docx</code>/HTML
   conversion (no TeX; PDF output is opt-in).</li>
 </ul>
-<p><code>dev-python</code> includes no fragment: it is built <code>FROM</code> <code>dev-base</code> and adds only
-the family Python, a pinned python-build-standalone build at
-<code>/opt/python/&lt;version&gt;</code>.</p>
+<p>uv and nFPM (<code>uv.dockerfile</code>, <code>nfpm.dockerfile</code>) are included by the package
+toolchain images, and <code>dev-base</code> takes them from its parent.</p>
+<p>A language image adds only its family's own toolchain. <code>dev-python</code>,
+<code>dev-go</code> and <code>dev-rust</code> include no fragment. The two C++ families include
+<code>cpp-analysis.dockerfile</code>, and <code>dev-ts-node</code> includes
+<code>typescript-analysis.dockerfile</code>. <code>dev-python</code> adds the family Python, a
+pinned python-build-standalone build at <code>/opt/python/&lt;version&gt;</code>, and
+<code>dev-ts-node</code> adds the family Node, a pinned nodejs.org tarball at
+<code>/opt/node/&lt;major&gt;</code>.</p>
 <p>The <code>dev-base</code> image is built <code>FROM</code> the package toolchain image
 <code>pkg-ubuntu:24.04</code> (epic vergil-project/.github#649), from which it takes uv
 and nFPM. It includes the common fragments plus documentation tooling (MkDocs
