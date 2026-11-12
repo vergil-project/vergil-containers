@@ -71,8 +71,10 @@ docker/build.sh python     # one family, after its parent images
 to an http Ubuntu mirror of the archive the image's Ubuntu release uses
 for your architecture (an `ubuntu-ports` one for arm64 on 24.04, the main
 `ubuntu` archive otherwise) to have apt try it before the images' default
-mirror list. The single-image
-commands below work with either `nerdctl build` or `docker build`.
+mirror list. 
+`build.sh` passes the `pkg-` images the UTC date as their `UPGRADE_DATE` build argument, so their OS upgrade re-runs on the first build of each day; set `VRG_UPGRADE_DATE` (`YYYY-MM-DD`) to pass another date. A `pkg-` image built by hand needs `--build-arg UPGRADE_DATE=$(date -u +%Y-%m-%d)`, and fails without it.
+The single-image commands below work with either `nerdctl build` or
+`docker build`.
 
 Build a single image by hand with its matrix entry's build arguments from
 `docker/versions/matrix.json`, and `PARENT_IMAGE` for an image built on a
