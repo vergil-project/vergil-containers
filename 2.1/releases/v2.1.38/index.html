@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../">
+        <link rel="prev" href="../v2.1.39/">
       
       
         <link rel="next" href="../v2.1.37/">
@@ -635,6 +635,8 @@
       
         
       
+        
+      
     
     
     
@@ -690,6 +692,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1.39/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.39
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3300,6 +3330,7 @@ Add a Package toolchain images section to the images page (contents, consumers, 
 Give amd64 and arm64 an apt mirror list that ends with mirrors outside ubuntu.com (amd64: mirrors.edge.kernel.org, mirrors.dotsrc.org; arm64: mirrors.dotsrc.org, mirrors.mit.edu ubuntu-ports), rewrite ports.ubuntu.com to it on arm64, make apt-get update fail when no mirror serves an index (APT::Update::Error-Mode any), and add an APT_MIRROR build arg (VRG_APT_MIRROR in build.sh) that puts a nearer mirror first for local builds. The pkg-ubuntu build-time check now asserts the list and the error mode on both architectures. Ref vergil-project/vergil-containers#837</p>
 </li>
 </ul>
+<p><strong>CI Evidence:</strong> All gates passed — full audit bundle available. <a href="https://github.com/vergil-project/vergil-containers/releases/download/v2.1.38/v2.1.38-ci-evidence.tar.gz">Download →</a></p>
 
 
 

@@ -628,6 +628,8 @@
       
         
       
+        
+      
     
     
     
@@ -680,6 +682,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.39/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.39
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3627,8 +3657,16 @@ nothing else: no common layer, no vergil-tooling.</p>
 <ul>
 <li><strong>OS upgrade</strong>: the packages are upgraded when the image is built, and
   the images are rebuilt nightly, so a package job starts on a current OS.
-  Package lists and the dnf cache are not kept: they would go stale between
-  rebuilds, so a job that needs them runs its own <code>apt-get update</code>.</li>
+  Every build passes the upgrade step the UTC date (<code>YYYY-MM-DD</code>) as the
+  <code>UPGRADE_DATE</code> build argument, computed once per run: the publish
+  workflow's <code>versions</code> job, PR CI's <code>select</code> job and <code>docker/build.sh</code> each
+  compute it. The date is part of that layer's build cache key, so the
+  first build of each UTC day re-runs the upgrade and later builds that day
+  reuse it. Without it, a cached upgrade would be reused until the upstream
+  image changed, and a build would miss the distribution's security fixes.
+  A build with no date, or a malformed one, fails. Package lists and the
+  dnf cache are not kept: they would go stale between rebuilds, so a job
+  that needs them runs its own <code>apt-get update</code>.</li>
 <li><strong>OS prerequisites on <code>pkg-rhel</code></strong>: UBI ships <code>curl-minimal</code>, which
   conflicts with the full <code>curl</code> package, so the image asks dnf for
   <code>/usr/bin/curl</code> and <code>/usr/bin/gpg</code> by path and accepts whichever package
@@ -3647,16 +3685,20 @@ nothing else: no common layer, no vergil-tooling.</p>
   sources are rewritten to <code>mirror+file:/etc/apt/apt-mirrors.txt</code>, so apt
   fails over down a list that starts with Canonical's hosts and ends with
   mirrors outside <code>ubuntu.com</code>, so a DNS failure of that zone does not
-  stop the build. On amd64 the list is the in-region Azure mirror,
-  <code>archive.ubuntu.com</code> and <code>security.ubuntu.com</code>, then
-  <code>mirrors.edge.kernel.org</code> and <code>mirrors.dotsrc.org</code>; on arm64 it is
-  <code>ports.ubuntu.com</code>, then <code>mirrors.dotsrc.org</code> and <code>mirrors.mit.edu</code>
-  (their <code>ubuntu-ports</code> archives). apt checks every index against the
-  archive's signed <code>InRelease</code>, so a third-party mirror cannot alter a
-  package. For a local build,
+  stop the build. The list follows the archive the upstream image's
+  sources name, not the architecture: Ubuntu 26.04 serves arm64 from the
+  main archive, while 24.04 serves it from <code>ports.ubuntu.com</code>. For the
+  main archive (amd64, and arm64 from 26.04) the list is the in-region
+  Azure mirror, <code>archive.ubuntu.com</code> and <code>security.ubuntu.com</code>, then
+  <code>mirrors.edge.kernel.org</code> and <code>mirrors.dotsrc.org</code>; for the ports
+  archive (arm64 on 24.04) it is <code>ports.ubuntu.com</code>, then
+  <code>mirrors.dotsrc.org</code> and <code>mirrors.mit.edu</code> (their <code>ubuntu-ports</code>
+  archives). Sources naming any other <code>ubuntu.com</code> host fail the build.
+  apt checks every index against the archive's signed <code>InRelease</code>, so a
+  third-party mirror cannot alter a package. For a local build,
   <code>VRG_APT_MIRROR=http://&lt;mirror&gt;/ubuntu/ docker/build.sh</code> (an
-  <code>ubuntu-ports</code> URI on arm64) puts a nearer mirror first; CI and publish
-  never set it. vergil-tooling passes the retry, timeout and lock options
+  <code>ubuntu-ports</code> URI for arm64 on 24.04) puts a nearer mirror first; CI
+  and publish never set it. vergil-tooling passes the retry, timeout and lock options
   on each apt command line it runs; in <code>pkg-ubuntu</code> its apt calls also
   read the error mode from this file.</li>
 <li><strong>Toolchain marker</strong>: <code>/etc/vergil/package-toolchain</code> has one

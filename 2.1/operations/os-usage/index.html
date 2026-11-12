@@ -628,6 +628,8 @@
       
         
       
+        
+      
     
     
     
@@ -680,6 +682,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.39/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.39
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3203,9 +3233,9 @@ parts are still moving to it:</p>
   (<a href="https://github.com/vergil-project/vergil-vm/issues/395">vergil-vm#395</a>);
   <code>vrg-vm update</code> does not change the OS.</li>
 <li><strong>Runner labels.</strong> In vergil-containers, the image build legs run on
-  <code>ubuntu-24.04</code> and <code>ubuntu-24.04-arm</code>, and its other jobs still name
-  <code>ubuntu-latest</code> until
-  <a href="https://github.com/vergil-project/vergil-containers/issues/776">vergil-containers#776</a>.
+  <code>ubuntu-24.04</code> and <code>ubuntu-24.04-arm</code>, and every other job runs on
+  <code>ubuntu-24.04</code>
+  (<a href="https://github.com/vergil-project/vergil-containers/issues/776">vergil-containers#776</a>).
   Once every repo names the release, a check in vergil-tooling's validation
   refuses <code>ubuntu-latest</code> in a workflow
   (<a href="https://github.com/vergil-project/vergil-tooling/issues/4129">vergil-tooling#4129</a>).</li>
