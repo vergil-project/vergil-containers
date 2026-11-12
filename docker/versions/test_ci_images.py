@@ -10,11 +10,13 @@ scripts/bin/pr-image-build, for real (with `docker` stubbed).
 """
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
 import sys
 import tomllib
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -132,6 +134,7 @@ def test_select_reads_the_whole_history_and_outputs_the_matrices():
         "matrix": "${{ steps.select.outputs.matrix }}",
         "arch-matrix": "${{ steps.select.outputs.arch-matrix }}",
         "has": "${{ steps.select.outputs.has }}",
+        "upgrade-date": "${{ steps.select.outputs.upgrade-date }}",
     }
     env = _step("select", "select")["env"]
     assert env["BASE_SHA"] == "${{ github.event.pull_request.base.sha }}"
@@ -161,6 +164,8 @@ def test_build_runs_the_build_script_with_its_entries():
     assert step["run"].strip() == 'scripts/bin/pr-image-build "$ARCH"'
     assert step["env"]["ARCH"] == "${{ matrix.arch }}"
     assert step["env"]["ENTRIES_JSON"] == "${{ toJSON(matrix.entries) }}"
+    # One date for the run, from select, so both architectures share it.
+    assert step["env"]["UPGRADE_DATE"] == "${{ needs.select.outputs.upgrade-date }}"
     # The publish pipeline's Trivy image, so PR CI scans as publish does.
     publish = (WORKFLOWS / "cd-docker-publish.yml").read_text()
     assert f"TRIVY_IMAGE: {step['env']['TRIVY_IMAGE']}" in publish
@@ -370,7 +375,7 @@ def test_select_builds_only_the_changed_family(tmp_path, repo):
     result, out = _select(tmp_path, repo, base, head)
     assert result.returncode == 0, result.stdout + result.stderr
     outputs = _outputs(out)
-    assert set(outputs) == {"matrix", "arch-matrix", "has"}
+    assert set(outputs) == {"matrix", "arch-matrix", "has", "upgrade-date"}
     assert [e["language"] for e in json.loads(outputs["matrix"])["include"]] == ["go"]
     assert _job_names(outputs) == [("go:1.26", "amd64"), ("go:1.26", "arm64")]
     for job in json.loads(outputs["arch-matrix"])["include"]:
@@ -392,7 +397,21 @@ def test_select_of_a_docs_change_selects_nothing(tmp_path, repo):
     head = _commit(repo, "README.md", "changed\n")
     result, out = _select(tmp_path, repo, base, head)
     assert result.returncode == 0, result.stdout + result.stderr
-    assert _outputs(out) == {"matrix": '{"include":[]}', "arch-matrix": '{"include":[]}', "has": "false"}
+    outputs = _outputs(out)
+    assert outputs.pop("upgrade-date")
+    assert outputs == {"matrix": '{"include":[]}', "arch-matrix": '{"include":[]}', "has": "false"}
+
+
+def test_select_outputs_the_runs_utc_date(tmp_path, repo):
+    base = _git(repo, "rev-parse", "HEAD")
+    head = _commit(repo, "README.md", "changed\n")
+    before = datetime.now(timezone.utc).date().isoformat()
+    result, out = _select(tmp_path, repo, base, head)
+    after = datetime.now(timezone.utc).date().isoformat()
+    assert result.returncode == 0, result.stdout + result.stderr
+    date = _outputs(out)["upgrade-date"]
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", date)
+    assert date in (before, after)
 
 
 def test_select_warns_and_builds_everything_for_an_unclassified_path(tmp_path, repo):
@@ -474,7 +493,18 @@ esac
 exit 0
 """
 
-STUB_GENERATE = '#!/usr/bin/env bash\nprintf "generate %s\\n" "$*" >> "$STUB_LOG"\n'
+# Writes a Dockerfile that declares UPGRADE_DATE for a pkg- image, as the real
+# templates do, and none at all for an image named in STUB_NO_DOCKERFILE.
+STUB_GENERATE = r"""#!/usr/bin/env bash
+printf 'generate %s\n' "$*" >> "$STUB_LOG"
+case " ${STUB_NO_DOCKERFILE:-} " in *" $1 "*) exit 0 ;; esac
+dir="$(dirname "$0")/$1"
+mkdir -p "$dir"
+case "$1" in
+  pkg-*) printf 'FROM scratch\nARG UPGRADE_DATE\n' ;;
+  *) printf 'FROM scratch\n' ;;
+esac > "$dir/Dockerfile"
+"""
 
 STUB_SMOKE = (
     '#!/usr/bin/env bash\nprintf "smoke %s\\n" "$*" >> "$STUB_LOG"\n'
@@ -493,7 +523,10 @@ PYTHON = _entry("python", "3.15", {"PYTHON_VERSION": "3.15"})
 BASE_PARENT = {"language": "base", "version": "latest"}
 
 
-def _build(tmp_path, entries, arch="amd64", **fail):
+DATE = "2026-11-12"
+
+
+def _build(tmp_path, entries, arch="amd64", upgrade_date=DATE, **fail):
     if shutil.which("jq") is None:
         raise AssertionError("jq is not on PATH; pr-image-build needs it")
     work = tmp_path / "workspace"
@@ -506,6 +539,7 @@ def _build(tmp_path, entries, arch="amd64", **fail):
     env = {"ENTRIES_JSON": json.dumps(entries), "GITHUB_WORKSPACE": str(work),
            "GITHUB_STEP_SUMMARY": str(summary), "TRIVY_IMAGE": "stub/trivy",
            "TRIVY_SCAN_ATTEMPTS": "1", "TRIVY_SCAN_RETRY_DELAY": "0", "STUB_LOG": str(log),
+           "UPGRADE_DATE": upgrade_date,
            "PATH": f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}",
            **{f"STUB_{k.upper()}": " ".join(v) for k, v in fail.items()}}
     env.pop("GITHUB_OUTPUT", None)
@@ -530,6 +564,32 @@ def test_build_one_platform_loaded_with_its_args_and_the_read_only_cache(tmp_pat
     assert log.index("generate python") < log.index(build)
     # Nothing leaves the runner: a leaf image is not even pushed locally.
     assert not [line for line in log if line.startswith("docker push")]
+
+
+def test_build_passes_the_upgrade_date_only_to_an_image_that_declares_it(tmp_path):
+    rhel = _entry("pkg-rhel", "9", {"RHEL_VERSION": "9"})
+    result, log = _build(tmp_path, [rhel, PYTHON])
+    assert result.returncode == 0, result.stdout + result.stderr
+    rhel_build, python_build = _builds(log)
+    assert f" --build-arg RHEL_VERSION=9 --build-arg UPGRADE_DATE={DATE} --tag " in rhel_build
+    assert "UPGRADE_DATE" not in python_build
+
+
+@pytest.mark.parametrize("date", ["", "20261112", "2026-11-12 x"])
+def test_build_refuses_a_missing_or_malformed_upgrade_date(tmp_path, date):
+    result, log = _build(tmp_path, [PYTHON], upgrade_date=date)
+    assert result.returncode == 2
+    assert "::error title=No upgrade date::" in result.stdout
+    assert _builds(log) == []
+
+
+def test_build_fails_an_image_whose_dockerfile_was_not_generated(tmp_path):
+    go = _entry("go", "1.26", {"GO_VERSION": "1.26"})
+    result, log = _build(tmp_path, [PYTHON, go], no_dockerfile=["python"])
+    assert result.returncode == 1
+    assert "::error title=No Dockerfile::docker/generate.sh python did not write" in result.stdout
+    (build,) = _builds(log)
+    assert "/pr/go:1.26 " in build
 
 
 def test_build_scans_each_image_with_the_publish_scan_and_gate(tmp_path):

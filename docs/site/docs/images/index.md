@@ -224,8 +224,16 @@ Notes on the rows:
 
 - **OS upgrade**: the packages are upgraded when the image is built, and
   the images are rebuilt nightly, so a package job starts on a current OS.
-  Package lists and the dnf cache are not kept: they would go stale between
-  rebuilds, so a job that needs them runs its own `apt-get update`.
+  Every build passes the upgrade step the UTC date (`YYYY-MM-DD`) as the
+  `UPGRADE_DATE` build argument, computed once per run: the publish
+  workflow's `versions` job, PR CI's `select` job and `docker/build.sh` each
+  compute it. The date is part of that layer's build cache key, so the
+  first build of each UTC day re-runs the upgrade and later builds that day
+  reuse it. Without it, a cached upgrade would be reused until the upstream
+  image changed, and a build would miss the distribution's security fixes.
+  A build with no date, or a malformed one, fails. Package lists and the
+  dnf cache are not kept: they would go stale between rebuilds, so a job
+  that needs them runs its own `apt-get update`.
 - **OS prerequisites on `pkg-rhel`**: UBI ships `curl-minimal`, which
   conflicts with the full `curl` package, so the image asks dnf for
   `/usr/bin/curl` and `/usr/bin/gpg` by path and accepts whichever package
@@ -244,16 +252,20 @@ Notes on the rows:
   sources are rewritten to `mirror+file:/etc/apt/apt-mirrors.txt`, so apt
   fails over down a list that starts with Canonical's hosts and ends with
   mirrors outside `ubuntu.com`, so a DNS failure of that zone does not
-  stop the build. On amd64 the list is the in-region Azure mirror,
-  `archive.ubuntu.com` and `security.ubuntu.com`, then
-  `mirrors.edge.kernel.org` and `mirrors.dotsrc.org`; on arm64 it is
-  `ports.ubuntu.com`, then `mirrors.dotsrc.org` and `mirrors.mit.edu`
-  (their `ubuntu-ports` archives). apt checks every index against the
-  archive's signed `InRelease`, so a third-party mirror cannot alter a
-  package. For a local build,
+  stop the build. The list follows the archive the upstream image's
+  sources name, not the architecture: Ubuntu 26.04 serves arm64 from the
+  main archive, while 24.04 serves it from `ports.ubuntu.com`. For the
+  main archive (amd64, and arm64 from 26.04) the list is the in-region
+  Azure mirror, `archive.ubuntu.com` and `security.ubuntu.com`, then
+  `mirrors.edge.kernel.org` and `mirrors.dotsrc.org`; for the ports
+  archive (arm64 on 24.04) it is `ports.ubuntu.com`, then
+  `mirrors.dotsrc.org` and `mirrors.mit.edu` (their `ubuntu-ports`
+  archives). Sources naming any other `ubuntu.com` host fail the build.
+  apt checks every index against the archive's signed `InRelease`, so a
+  third-party mirror cannot alter a package. For a local build,
   `VRG_APT_MIRROR=http://<mirror>/ubuntu/ docker/build.sh` (an
-  `ubuntu-ports` URI on arm64) puts a nearer mirror first; CI and publish
-  never set it. vergil-tooling passes the retry, timeout and lock options
+  `ubuntu-ports` URI for arm64 on 24.04) puts a nearer mirror first; CI
+  and publish never set it. vergil-tooling passes the retry, timeout and lock options
   on each apt command line it runs; in `pkg-ubuntu` its apt calls also
   read the error mode from this file.
 - **Toolchain marker**: `/etc/vergil/package-toolchain` has one

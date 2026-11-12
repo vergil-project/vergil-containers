@@ -41,7 +41,7 @@ env:
 jobs:
   hadolint:
     name: Lint Dockerfiles
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/vergil-project/prod-base:latest
     steps:
@@ -69,10 +69,11 @@ jobs:
   # MAX_DEPTH), three outputs: `matrix-N` (the entries, one publish job each),
   # `arch-matrix-N` (each entry once per architecture, with the native runner
   # that builds it) and `has-N` ("true" or "false"; an empty tier's jobs are
-  # skipped).
+  # skipped). One more, `upgrade-date`, is this run's UTC date (YYYY-MM-DD),
+  # which every image that declares the UPGRADE_DATE build arg is built with.
   versions:
     name: Read the version matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix-0: ${{ steps.read.outputs.matrix-0 }}
       arch-matrix-0: ${{ steps.read.outputs.arch-matrix-0 }}
@@ -83,6 +84,7 @@ jobs:
       matrix-2: ${{ steps.read.outputs.matrix-2 }}
       arch-matrix-2: ${{ steps.read.outputs.arch-matrix-2 }}
       has-2: ${{ steps.read.outputs.has-2 }}
+      upgrade-date: ${{ steps.read.outputs.upgrade-date }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -116,6 +118,10 @@ jobs:
             has="$(jq -r --argjson t "$tier" 'any(.include[]; .depth == $t)' "$matrix_json")"
             outputs+="matrix-${tier}=${matrix}"$'\n'"arch-matrix-${tier}=${arch_matrix}"$'\n'"has-${tier}=${has}"$'\n'
           done
+          # The UTC date every image that declares UPGRADE_DATE (the pkg-
+          # images' OS upgrade) is built with: computed once, so every tier and
+          # architecture of this run gets the same one (vergil-containers#845).
+          outputs+="upgrade-date=$(date -u +%Y-%m-%d)"$'\n'
           printf '%s' "$outputs" >> "$GITHUB_OUTPUT"
 
   # Tier 0: one native build per image and architecture, pushed by digest only
@@ -170,7 +176,10 @@ jobs:
           merge-multiple: true
 
       # Every key of the entry's build-args map is a --build-arg (base's map is
-      # empty), and a child also gets PARENT_IMAGE, its parent by digest.
+      # empty), and a child also gets PARENT_IMAGE, its parent by digest. An
+      # image whose Dockerfile declares UPGRADE_DATE (the pkg- images, before
+      # their OS upgrade) gets the run's UTC date, so the upgrade's cached
+      # layer is reused only within that day (vergil-containers#845).
       - name: Resolve the build arguments
         id: args
         env:
@@ -178,6 +187,8 @@ jobs:
           PARENT_JSON: ${{ toJSON(matrix.parent) }}
           PARENT_DIR: ${{ runner.temp }}/parent
           PREFIX: ${{ inputs.image-prefix }}
+          DOCKERFILE: "docker/${{ matrix.language }}/Dockerfile"
+          UPGRADE_DATE: ${{ needs.versions.outputs.upgrade-date }}
         run: |
           set -euo pipefail
           pairs=()
@@ -187,6 +198,17 @@ jobs:
               pairs+=("$pair")
             fi
           done <<< "$lines"
+          if ! [ -f "$DOCKERFILE" ]; then
+            echo "::error title=No Dockerfile::${DOCKERFILE} was not generated, so the build arguments of ${REPO}:${VERSION} cannot be resolved."
+            exit 1
+          fi
+          if grep -q '^ARG UPGRADE_DATE$' "$DOCKERFILE"; then
+            if ! [[ "$UPGRADE_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+              echo "::error title=No upgrade date::${REPO}:${VERSION} declares UPGRADE_DATE, but the versions job's upgrade-date is '${UPGRADE_DATE}', not a YYYY-MM-DD date."
+              exit 1
+            fi
+            pairs+=("UPGRADE_DATE=${UPGRADE_DATE}")
+          fi
           if [ "$PARENT_JSON" != "null" ]; then
             parent_language="$(jq -r .language <<< "$PARENT_JSON")"
             parent_version="$(jq -r .version <<< "$PARENT_JSON")"
@@ -333,7 +355,7 @@ jobs:
     name: &publish-name "publish: ${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
     needs: [hadolint, versions, build-0]
     if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-0 == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.versions.outputs.matrix-0) }}
@@ -545,7 +567,7 @@ jobs:
     name: *publish-name
     needs: [hadolint, versions, build-1]
     if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-1 == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.versions.outputs.matrix-1) }}
@@ -568,7 +590,7 @@ jobs:
     name: *publish-name
     needs: [hadolint, versions, build-2]
     if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-2 == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.versions.outputs.matrix-2) }}

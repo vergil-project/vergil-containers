@@ -473,6 +473,29 @@ def test_pkg_templates_set_no_inherited_config():
             assert found == [], f"{path.relative_to(LIVE_ROOT)} sets {found}"
 
 
+_UPGRADE_RE = re.compile(r"\b(apt-get upgrade|dnf upgrade)\b")
+
+
+def test_pkg_os_upgrade_reruns_on_a_new_upgrade_date():
+    # vergil-containers#845: the OS-upgrade RUN follows a bare `ARG
+    # UPGRADE_DATE` (no default, so a builder that passes none fails the
+    # RUN's own check) and references it, so a new date is a new cache key for
+    # that layer. It is the only UPGRADE_DATE declaration, and nothing in the
+    # image before it upgrades the OS.
+    for key in ("pkg-ubuntu", "pkg-rhel"):
+        lines = (LIVE_ROOT / "docker" / key / "Dockerfile.template").read_text().splitlines()
+        declared = [i for i, line in enumerate(lines) if line.startswith("ARG UPGRADE_DATE")]
+        assert [lines[i] for i in declared] == ["ARG UPGRADE_DATE"], key
+        run = lines[declared[0] + 1:]
+        assert run[0].startswith("RUN "), key
+        end = next(i for i, line in enumerate(run) if not line.endswith("\\"))
+        step = "\n".join(run[:end + 1])
+        assert 'case "${UPGRADE_DATE:-}" in' in step, key
+        assert "exit 1" in step, key
+        assert _UPGRADE_RE.search(step), key
+        assert not _UPGRADE_RE.search("\n".join(lines[:declared[0]])), key
+
+
 def test_inherited_config_check_catches_each_instruction():
     for instruction in ('ENTRYPOINT ["x"]', 'CMD ["/bin/bash"]', "USER 1000", "workdir /workspace"):
         assert _INHERITED_CONFIG_RE.findall(f"FROM ubuntu\n{instruction}\n")
