@@ -2997,17 +2997,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#where-the-move-stands" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Where the move stands
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -3083,17 +3072,6 @@
     <span class="md-ellipsis">
       
         The table
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-the-move-stands" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Where the move stands
       
     </span>
   </a>
@@ -3216,30 +3194,10 @@ its <code>dev-</code> parent, and each <code>prod-</code> image on its <code>pro
 images outside the tree carry only what a package job needs (see
 <a href="../../images/#package-toolchain-images">Images</a>), so an install-test
 still proves an install on a clean target.</p>
-<h2 id="where-the-move-stands">Where the move stands<a class="headerlink" href="#where-the-move-stands" title="Permanent link">&para;</a></h2>
-<p>As of 2026-11-11, the table is the design that <code>develop</code> builds, and these
-parts are still moving to it:</p>
-<ul>
-<li><strong><code>prod-</code> images.</strong> vergil-containers releases nothing from the rebase of
-  <code>base</code> until the cutover release
-  (<a href="https://github.com/vergil-project/vergil-containers/issues/789">vergil-containers#789</a>),
-  so the released <code>prod-</code> language images and <code>prod-base</code> are still built from
-  the last release's Debian templates. The <code>dev-</code> images, published from
-  <code>develop</code>, are on the tree above.</li>
-<li><strong>Lima VMs.</strong> The template is pinned to 24.04
-  (<a href="https://github.com/vergil-project/vergil-vm/issues/394">vergil-vm#394</a>).
-  An existing VM moves with <code>vrg-vm rebuild</code> after the vergil-vm release that
-  carries the pin
-  (<a href="https://github.com/vergil-project/vergil-vm/issues/395">vergil-vm#395</a>);
-  <code>vrg-vm update</code> does not change the OS.</li>
-<li><strong>Runner labels.</strong> In vergil-containers, the image build legs run on
-  <code>ubuntu-24.04</code> and <code>ubuntu-24.04-arm</code>, and every other job runs on
-  <code>ubuntu-24.04</code>
-  (<a href="https://github.com/vergil-project/vergil-containers/issues/776">vergil-containers#776</a>).
-  Once every repo names the release, a check in vergil-tooling's validation
-  refuses <code>ubuntu-latest</code> in a workflow
-  (<a href="https://github.com/vergil-project/vergil-tooling/issues/4129">vergil-tooling#4129</a>).</li>
-</ul>
+<p>An agent VM takes its OS when it is created: <code>vrg-vm rebuild</code> moves an
+existing VM to the template's OS, and <code>vrg-vm update</code> does not change it. On
+the runners, vergil-tooling's validation refuses <code>ubuntu-latest</code> in a
+workflow, so every job names its release.</p>
 
 
 
