@@ -3647,16 +3647,20 @@ nothing else: no common layer, no vergil-tooling.</p>
   sources are rewritten to <code>mirror+file:/etc/apt/apt-mirrors.txt</code>, so apt
   fails over down a list that starts with Canonical's hosts and ends with
   mirrors outside <code>ubuntu.com</code>, so a DNS failure of that zone does not
-  stop the build. On amd64 the list is the in-region Azure mirror,
-  <code>archive.ubuntu.com</code> and <code>security.ubuntu.com</code>, then
-  <code>mirrors.edge.kernel.org</code> and <code>mirrors.dotsrc.org</code>; on arm64 it is
-  <code>ports.ubuntu.com</code>, then <code>mirrors.dotsrc.org</code> and <code>mirrors.mit.edu</code>
-  (their <code>ubuntu-ports</code> archives). apt checks every index against the
-  archive's signed <code>InRelease</code>, so a third-party mirror cannot alter a
-  package. For a local build,
+  stop the build. The list follows the archive the upstream image's
+  sources name, not the architecture: Ubuntu 26.04 serves arm64 from the
+  main archive, while 24.04 serves it from <code>ports.ubuntu.com</code>. For the
+  main archive (amd64, and arm64 from 26.04) the list is the in-region
+  Azure mirror, <code>archive.ubuntu.com</code> and <code>security.ubuntu.com</code>, then
+  <code>mirrors.edge.kernel.org</code> and <code>mirrors.dotsrc.org</code>; for the ports
+  archive (arm64 on 24.04) it is <code>ports.ubuntu.com</code>, then
+  <code>mirrors.dotsrc.org</code> and <code>mirrors.mit.edu</code> (their <code>ubuntu-ports</code>
+  archives). Sources naming any other <code>ubuntu.com</code> host fail the build.
+  apt checks every index against the archive's signed <code>InRelease</code>, so a
+  third-party mirror cannot alter a package. For a local build,
   <code>VRG_APT_MIRROR=http://&lt;mirror&gt;/ubuntu/ docker/build.sh</code> (an
-  <code>ubuntu-ports</code> URI on arm64) puts a nearer mirror first; CI and publish
-  never set it. vergil-tooling passes the retry, timeout and lock options
+  <code>ubuntu-ports</code> URI for arm64 on 24.04) puts a nearer mirror first; CI
+  and publish never set it. vergil-tooling passes the retry, timeout and lock options
   on each apt command line it runs; in <code>pkg-ubuntu</code> its apt calls also
   read the error mode from this file.</li>
 <li><strong>Toolchain marker</strong>: <code>/etc/vergil/package-toolchain</code> has one
