@@ -3627,8 +3627,16 @@ nothing else: no common layer, no vergil-tooling.</p>
 <ul>
 <li><strong>OS upgrade</strong>: the packages are upgraded when the image is built, and
   the images are rebuilt nightly, so a package job starts on a current OS.
-  Package lists and the dnf cache are not kept: they would go stale between
-  rebuilds, so a job that needs them runs its own <code>apt-get update</code>.</li>
+  Every build passes the upgrade step the UTC date (<code>YYYY-MM-DD</code>) as the
+  <code>UPGRADE_DATE</code> build argument, computed once per run: the publish
+  workflow's <code>versions</code> job, PR CI's <code>select</code> job and <code>docker/build.sh</code> each
+  compute it. The date is part of that layer's build cache key, so the
+  first build of each UTC day re-runs the upgrade and later builds that day
+  reuse it. Without it, a cached upgrade would be reused until the upstream
+  image changed, and a build would miss the distribution's security fixes.
+  A build with no date, or a malformed one, fails. Package lists and the
+  dnf cache are not kept: they would go stale between rebuilds, so a job
+  that needs them runs its own <code>apt-get update</code>.</li>
 <li><strong>OS prerequisites on <code>pkg-rhel</code></strong>: UBI ships <code>curl-minimal</code>, which
   conflicts with the full <code>curl</code> package, so the image asks dnf for
   <code>/usr/bin/curl</code> and <code>/usr/bin/gpg</code> by path and accepts whichever package
