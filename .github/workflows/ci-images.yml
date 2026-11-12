@@ -37,6 +37,7 @@ jobs:
       matrix: ${{ steps.select.outputs.matrix }}
       arch-matrix: ${{ steps.select.outputs.arch-matrix }}
       has: ${{ steps.select.outputs.has }}
+      upgrade-date: ${{ steps.select.outputs.upgrade-date }}
     steps:
       # The whole history, so the PR's base and head commits are both present.
       - name: Checkout code
@@ -46,10 +47,12 @@ jobs:
           persist-credentials: false
 
       # Outputs `matrix` (the selected entries), `arch-matrix` (the build jobs,
-      # each once per architecture) and `has` ("true" when there is anything
-      # to build). Nothing is written unless every step succeeds, and every
-      # failure fails this job, which fails `evidence`: a broken selection
-      # never reads as "nothing to build".
+      # each once per architecture), `has` ("true" when there is anything
+      # to build) and `upgrade-date` (this run's UTC date, YYYY-MM-DD, which
+      # every image that declares UPGRADE_DATE is built with, on both
+      # architectures: vergil-containers#845). Nothing is written unless every
+      # step succeeds, and every failure fails this job, which fails
+      # `evidence`: a broken selection never reads as "nothing to build".
       - name: Select the images this change reaches
         id: select
         env:
@@ -95,7 +98,9 @@ jobs:
               echo "None: no changed path reaches an image."
             fi
           } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
-          printf 'matrix=%s\narch-matrix=%s\nhas=%s\n' "$matrix" "$arch_matrix" "$has" >> "$GITHUB_OUTPUT"
+          upgrade_date="$(date -u +%Y-%m-%d)"
+          printf 'matrix=%s\narch-matrix=%s\nhas=%s\nupgrade-date=%s\n' \
+            "$matrix" "$arch_matrix" "$has" "$upgrade_date" >> "$GITHUB_OUTPUT"
 
   build:
     name: "build: ${{ matrix.name }} (${{ matrix.arch }})"
@@ -129,6 +134,7 @@ jobs:
           ARCH: ${{ matrix.arch }}
           ENTRIES_JSON: ${{ toJSON(matrix.entries) }}
           TRIVY_IMAGE: aquasec/trivy:0.72.0
+          UPGRADE_DATE: ${{ needs.select.outputs.upgrade-date }}
         run: scripts/bin/pr-image-build "$ARCH"
 
   # The required status check. It passes when every selected image was built,

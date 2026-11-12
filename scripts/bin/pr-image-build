@@ -16,7 +16,10 @@
 # the parent was pushed to (`push-local`): the job's own registry service,
 # which lives and dies with the job. Any other child gets its published dev-
 # parent, ghcr.io/vergil-project/dev-<parent>:<version>. Every key of an
-# entry's build-args map is a --build-arg.
+# entry's build-args map is a --build-arg, and an image whose Dockerfile
+# declares UPGRADE_DATE (the pkg- images, before their OS upgrade) also gets
+# UPGRADE_DATE, the run's UTC date, so the upgrade's cached layer is reused
+# only within that day (vergil-containers#845).
 #
 # One image's failure does not stop the others, except that an image whose
 # parent was not built here is not built either. Every failure is reported
@@ -27,6 +30,8 @@
 # Env: ENTRIES_JSON (required): the job's entries, a JSON list.
 #      GITHUB_WORKSPACE (required): the checkout.
 #      TRIVY_IMAGE (required): the Trivy image trivy-image-scan runs.
+#      UPGRADE_DATE (required): the run's UTC date, YYYY-MM-DD (the select
+#        job's upgrade-date output, so both architectures get the same one).
 #      GITHUB_STEP_SUMMARY (optional): where the results table goes.
 # Exit status: 0 when every image passed, 1 otherwise, 2 on bad usage.
 set -euo pipefail
@@ -46,6 +51,11 @@ case "$arch" in
 esac
 : "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}"
 : "${TRIVY_IMAGE:?TRIVY_IMAGE is required}"
+upgrade_date="${UPGRADE_DATE:-}"
+if ! [[ "$upgrade_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+  echo "::error title=No upgrade date::UPGRADE_DATE is '${upgrade_date}', not the run's UTC date as YYYY-MM-DD (the select job's upgrade-date output)."
+  exit 2
+fi
 entries_json="${ENTRIES_JSON:-}"
 
 # Every entry is checked before anything is built.
@@ -123,12 +133,21 @@ while [ "$i" -lt "$count" ]; do
 
   echo "::group::Build ${image} (${arch})"
   built=1
+  dockerfile="${GITHUB_WORKSPACE}/docker/${lang}/Dockerfile"
   if ! "${GITHUB_WORKSPACE}/docker/generate.sh" "$lang"; then
     built=0
-  elif ! docker buildx build --platform "linux/${arch}" --load \
-    --cache-from "type=registry,ref=${PUBLISHED}/dev-${lang}:cache-${version}-${arch}" \
-    ${args[@]+"${args[@]}"} --tag "$tag" "${GITHUB_WORKSPACE}/docker/${lang}"; then
+  elif ! [ -f "$dockerfile" ]; then
+    echo "::error title=No Dockerfile::docker/generate.sh ${lang} did not write docker/${lang}/Dockerfile."
     built=0
+  else
+    if grep -q '^ARG UPGRADE_DATE$' "$dockerfile"; then
+      args+=(--build-arg "UPGRADE_DATE=${upgrade_date}")
+    fi
+    if ! docker buildx build --platform "linux/${arch}" --load \
+      --cache-from "type=registry,ref=${PUBLISHED}/dev-${lang}:cache-${version}-${arch}" \
+      ${args[@]+"${args[@]}"} --tag "$tag" "${GITHUB_WORKSPACE}/docker/${lang}"; then
+      built=0
+    fi
   fi
   echo "::endgroup::"
   if [ "$built" -ne 1 ]; then

@@ -13,9 +13,11 @@ for real (with `docker` stubbed).
 
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -104,7 +106,7 @@ def _arch(entries: list[dict]) -> list[dict]:
 
 def test_versions_emits_a_matrix_and_arch_matrix_per_tier(tmp_path):
     assert set(_job("versions")["outputs"]) == {
-        f"{name}-{t}" for t in TIERS for name in ("matrix", "arch-matrix", "has")}
+        f"{name}-{t}" for t in TIERS for name in ("matrix", "arch-matrix", "has")} | {"upgrade-date"}
     result = _read_matrix(tmp_path, MATRIX_JSON.read_text())
     assert result.returncode == 0, result.stderr
     outputs = _outputs(tmp_path / "out")
@@ -120,6 +122,18 @@ def test_versions_emits_a_matrix_and_arch_matrix_per_tier(tmp_path):
     # base is built like any other entry.
     assert {(e["language"], e["arch"]) for e in _arch(entries) if e["language"] == "base"} == {
         ("base", "amd64"), ("base", "arm64")}
+
+
+def test_versions_emits_the_runs_utc_date_once(tmp_path):
+    # vergil-containers#845: one UTC date per run, for every tier and arch.
+    assert _job("versions")["outputs"]["upgrade-date"] == "${{ steps.read.outputs.upgrade-date }}"
+    before = datetime.now(timezone.utc).date().isoformat()
+    result = _read_matrix(tmp_path, MATRIX_JSON.read_text())
+    after = datetime.now(timezone.utc).date().isoformat()
+    assert result.returncode == 0, result.stderr
+    date = _outputs(tmp_path / "out")["upgrade-date"]
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", date)
+    assert date in (before, after)
 
 
 def test_versions_splits_a_tree_into_tiers(tmp_path):
@@ -220,9 +234,23 @@ def test_build_resolves_its_args_and_parent_before_building():
     env = _step("build-0", "args")["env"]
     assert env["BUILD_ARGS_JSON"] == "${{ toJSON(matrix['build-args']) }}"
     assert env["PARENT_JSON"] == "${{ toJSON(matrix.parent) }}"
+    assert env["DOCKERFILE"] == "docker/${{ matrix.language }}/Dockerfile"
+    assert env["UPGRADE_DATE"] == "${{ needs.versions.outputs.upgrade-date }}"
+    # The Dockerfile it reads is the one the step before generated.
+    keys = _keys("build-0")
+    assert keys.index("Generate Dockerfile from template") < keys.index("args")
 
 
-def _resolve(tmp_path: Path, build_args: dict, parent: dict | None, digest: str | None = None):
+DATE = "2026-11-12"
+PLAIN_DOCKERFILE = "FROM scratch\n"
+UPGRADE_DOCKERFILE = "FROM scratch\nARG UPGRADE_DATE\nRUN true\n"
+
+
+def _resolve(tmp_path: Path, build_args: dict, parent: dict | None, digest: str | None = None,
+             dockerfile: str | None = PLAIN_DOCKERFILE, upgrade_date: str = DATE):
+    if dockerfile is not None:
+        (tmp_path / "docker" / "python").mkdir(parents=True)
+        (tmp_path / "docker" / "python" / "Dockerfile").write_text(dockerfile)
     pdir = tmp_path / "parent"
     pdir.mkdir()
     if digest is not None:
@@ -231,7 +259,8 @@ def _resolve(tmp_path: Path, build_args: dict, parent: dict | None, digest: str 
     out.write_text("")
     script = _step("build-0", "args")["run"]
     env = {"BUILD_ARGS_JSON": json.dumps(build_args, indent=2), "PARENT_JSON": json.dumps(parent),
-           "PARENT_DIR": str(pdir), "PREFIX": "dev", "REPO": REPO, "VERSION": "3.14", "GITHUB_OUTPUT": str(out)}
+           "PARENT_DIR": str(pdir), "PREFIX": "dev", "REPO": REPO, "VERSION": "3.14", "GITHUB_OUTPUT": str(out),
+           "DOCKERFILE": "docker/python/Dockerfile", "UPGRADE_DATE": upgrade_date}
     return _bash(script, tmp_path, env), out.read_text()
 
 
@@ -261,6 +290,35 @@ def test_resolve_fails_naming_an_unpublished_parent(tmp_path, digest):
     assert result.returncode != 0
     assert result.stdout.startswith("::error title=Parent not published::")
     assert "its parent dev-base:latest" in result.stdout
+    assert out == ""
+
+
+def test_resolve_passes_the_upgrade_date_to_an_image_that_declares_it(tmp_path):
+    result, out = _resolve(tmp_path, {"RHEL_VERSION": "9"}, None, dockerfile=UPGRADE_DOCKERFILE)
+    assert result.returncode == 0, result.stderr
+    assert out.splitlines() == ["build-args<<BUILD_ARGS_EOF", "RHEL_VERSION=9", f"UPGRADE_DATE={DATE}", "BUILD_ARGS_EOF"]
+
+
+def test_resolve_passes_no_upgrade_date_to_an_image_that_does_not_declare_it(tmp_path):
+    # Only the bare declaration counts: a defaulted ARG or a comment does not.
+    result, out = _resolve(tmp_path, {"PYTHON_VERSION": "3.14"}, None,
+                           dockerfile="FROM scratch\nARG UPGRADE_DATE=2026-01-01\n# ARG UPGRADE_DATE\n")
+    assert result.returncode == 0, result.stderr
+    assert "UPGRADE_DATE" not in out
+
+
+@pytest.mark.parametrize("date", ["", "20261112", "2026-11-12 x"])
+def test_resolve_refuses_a_missing_or_malformed_upgrade_date(tmp_path, date):
+    result, out = _resolve(tmp_path, {}, None, dockerfile=UPGRADE_DOCKERFILE, upgrade_date=date)
+    assert result.returncode != 0
+    assert result.stdout.startswith("::error title=No upgrade date::")
+    assert out == ""
+
+
+def test_resolve_refuses_an_ungenerated_dockerfile(tmp_path):
+    result, out = _resolve(tmp_path, {"PYTHON_VERSION": "3.14"}, None, dockerfile=None)
+    assert result.returncode != 0
+    assert result.stdout.startswith("::error title=No Dockerfile::")
     assert out == ""
 
 

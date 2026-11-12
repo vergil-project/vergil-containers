@@ -21,6 +21,14 @@
 # otherwise) that apt tries before the default mirror list. It is for local builds only; CI and
 # publish never set it.
 #
+# Each image that declares the UPGRADE_DATE build arg (pkg-ubuntu and
+# pkg-rhel, before their OS-upgrade step) gets the UTC date, YYYY-MM-DD,
+# computed once per run, so their OS upgrade re-runs on the first build of each
+# UTC day and its cached layer is reused only within that day
+# (vergil-containers#845). VRG_UPGRADE_DATE, when set, is passed instead: for
+# local builds only (to re-run the upgrade, or to reproduce a day's build); CI
+# and publish never set it.
+#
 # Each image is defined by a Dockerfile.template that may contain
 # "# @include common/<fragment>.dockerfile" lines.  generate.sh
 # expands these includes to produce the final Dockerfile before
@@ -64,6 +72,13 @@ fi
 # The plan is read before anything is built, so a malformed matrix or an
 # unknown family fails here, with nothing half-built.
 plan="$(python3 "${script_dir}/versions/build_plan.py" ${families[@]+"${families[@]}"})"
+
+# One date for the whole run, so every image built in it gets the same one.
+upgrade_date="${VRG_UPGRADE_DATE:-$(date -u +%Y-%m-%d)}"
+if ! [[ "$upgrade_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+  echo "ERROR: VRG_UPGRADE_DATE '${upgrade_date}' is not a YYYY-MM-DD date" >&2
+  exit 2
+fi
 
 # Select the container runtime: prefer nerdctl (OSS, Lima + containerd),
 # fall back to docker.  VRG_CONTAINER_RUNTIME overrides auto-detection.
@@ -113,6 +128,9 @@ build() {
   "${script_dir}/generate.sh" "$lang"
   if [ -n "${VRG_APT_MIRROR:-}" ] && grep -q '^ARG APT_MIRROR=' "${script_dir}/${lang}/Dockerfile"; then
     cmd+=(--build-arg "APT_MIRROR=${VRG_APT_MIRROR}")
+  fi
+  if grep -q '^ARG UPGRADE_DATE$' "${script_dir}/${lang}/Dockerfile"; then
+    cmd+=(--build-arg "UPGRADE_DATE=${upgrade_date}")
   fi
   echo "Building dev-${lang}:${version} ..."
   "${cmd[@]}" -t "dev-${lang}:${version}" "${script_dir}/${lang}"
