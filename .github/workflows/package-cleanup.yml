@@ -74,7 +74,7 @@ env:
 jobs:
   cleanup:
     name: "cleanup: ${{ matrix.package }}"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       # Rate-limit cap (issue #652): keep in step with reap-aliases.
@@ -177,7 +177,7 @@ jobs:
 
   reap-aliases:
     name: "reap: ${{ matrix.package }} (older than ${{ matrix.older_than }})"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       # Rate-limit cap (issue #652): keep in step with cleanup.
