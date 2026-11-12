@@ -136,7 +136,8 @@ Python-specific plugins are available.
 
 Every language image includes:
 
-- **Node.js** (via NodeSource apt repo) — runtime for markdownlint-cli
+- **Node.js** (the pinned nodejs.org core Node at `/opt/vergil/node/<major>`,
+  not on `PATH`) — runtime for markdownlint-cli
 - **markdownlint-cli**, **yamllint**, **ansible-lint** — linters
 - **ShellCheck**, **shfmt** — shell lint/format
 - **actionlint** — GitHub Actions linting

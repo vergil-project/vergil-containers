@@ -2,7 +2,7 @@
 # findings. Dev containers use the HOST kernel at runtime, not the kernel
 # headers baked into the base image, so every linux-libc-dev CVE is a false
 # positive for this image set — including the occasional one that carries a
-# Debian fix (which `ignore-unfixed` alone would not catch). Evaluated against
+# distribution fix (which `ignore-unfixed` alone would not catch). Evaluated against
 # each vulnerability; returning true suppresses it from the gate and report.
 package trivy
 

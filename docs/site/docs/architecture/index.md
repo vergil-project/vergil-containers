@@ -51,8 +51,10 @@ that an include cycle is an error.
 
 This eliminates duplication — shared tool installations (GitHub CLI,
 markdownlint, validation tools) are maintained once in `docker/common/`.
-Since epic vergil-project/.github#649 the common fragments are included by
-`base` alone, and every language image gets them by being built `FROM` it.
+Since epic vergil-project/.github#649 the shared tool fragments are included
+by `base` alone, and every language image gets them by being built `FROM` it.
+The package toolchain images and some language images include fragments of
+their own, as [Common Tooling Layer](#common-tooling-layer) lists.
 
 ### Version management
 

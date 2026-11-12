@@ -38,27 +38,7 @@ images outside the tree carry only what a package job needs (see
 [Images](../images/index.md#package-toolchain-images)), so an install-test
 still proves an install on a clean target.
 
-## Where the move stands
-
-As of 2026-11-11, the table is the design that `develop` builds, and these
-parts are still moving to it:
-
-- **`prod-` images.** vergil-containers releases nothing from the rebase of
-  `base` until the cutover release
-  ([vergil-containers#789](https://github.com/vergil-project/vergil-containers/issues/789)),
-  so the released `prod-` language images and `prod-base` are still built from
-  the last release's Debian templates. The `dev-` images, published from
-  `develop`, are on the tree above.
-- **Lima VMs.** The template is pinned to 24.04
-  ([vergil-vm#394](https://github.com/vergil-project/vergil-vm/issues/394)).
-  An existing VM moves with `vrg-vm rebuild` after the vergil-vm release that
-  carries the pin
-  ([vergil-vm#395](https://github.com/vergil-project/vergil-vm/issues/395));
-  `vrg-vm update` does not change the OS.
-- **Runner labels.** In vergil-containers, the image build legs run on
-  `ubuntu-24.04` and `ubuntu-24.04-arm`, and every other job runs on
-  `ubuntu-24.04`
-  ([vergil-containers#776](https://github.com/vergil-project/vergil-containers/issues/776)).
-  Once every repo names the release, a check in vergil-tooling's validation
-  refuses `ubuntu-latest` in a workflow
-  ([vergil-tooling#4129](https://github.com/vergil-project/vergil-tooling/issues/4129)).
+An agent VM takes its OS when it is created: `vrg-vm rebuild` moves an
+existing VM to the template's OS, and `vrg-vm update` does not change it. On
+the runners, vergil-tooling's validation refuses `ubuntu-latest` in a
+workflow, so every job names its release.
