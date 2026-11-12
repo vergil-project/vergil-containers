@@ -16,8 +16,9 @@
 #
 # VRG_APT_MIRROR, when set, is passed as the APT_MIRROR build arg to each image
 # that declares it (pkg-ubuntu, through common/apt-mirror.dockerfile): an http
-# Ubuntu mirror for this host's architecture (an ubuntu-ports one on arm64) that
-# apt tries before the default mirror list. It is for local builds only; CI and
+# Ubuntu mirror of the archive the image's sources name for this host's
+# architecture (an ubuntu-ports one for arm64 on 24.04, the main ubuntu archive
+# otherwise) that apt tries before the default mirror list. It is for local builds only; CI and
 # publish never set it.
 #
 # Each image is defined by a Dockerfile.template that may contain

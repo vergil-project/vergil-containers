@@ -32,40 +32,63 @@ RUN apt-get update && \
 # @include common/package-toolchain-marker.dockerfile
 
 # --- Build-time checks -------------------------------------------------------
-# Any failure fails the build, so no published image can lack one of these:
+# Any failure fails the build, so no published image can lack one of these,
+# and each failure names the assertion it broke ("check: ..."):
 #   - the fail-fast config exists and makes apt-get update fail on an index
-#     no mirror serves; on both amd64 and arm64 the Ubuntu sources point at
-#     the mirror list and name no Canonical host directly, and the list
-#     holds the architecture's Canonical hosts and at least two hosts outside
-#     ubuntu.com;
+#     no mirror serves;
+#   - every URIs line of ubuntu.sources is the mirror list, and no active
+#     line of any apt source names an ubuntu.com host directly;
+#   - the list holds one archive's Canonical hosts, as common/apt-mirror.dockerfile
+#     chose it from the sources: the ubuntu archive's Azure, archive and
+#     security hosts (amd64 and arm64), or ports.ubuntu.com (arm64 only) and
+#     none of the ubuntu hosts; and at least two hosts outside ubuntu.com;
 #   - every tool runs;
 #   - the marker lists seven tools, uv and nfpm among them;
 #   - no python3 is on PATH, and no package lists are kept.
 ARG TARGETARCH
-RUN sources=/etc/apt/sources.list.d/ubuntu.sources && \
-    test -f "${sources}" && \
-    mirror_list=/etc/apt/apt-mirrors.txt && \
-    test -s /etc/apt/apt.conf.d/80-vergil-fast-fail && \
-    test "$(apt-config dump APT::Update::Error-Mode)" = 'APT::Update::Error-Mode "any";' && \
-    grep -q "^URIs: mirror+file:${mirror_list}\$" "${sources}" && \
-    ! grep -qE '^URIs:.*ubuntu\.com' "${sources}" && \
-    case "${TARGETARCH}" in \
-      amd64) \
-        grep -q '^http://azure\.archive\.ubuntu\.com/ubuntu/[[:space:]]' "${mirror_list}" && \
-        grep -q '^http://archive\.ubuntu\.com/ubuntu/[[:space:]]' "${mirror_list}" && \
-        grep -q '^http://security\.ubuntu\.com/ubuntu/[[:space:]]' "${mirror_list}" ;; \
-      arm64) \
-        grep -q '^http://ports\.ubuntu\.com/ubuntu-ports/[[:space:]]' "${mirror_list}" ;; \
-      *) echo "check: unsupported TARGETARCH '${TARGETARCH}'" >&2; false ;; \
-    esac && \
-    test "$(grep -cvE '^https?://[^/]*\.ubuntu\.com/' "${mirror_list}")" -ge 2 && \
-    curl --version && \
-    git --version && \
-    gpg --version && \
-    uv --version && \
-    nfpm --version && \
-    test "$(wc -l < /etc/vergil/package-toolchain)" -eq 7 && \
-    grep -q '^uv ' /etc/vergil/package-toolchain && \
-    grep -q '^nfpm ' /etc/vergil/package-toolchain && \
-    ! command -v python3 && \
-    test -z "$(find /var/lib/apt/lists -name '*_Packages*' -print -quit)"
+RUN fail() { echo "check: $*" >&2; exit 1; }; \
+    listed() { awk -F '\t' -v uri="$1" '$1 == uri { found = 1 } END { exit !found }' /etc/apt/apt-mirrors.txt; }; \
+    sources=/etc/apt/sources.list.d/ubuntu.sources; \
+    mirror_list=/etc/apt/apt-mirrors.txt; \
+    test -s /etc/apt/apt.conf.d/80-vergil-fast-fail || fail "/etc/apt/apt.conf.d/80-vergil-fast-fail is missing or empty"; \
+    test "$(apt-config dump APT::Update::Error-Mode)" = 'APT::Update::Error-Mode "any";' || \
+      fail "APT::Update::Error-Mode is not \"any\""; \
+    test -f "${sources}" || fail "${sources} is missing"; \
+    grep -q '^URIs:' "${sources}" || fail "${sources} has no URIs line"; \
+    escaped=$(grep '^URIs:' "${sources}" | { grep -vx "URIs: mirror+file:${mirror_list}" || test $? -eq 1; }) || \
+      fail "cannot read the URIs lines of ${sources}"; \
+    test -z "${escaped}" || fail "${sources} has URIs outside the mirror list: ${escaped}"; \
+    for f in /etc/apt/sources.list /etc/apt/sources.list.d/*; do \
+      if [ -f "${f}" ]; then \
+        direct=$(sed -E 's/#.*//' "${f}" | { grep -iE 'https?://([^/[:space:]]*\.)?ubuntu\.com' || test $? -eq 1; }) || \
+          fail "cannot read ${f}"; \
+        test -z "${direct}" || fail "${f} names an ubuntu.com host directly: ${direct}"; \
+      fi; \
+    done; \
+    test -s "${mirror_list}" || fail "${mirror_list} is missing or empty"; \
+    if listed 'http://ports.ubuntu.com/ubuntu-ports/'; then \
+      test "${TARGETARCH}" = arm64 || fail "${mirror_list} holds the ports archive on ${TARGETARCH}"; \
+      for host in azure.archive archive security; do \
+        if listed "http://${host}.ubuntu.com/ubuntu/"; then \
+          fail "${mirror_list} holds both ports.ubuntu.com and ${host}.ubuntu.com"; \
+        fi; \
+      done; \
+    else \
+      case "${TARGETARCH}" in \
+        amd64|arm64) ;; \
+        *) fail "unsupported TARGETARCH '${TARGETARCH}'" ;; \
+      esac; \
+      for host in azure.archive archive security; do \
+        listed "http://${host}.ubuntu.com/ubuntu/" || fail "${mirror_list} lacks http://${host}.ubuntu.com/ubuntu/"; \
+      done; \
+    fi; \
+    test "$(grep -cvE '^https?://[^/]*\.ubuntu\.com/' "${mirror_list}")" -ge 2 || \
+      fail "${mirror_list} has fewer than two hosts outside ubuntu.com"; \
+    for tool in curl git gpg uv nfpm; do \
+      "${tool}" --version || fail "${tool} --version failed"; \
+    done; \
+    test "$(wc -l < /etc/vergil/package-toolchain)" -eq 7 || fail "the toolchain marker does not list seven tools"; \
+    grep -q '^uv ' /etc/vergil/package-toolchain || fail "the toolchain marker does not list uv"; \
+    grep -q '^nfpm ' /etc/vergil/package-toolchain || fail "the toolchain marker does not list nfpm"; \
+    if command -v python3; then fail "python3 is on PATH"; fi; \
+    test -z "$(find /var/lib/apt/lists -name '*_Packages*' -print -quit)" || fail "package lists are kept"
