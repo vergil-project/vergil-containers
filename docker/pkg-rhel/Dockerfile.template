@@ -23,7 +23,20 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # asked for by path: UBI ships curl-minimal, which conflicts with the full curl
 # package, and /usr/bin/gpg resolves to whichever package provides it. The
 # dnf cache is removed, as package lists are on apt.
-RUN dnf upgrade -y && \
+#
+# UPGRADE_DATE is the build's UTC date (YYYY-MM-DD), which every builder
+# passes (cd-docker-publish.yml, scripts/bin/pr-image-build, docker/build.sh).
+# A build argument's value is part of the cache key of each RUN after its ARG,
+# so this layer, and so the upgrade, is rebuilt on the first build of each UTC
+# day and reused only within that day (vergil-containers#845). Without it the
+# key is only the base digest and the RUN text, and an old upgrade is reused
+# until the base image changes. A missing or malformed date fails the build.
+ARG UPGRADE_DATE
+RUN case "${UPGRADE_DATE:-}" in \
+      [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) echo "OS upgrade of ${UPGRADE_DATE}" ;; \
+      *) echo "UPGRADE_DATE must be the build's UTC date (YYYY-MM-DD), not '${UPGRADE_DATE:-}'" >&2; exit 1 ;; \
+    esac && \
+    dnf upgrade -y && \
     dnf install -y --setopt=install_weak_deps=False \
       ca-certificates /usr/bin/curl /usr/bin/gpg git tar gzip && \
     dnf clean all && \
