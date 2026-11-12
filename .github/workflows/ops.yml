@@ -26,7 +26,7 @@ jobs:
   # gate — a flaky upstream lookup must not fail the nightly.
   pin-exposure:
     name: "pin exposure report"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: true
     permissions:
       contents: read
@@ -60,7 +60,7 @@ jobs:
   # write, as the org epic sweep uses). App-authored PRs fire CI.
   language-lifecycle:
     name: "language lifecycle check"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     concurrency:

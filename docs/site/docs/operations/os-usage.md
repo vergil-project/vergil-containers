@@ -56,9 +56,9 @@ parts are still moving to it:
   ([vergil-vm#395](https://github.com/vergil-project/vergil-vm/issues/395));
   `vrg-vm update` does not change the OS.
 - **Runner labels.** In vergil-containers, the image build legs run on
-  `ubuntu-24.04` and `ubuntu-24.04-arm`, and its other jobs still name
-  `ubuntu-latest` until
-  [vergil-containers#776](https://github.com/vergil-project/vergil-containers/issues/776).
+  `ubuntu-24.04` and `ubuntu-24.04-arm`, and every other job runs on
+  `ubuntu-24.04`
+  ([vergil-containers#776](https://github.com/vergil-project/vergil-containers/issues/776)).
   Once every repo names the release, a check in vergil-tooling's validation
   refuses `ubuntu-latest` in a workflow
   ([vergil-tooling#4129](https://github.com/vergil-project/vergil-tooling/issues/4129)).

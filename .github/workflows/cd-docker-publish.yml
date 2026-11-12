@@ -41,7 +41,7 @@ env:
 jobs:
   hadolint:
     name: Lint Dockerfiles
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/vergil-project/prod-base:latest
     steps:
@@ -72,7 +72,7 @@ jobs:
   # skipped).
   versions:
     name: Read the version matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix-0: ${{ steps.read.outputs.matrix-0 }}
       arch-matrix-0: ${{ steps.read.outputs.arch-matrix-0 }}
@@ -333,7 +333,7 @@ jobs:
     name: &publish-name "publish: ${{ inputs.image-prefix }}-${{ matrix.language }}:${{ matrix.version }}"
     needs: [hadolint, versions, build-0]
     if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-0 == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.versions.outputs.matrix-0) }}
@@ -545,7 +545,7 @@ jobs:
     name: *publish-name
     needs: [hadolint, versions, build-1]
     if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-1 == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.versions.outputs.matrix-1) }}
@@ -568,7 +568,7 @@ jobs:
     name: *publish-name
     needs: [hadolint, versions, build-2]
     if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-2 == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.versions.outputs.matrix-2) }}
