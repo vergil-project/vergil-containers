@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.39] - 2026-11-12
+
+### Bug fixes
+
+- choose the mirror list from the archive hosts ubuntu.sources names (#846)
+- re-run the pkg images' OS upgrade on the first build of each UTC day (#847)
+
+### CI
+
+- pin GitHub-hosted runners to ubuntu-24.04 (#843)
+
 ## [2.1.38] - 2026-11-11
 
 ### Bug fixes
