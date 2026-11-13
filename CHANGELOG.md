@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.40] - 2026-11-13
+
+### Bug fixes
+
+- suppress krb5-libs HIGH CVEs blocking the dev-pkg-rhel:9 publish (#867)
+- write and remove toolchain pins in lifecycle add and drop PRs (#868)
+
+### CI
+
+- scope the lifecycle App tokens in ops.yml to the permissions each step calls (#857)
+
+### Documentation
+
+- finish the Ubuntu 24.04 documentation sweep in vergil-containers (#852)
+
+### Features
+
+- pin rustup to the image's own toolchain (#864)
+
+### Refactoring
+
+- render the matrix and pin catalog from pins passed in (#863)
+
 ## [2.1.39] - 2026-11-12
 
 ### Bug fixes
