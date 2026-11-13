@@ -133,7 +133,10 @@ architecture's file (`amd64` and `arm64`). Rust pins its exact `x.y.z` release
 with no hash, since rustup checks each component against the release's channel
 manifest; `rustup-init` itself is pinned by version and hash. The image build
 checks the download against the pin and resolves nothing over the network
-itself.
+itself. Inside the Rust image the pinned release is also the only toolchain
+rustup will run: the image sets `RUSTUP_TOOLCHAIN` to it and turns
+auto-install off, so a repo's `rust-toolchain.toml` cannot select or download
+another toolchain (see [Rust](../images/index.md#rust)).
 
 - **One pin per listed series.** `check_pins.py` fails when a python, go, rust
   or ts-node series in the version manifest, or the core Node major

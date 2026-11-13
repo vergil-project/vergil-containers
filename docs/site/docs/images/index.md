@@ -146,6 +146,15 @@ as in the `rust:<version>-slim` images it replaces. `gcc` and `libc6-dev`
 come from Ubuntu as the C linker, and `pkg-config` as a build helper for crates
 that link system libraries.
 
+The image owns the toolchain choice. It sets `RUSTUP_TOOLCHAIN` to its exact
+installed release (the same value as `RUST_VERSION`) and `RUSTUP_AUTO_INSTALL`
+to `0`. rustup ranks `RUSTUP_TOOLCHAIN` above a directory override and a
+`rust-toolchain.toml`, so a repo's toolchain file cannot change the toolchain.
+A request for any other toolchain fails because it is not installed, and
+rustup downloads nothing. The build checks all of this. A repo that needs a
+component or target the image lacks gets it through a vergil-containers
+change to the image, never through a toolchain file.
+
 | Tool           | Source           | Purpose                     |
 | -------------- | ---------------- | --------------------------- |
 | gcc            | Ubuntu apt       | C linker for rustc          |
