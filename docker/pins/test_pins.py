@@ -4,8 +4,13 @@ from pathlib import Path
 import extract_pins
 import check_pins
 import generate_catalog
+import resolve_toolchains as rt
 
 DOCKER = Path(__file__).resolve().parent.parent
+
+
+def _live_toolchains() -> rt.Toolchains:
+    return rt.load_toolchains(DOCKER / "pins" / "toolchains.yml")
 
 
 def test_extractor_finds_known_exact_pins():
@@ -120,10 +125,10 @@ def test_auto_managed_is_a_valid_state():
 
 
 def test_catalog_lists_every_documented_pin():
-    md = generate_catalog.render(DOCKER)
+    md = generate_catalog.render(DOCKER, _live_toolchains())
     assert "| go-test-coverage |" in md
     assert "inducing" in md.lower()
 
 
 def test_catalog_check_matches_committed_file():
-    assert generate_catalog.render(DOCKER) == (DOCKER / "pins" / "CATALOG.md").read_text()
+    assert generate_catalog.render(DOCKER, _live_toolchains()) == (DOCKER / "pins" / "CATALOG.md").read_text()
