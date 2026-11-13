@@ -139,6 +139,42 @@ def test_orphan_series_fails():
     assert error.startswith("toolchain 'go' '1.25': pinned, but neither a go series nor a core runtime")
 
 
+def _rust_1_100() -> tuple[mf.Manifest, rt.Toolchains]:
+    """The frozen manifest and pins with rust at series 1.100 and 1.99."""
+    families = tuple(
+        replace(f, versions=tuple(replace(f.versions[0], version=v) for v in ("1.100", "1.99"))) if f.key == "rust" else f
+        for f in SEED.families
+    )
+    pins = replace(_pins(), series={**_pins().series, "rust": {
+        "1.99": _pin("1.99.0", hashed=False), "1.100": _pin("1.100.0", hashed=False),
+    }})
+    return replace(SEED, families=families), pins
+
+
+def test_dump_orders_1_100_before_1_99():
+    # Spec section 6.6: series sort numerically, newest first.
+    _, pins = _rust_1_100()
+    text = rt.dump_toolchains(pins)
+    assert text.index('"1.100":') < text.index('"1.99":')
+    table = generate_catalog.render_toolchains(pins)
+    assert table.index("| rust | 1.100 |") < table.index("| rust | 1.99 |")
+
+
+def test_parse_toolchains_accepts_1_100():
+    m, pins = _rust_1_100()
+    assert rt.parse_toolchains(_doc(pins)) == pins
+    assert rt.consistency_errors(m, pins) == []
+    # 1.10.0 is not a release of 1.100, nor 1.100.0 of 1.10.
+    doc = _doc(pins)
+    doc["toolchains"]["rust"]["1.100"]["version"] = "1.10.0"
+    with pytest.raises(rt.ToolchainsError, match=r"'1.10.0' is not a release of rust 1.100"):
+        rt.parse_toolchains(doc)
+    doc = _doc(pins)
+    doc["toolchains"]["rust"]["1.10"] = doc["toolchains"]["rust"].pop("1.100")
+    with pytest.raises(rt.ToolchainsError, match=r"'1.100.0' is not a release of rust 1.10"):
+        rt.parse_toolchains(doc)
+
+
 def test_core_node_pin_not_orphan():
     # Core Node 22 with no ts-node series 22: its entry is still required.
     families = tuple(

@@ -225,6 +225,21 @@ def test_render_all_uses_the_pins_passed_in(repo):
     assert entry["build-args"]["TOOLCHAIN_VERSION"] == "1.99.1"
 
 
+def test_rust_1_100_build_args(repo):
+    # Spec section 6.6: the rendered matrix carries a three-digit minor as it is.
+    (rust,) = [f for f in _seed().families if f.key == "rust"]
+    rust = replace(rust, versions=tuple(replace(rust.versions[0], version=v) for v in ("1.100", "1.99")))
+    m = replace(_seed(), families=tuple(rust if f.key == "rust" else f for f in _seed().families))
+    pins = replace(frozen.PINS, series={**frozen.PINS.series, "rust": {"1.100": rt.Pin("1.100.0"), "1.99": rt.Pin("1.99.0")}})
+    out = g.render_all(m, repo, pins)
+    include = json.loads(out[repo / g.MATRIX_JSON])["include"]
+    by_version = {e["version"]: e["build-args"] for e in include if e["language"] == "rust"}
+    assert list(by_version) == ["1.100", "1.99"]
+    assert by_version["1.100"]["RUST_VERSION"] == "1.100"
+    assert by_version["1.100"]["TOOLCHAIN_VERSION"] == "1.100.0"
+    assert "ARG RUST_VERSION=1.100" in out[repo / "docker/rust/Dockerfile.template"]
+
+
 def test_render_docs_tables(repo):
     out = g.render_all(_seed(), repo, frozen.PINS)
     for rel in g.DOC_TABLES:

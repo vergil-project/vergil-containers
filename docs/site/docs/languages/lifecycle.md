@@ -47,8 +47,11 @@ What the check does with a gap depends on the family's automation:
 - **`pr` families** (Python and Go) get one pull request per change, on a
   branch named `lifecycle/<family>-<kind>-<version>`. A change is an add, a
   drop, or, for Python, a `runtime` change that records a newly published
-  `vergil-python` runtime in the manifest. Each PR carries the manifest edit
-  and every regenerated file. A rerun refreshes the same PR rather than
+  `vergil-python` runtime in the manifest. Each PR carries the manifest edit,
+  its own change to the toolchain pins in `docker/pins/toolchains.yml` (an
+  add's new series pin, a drop's removed one), and every regenerated file,
+  `docker/pins/CATALOG.md` included. See
+  [Language toolchain pins](../operations/version-management.md#language-toolchain-pins). A rerun refreshes the same PR rather than
   opening a second one, and a PR whose change is no longer reported is closed.
 - **`report` families** get one issue per change, titled
   `language lifecycle: <family> <kind> <version>` and labelled
