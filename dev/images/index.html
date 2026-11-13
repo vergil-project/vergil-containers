@@ -3499,6 +3499,14 @@ on rustup's minimal profile, under <code>/usr/local/rustup</code> and <code>/usr
 as in the <code>rust:&lt;version&gt;-slim</code> images it replaces. <code>gcc</code> and <code>libc6-dev</code>
 come from Ubuntu as the C linker, and <code>pkg-config</code> as a build helper for crates
 that link system libraries.</p>
+<p>The image owns the toolchain choice. It sets <code>RUSTUP_TOOLCHAIN</code> to its exact
+installed release (the same value as <code>RUST_VERSION</code>) and <code>RUSTUP_AUTO_INSTALL</code>
+to <code>0</code>. rustup ranks <code>RUSTUP_TOOLCHAIN</code> above a directory override and a
+<code>rust-toolchain.toml</code>, so a repo's toolchain file cannot change the toolchain.
+A request for any other toolchain fails because it is not installed, and
+rustup downloads nothing. The build checks all of this. A repo that needs a
+component or target the image lacks gets it through a vergil-containers
+change to the image, never through a toolchain file.</p>
 <table>
 <thead>
 <tr>

@@ -3471,7 +3471,10 @@ architecture's file (<code>amd64</code> and <code>arm64</code>). Rust pins its e
 with no hash, since rustup checks each component against the release's channel
 manifest; <code>rustup-init</code> itself is pinned by version and hash. The image build
 checks the download against the pin and resolves nothing over the network
-itself.</p>
+itself. Inside the Rust image the pinned release is also the only toolchain
+rustup will run: the image sets <code>RUSTUP_TOOLCHAIN</code> to it and turns
+auto-install off, so a repo's <code>rust-toolchain.toml</code> cannot select or download
+another toolchain (see <a href="../../images/#rust">Rust</a>).</p>
 <ul>
 <li><strong>One pin per listed series.</strong> <code>check_pins.py</code> fails when a python, go, rust
   or ts-node series in the version manifest, or the core Node major
