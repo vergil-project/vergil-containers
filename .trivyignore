@@ -486,3 +486,64 @@ CVE-2026-33671
 CVE-2026-48815
 CVE-2026-69192
 CVE-2026-9496
+
+# =============================================================================
+# krb5-libs 1.21.1-10.el9_8.1 in the UBI 9 base (dev-pkg-rhel:9), fixed in
+# 1.21.1-10.el9_9.2 (RHSA-2026:99715). Issue #866; first gated the 2026-11-13
+# CD run. MIT fixed the batch in krb5 1.22.3 (MITKRB5-SA-2026-001,
+# https://web.mit.edu/kerberos/advisories/MITKRB5-SA-2026-001.txt). Not
+# fixable by rebuilding: the image's daily `dnf upgrade -y` runs, but the UBI 9
+# BaseOS repository still offers only krb5-libs 1.21.1-10.el9_8.1 (repodata
+# checked 2026-11-13).
+#
+# The image runs no Kerberos service. It installs no krb5-server (krb5kdc,
+# kadmind), libkadm5, krb5-workstation or krb5-pkinit, and nothing it installs
+# requires them (UBI 9 BaseOS repodata). krb5-libs is there because libcurl,
+# which curl and git use, links libgssapi_krb5 and libkrb5 (with libk5crypto
+# and libkrb5support). Nothing in the image requires libgssrpc or libkdb5, the
+# other krb5-libs libraries. Each CVE below is in code that only a KDC, kadmind
+# or a GSS-RPC server runs. The file is the one MIT's fix commit changes
+# (github.com/krb5/krb5); each description is at
+# https://access.redhat.com/security/cve/<id>.
+# CVE-2026-107364 — KDC read overrun in fetch_asn1_field() (src/kdc/
+#   kdc_util.c), part of krb5kdc.
+# CVE-2026-71200 — KDC NULL dereference in PKINIT CMS processing, only on a
+#   KDC configured for PKINIT. The code is the PKINIT plugin (src/plugins/
+#   preauth/pkinit), shipped in krb5-pkinit.
+# CVE-2026-112317 — KDC or kadmind memory leak in krb5_ktkdb_get_entry()
+#   (src/lib/kdb/keytab.c, libkdb5), which reads keys from the KDC database.
+# CVE-2026-112316 — kadmind memory leak in xdr_krb5_tl_data()
+#   (src/lib/kadm5/kadm_rpc_xdr.c), in the kadm5 libraries (libkadm5).
+# CVE-2026-112318 — kadmind NULL dereference in the policy RPC stubs
+#   (src/kadmin/server/server_stubs.c), part of kadmind.
+# CVE-2026-112315, CVE-2026-112319, CVE-2026-112320, CVE-2026-112321,
+# CVE-2026-112322, CVE-2026-112323 — kadmind memory and CPU exhaustion in
+#   libgssrpc's RPC server code and XDR decoding (src/lib/rpc: authgss_prot.c,
+#   svc_auth_gss.c, svc_auth.c, svc_auth_gssapi.c, xdr.c; CVE-2026-112319 also
+#   in src/lib/kadm5).
+# CVE-2026-118380 — the RPCSEC_GSS server uses an unverified service level
+#   (src/lib/rpc/svc_auth_gss.c), so an on-path attacker can alter kadmind or
+#   iprop RPC arguments or have replies sent in plain text.
+# No process in the image accepts Kerberos, kadmin or GSS-RPC traffic, so none
+# of these paths can run.
+#
+# CVE-2026-119079 and CVE-2026-71199 are not in this group. Both are fixed in
+# libkrb5 itself (src/lib/krb5/asn.1/asn1_encode.c and
+# src/lib/krb5/krb/cammac_util.c), the library curl and git load, so they
+# await a ruling on issue #866.
+#
+# Remove the group once the UBI 9 BaseOS repository ships krb5-libs
+# >= 1.21.1-10.el9_9.2 and a fresh dev-pkg-rhel:9 build scans clean without it.
+# =============================================================================
+CVE-2026-107364
+CVE-2026-71200
+CVE-2026-112315
+CVE-2026-112316
+CVE-2026-112317
+CVE-2026-112318
+CVE-2026-112319
+CVE-2026-112320
+CVE-2026-112321
+CVE-2026-112322
+CVE-2026-112323
+CVE-2026-118380
