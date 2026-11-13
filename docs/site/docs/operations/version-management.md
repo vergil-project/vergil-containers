@@ -157,12 +157,20 @@ another toolchain (see [Rust](../images/index.md#rust)).
   for a release already pinned: a published release's files never change, so
   that is for a human to look into. Run the resolver without `--write` to see what
   it would change.
+- **Lifecycle PRs carry their own pin.** An add PR from the lifecycle
+  automation resolves the new series' pin with the same resolver the refresh
+  uses and writes it to `toolchains.yml`, along with `rustup-init` if a
+  Rust add finds it unpinned. A drop PR removes the series' pin, unless the
+  manifest still needs it: the `node` pin of the `core.node` major stays
+  when the ts-node family drops that major. No other pin changes: an add never
+  moves another series to a newer patch, which stays the daily refresh's job.
+  Each PR regenerates `CATALOG.md` from its edited pins, so it passes
+  `check_pins.py` and `generate_catalog.py --check` as opened. A pin that
+  cannot be resolved (the upstream is unreachable or has no release of the
+  series) fails that one change in the lifecycle run, and the run reports it.
 - **Never hand-edit a pin.** Run the resolver instead: it pins exactly the
-  series the manifest lists. The lifecycle automation does not yet write pins,
-  so its add of a pinned family's series fails that change in the lifecycle
-  run (the matrix cannot be rendered without the pin), and its drop PR fails
-  `check_pins.py` on the orphaned pin. Either is done by hand: edit the
-  manifest, run the resolver and the generators, and commit them together.
+  series the manifest lists. A manual add or drop edits the manifest, runs the
+  resolver and the generators, and commits them together.
 
 ## Exposure report — pins due for re-evaluation
 

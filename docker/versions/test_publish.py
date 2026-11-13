@@ -3,10 +3,15 @@ from datetime import date
 
 import pytest
 
+import manifest as mf
+import test_apply
 from lifecycle import core, publish
-from lifecycle.core import Change, FamilyResult, SourceError
-from lifecycle.publish import LABEL, GhCli, OpenIssue, PublishError, sync_issues
+from lifecycle.adapters.rust import RustAdapter
+from lifecycle.core import Change, FamilyResult, SourceError, TargetVersion
+from lifecycle.publish import LABEL, GhCli, OpenIssue, PublishError, sync_issues, sync_prs
 from lifecycle.report import results_to_json
+
+rt = test_apply.rt
 
 RUN1 = "https://github.com/o/r/actions/runs/1"
 RUN2 = "https://github.com/o/r/actions/runs/2"
@@ -257,6 +262,47 @@ def test_rate_limited_registry_becomes_a_failure_issue():
     _sync(gh, results)
     (n,) = gh.numbers_titled("lifecycle check failing for rust")
     assert "HTTP 429" in gh.issues[n]["body"]
+
+
+# --- PRs: each carries its own pin (epic vergil-project/.github#1095, Task 2b) -------------
+
+
+def test_one_run_two_adds_and_a_drop(tmp_path):
+    # Review Focus 1: a rust add, a rust drop and a go add in one publish run.
+    # Each PR's toolchains.yml differs from the base by exactly its own series,
+    # and the shared checkout is untouched afterwards.
+    m, pins, root = test_apply.rust_pr_fixture(tmp_path)
+    before = test_apply._tree(root)
+    rust = FamilyResult(
+        "rust",
+        (Change("rust", "add", "1.100", "GA 2026-11-26"), Change("rust", "drop", "1.98", "out of the window")),
+        None,
+        target=(
+            TargetVersion("1.100", date(2026, 11, 26), None, True),
+            TargetVersion("1.99", date(2026, 10, 1), None, True),
+        ),
+    )
+    (go,) = core.run(mf.Manifest((test_apply._family(m, "go"),)), test_apply._adapters(), test_apply.TODAY)
+    assert [(c.kind, c.version) for c in go.changes] == [("add", "1.27")]
+    results = [{"rust": rust, "go": go}.get(f.key, FamilyResult(f.key, (), None)) for f in m.families]
+    fetch = test_apply.Upstreams(test_apply._rust_channel("1.100.0"), test_apply._go("1.27.3", "1.27.2"))
+    gh, git = test_apply.FakeGh(), test_apply.FakeGit()
+    sync_prs(
+        results, gh, git,
+        manifest=m, adapters={"rust": RustAdapter(fetch=test_apply._no_fetch), **test_apply._adapters()}, root=root, run_url=RUN1, fetch=fetch,
+    )
+
+    expected = {
+        "lifecycle/rust-add-1.100": ["added rust 1.100: 1.100.0"],
+        "lifecycle/rust-drop-1.98": ["removed rust 1.98: 1.98.0"],
+        "lifecycle/go-add-1.27": ["added go 1.27: 1.27.3"],
+    }
+    assert sorted(gh.open_prs()) == sorted(expected)
+    for branch, change in expected.items():
+        _, files = git.branches[branch]
+        assert rt.changes(pins, test_apply._parsed_pins(files)) == change, branch
+        assert test_apply.CATALOG in files, branch
+    assert test_apply._tree(root) == before
 
 
 # --- main -----------------------------------------------------------------------------

@@ -34,7 +34,8 @@ touches open issues with that label and one of the two titles.
 
 PRs (`--prs`): one PR per `add`, `drop` or `runtime` on a `pr` family, on the branch
 `lifecycle/<family>-<kind>-<version>`. Each run rebuilds the branch from the
-base as one commit (the manifest edit plus every regenerated file), pushes it
+base as one commit (the manifest edit, its toolchain pin change and every
+regenerated file; `apply.render_change`), pushes it
 only when that commit differs from the branch, and refreshes the open PR's
 title and body; it never opens a second PR for the same change. A managed PR
 whose change is no longer reported is closed, unless its family's check
@@ -75,6 +76,7 @@ from lifecycle.core import Adapter, Change, FamilyResult, SourceError, has_runti
 from lifecycle.report import results_from_json  # noqa: E402
 from lifecycle.runtime import APT_URL  # noqa: E402
 from manifest import Family, Manifest, ManifestError, load_manifest  # noqa: E402
+import resolve_toolchains as rt  # noqa: E402  (on the path once generate is imported)
 
 MANIFEST = Path(__file__).resolve().parent.parent / "manifest.yml"
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -349,10 +351,13 @@ def sync_prs(
     adapters: Mapping[str, Adapter],
     root: Path,
     run_url: str,
+    fetch: rt.Fetch,
 ) -> None:
     """Make the open managed PRs match the adds and drops in `results`.
 
-    `manifest` is the base's manifest and `root` a checkout of the base."""
+    `manifest` is the base's manifest and `root` a checkout of the base, which
+    is never written. `fetch` reaches the toolchain upstreams for the pin each
+    add resolves (`render_change`)."""
     if not run_url:
         raise PublishError("a run URL is required for the PR bodies and closing comments")
     families = {f.key: f for f in manifest.families}
@@ -385,7 +390,7 @@ def sync_prs(
             _publish_change(
                 r, c, gh, git,
                 branch=branch, number=open_prs.get(branch), families=families, manifest=manifest,
-                adapters=adapters, root=root, run_url=run_url,
+                adapters=adapters, root=root, run_url=run_url, fetch=fetch,
             )
         except (ApplyError, SourceError, PublishError) as exc:
             errors.append(f"{c.family} {c.kind} {c.version}: {exc}")
@@ -418,13 +423,14 @@ def _publish_change(
     adapters: Mapping[str, Adapter],
     root: Path,
     run_url: str,
+    fetch: rt.Fetch,
 ) -> None:
     """Rebuild `change`'s branch and open or refresh its PR."""
     adapter = adapters.get(change.family)
     if adapter is None:
         raise PublishError(f"no lifecycle adapter is registered for family {change.family!r}")
     target = next((t for t in result.target if t.version == change.version), None)
-    files = render_change(manifest, change, target, root)
+    files = render_change(manifest, change, target, root, fetch=fetch)
     title = pr_title(change, _eol_of(change, result, manifest))
     body = pr_body(
         change,
@@ -693,6 +699,7 @@ def main(
     gh: GhClient | PrClient | None = None,
     git: BranchPublisher | None = None,
     adapters: Mapping[str, Adapter] | None = None,
+    fetch: rt.Fetch = rt.fetch_url,
 ) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--results", type=Path, required=True, help="the JSON written by check.py --json")
@@ -721,6 +728,7 @@ def main(
             sync_prs(
                 results, gh, git,  # type: ignore[arg-type]
                 manifest=manifest, adapters=adapters, root=args.root, run_url=args.run_url,
+                fetch=fetch,
             )
             return 0
         automation = {f.key: f.automation for f in manifest.families}

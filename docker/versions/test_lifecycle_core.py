@@ -85,6 +85,15 @@ def test_blocked_when_not_installable():
     assert "not installable" in changes[0].detail
 
 
+def test_classify_orders_1_100_newest():
+    # Spec section 6.6: a rust family under pr at 1.99/1.98, against a window
+    # of 1.100/1.99, adds 1.100 (never reading it as older than 1.99), then
+    # drops 1.98.
+    fam = _family(versions=("1.99", "1.98"), key="rust")
+    changes = core.classify(fam, [_t("1.100"), _t("1.99")], TODAY, 90)
+    assert _kinds(changes) == [("add", "1.100"), ("drop", "1.98")]
+
+
 def test_report_family_drop_is_out_of_policy():
     fam = _family(automation="report")
     changes = core.classify(fam, [_t("3.14"), _t("3.13")], TODAY, 90)

@@ -1,13 +1,21 @@
 """Turn one lifecycle change into the content of an add/drop pull request
-(spec §6.2 item 4): the edited manifest and every file regenerated from it.
+(spec §6.2 item 4): the edited manifest, its toolchain pins, and every file
+regenerated from them.
 
 Shared code: nothing here knows about any one language (principle 7). What a
 change does to the manifest is decided by its kind alone; anything a family
 needs beyond the manifest comes from its adapter's `extra_changes`.
 
+A change carries its own toolchain pins (epic vergil-project/.github#1095,
+spec §6.1): an add resolves the pin of the series it adds through that
+toolchain's resolver, a drop removes the pin the edited manifest no longer
+needs, and no other pin is touched. The pins are edited in memory and passed
+to the renderers; the checkout is never written.
+
 Fail loud: a change that cannot be applied exactly (an add whose version is
 already listed, a drop of a version that is not, an add with no installable
-target) raises ApplyError. Nothing is ever skipped silently.
+target, an add whose toolchain pin cannot be resolved) raises ApplyError.
+Nothing is ever skipped silently.
 
 Only the kinds in `APPLIERS` get a pull request; every other kind is reported
 as an issue. A new kind is one more entry in `APPLIERS` and `TITLES`.
@@ -20,12 +28,16 @@ from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
-import generate
+import generate  # first: it puts docker/pins on the import path
+import generate_catalog
+import resolve_toolchains as rt
 from lifecycle.core import EOL_DATE_UNKNOWN, Change, TargetVersion, has_runtime
 from manifest import Family, Manifest, ManifestVersion, dump_manifest, version_sort_key
 
 BRANCH_PREFIX = "lifecycle/"
 MANIFEST = generate.MANIFEST  # repo-relative
+TOOLCHAINS = generate.TOOLCHAINS  # repo-relative
+CATALOG = Path("docker/pins/CATALOG.md")  # repo-relative
 
 
 class ApplyError(ValueError):
@@ -113,19 +125,96 @@ def apply_change(m: Manifest, change: Change, target: TargetVersion | None = Non
     return replace(m, families=tuple(families))
 
 
-def render_change(m: Manifest, change: Change, target: TargetVersion | None, root: Path) -> dict[Path, str]:
-    """The files a pull request for `change` writes, repo-relative path to full
-    content: the manifest, plus every generated file whose content changes.
+def edit_pins(after: Manifest, base: rt.Toolchains, fetch: rt.Fetch) -> rt.Toolchains:
+    """The toolchain pins of `after`, edited from `base`.
 
-    `root` is a checkout whose files match `m` (the PR's base)."""
-    after = apply_change(m, change, target)
-    files: dict[Path, str] = {MANIFEST: dump_manifest(after)}
+    Each series `after` requires (`rt.required_series`) that `base` does not
+    pin is resolved through its toolchain's resolver; each series `base` pins
+    that `after` no longer requires is removed; each tool `after` requires that
+    `base` lacks is resolved. Every other pin is kept exactly as `base` has it:
+    an add never re-resolves another series' patch, which is the daily
+    refresh's job. A pin that serves a core runtime as well as a family
+    (`rt.CORE_PINS`) is still required, so a drop of that family's series
+    keeps it.
+
+    `base` is the PR base's pins, which `check_pins.py` holds consistent with
+    the base manifest, so the only pins that differ are the change's own.
+    A failed lookup, or a result that still does not match `after`, raises
+    ApplyError naming the manifest family and series."""
+    required = rt.required_series(after)
+    series: dict[str, dict[str, rt.Pin]] = {}
+    for key in rt.KINDS:
+        have = base.series.get(key, {})
+        pins: dict[str, rt.Pin] = {}
+        for s in required.get(key, ()):
+            pins[s] = have[s] if s in have else _resolve_series(key, s, fetch)
+        if pins:
+            series[key] = pins
+    tools = {
+        name: base.tools[name] if name in base.tools else _resolve_tool(name, fetch)
+        for name in rt.required_tools(after)
+    }
+    result = rt.Toolchains(series=series, tools=tools)
+    errors = rt.consistency_errors(after, result)
+    if errors:
+        raise ApplyError("the edited toolchain pins do not match the edited manifest:\n  " + "\n  ".join(errors))
+    return result
+
+
+def _resolve_series(key: str, series: str, fetch: rt.Fetch) -> rt.Pin:
+    family = rt.KINDS[key].family
     try:
-        rendered = generate.render_all(after, root, generate.load_pins(root))
+        resolved = rt.RESOLVERS[key]([series], fetch)
+    except rt.ResolutionError as exc:
+        raise ApplyError(f"{family} {series}: cannot resolve its toolchain pin: {exc}") from exc
+    if series not in resolved:
+        raise ApplyError(f"{family} {series}: the {key} resolver returned no pin for it")
+    return resolved[series]
+
+
+def _resolve_tool(name: str, fetch: rt.Fetch) -> rt.Pin:
+    family = rt.KINDS[rt.TOOLS[name]].family
+    try:
+        return rt.TOOL_RESOLVERS[name](fetch)
+    except rt.ResolutionError as exc:
+        raise ApplyError(f"{family}: cannot resolve the {name} pin: {exc}") from exc
+
+
+def _base_pins(change: Change, root: Path) -> rt.Toolchains:
+    try:
+        return generate.load_pins(root)
     except generate.GenerateError as exc:
-        # An add of a series with no toolchain pin lands here: one change that
-        # cannot be rendered must not hold back the others (publish.py).
         raise ApplyError(f"{change.family}: {change.kind} {change.version}: {exc}") from exc
+
+
+def render_change(
+    m: Manifest, change: Change, target: TargetVersion | None, root: Path, *, fetch: rt.Fetch
+) -> dict[Path, str]:
+    """The files a pull request for `change` writes, repo-relative path to full
+    content: the manifest, the toolchain pins and the pin catalog, plus every
+    generated file whose content changes.
+
+    `root` is a checkout whose files match `m` (the PR's base). Every file is
+    compared against it as it is, and nothing is written to it, so a change's
+    pin can neither drop out of its own PR nor leak into the next change
+    rendered from the same checkout. `fetch` reaches the toolchain upstreams
+    for a pin the change adds; it has no default, so no caller reaches the
+    network unless it asks to."""
+    after = apply_change(m, change, target)
+    pins = edit_pins(after, _base_pins(change, root), fetch)
+    try:
+        rendered = generate.render_all(after, root, pins)
+        # The catalog's image-pin table reads the base's Dockerfiles, which a
+        # change edits only in a way the extractor ignores (a family version
+        # is `x.y` or a major, never `x.y.z`); its toolchain table comes from
+        # the edited pins.
+        rendered[root / CATALOG] = generate_catalog.render(root / "docker", pins)
+    except (generate.GenerateError, OSError) as exc:
+        # One change that cannot be rendered must not hold back the others
+        # (publish.py).
+        raise ApplyError(f"{change.family}: {change.kind} {change.version}: {exc}") from exc
+    rendered[root / TOOLCHAINS] = rt.dump_toolchains(pins)
+    files: dict[Path, str] = {MANIFEST: dump_manifest(after)}
     for path, content in rendered.items():
         rel = path.relative_to(root)
         if not path.is_file() or path.read_text() != content:

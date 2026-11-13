@@ -341,6 +341,10 @@ def test_results_json_carries_runtime_evidence():
 # --- publishing ----------------------------------------------------------------------------------
 
 
+def _no_fetch(url):
+    raise AssertionError(f"a runtime change resolves no toolchain pin, yet fetched {url}")
+
+
 class FakePrs:
     def __init__(self):
         self.created = {}
@@ -372,7 +376,8 @@ def test_runtime_change_opens_a_pr_citing_the_package_index():
     result = _check(WITH_315, apt=apt_fetch(extra=["vergil-python3.15"]))
     other = [core.FamilyResult(f.key, (), None) for f in WITH_315.families if f.key != "python"]
     gh, git = FakePrs(), FakeGit()
-    sync_prs([result, *other], gh, git, manifest=WITH_315, adapters={"python": _python()}, root=ROOT, run_url=RUN)
+    sync_prs([result, *other], gh, git, manifest=WITH_315, adapters={"python": _python()}, root=ROOT, run_url=RUN,
+             fetch=_no_fetch)
 
     title, body = gh.created["lifecycle/python-runtime-3.15"]
     assert title == "feat(versions): record the published python 3.15 runtime"
