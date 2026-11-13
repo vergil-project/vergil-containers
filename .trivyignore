@@ -501,9 +501,10 @@ CVE-2026-9496
 # requires them (UBI 9 BaseOS repodata). krb5-libs is there because libcurl,
 # which curl and git use, links libgssapi_krb5 and libkrb5 (with libk5crypto
 # and libkrb5support). Nothing in the image requires libgssrpc or libkdb5, the
-# other krb5-libs libraries. Each CVE below is in code that only a KDC, kadmind
-# or a GSS-RPC server runs. The file is the one MIT's fix commit changes
-# (github.com/krb5/krb5); each description is at
+# other krb5-libs libraries. Each of the first twelve CVEs below is in code
+# that only a KDC, kadmind or a GSS-RPC server runs; the last two are in
+# libkrb5 itself and are covered separately. The file is the one MIT's fix
+# commit changes (github.com/krb5/krb5); each description is at
 # https://access.redhat.com/security/cve/<id>.
 # CVE-2026-107364 — KDC read overrun in fetch_asn1_field() (src/kdc/
 #   kdc_util.c), part of krb5kdc.
@@ -527,10 +528,29 @@ CVE-2026-9496
 # No process in the image accepts Kerberos, kadmin or GSS-RPC traffic, so none
 # of these paths can run.
 #
-# CVE-2026-119079 and CVE-2026-71199 are not in this group. Both are fixed in
-# libkrb5 itself (src/lib/krb5/asn.1/asn1_encode.c and
-# src/lib/krb5/krb/cammac_util.c), the library curl and git load, so they
-# await a ruling on issue #866.
+# CVE-2026-119079 and CVE-2026-71199 are fixed in libkrb5 itself, the library
+# curl and git load, so the server-only argument above does not cover them.
+# They are suppressed on a maintainer ruling on issue #866: the image does not
+# wait for Red Hat to publish the fixed krb5-libs to UBI 9, and the removal
+# condition below applies to them as to the rest of the group.
+# CVE-2026-119079 — quadratic CPU in ASN.1 SEQUENCE OF decoding
+#   (decode_sequence_of() in src/lib/krb5/asn.1/asn1_encode.c; fix
+#   krb5/krb5@782e5ac4fb1496a79de0b87e1fc485f897e97d6d,
+#   https://access.redhat.com/security/cve/CVE-2026-119079). MIT and Red Hat
+#   name the KDC or an application server as the target, but the same decoder
+#   parses every Kerberos message a client receives (AS-REP, TGS-REP,
+#   KRB-ERROR, AP-REP). curl and git reach it only during Kerberos
+#   (GSS-Negotiate) authentication against an attacker-controlled KDC or
+#   server. The image configures no realm, keytab or ticket cache, and the
+#   impact is CPU time in a short-lived CLI process.
+# CVE-2026-71199 — authentication indicator bypass via an unkeyed checksum in
+#   the CAMMAC container (fix
+#   krb5/krb5@18142c9c3a3c2e16d8469aff342b02a28f0b468c, MITKRB5-SA-2026-001).
+#   The libkrb5 half, check_svcver() in src/lib/krb5/krb/cammac_util.c, runs
+#   only when a service accepts a ticket and decrypts it with its own key; the
+#   other half is the KDC's cammac_check_kdcver() (src/kdc/cammac.c). curl and
+#   git only initiate authentication, so they never reach it, and the advisory
+#   says updating the KDC alone blocks the attack.
 #
 # Remove the group once the UBI 9 BaseOS repository ships krb5-libs
 # >= 1.21.1-10.el9_9.2 and a fresh dev-pkg-rhel:9 build scans clean without it.
@@ -547,3 +567,5 @@ CVE-2026-112321
 CVE-2026-112322
 CVE-2026-112323
 CVE-2026-118380
+CVE-2026-119079
+CVE-2026-71199
