@@ -48,9 +48,9 @@ def make_repo(dest: Path) -> Path:
     shutil.copy2(MANIFEST, dest / g.MANIFEST)
     (dest / g.TOOLCHAINS).parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(TOOLCHAINS, dest / g.TOOLCHAINS)
-    for path, content in g.render_all(SEED, dest).items():
+    for path, content in g.render_all(SEED, dest, PINS).items():
         path.write_text(content)
-    stale = [p for p, c in g.render_all(mf.load_manifest(dest / g.MANIFEST), dest).items() if p.read_text() != c]
+    stale = [p for p, c in g.render_all(mf.load_manifest(dest / g.MANIFEST), dest, PINS).items() if p.read_text() != c]
     if stale:
         raise FrozenRepoError(f"the frozen repo at {dest} is not consistent with {MANIFEST}: {stale}")
     return dest

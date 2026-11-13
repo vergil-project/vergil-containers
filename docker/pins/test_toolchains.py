@@ -291,6 +291,26 @@ def test_catalog_lists_every_toolchain_pin():
     assert f"| rustup-init | — | 1.29.3 | — | `{_h('1.29.3-amd64')}` | `{_h('1.29.3-arm64')}` |" in table
 
 
+def test_catalog_render_uses_the_pins_passed_in(tmp_path):
+    # Epic vergil-project/.github#1095, Task 2a: the "Toolchain pins" table is
+    # rendered from the pins passed in, never from the toolchains.yml on disk.
+    root = tmp_path / "docker"
+    shutil.copytree(DOCKER, root, ignore=shutil.ignore_patterns("__pycache__"))
+    on_disk = replace(_pins(), series={**_pins().series, "rust": {"1.99": _pin("1.99.0", hashed=False)}})
+    passed = replace(_pins(), series={**_pins().series, "rust": {"1.99": _pin("1.99.1", hashed=False)}})
+    (root / "pins" / "toolchains.yml").write_text(rt.dump_toolchains(on_disk))
+    md = generate_catalog.render(root, passed)
+    assert "| rust | 1.99 | 1.99.1 | — | — (rustup verifies) | — (rustup verifies) |" in md
+    assert "1.99.0" not in md
+
+
+def test_cli_output_unchanged():
+    # Both CLIs still load the pins from disk, so the committed files stay
+    # byte-for-byte what they render.
+    assert g.main(["--check", "--root", str(DOCKER.parent)]) == 0
+    assert generate_catalog.main(["--check"]) == 0
+
+
 # --- The resolvers ------------------------------------------------------------------
 
 

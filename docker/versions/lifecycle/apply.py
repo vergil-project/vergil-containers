@@ -121,7 +121,7 @@ def render_change(m: Manifest, change: Change, target: TargetVersion | None, roo
     after = apply_change(m, change, target)
     files: dict[Path, str] = {MANIFEST: dump_manifest(after)}
     try:
-        rendered = generate.render_all(after, root)
+        rendered = generate.render_all(after, root, generate.load_pins(root))
     except generate.GenerateError as exc:
         # An add of a series with no toolchain pin lands here: one change that
         # cannot be rendered must not hold back the others (publish.py).
