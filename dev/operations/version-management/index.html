@@ -3495,12 +3495,20 @@ another toolchain (see <a href="../../images/#rust">Rust</a>).</p>
   for a release already pinned: a published release's files never change, so
   that is for a human to look into. Run the resolver without <code>--write</code> to see what
   it would change.</li>
+<li><strong>Lifecycle PRs carry their own pin.</strong> An add PR from the lifecycle
+  automation resolves the new series' pin with the same resolver the refresh
+  uses and writes it to <code>toolchains.yml</code>, along with <code>rustup-init</code> if a
+  Rust add finds it unpinned. A drop PR removes the series' pin, unless the
+  manifest still needs it: the <code>node</code> pin of the <code>core.node</code> major stays
+  when the ts-node family drops that major. No other pin changes: an add never
+  moves another series to a newer patch, which stays the daily refresh's job.
+  Each PR regenerates <code>CATALOG.md</code> from its edited pins, so it passes
+  <code>check_pins.py</code> and <code>generate_catalog.py --check</code> as opened. A pin that
+  cannot be resolved (the upstream is unreachable or has no release of the
+  series) fails that one change in the lifecycle run, and the run reports it.</li>
 <li><strong>Never hand-edit a pin.</strong> Run the resolver instead: it pins exactly the
-  series the manifest lists. The lifecycle automation does not yet write pins,
-  so its add of a pinned family's series fails that change in the lifecycle
-  run (the matrix cannot be rendered without the pin), and its drop PR fails
-  <code>check_pins.py</code> on the orphaned pin. Either is done by hand: edit the
-  manifest, run the resolver and the generators, and commit them together.</li>
+  series the manifest lists. A manual add or drop edits the manifest, runs the
+  resolver and the generators, and commits them together.</li>
 </ul>
 <h2 id="exposure-report-pins-due-for-re-evaluation">Exposure report — pins due for re-evaluation<a class="headerlink" href="#exposure-report-pins-due-for-re-evaluation" title="Permanent link">&para;</a></h2>
 <p><code>docker/pins/report_exposure.py</code> (WS4) generates the internal-state
