@@ -93,11 +93,12 @@ Most package-manager tools (installed via `npm`, `pip`, `uv`, `go install`,
 `cargo`) were **freed** in the pin audit: dropping the version token lets them
 resolve latest at build time, so they float cleanly and need no entry.
 
-Nine tools install from a **binary release download** whose URL and
+Eleven tools install from a **binary release download** whose URL and
 per-version checksum embed an explicit version, so they cannot float by simply
 dropping a token. Rather than add an unauthenticated GitHub version-resolution
 round-trip to every image build, these are **auto-managed**: shellcheck, shfmt,
-actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, and trivy.
+actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, trivy, uv (the
+package toolchain images only) and cargo-nextest (the rust image only).
 
 They stay pinned in source (hermetic, reproducible, revertible) while the daily
 `upstream-refresh` job in
@@ -109,7 +110,9 @@ tracks the leading edge:
   `vrg-upstream-refresh` with this repo's `[upstream-refresh].hook`,
   `docker/pins/upstream-refresh.sh`. For each tool the hook resolves the newest
   release via the `/releases/latest` redirect
-  (`docker/pins/resolve_latest.py`), rewrites the `ARG *_VERSION=` pins in
+  (`docker/pins/resolve_latest.py`; cargo-nextest through nextest's
+  `get.nexte.st/latest/linux` redirect instead, since its repository also
+  publishes other crates' releases), rewrites the `ARG *_VERSION=` pins in
   `docker/common/*`, and regenerates `CATALOG.md`.
 - **Only if something drifted** it opens one bump PR from the fixed
   `upstream-refresh` branch, titled `chore(upstream): refresh upstream inputs`

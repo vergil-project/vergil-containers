@@ -9,8 +9,11 @@ import resolve_latest as rl
 
 TOOLS = {
     "shellcheck", "shfmt", "actionlint", "git-cliff", "hadolint",
-    "opentofu", "nfpm", "trivy", "scorecard", "uv",
+    "opentofu", "nfpm", "trivy", "scorecard", "uv", "cargo-nextest",
 }
+
+NEXTEST_ASSET = ("https://github.com/nextest-rs/nextest/releases/download/"
+                 "cargo-nextest-0.9.152/cargo-nextest-0.9.152-x86_64-unknown-linux-gnu.tar.gz")
 
 
 def _fetch(mapping):
@@ -37,11 +40,56 @@ def test_resolve_accepts_tag_without_v_prefix():
 
 
 def test_resolve_all_covers_every_tool():
-    fetch = _fetch({repo: f"https://github.com/{repo}/releases/tag/v9.9.9"
-                    for repo in rl.TOOL_REPOS.values()})
+    def tag(tool):
+        prefix = rl.TOOL_TAG_PREFIXES.get(tool)
+        return f"{prefix}9.9.9" if prefix else "v9.9.9"
+
+    fetch = _fetch({rl.TOOL_LATEST_URLS.get(tool, repo):
+                    f"https://github.com/{repo}/releases/tag/{tag(tool)}"
+                    for tool, repo in rl.TOOL_REPOS.items()})
     got = rl.resolve_all(fetch=fetch)
     assert set(got) == TOOLS
     assert all(v == "9.9.9" for v in got.values())
+
+
+def test_cargo_nextest_resolves_from_get_nexte_st():
+    # vergil-containers#885: nextest-rs/nextest's /releases/latest may be another
+    # crate's release, so cargo-nextest resolves from nextest's documented
+    # latest-binary URL, whose redirect names the release asset.
+    seen = []
+
+    def fetch(source):
+        seen.append(source)
+        return NEXTEST_ASSET
+
+    got = rl.resolve_all({"cargo-nextest": rl.TOOL_REPOS["cargo-nextest"]}, fetch=fetch)
+    assert got == {"cargo-nextest": "0.9.152"}
+    assert seen == ["https://get.nexte.st/latest/linux"]
+
+
+def test_cargo_nextest_fails_loud_on_another_crates_release():
+    # A tag without the cargo-nextest- prefix (nextest-runner's, say) is never
+    # taken for a cargo-nextest version.
+    fetch = _fetch({rl.TOOL_LATEST_URLS["cargo-nextest"]:
+                    "https://github.com/nextest-rs/nextest/releases/tag/nextest-runner-0.130.0"})
+    with pytest.raises(rl.ResolutionError, match="does not start with 'cargo-nextest-'"):
+        rl.resolve_all({"cargo-nextest": rl.TOOL_REPOS["cargo-nextest"]}, fetch=fetch)
+
+
+def test_cargo_nextest_fails_loud_on_a_prerelease_tag():
+    fetch = _fetch({rl.TOOL_LATEST_URLS["cargo-nextest"]: NEXTEST_ASSET.replace(
+        "cargo-nextest-0.9.152/", "cargo-nextest-0.9.152-b.1/")})
+    with pytest.raises(rl.ResolutionError, match="is not a cargo-nextest-v"):
+        rl.resolve_all({"cargo-nextest": rl.TOOL_REPOS["cargo-nextest"]}, fetch=fetch)
+
+
+def test_parse_tag_from_a_release_asset_location():
+    assert rl.parse_tag_from_location(NEXTEST_ASSET) == "cargo-nextest-0.9.152"
+
+
+def test_latest_url_takes_a_full_url_as_it_is():
+    assert rl._latest_url("x/y") == "https://github.com/x/y/releases/latest"
+    assert rl._latest_url("https://get.nexte.st/latest/linux") == "https://get.nexte.st/latest/linux"
 
 
 def test_resolve_fails_loud_when_location_has_no_tag():
@@ -77,6 +125,24 @@ def test_curl_location_raises_when_no_location_header(monkeypatch):
     monkeypatch.setattr(rl.subprocess, "run", lambda *a, **k: _Proc())
     with pytest.raises(rl.ResolutionError):
         rl._curl_location("x/y")
+
+
+def test_curl_location_takes_the_asset_location_not_the_cdn_one(monkeypatch):
+    # get.nexte.st redirects to the release asset, which redirects again to a
+    # CDN URL that names no release; the asset's location is the one returned.
+    class _Proc:
+        stdout = (
+            "HTTP/2 302\n"
+            f"location: {NEXTEST_ASSET}\n"
+            "HTTP/2 302\n"
+            "location: https://release-assets.githubusercontent.com/github-production-release-asset/1/2?sig=x\n"
+            "HTTP/2 200\n"
+        )
+
+    calls = []
+    monkeypatch.setattr(rl.subprocess, "run", lambda args, **k: calls.append(args) or _Proc())
+    assert rl._curl_location("https://get.nexte.st/latest/linux") == NEXTEST_ASSET
+    assert calls == [["curl", "-fsSLI", "https://get.nexte.st/latest/linux"]]
 
 
 def test_rewrite_args_updates_only_changed_tools(tmp_path):
