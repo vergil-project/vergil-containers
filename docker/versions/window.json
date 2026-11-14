@@ -70,13 +70,7 @@
               "runtime_published": null
             },
             {
-              "version": "1.93",
-              "eol": null,
-              "in_policy": true,
-              "runtime_published": null
-            },
-            {
-              "version": "1.92",
+              "version": "1.98",
               "eol": null,
               "in_policy": true,
               "runtime_published": null
