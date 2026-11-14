@@ -3327,12 +3327,14 @@ version. Each PR carries its own toolchain pin change in
 <code>docker/pins/toolchains.yml</code> (an add's new series pin, a drop's removed one)
 and is merged by a human.</p>
 <h2 id="current-out-of-policy-versions">Current out-of-policy versions<a class="headerlink" href="#current-out-of-policy-versions" title="Permanent link">&para;</a></h2>
-<p>As of 2026-10-21: <strong>1.93 and 1.92.</strong> Both are built, and both are past
-upstream EOL (endoflife.date: 1.93 on 2026-03-06 and 1.92 on 2026-01-22). They
-stay buildable under the report-only exception until Rust's automation is
-turned on.</p>
-<p>The manifest is also <strong>behind</strong>: 1.99 and 1.98, the versions the rule
-requires, are not built.</p>
+<p>As of 2026-11-14: <strong>none.</strong> The manifest builds 1.99 and 1.98, the newest
+stable release and the one before it, so the window is in sync with upstream.
+endoflife.date, checked on 2026-11-14, still lists 1.99 as the newest release.</p>
+<p>Under <code>pr</code> automation, a new release is added and a version that leaves the
+window is dropped through a lifecycle pull request, so the manifest is out of
+policy only while such a PR waits for a human to merge it. The open lifecycle
+PRs (branches <code>lifecycle/rust-add-&lt;x.y&gt;</code> and <code>lifecycle/rust-drop-&lt;x.y&gt;</code>) show
+any pending change.</p>
 
 
 
