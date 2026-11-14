@@ -3274,7 +3274,7 @@ artifact. The report also flags a version whose EOL falls within the next 90
 days.</p>
 <p>What the check does with a gap depends on the family's automation:</p>
 <ul>
-<li><strong><code>pr</code> families</strong> (Python and Go) get one pull request per change, on a
+<li><strong><code>pr</code> families</strong> (Python, Go and Rust) get one pull request per change, on a
   branch named <code>lifecycle/&lt;family&gt;-&lt;kind&gt;-&lt;version&gt;</code>. A change is an add, a
   drop, or, for Python, a <code>runtime</code> change that records a newly published
   <code>vergil-python</code> runtime in the manifest. Each PR carries the manifest edit,
@@ -3423,7 +3423,7 @@ upstream fact cites its source and the date it was checked.</p>
 </tr>
 <tr>
 <td><code>rust</code></td>
-<td><code>report</code></td>
+<td><code>pr</code></td>
 <td><a href="../rust/">Rust</a></td>
 </tr>
 <tr>

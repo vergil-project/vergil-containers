@@ -3309,15 +3309,23 @@ day of the check.</p>
   the most effort.</li>
 <li>Upstream EOL comes with the next release, not on a fixed date. The adapter
   computes the window from release order, not from EOL dates.</li>
-<li>A repo's <code>rust-toolchain.toml</code> chooses a toolchain behind Vergil's back
-  (rule 13). It is handled when Rust's automation is turned on.</li>
+<li>A repo's <code>rust-toolchain.toml</code> (or legacy <code>rust-toolchain</code>) would choose a
+  toolchain behind Vergil's back (rule 13), so <code>vrg-validate</code> treats one at
+  the repo root as an error; the fix is to delete it. The image also pins
+  rustup to its own release (<code>RUSTUP_TOOLCHAIN</code>, with auto-install off), so a
+  toolchain file cannot select or download another toolchain (see
+  <a href="../../images/#rust">Rust</a>). A repo that needs a component or target
+  the image lacks gets it through a vergil-containers change, never through a
+  toolchain file.</li>
 </ul>
 <h2 id="deployed-runtime-package">Deployed runtime package<a class="headerlink" href="#deployed-runtime-package" title="Permanent link">&para;</a></h2>
 <p><strong>No.</strong> Rust compiles to native binaries, so deployed code needs no runtime
 package.</p>
 <h2 id="automation">Automation<a class="headerlink" href="#automation" title="Permanent link">&para;</a></h2>
-<p><strong><code>report</code>.</strong> The lifecycle check reports the gap and tracks it in an issue.
-Rust is next in the queue for <code>pr</code> automation.</p>
+<p><strong><code>pr</code>.</strong> The lifecycle check opens the pull request that adds or drops a Rust
+version. Each PR carries its own toolchain pin change in
+<code>docker/pins/toolchains.yml</code> (an add's new series pin, a drop's removed one)
+and is merged by a human.</p>
 <h2 id="current-out-of-policy-versions">Current out-of-policy versions<a class="headerlink" href="#current-out-of-policy-versions" title="Permanent link">&para;</a></h2>
 <p>As of 2026-10-21: <strong>1.93 and 1.92.</strong> Both are built, and both are past
 upstream EOL (endoflife.date: 1.93 on 2026-03-06 and 1.92 on 2026-01-22). They
