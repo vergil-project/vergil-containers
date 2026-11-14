@@ -155,6 +155,17 @@ def test_rust_ignores_a_future_release():
     assert [t.version for t in adapter.target(releases, TODAY)] == ["1.99", "1.98"]
 
 
+def test_rust_window_with_1_100():
+    # Spec section 6.6: 1.100 is newer than 1.99, so the window is 1.100, 1.99.
+    channel = RustChannel()
+    adapter = RustAdapter(fetch=channel)
+    releases = [UpstreamRelease("1.100", date(2026, 10, 20), None, False), *adapter.fetch()]
+    assert [r.version for r in releases[:3]] == ["1.100", "1.99", "1.98"]
+    target = adapter.target(releases, TODAY)
+    assert [t.version for t in target] == ["1.100", "1.99"]
+    assert channel.asked == ["1.100", "1.99"]
+
+
 def test_rust_missing_channel_manifest_is_blocked():
     adapter = RustAdapter(fetch=RustChannel(missing={"1.99"}))
     assert _kinds(_changes(adapter))[:2] == [("blocked", "1.99"), ("add", "1.98")]

@@ -45,9 +45,11 @@ def render_toolchains(pins: rt.Toolchains) -> str:
     )
 
 
-def render(root: Path) -> str:
+def render(root: Path, toolchains: rt.Toolchains) -> str:
     # `root` is the repo `docker/` dir — the same scan root extract_pins and
-    # check_pins.load_pins expect (load_pins reads root/pins/pins.yml).
+    # check_pins.load_pins expect (load_pins reads root/pins/pins.yml). The
+    # toolchain table comes from `toolchains`; root/pins/toolchains.yml is
+    # never read, so a caller can render from pins it has edited in memory.
     pins = check_pins.load_pins(root)
     rows = []
     for p in extract_pins.extract(root):
@@ -66,7 +68,7 @@ def render(root: Path) -> str:
         "| tool | version | state | inducing release | deterministic | reason |\n"
         "| --- | --- | --- | --- | --- | --- |\n"
         f"{body}\n\n"
-        + render_toolchains(rt.load_toolchains(root / "pins" / "toolchains.yml"))
+        + render_toolchains(toolchains)
     )
 
 
@@ -76,7 +78,7 @@ def main(argv: list[str]) -> int:
     root = Path(__file__).resolve().parent.parent
     out = root / "pins" / "CATALOG.md"
     try:
-        md = render(root)
+        md = render(root, rt.load_toolchains(root / "pins" / "toolchains.yml"))
     except rt.ToolchainsError as exc:
         print(f"::error::{exc}", file=sys.stderr)
         return 1

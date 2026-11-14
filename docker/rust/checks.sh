@@ -11,7 +11,12 @@
 #     cargo, clippy, llvm-tools, rust-std, rustc and rustfmt;
 #   - cargo-deny and cargo-llvm-cov run;
 #   - a new crate builds and runs with the image's C linker, and passes
-#     cargo clippy.
+#     cargo clippy;
+#   - rustup is pinned to the image's own release (epic
+#     vergil-project/.github#1095, spec §6.3): RUSTUP_TOOLCHAIN is that
+#     release and RUSTUP_AUTO_INSTALL is 0, a rust-toolchain.toml naming
+#     another release does not change the toolchain, and a request for a
+#     toolchain the image lacks fails as not installed and downloads nothing.
 #
 # Every check runs and reports; the script exits 1 if any failed, naming each.
 #
@@ -135,6 +140,80 @@ new_crate_builds_and_passes_clippy() {
   return "${rc}"
 }
 
+# installed_toolchains: rustup's toolchain list and the toolchain directories,
+# the two places a toolchain rustup downloaded would show.
+installed_toolchains() {
+  rustup toolchain list || return 1
+  ls -1 "${RUSTUP_HOME:?}/toolchains" || return 1
+}
+
+rustup_toolchain_is_pinned() {
+  if [ "${RUSTUP_TOOLCHAIN:-}" != "${want}" ]; then
+    say "RUSTUP_TOOLCHAIN is '${RUSTUP_TOOLCHAIN:-}', want ${want}"
+    return 1
+  fi
+}
+
+auto_install_is_off() {
+  if [ "${RUSTUP_AUTO_INSTALL:-}" != "0" ]; then
+    say "RUSTUP_AUTO_INSTALL is '${RUSTUP_AUTO_INSTALL:-}', want 0"
+    return 1
+  fi
+}
+
+# toolchain_file_is_ignored: in a directory whose rust-toolchain.toml names
+# another release, rustc is still the image's, and no toolchain is installed.
+toolchain_file_is_ignored() {
+  local work before after rc=0
+  before="$(installed_toolchains)" || {
+    say "listing the installed toolchains failed"
+    return 1
+  }
+  work="$(mktemp -d)" || return 1
+  printf '[toolchain]\nchannel = "1.0.0"\n' >"${work}/rust-toolchain.toml"
+  if ! (cd "${work}" && reports_release rustc --version); then
+    say "a rust-toolchain.toml naming 1.0.0 changed the toolchain"
+    rc=1
+  fi
+  rm -rf "${work}"
+  after="$(installed_toolchains)" || {
+    say "listing the installed toolchains failed"
+    return 1
+  }
+  if [ "${before}" != "${after}" ]; then
+    say "the installed toolchains changed: '${before}' became '${after}'"
+    rc=1
+  fi
+  return "${rc}"
+}
+
+# other_toolchain_is_not_installed: a request for a toolchain the image lacks
+# fails as not installed and downloads nothing. This is the check that fails
+# if RUSTUP_AUTO_INSTALL=0 does nothing.
+other_toolchain_is_not_installed() {
+  local before after out rc=0
+  before="$(installed_toolchains)" || {
+    say "listing the installed toolchains failed"
+    return 1
+  }
+  if out="$(RUSTUP_TOOLCHAIN=1.0.0 rustc --version 2>&1)"; then
+    say "RUSTUP_TOOLCHAIN=1.0.0 rustc --version succeeded: '${out}'"
+    rc=1
+  elif [[ "${out}" != *"is not installed"* ]]; then
+    say "RUSTUP_TOOLCHAIN=1.0.0 rustc --version failed, but not as not installed: '${out}'"
+    rc=1
+  fi
+  after="$(installed_toolchains)" || {
+    say "listing the installed toolchains failed"
+    return 1
+  }
+  if [ "${before}" != "${after}" ]; then
+    say "the installed toolchains changed: '${before}' became '${after}'"
+    rc=1
+  fi
+  return "${rc}"
+}
+
 rc=0
 "${dir}/checks-invariants.sh" || rc=1
 "${dir}/checks-defaults.sh" check_python3_is_core check_no_node check_no_pip || rc=1
@@ -146,6 +225,10 @@ check "the pinned release is rustup's default" default_toolchain_is_pinned
 check "components are today's" components_are_todays
 check "cargo-deny and cargo-llvm-cov run" cargo_tools_run
 check "a new crate builds, runs and passes clippy" new_crate_builds_and_passes_clippy
+check "RUSTUP_TOOLCHAIN is the pinned release" rustup_toolchain_is_pinned
+check "rustup's auto-install is off" auto_install_is_off
+check "a rust-toolchain.toml cannot change the toolchain" toolchain_file_is_ignored
+check "a toolchain the image lacks is never installed" other_toolchain_is_not_installed
 
 if [ "${#failed[@]}" -gt 0 ]; then
   echo "checks-rust: ${#failed[@]} check(s) failed:" >&2

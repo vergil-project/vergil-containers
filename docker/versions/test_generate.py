@@ -10,6 +10,7 @@ import frozen
 import generate as g
 import includes
 import manifest as mf
+import resolve_toolchains as rt
 from test_manifest import CURRENT_MATRIX
 
 # The live checkout: only `test_real_manifest_is_valid` reads it. Every other
@@ -205,8 +206,42 @@ def test_render_package_cache_warm_lists_the_cleanup_packages():
     )
 
 
+def _rust_199_pins(version: str) -> rt.Toolchains:
+    """The frozen pins with rust pinned at series 1.99 only."""
+    return replace(frozen.PINS, series={**frozen.PINS.series, "rust": {"1.99": rt.Pin(version)}})
+
+
+def test_render_all_uses_the_pins_passed_in(repo):
+    # Epic vergil-project/.github#1095, Task 2a: the matrix is rendered from the
+    # pins passed in, never from the toolchains.yml on disk.
+    (rust,) = [f for f in _seed().families if f.key == "rust"]
+    rust = replace(rust, versions=(replace(rust.versions[0], version="1.99"),))
+    m = replace(_seed(), families=tuple(rust if f.key == "rust" else f for f in _seed().families))
+    (repo / g.TOOLCHAINS).write_text(rt.dump_toolchains(_rust_199_pins("1.99.0")))
+    out = g.render_all(m, repo, _rust_199_pins("1.99.1"))
+    include = json.loads(out[repo / g.MATRIX_JSON])["include"]
+    (entry,) = [e for e in include if e["language"] == "rust"]
+    assert entry["version"] == "1.99"
+    assert entry["build-args"]["TOOLCHAIN_VERSION"] == "1.99.1"
+
+
+def test_rust_1_100_build_args(repo):
+    # Spec section 6.6: the rendered matrix carries a three-digit minor as it is.
+    (rust,) = [f for f in _seed().families if f.key == "rust"]
+    rust = replace(rust, versions=tuple(replace(rust.versions[0], version=v) for v in ("1.100", "1.99")))
+    m = replace(_seed(), families=tuple(rust if f.key == "rust" else f for f in _seed().families))
+    pins = replace(frozen.PINS, series={**frozen.PINS.series, "rust": {"1.100": rt.Pin("1.100.0"), "1.99": rt.Pin("1.99.0")}})
+    out = g.render_all(m, repo, pins)
+    include = json.loads(out[repo / g.MATRIX_JSON])["include"]
+    by_version = {e["version"]: e["build-args"] for e in include if e["language"] == "rust"}
+    assert list(by_version) == ["1.100", "1.99"]
+    assert by_version["1.100"]["RUST_VERSION"] == "1.100"
+    assert by_version["1.100"]["TOOLCHAIN_VERSION"] == "1.100.0"
+    assert "ARG RUST_VERSION=1.100" in out[repo / "docker/rust/Dockerfile.template"]
+
+
 def test_render_docs_tables(repo):
-    out = g.render_all(_seed(), repo)
+    out = g.render_all(_seed(), repo, frozen.PINS)
     for rel in g.DOC_TABLES:
         text = out[repo / rel]
         block = text.split("<!-- BEGIN generated: versions -->\n")[1].split("<!-- END")[0]
@@ -407,7 +442,7 @@ def test_package_cleanup_includes_toolchains():
 
 def test_toolchain_arg_default_and_docs_row(repo):
     root = _toolchain_repo(repo)
-    out = g.render_all(_with_toolchain(), root)
+    out = g.render_all(_with_toolchain(), root, frozen.PINS)
     template = out[root / "docker/pkg-ubuntu/Dockerfile.template"]
     assert template.startswith("ARG UBUNTU_VERSION=26.04\n")
     for rel in g.DOC_TABLES:

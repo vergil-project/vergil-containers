@@ -1,3 +1,4 @@
+import hashlib
 import json
 import subprocess
 from dataclasses import replace
@@ -13,7 +14,7 @@ import manifest as mf
 from lifecycle import core, publish
 from lifecycle.adapters.go import GoAdapter
 from lifecycle.adapters.python import PythonAdapter
-from lifecycle.apply import ApplyError, apply_change, branch_name, parse_branch, pr_title, render_change
+from lifecycle.apply import ApplyError, apply_change, branch_name, edit_pins, parse_branch, pr_title, render_change
 from lifecycle.core import Change, FamilyResult, TargetVersion
 from lifecycle.publish import GhCli, GitCli, OpenPr, PublishError, sync_prs
 from lifecycle.report import results_to_json
@@ -25,6 +26,9 @@ ROOT = frozen.root()  # a repo tree whose generated files match SEED
 FIXTURES = HERE / "fixtures"
 TODAY = date(2026, 10, 21)
 SEED = frozen.SEED  # the frozen test manifest, not the live one (#654)
+rt = frozen.rt
+TOOLCHAINS = g.TOOLCHAINS
+CATALOG = frozen.CATALOG
 
 
 def RUNTIME_314():
@@ -91,6 +95,220 @@ def _pr_results(m=SEED, today=TODAY, go_extra=()):
 
 def _versions(m, key):
     return [v.version for v in _family(m, key).versions]
+
+
+# --- the toolchain upstreams (epic vergil-project/.github#1095, Task 2b) ----------------------
+
+
+def _no_fetch(url):
+    """The fetch of a change that resolves no toolchain pin: any call fails the test."""
+    raise AssertionError(f"unexpected toolchain upstream fetch: {url}")
+
+
+def _h(label):
+    return hashlib.sha256(label.encode()).hexdigest()
+
+
+class Upstreams:
+    """A fake toolchain-upstream fetch: canned bodies keyed by URL. Any other
+    URL fails as `rt.fetch_url` does on a 404 (ResolutionError). Records each
+    URL asked, in order."""
+
+    def __init__(self, *bodies):
+        self.bodies = {}
+        for b in bodies:
+            self.bodies |= b
+        self.asked = []
+
+    def __call__(self, url):
+        self.asked.append(url)
+        if url not in self.bodies:
+            raise rt.ResolutionError(f"{url}: HTTP 404 Not Found")
+        return self.bodies[url].encode()
+
+
+def _rust_channel(version):
+    series = version.rsplit(".", 1)[0]
+    return {rt.RUST_CHANNEL.format(series=series): f'[pkg.rust]\nversion = "{version} (0123456789 2026-10-15)"\n'}
+
+
+def _rustup(version):
+    bodies = {rt.RUSTUP_RELEASE: f"version = '{version}'\n"}
+    for arch, triple in rt.RUSTUP_TRIPLES.items():
+        bodies[rt.RUSTUP_INIT_SHA256.format(version=version, triple=triple)] = f"{_h(version + arch)}  *rustup-init\n"
+    return bodies
+
+
+def _pbs(release, *versions):
+    feed = f'<feed><entry><link href="https://github.com/astral-sh/python-build-standalone/releases/tag/{release}"/></entry></feed>'
+    sums = "".join(f"{_h(v + a)}  {rt.pbs_asset(v, release, a)}\n" for v in versions for a in rt.ARCHES)
+    return {rt.PBS_RELEASES_FEED: feed, rt.PBS_DOWNLOAD.format(release=release, name="SHA256SUMS"): sums}
+
+
+def _go(*versions):
+    return {rt.GO_RELEASES: json.dumps([
+        {"version": f"go{v}", "stable": True, "files": [
+            {"filename": f"go{v}.linux-{a}.tar.gz", "os": "linux", "arch": a, "kind": "archive", "sha256": _h(v + a)}
+            for a in rt.ARCHES
+        ]}
+        for v in versions
+    ])}
+
+
+def _pin(version, release=None, hashed=True):
+    return rt.Pin(version, {a: _h(version + a) for a in rt.ARCHES} if hashed else None, release)
+
+
+def rust_pr_fixture(tmp_path):
+    """Rust under `automation: "pr"` at 1.99/1.98, pinned to 1.99.0/1.98.0, on
+    a frozen repo tree rendered from it: (manifest, pins, root). The pins are
+    exactly what the manifest requires (every other series as frozen.PINS has
+    it), as check_pins.py holds the real base."""
+    rust = replace(
+        _family(SEED, "rust"),
+        automation="pr",
+        versions=tuple(mf.ManifestVersion(v, None, None, True, None) for v in ("1.99", "1.98")),
+    )
+    m = replace(SEED, families=tuple(rust if f.key == "rust" else f for f in SEED.families))
+    required = rt.required_series(m)
+    pins = replace(
+        frozen.PINS,
+        series={
+            **{key: {s: frozen.PINS.series[key][s] for s in required[key]} for key in required if key != "rust"},
+            "rust": {"1.99": rt.Pin("1.99.0"), "1.98": rt.Pin("1.98.0")},
+        },
+    )
+    assert rt.consistency_errors(m, pins) == []
+    root = frozen.make_repo(tmp_path / "repo")
+    (root / g.MANIFEST).write_text(mf.dump_manifest(m))
+    (root / TOOLCHAINS).write_text(rt.dump_toolchains(pins))
+    frozen.render_tree(root, m, pins)
+    return m, pins, root
+
+
+def _with_rust(pins, series, pin):
+    """`pins` with `pin` added for rust `series`."""
+    return replace(pins, series={**pins.series, "rust": {**pins.series["rust"], series: pin}})
+
+
+def _tree(root):
+    return {p: p.read_bytes() for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+def _parsed_pins(files):
+    return rt.parse_toolchains(yaml.safe_load(files[TOOLCHAINS]))
+
+
+ADD_RUST_1_100 = (Change("rust", "add", "1.100", ""), TargetVersion("1.100", date(2026, 11, 26), None, True))
+
+
+def test_add_writes_the_new_series_pin(tmp_path):
+    m, pins, root = rust_pr_fixture(tmp_path)
+    fetch = Upstreams(_rust_channel("1.100.0"))
+    files = render_change(m, *ADD_RUST_1_100, root, fetch=fetch)
+    assert _parsed_pins(files).series["rust"] == {"1.100": rt.Pin("1.100.0"), **pins.series["rust"]}
+    text = files[TOOLCHAINS]
+    assert text.index('"1.100":') < text.index('"1.99":') < text.index('"1.98":')
+    assert fetch.asked == [rt.RUST_CHANNEL.format(series="1.100")]
+    include = json.loads(files[g.MATRIX_JSON])["include"]
+    (entry,) = [e for e in include if e["language"] == "rust" and e["version"] == "1.100"]
+    assert entry["build-args"]["RUST_VERSION"] == "1.100"
+    assert entry["build-args"]["TOOLCHAIN_VERSION"] == "1.100.0"
+
+
+def test_add_does_not_rebump_other_series(tmp_path):
+    m, pins, root = rust_pr_fixture(tmp_path)
+    # Upstream has newer patches of 1.99 and 1.98: the add PR leaves them to
+    # the daily refresh.
+    fetch = Upstreams(_rust_channel("1.100.0"), _rust_channel("1.99.3"), _rust_channel("1.98.2"))
+    files = render_change(m, *ADD_RUST_1_100, root, fetch=fetch)
+    assert files[TOOLCHAINS] == rt.dump_toolchains(_with_rust(pins, "1.100", rt.Pin("1.100.0")))
+    assert rt.changes(pins, _parsed_pins(files)) == ["added rust 1.100: 1.100.0"]
+
+
+def test_add_writes_a_missing_tool_pin_only(tmp_path):
+    m, pins, root = rust_pr_fixture(tmp_path)
+    # The base pins rustup-init: it is kept, never re-resolved.
+    fetch = Upstreams(_rust_channel("1.100.0"), _rustup("1.30.0"))
+    files = render_change(m, *ADD_RUST_1_100, root, fetch=fetch)
+    assert _parsed_pins(files).tools == pins.tools
+    assert rt.RUSTUP_RELEASE not in fetch.asked
+    # A base without it: the add resolves it.
+    after = apply_change(m, *ADD_RUST_1_100)
+    fetch = Upstreams(_rust_channel("1.100.0"), _rustup("1.30.0"))
+    edited = edit_pins(after, replace(pins, tools={}), fetch)
+    assert edited.tools == {"rustup-init": rt.Pin("1.30.0", {a: _h("1.30.0" + a) for a in rt.ARCHES})}
+    assert rt.RUSTUP_RELEASE in fetch.asked
+
+
+def test_drop_removes_an_orphaned_pin(tmp_path):
+    two = replace(_family(SEED, "go"), versions=tuple(mf.ManifestVersion(v, None, None, True, None) for v in ("1.27", "1.26")))
+    m = replace(SEED, families=tuple(two if f.key == "go" else f for f in SEED.families))
+    base = replace(frozen.PINS, series={**frozen.PINS.series, "go": {"1.27": _pin("1.27.3"), "1.26": _pin("1.26.10")}})
+    edited = edit_pins(apply_change(m, Change("go", "drop", "1.26", "")), base, _no_fetch)
+    assert edited.series["go"] == {"1.27": _pin("1.27.3")}
+    # A rust drop on a rendered tree removes the pin from both toolchains.yml
+    # and the catalog.
+    m, pins, root = rust_pr_fixture(tmp_path)
+    files = render_change(m, Change("rust", "drop", "1.98", ""), None, root, fetch=_no_fetch)
+    assert rt.changes(pins, _parsed_pins(files)) == ["removed rust 1.98: 1.98.0"]
+    assert "| rust | 1.98 |" in (root / CATALOG).read_text()
+    assert "| rust | 1.98 |" not in files[CATALOG]
+
+
+def test_drop_keeps_a_pin_core_needs(tmp_path):
+    # The frozen manifest's core.node is 22, which the ts-node 22 series shares.
+    m, pins, root = rust_pr_fixture(tmp_path)
+    assert m.core.node == "22" and "22" in pins.series["node"]
+    files = render_change(m, Change("ts-node", "drop", "22", ""), None, root, fetch=_no_fetch)
+    assert _versions(mf.parse_manifest(yaml.safe_load(files[g.MANIFEST])), "ts-node") == ["24"]
+    assert TOOLCHAINS not in files and CATALOG not in files
+    assert edit_pins(apply_change(m, Change("ts-node", "drop", "22", "")), pins, _no_fetch) == pins
+
+
+def test_unresolvable_pin_is_apply_error(tmp_path):
+    m, pins, root = rust_pr_fixture(tmp_path)
+    with pytest.raises(ApplyError, match=r"^rust 1\.100: cannot resolve its toolchain pin: .*channel-rust-1\.100\.toml"):
+        render_change(m, *ADD_RUST_1_100, root, fetch=Upstreams())
+    # The error names the manifest family (ts-node), never the toolchain key (node).
+    add_26 = (Change("ts-node", "add", "26", ""), TargetVersion("26", date(2026, 10, 28), None, True))
+    with pytest.raises(ApplyError, match=r"^ts-node 26: cannot resolve its toolchain pin: ") as raised:
+        render_change(m, *add_26, root, fetch=Upstreams())
+    assert "'node'" not in str(raised.value)
+    # A missing tool pin that cannot be resolved names the family it serves.
+    with pytest.raises(ApplyError, match=r"^rust: cannot resolve the rustup-init pin: "):
+        edit_pins(apply_change(m, *ADD_RUST_1_100), replace(pins, tools={}), Upstreams(_rust_channel("1.100.0")))
+
+
+def test_render_change_leaves_root_untouched(tmp_path):
+    m, _, root = rust_pr_fixture(tmp_path)
+    before = _tree(root)
+    fetch = Upstreams(_rust_channel("1.100.0"))
+    render_change(m, *ADD_RUST_1_100, root, fetch=fetch)
+    render_change(m, Change("rust", "drop", "1.98", ""), None, root, fetch=fetch)
+    assert _tree(root) == before
+
+
+def test_catalog_in_pr_files(tmp_path):
+    m, _, root = rust_pr_fixture(tmp_path)
+    files = render_change(m, *ADD_RUST_1_100, root, fetch=Upstreams(_rust_channel("1.100.0")))
+    assert "| rust | 1.100 | 1.100.0 | — |" in files[CATALOG]
+    # The rest of the catalog is the base's, byte for byte.
+    added = set(files[CATALOG].splitlines()) - set((root / CATALOG).read_text().splitlines())
+    assert added == {"| rust | 1.100 | 1.100.0 | — | — (rustup verifies) | — (rustup verifies) |"}
+    # Writing the PR's files gives a tree every generator and the pin gate accept.
+    for rel, content in files.items():
+        (root / rel).write_text(content)
+    assert g.main(["--check", "--root", str(root)]) == 0
+    assert frozen.generate_catalog.render(root / "docker", rt.load_toolchains(root / TOOLCHAINS)) == files[CATALOG]
+    assert rt.consistency_errors(mf.load_manifest(root / g.MANIFEST), rt.load_toolchains(root / TOOLCHAINS)) == []
+
+
+def test_parse_branch_accepts_three_digit_minor():
+    add = Change("rust", "add", "1.100", "")
+    assert branch_name(add) == "lifecycle/rust-add-1.100"
+    assert parse_branch("lifecycle/rust-add-1.100") == ("rust", "add", "1.100")
+    assert parse_branch("lifecycle/rust-drop-1.99") == ("rust", "drop", "1.99")
 
 
 # --- apply_change ---------------------------------------------------------------------
@@ -168,13 +386,19 @@ def test_branch_names_and_titles():
 def test_apply_then_render_regenerates_all_files(repo):  # noqa: F811
     m = mf.load_manifest(repo / g.MANIFEST)
     target = TargetVersion("3.15", date(2026, 10, 9), date(2031, 10, 31), True)
-    files = render_change(m, Change("python", "add", "3.15", ""), target, repo)
+    # testdata/toolchains.yml already pins python 3.15, so nothing is fetched.
+    # It also pins go 1.27 and 1.28, which the frozen manifest does not list:
+    # the edited pins are exactly what the edited manifest requires, so they go,
+    # and toolchains.yml and the catalog change with them.
+    files = render_change(m, Change("python", "add", "3.15", ""), target, repo, fetch=_no_fetch)
     assert set(files) == {
         g.MANIFEST,
         g.MATRIX_JSON,
         g.WINDOW_JSON,
         Path("docker/python/Dockerfile.template"),
         *g.DOC_TABLES,
+        TOOLCHAINS,
+        CATALOG,
     }
     for rel, content in files.items():
         assert (repo / rel).read_text() != content
@@ -189,7 +413,7 @@ def test_apply_then_render_regenerates_all_files(repo):  # noqa: F811
 
 def test_render_drop_of_an_older_version_leaves_the_arg_default(repo):  # noqa: F811
     m = mf.load_manifest(repo / g.MANIFEST)
-    files = render_change(m, Change("python", "drop", "3.12", ""), None, repo)
+    files = render_change(m, Change("python", "drop", "3.12", ""), None, repo, fetch=_no_fetch)
     assert Path("docker/python/Dockerfile.template") not in files
     assert g.MANIFEST in files and g.MATRIX_JSON in files
 
@@ -251,7 +475,9 @@ class FakeGit:
 
 
 def _sync(gh, git, results, run_url=RUN1, m=SEED, adapters=None):
-    sync_prs(results, gh, git, manifest=m, adapters=adapters or _adapters(), root=ROOT, run_url=run_url)
+    sync_prs(
+        results, gh, git, manifest=m, adapters=adapters or _adapters(), root=ROOT, run_url=run_url, fetch=_no_fetch
+    )
 
 
 # --- sync_prs: the pinned tests (plan Task 6) ---------------------------------------------------
@@ -457,7 +683,7 @@ def test_main_prs_mode(tmp_path):
     path = tmp_path / "results.json"
     path.write_text(results_to_json(_pr_results(), TODAY))
     gh, git = FakeGh(), FakeGit()
-    rc = publish.main(_prs_argv(path), gh=gh, git=git, adapters=_adapters())
+    rc = publish.main(_prs_argv(path), gh=gh, git=git, adapters=_adapters(), fetch=_no_fetch)
     assert rc == 0
     assert sorted(gh.open_prs()) == ["lifecycle/go-add-1.27", "lifecycle/python-add-3.15"]
 
@@ -478,7 +704,7 @@ def test_main_prs_failure_exits_1(tmp_path, capsys):
         def publish_branch(self, branch, files, message):
             raise PublishError("git push failed (exit 1): permission denied")
 
-    rc = publish.main(_prs_argv(path), gh=FakeGh(), git=BrokenGit(), adapters=_adapters())
+    rc = publish.main(_prs_argv(path), gh=FakeGh(), git=BrokenGit(), adapters=_adapters(), fetch=_no_fetch)
     assert rc == 1
     assert "permission denied" in capsys.readouterr().err
 
@@ -654,9 +880,15 @@ def test_apply_change_keeps_core():
         assert mf.parse_manifest(yaml.safe_load(mf.dump_manifest(after))) == after
 
 
-def test_render_add_without_a_toolchain_pin_fails_as_an_apply_error(repo):  # noqa: F811
-    # A lifecycle add of a series toolchains.yml does not pin cannot render its
-    # matrix: it fails that one change (an ApplyError), never the whole run.
+def test_render_add_resolves_a_missing_toolchain_pin(repo):  # noqa: F811
+    # An add of a series toolchains.yml does not pin resolves it through the
+    # injected fetch (it used to fail the change); an unresolvable pin is the
+    # ApplyError of test_unresolvable_pin_is_apply_error.
     m = mf.load_manifest(repo / g.MANIFEST)
-    with pytest.raises(ApplyError, match=r"python: add 3.16: .*toolchain 'python' '3.16'"):
-        render_change(m, Change("python", "add", "3.16", ""), TargetVersion("3.16", None, None, True), repo)
+    fetch = Upstreams(_pbs("20261101", "3.16.0"))
+    files = render_change(m, Change("python", "add", "3.16", ""), TargetVersion("3.16", None, None, True), repo, fetch=fetch)
+    assert _parsed_pins(files).series["python"]["3.16"] == _pin("3.16.0", release="20261101")
+    include = json.loads(files[g.MATRIX_JSON])["include"]
+    (entry,) = [e for e in include if e["language"] == "python" and e["version"] == "3.16"]
+    assert entry["build-args"]["TOOLCHAIN_VERSION"] == "3.16.0"
+    assert entry["build-args"]["PBS_RELEASE"] == "20261101"

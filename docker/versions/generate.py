@@ -347,11 +347,12 @@ def load_pins(root: Path) -> rt.Toolchains:
         raise GenerateError(str(exc)) from exc
 
 
-def render_all(m: mf.Manifest, root: Path) -> dict[Path, str]:
+def render_all(m: mf.Manifest, root: Path, pins: rt.Toolchains) -> dict[Path, str]:
     """The full new content of every generated file, keyed by absolute path.
-    The matrix embeds the toolchain pins of `root`'s docker/pins/toolchains.yml."""
+    The matrix embeds `pins`; `root`'s docker/pins/toolchains.yml is never read,
+    so a caller can render from pins it has edited in memory."""
     out: dict[Path, str] = {
-        root / MATRIX_JSON: render_matrix_json(m, load_pins(root)),
+        root / MATRIX_JSON: render_matrix_json(m, pins),
         root / WINDOW_JSON: render_window_json(m),
         root / BUILD_SH: render_build_sh(m, root),
         root / PACKAGE_CLEANUP: render_package_cleanup(m, root),
@@ -372,7 +373,7 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
     root = args.root.resolve()
     try:
-        rendered = render_all(mf.load_manifest(root / MANIFEST), root)
+        rendered = render_all(mf.load_manifest(root / MANIFEST), root, load_pins(root))
     except (mf.ManifestError, GenerateError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2

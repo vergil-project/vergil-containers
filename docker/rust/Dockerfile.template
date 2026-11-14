@@ -28,7 +28,7 @@ RUN apt-get update && \
 # The same layout as the rust:<v>-slim images: rustup and cargo under
 # /usr/local, cargo's bin on PATH, both writable by any user, and RUST_VERSION
 # the exact release (set after the install, which reads the build arg of that
-# name, the series).
+# name, the series), with rustup pinned to it.
 ARG TARGETARCH
 ARG RUST_VERSION=1.93
 ARG TOOLCHAIN_VERSION
@@ -66,7 +66,14 @@ RUN : "${RUST_VERSION:?rust: the RUST_VERSION build arg is not set}" && \
     rustup --version && \
     rustc --version
 
-ENV RUST_VERSION=${TOOLCHAIN_VERSION}
+# rustup is pinned to that release (epic vergil-project/.github#1095, spec
+# §6.3). RUSTUP_TOOLCHAIN outranks a directory override and a repo's
+# rust-toolchain.toml, and RUSTUP_AUTO_INSTALL=0 makes a request for any other
+# toolchain fail as not installed instead of downloading it (rustup's
+# environment-variables and overrides docs, as of rustup 1.29.3).
+ENV RUST_VERSION=${TOOLCHAIN_VERSION} \
+    RUSTUP_TOOLCHAIN=${TOOLCHAIN_VERSION} \
+    RUSTUP_AUTO_INSTALL=0
 
 # --- Rust tools --------------------------------------------------------------
 RUN cargo install cargo-deny && \

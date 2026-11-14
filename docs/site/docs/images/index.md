@@ -9,7 +9,8 @@ common layer: they are the minimal images that package jobs build and
 install-test in, published to `ghcr.io/vergil-project/dev-pkg-<distro>:<version>`
 (see [Package toolchain images](#package-toolchain-images)). Every image is
 published as a multi-architecture manifest (amd64 + arm64), with a `dev-`
-prefix from `develop` and a `prod-` prefix from `main`.
+prefix from `develop` and a `prod-` prefix from `main`. The OS of each image,
+and why, is in [OS usage](../operations/os-usage.md).
 
 !!! info "Tool versions are managed, not hand-listed here"
     This page is the **inventory** — what each image includes. It deliberately
@@ -141,8 +142,18 @@ out of upstream support and its standard library carries HIGH CVEs that no Go
 The series' exact Rust release, pinned in `docker/pins/toolchains.yml`, is
 installed with a pinned `rustup-init` (its SHA-256 checked per architecture)
 on rustup's minimal profile, under `/usr/local/rustup` and `/usr/local/cargo`
-as in the `rust:<version>-slim` images it replaces. `gcc`, `libc6-dev` and
-`pkg-config` come from Ubuntu as the C linker.
+as in the `rust:<version>-slim` images it replaces. `gcc` and `libc6-dev`
+come from Ubuntu as the C linker, and `pkg-config` as a build helper for crates
+that link system libraries.
+
+The image owns the toolchain choice. It sets `RUSTUP_TOOLCHAIN` to its exact
+installed release (the same value as `RUST_VERSION`) and `RUSTUP_AUTO_INSTALL`
+to `0`. rustup ranks `RUSTUP_TOOLCHAIN` above a directory override and a
+`rust-toolchain.toml`, so a repo's toolchain file cannot change the toolchain.
+A request for any other toolchain fails because it is not installed, and
+rustup downloads nothing. The build checks all of this. A repo that needs a
+component or target the image lacks gets it through a vergil-containers
+change to the image, never through a toolchain file.
 
 | Tool           | Source           | Purpose                     |
 | -------------- | ---------------- | --------------------------- |

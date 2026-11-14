@@ -5,8 +5,7 @@
 # actions/package/setup, whose os-prereqs.sh once wrote it, has installed
 # nothing since vergil-actions v2.1.62. vergil-tooling's
 # lib/package/repo_setup.py passes the same fail-fast options on each apt
-# command line (APT_FAIL_FAST); keep step 4 and it in step (its error mode is
-# step 4's newest option, which APT_FAIL_FAST does not carry yet):
+# command line (APT_FAIL_FAST); keep step 4 and it in step:
 #
 #   1. The archive the base image's sources name, read from the Ubuntu URIs
 #      (http or https, with or without the trailing slash) on the active

@@ -175,8 +175,9 @@ jobs:
           path: ${{ runner.temp }}/parent
           merge-multiple: true
 
-      # Every key of the entry's build-args map is a --build-arg (base's map is
-      # empty), and a child also gets PARENT_IMAGE, its parent by digest. An
+      # Every key of the entry's build-args map is a --build-arg (base's map
+      # carries the core build args, CORE_PYTHON and CORE_NODE_*), and a child
+      # also gets PARENT_IMAGE, its parent by digest. An
       # image whose Dockerfile declares UPGRADE_DATE (the pkg- images, before
       # their OS upgrade) gets the run's UTC date, so the upgrade's cached
       # layer is reused only within that day (vergil-containers#845).

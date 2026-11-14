@@ -139,6 +139,42 @@ def test_orphan_series_fails():
     assert error.startswith("toolchain 'go' '1.25': pinned, but neither a go series nor a core runtime")
 
 
+def _rust_1_100() -> tuple[mf.Manifest, rt.Toolchains]:
+    """The frozen manifest and pins with rust at series 1.100 and 1.99."""
+    families = tuple(
+        replace(f, versions=tuple(replace(f.versions[0], version=v) for v in ("1.100", "1.99"))) if f.key == "rust" else f
+        for f in SEED.families
+    )
+    pins = replace(_pins(), series={**_pins().series, "rust": {
+        "1.99": _pin("1.99.0", hashed=False), "1.100": _pin("1.100.0", hashed=False),
+    }})
+    return replace(SEED, families=families), pins
+
+
+def test_dump_orders_1_100_before_1_99():
+    # Spec section 6.6: series sort numerically, newest first.
+    _, pins = _rust_1_100()
+    text = rt.dump_toolchains(pins)
+    assert text.index('"1.100":') < text.index('"1.99":')
+    table = generate_catalog.render_toolchains(pins)
+    assert table.index("| rust | 1.100 |") < table.index("| rust | 1.99 |")
+
+
+def test_parse_toolchains_accepts_1_100():
+    m, pins = _rust_1_100()
+    assert rt.parse_toolchains(_doc(pins)) == pins
+    assert rt.consistency_errors(m, pins) == []
+    # 1.10.0 is not a release of 1.100, nor 1.100.0 of 1.10.
+    doc = _doc(pins)
+    doc["toolchains"]["rust"]["1.100"]["version"] = "1.10.0"
+    with pytest.raises(rt.ToolchainsError, match=r"'1.10.0' is not a release of rust 1.100"):
+        rt.parse_toolchains(doc)
+    doc = _doc(pins)
+    doc["toolchains"]["rust"]["1.10"] = doc["toolchains"]["rust"].pop("1.100")
+    with pytest.raises(rt.ToolchainsError, match=r"'1.100.0' is not a release of rust 1.10"):
+        rt.parse_toolchains(doc)
+
+
 def test_core_node_pin_not_orphan():
     # Core Node 22 with no ts-node series 22: its entry is still required.
     families = tuple(
@@ -289,6 +325,26 @@ def test_catalog_lists_every_toolchain_pin():
     assert "| python | 3.14 | 3.14.1 | 20261026 | `" in table
     assert "| rust | 1.93 | 1.93.1 | — | — (rustup verifies) | — (rustup verifies) |" in table
     assert f"| rustup-init | — | 1.29.3 | — | `{_h('1.29.3-amd64')}` | `{_h('1.29.3-arm64')}` |" in table
+
+
+def test_catalog_render_uses_the_pins_passed_in(tmp_path):
+    # Epic vergil-project/.github#1095, Task 2a: the "Toolchain pins" table is
+    # rendered from the pins passed in, never from the toolchains.yml on disk.
+    root = tmp_path / "docker"
+    shutil.copytree(DOCKER, root, ignore=shutil.ignore_patterns("__pycache__"))
+    on_disk = replace(_pins(), series={**_pins().series, "rust": {"1.99": _pin("1.99.0", hashed=False)}})
+    passed = replace(_pins(), series={**_pins().series, "rust": {"1.99": _pin("1.99.1", hashed=False)}})
+    (root / "pins" / "toolchains.yml").write_text(rt.dump_toolchains(on_disk))
+    md = generate_catalog.render(root, passed)
+    assert "| rust | 1.99 | 1.99.1 | — | — (rustup verifies) | — (rustup verifies) |" in md
+    assert "1.99.0" not in md
+
+
+def test_cli_output_unchanged():
+    # Both CLIs still load the pins from disk, so the committed files stay
+    # byte-for-byte what they render.
+    assert g.main(["--check", "--root", str(DOCKER.parent)]) == 0
+    assert generate_catalog.main(["--check"]) == 0
 
 
 # --- The resolvers ------------------------------------------------------------------
