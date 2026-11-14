@@ -3,7 +3,10 @@
 For each tool, resolve the newest release version from its GitHub repo via the
 `/releases/latest` **redirect** — `curl -fsSLI https://github.com/OWNER/REPO/
 releases/latest` returns a 3xx whose `location:` header points at
-`.../releases/tag/vX.Y.Z`. We parse the tag from that header.
+`.../releases/tag/vX.Y.Z`. We parse the tag from that header. A tool whose
+repo's latest release may be another project's (cargo-nextest) resolves from
+the URL its project documents for its latest binary instead (TOOL_LATEST_URLS),
+whose redirect names the release asset, `.../releases/download/<tag>/<asset>`.
 
 Why the redirect and not `api.github.com`: the API's unauthenticated limit is
 60 requests/hr and is easily exhausted in CI; the release redirect is unmetered.
@@ -38,12 +41,32 @@ TOOL_REPOS = {
     "trivy": "aquasecurity/trivy",
     "scorecard": "ossf/scorecard",
     "uv": "astral-sh/uv",
+    "cargo-nextest": "nextest-rs/nextest",
+}
+
+# tool → the URL whose redirect names its latest release, for a tool whose
+# repo's /releases/latest cannot be trusted to. nextest-rs/nextest also
+# publishes nextest-runner and other crates' releases, and does not mark the
+# cargo-nextest release latest, so the repo's latest release may be another
+# crate's (vergil-containers#885). nextest documents get.nexte.st/latest/<platform>
+# as the latest cargo-nextest binary
+# (https://nexte.st/docs/installation/release-urls/); it redirects to the release
+# asset, `.../releases/download/cargo-nextest-X.Y.Z/<asset>`.
+TOOL_LATEST_URLS = {
+    "cargo-nextest": "https://get.nexte.st/latest/linux",
+}
+
+# tool → the prefix its release tags carry before the version
+# (`cargo-nextest-0.9.152`). A tool with none tags `vX.Y.Z` or `X.Y.Z`.
+TOOL_TAG_PREFIXES = {
+    "cargo-nextest": "cargo-nextest-",
 }
 
 # tool → the ARG name carrying its pinned version in a docker/common fragment.
 # Every one of these ARGs stores a bare `x.y.z` (no `v` prefix); the fragment's
-# download URL re-adds the `v`. So normalization for all of them is "strip a
-# leading v" — see normalize_version.
+# download URL re-adds the `v` (or, for cargo-nextest, its tag prefix). So
+# normalization for all of them is "strip the tag prefix and a leading v" — see
+# normalize_version.
 TOOL_ARGS = {
     "shellcheck": "SHELLCHECK_VERSION",
     "shfmt": "SHFMT_VERSION",
@@ -55,9 +78,14 @@ TOOL_ARGS = {
     "trivy": "TRIVY_VERSION",
     "scorecard": "SCORECARD_VERSION",
     "uv": "UV_VERSION",
+    "cargo-nextest": "CARGO_NEXTEST_VERSION",
 }
 
-_TAG_IN_LOCATION = re.compile(r"/releases/tag/(?P<tag>[^/\s]+)\s*$")
+# A release tag page (`.../releases/tag/<tag>`) or a release asset
+# (`.../releases/download/<tag>/<asset>`).
+_TAG_IN_LOCATION = re.compile(
+    r"/releases/(?:tag/(?P<tag>[^/\s]+)|download/(?P<asset_tag>[^/\s]+)/[^/\s]+)\s*$"
+)
 _SEMVER = re.compile(r"^v?(?P<ver>\d+\.\d+\.\d+)$")
 
 
@@ -66,11 +94,20 @@ class ResolutionError(RuntimeError):
     lookup fails the bumper rather than silently skipping the tool."""
 
 
-def _curl_location(repo: str) -> str:
-    """Default fetcher: HEAD `github.com/OWNER/REPO/releases/latest` and return
-    the redirect's `location` header (the `.../releases/tag/vX.Y.Z` URL). Raises
-    ResolutionError on any curl failure or missing header."""
-    url = f"https://github.com/{repo}/releases/latest"
+def _latest_url(source: str) -> str:
+    """The URL to resolve for `source`: a full `https://` URL as it is, else
+    `OWNER/REPO`'s `/releases/latest`."""
+    if source.startswith("https://"):
+        return source
+    return f"https://github.com/{source}/releases/latest"
+
+
+def _curl_location(source: str) -> str:
+    """Default fetcher: HEAD `source`'s latest URL (see _latest_url) and return
+    the first redirect `location` header naming a release, a
+    `.../releases/tag/<tag>` or `.../releases/download/<tag>/<asset>` URL.
+    Raises ResolutionError on any curl failure or missing header."""
+    url = _latest_url(source)
     try:
         proc = subprocess.run(
             ["curl", "-fsSLI", url],
@@ -80,43 +117,54 @@ def _curl_location(repo: str) -> str:
             check=True,
         )
     except (OSError, subprocess.SubprocessError) as exc:
-        raise ResolutionError(f"{repo}: curl failed resolving /releases/latest: {exc}") from exc
+        raise ResolutionError(f"{source}: curl failed resolving {url}: {exc}") from exc
     for line in proc.stdout.splitlines():
         name, sep, value = line.partition(":")
-        if sep and name.strip().lower() == "location" and "/releases/tag/" in value:
+        if sep and name.strip().lower() == "location" and _TAG_IN_LOCATION.search(value):
             return value.strip()
-    raise ResolutionError(f"{repo}: no '/releases/tag/' location header in redirect chain")
+    raise ResolutionError(f"{source}: no release location header in the redirect chain of {url}")
 
 
 def parse_tag_from_location(location: str) -> str:
     """Pull the release tag (e.g. `v0.12.0`) out of a `.../releases/tag/<tag>`
-    URL. Raises ResolutionError if the URL has no parseable tag segment."""
+    or `.../releases/download/<tag>/<asset>` URL. Raises ResolutionError if the
+    URL has no parseable tag segment."""
     match = _TAG_IN_LOCATION.search(location)
     if not match:
         raise ResolutionError(f"cannot parse a release tag from location: {location!r}")
-    return match.group("tag")
+    return match.group("tag") or match.group("asset_tag")
 
 
-def normalize_version(tag: str) -> str:
+def normalize_version(tag: str, prefix: str = "") -> str:
     """Normalize a release tag to the ARG convention (bare `x.y.z`). Every tool
-    stores a bare version, so this strips an optional leading `v` and asserts the
-    result is a three-component semver. Raises on anything else (fail loud)."""
-    match = _SEMVER.match(tag)
+    stores a bare version, so this strips the tool's tag `prefix` (which the tag
+    must carry) and an optional leading `v`, and asserts the result is a
+    three-component semver. Raises on anything else (fail loud)."""
+    if not tag.startswith(prefix):
+        raise ResolutionError(f"release tag {tag!r} does not start with {prefix!r}")
+    match = _SEMVER.match(tag[len(prefix):])
     if not match:
-        raise ResolutionError(f"release tag {tag!r} is not a v?x.y.z version")
+        raise ResolutionError(f"release tag {tag!r} is not a {prefix}v?x.y.z version")
     return match.group("ver")
 
 
-def resolve(repo: str, fetch=_curl_location) -> str:
-    """Resolve one repo's latest release version as bare `x.y.z`."""
-    return normalize_version(parse_tag_from_location(fetch(repo)))
+def resolve(source: str, fetch=_curl_location, prefix: str = "") -> str:
+    """Resolve one source's latest release version as bare `x.y.z`. `source` is
+    `OWNER/REPO` or a full URL (see _latest_url); `prefix` is its tag prefix."""
+    return normalize_version(parse_tag_from_location(fetch(source)), prefix)
 
 
 def resolve_all(tools: dict[str, str] | None = None, fetch=_curl_location) -> dict[str, str]:
-    """Resolve every tool in `tools` (default: TOOL_REPOS) → {tool: x.y.z}.
-    Propagates ResolutionError from the first tool that fails."""
+    """Resolve every tool in `tools` (default: TOOL_REPOS) → {tool: x.y.z},
+    each from its TOOL_LATEST_URLS entry if it has one, else its repo, and with
+    its TOOL_TAG_PREFIXES prefix. Propagates ResolutionError from the first tool
+    that fails."""
     tools = TOOL_REPOS if tools is None else tools
-    return {tool: resolve(repo, fetch=fetch) for tool, repo in tools.items()}
+    return {
+        tool: resolve(TOOL_LATEST_URLS.get(tool, repo), fetch=fetch,
+                      prefix=TOOL_TAG_PREFIXES.get(tool, ""))
+        for tool, repo in tools.items()
+    }
 
 
 def _fragment_files(docker_root: Path) -> list[Path]:

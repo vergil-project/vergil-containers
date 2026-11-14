@@ -80,6 +80,8 @@ RUN cargo install cargo-deny && \
     cargo install cargo-llvm-cov && \
     rm -rf /usr/local/cargo/registry
 
+# @include common/cargo-nextest.dockerfile
+
 # --- Build-time checks -------------------------------------------------------
 # base's invariants, all three of base's defaults, and the Rust toolchain.
 # checks.sh runs from the build context and is not kept. Any failure fails the
