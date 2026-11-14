@@ -68,12 +68,6 @@
               "eol": null,
               "in_policy": true,
               "runtime_published": null
-            },
-            {
-              "version": "1.92",
-              "eol": null,
-              "in_policy": true,
-              "runtime_published": null
             }
           ]
         }
