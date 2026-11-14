@@ -15,6 +15,7 @@ import urllib.request
 from collections.abc import Callable
 from datetime import date
 
+import content_coding
 from lifecycle.core import EOL_DATE_UNKNOWN, NotFoundError, SourceError, UpstreamRelease
 
 Fetch = Callable[[str], bytes]
@@ -35,13 +36,13 @@ GITHUB_TOKEN_ENV = "LIFECYCLE_GITHUB_TOKEN"
 
 
 def request_headers(url: str) -> dict[str, str]:
-    """The headers for a GET of `url`: always the User-Agent, plus a bearer
-    token for the GitHub API when $LIFECYCLE_GITHUB_TOKEN is set.
+    """The headers for a GET of `url`: always the User-Agent and the
+    Accept-Encoding `fetch_url` decodes, plus a bearer token for the GitHub API when $LIFECYCLE_GITHUB_TOKEN is set.
 
     A variable that is set but empty raises SourceError: it means the token
     step produced nothing, and that must not quietly fall back to the
     unauthenticated rate limit."""
-    headers = {"User-Agent": USER_AGENT}
+    headers = {"User-Agent": USER_AGENT, "Accept-Encoding": content_coding.ACCEPT_ENCODING}
     if url.startswith(GITHUB_API) and GITHUB_TOKEN_ENV in os.environ:
         token = os.environ[GITHUB_TOKEN_ENV].strip()
         if not token:
@@ -52,19 +53,25 @@ def request_headers(url: str) -> dict[str, str]:
 
 
 def fetch_url(url: str) -> bytes:
-    """GET `url` and return the body. HTTP 404 raises NotFoundError; any other
-    HTTP failure (a 403 or 429 rate limit included), network or timeout failure
-    raises SourceError naming the URL."""
+    """GET `url` and return the body, decoded by its Content-Encoding. HTTP 404
+    raises NotFoundError; any other HTTP failure (a 403 or 429 rate limit
+    included), network or timeout failure, an unsupported coding or a body that
+    does not decode raises SourceError naming the URL."""
     request = urllib.request.Request(url, headers=request_headers(url))
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            return response.read()
+            encoding = response.headers.get("Content-Encoding")
+            body = response.read()
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             raise NotFoundError(f"{url}: HTTP 404 {exc.reason}") from exc
         raise SourceError(f"{url}: HTTP {exc.code} {exc.reason}") from exc
     except (urllib.error.URLError, OSError) as exc:  # URLError, timeouts, resets
         raise SourceError(f"{url}: {exc}") from exc
+    try:
+        return content_coding.decode(url, encoding, body)
+    except content_coding.ContentCodingError as exc:
+        raise SourceError(str(exc)) from exc
 
 
 def _endoflife_date(product: str, cycle: str, field: str, value: object) -> date:
