@@ -91,18 +91,18 @@ families:
     language: "rust"
     token_prefix: ""
     build_arg: "RUST_VERSION"
-    automation: "report"
+    automation: "pr"
     parent:
       name: "base"
       version: "latest"
     versions:
-      - version: "1.93"
-        ga: 2026-01-22
+      - version: "1.99"
+        ga: 2026-10-01
         eol: null
         in_policy: true
         runtime_published: null
-      - version: "1.92"
-        ga: 2025-12-11
+      - version: "1.98"
+        ga: 2026-08-20
         eol: null
         in_policy: true
         runtime_published: null

@@ -315,10 +315,10 @@ def _write_results(tmp_path, results):
 
 
 def test_main_syncs_from_results_json_against_the_real_manifest(tmp_path):
-    path = _write_results(tmp_path, [_result("rust", ("add", "1.99")), _result("python", ("add", "3.15"))])
+    path = _write_results(tmp_path, [_result("cpp-gcc", ("add", "16")), _result("python", ("add", "3.15"))])
     gh = FakeGh()
     assert publish.main(["--results", str(path), "--run-url", RUN1], gh=gh) == 0
-    assert gh.open_titles() == ["language lifecycle: rust add 1.99"]
+    assert gh.open_titles() == ["language lifecycle: cpp-gcc add 16"]
 
 
 def test_main_malformed_results_fails(tmp_path, capsys):

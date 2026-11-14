@@ -58,8 +58,14 @@ day of the check.
   the most effort.
 - Upstream EOL comes with the next release, not on a fixed date. The adapter
   computes the window from release order, not from EOL dates.
-- A repo's `rust-toolchain.toml` chooses a toolchain behind Vergil's back
-  (rule 13). It is handled when Rust's automation is turned on.
+- A repo's `rust-toolchain.toml` (or legacy `rust-toolchain`) would choose a
+  toolchain behind Vergil's back (rule 13), so `vrg-validate` treats one at
+  the repo root as an error; the fix is to delete it. The image also pins
+  rustup to its own release (`RUSTUP_TOOLCHAIN`, with auto-install off), so a
+  toolchain file cannot select or download another toolchain (see
+  [Rust](../images/index.md#rust)). A repo that needs a component or target
+  the image lacks gets it through a vergil-containers change, never through a
+  toolchain file.
 
 ## Deployed runtime package
 
@@ -68,15 +74,19 @@ package.
 
 ## Automation
 
-**`report`.** The lifecycle check reports the gap and tracks it in an issue.
-Rust is next in the queue for `pr` automation.
+**`pr`.** The lifecycle check opens the pull request that adds or drops a Rust
+version. Each PR carries its own toolchain pin change in
+`docker/pins/toolchains.yml` (an add's new series pin, a drop's removed one)
+and is merged by a human.
 
 ## Current out-of-policy versions
 
-As of 2026-10-21: **1.93 and 1.92.** Both are built, and both are past
-upstream EOL (endoflife.date: 1.93 on 2026-03-06 and 1.92 on 2026-01-22). They
-stay buildable under the report-only exception until Rust's automation is
-turned on.
+As of 2026-11-14: **none.** The manifest builds 1.99 and 1.98, the newest
+stable release and the one before it, so the window is in sync with upstream.
+endoflife.date, checked on 2026-11-14, still lists 1.99 as the newest release.
 
-The manifest is also **behind**: 1.99 and 1.98, the versions the rule
-requires, are not built.
+Under `pr` automation, a new release is added and a version that leaves the
+window is dropped through a lifecycle pull request, so the manifest is out of
+policy only while such a PR waits for a human to merge it. The open lifecycle
+PRs (branches `lifecycle/rust-add-<x.y>` and `lifecycle/rust-drop-<x.y>`) show
+any pending change.

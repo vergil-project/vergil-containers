@@ -33,7 +33,7 @@ The table is generated from `docker/versions/manifest.yml` by
 | ---------------- | ---------- | ---------------------- | --------------------------------------- |
 | `dev-python`     | python     | 3.15, 3.14, 3.13, 3.12 | `base:latest`                           |
 | `dev-go`         | go         | 1.27, 1.26             | `base:latest`                           |
-| `dev-rust`       | rust       | 1.93, 1.92             | `base:latest`                           |
+| `dev-rust`       | rust       | 1.99, 1.98             | `base:latest`                           |
 | `dev-cpp-clang`  | cpp        | 20, 19                 | `base:latest`                           |
 | `dev-cpp-gcc`    | cpp        | 14                     | `base:latest`                           |
 | `dev-ts-node`    | typescript | 24, 22                 | `base:latest`                           |
@@ -144,7 +144,10 @@ installed with a pinned `rustup-init` (its SHA-256 checked per architecture)
 on rustup's minimal profile, under `/usr/local/rustup` and `/usr/local/cargo`
 as in the `rust:<version>-slim` images it replaces. `gcc` and `libc6-dev`
 come from Ubuntu as the C linker, and `pkg-config` as a build helper for crates
-that link system libraries.
+that link system libraries. `cargo-nextest` comes from nextest's prebuilt
+release binary, checked against the release's per-asset SHA-256; it is the
+test runner that writes JUnit reports on stable Rust, alone or as
+`cargo llvm-cov nextest`.
 
 The image owns the toolchain choice. It sets `RUSTUP_TOOLCHAIN` to its exact
 installed release (the same value as `RUST_VERSION`) and `RUSTUP_AUTO_INSTALL`
@@ -163,6 +166,7 @@ change to the image, never through a toolchain file.
 | llvm-tools     | rustup component | Coverage instrumentation    |
 | cargo-deny     | cargo            | Dependency security checker |
 | cargo-llvm-cov | cargo            | Code coverage               |
+| cargo-nextest  | release binary   | Test runner (JUnit reports) |
 
 ## Base
 

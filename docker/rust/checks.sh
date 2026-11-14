@@ -9,7 +9,8 @@
 #     default toolchain;
 #   - the toolchain carries exactly today's components on the minimal profile:
 #     cargo, clippy, llvm-tools, rust-std, rustc and rustfmt;
-#   - cargo-deny and cargo-llvm-cov run;
+#   - cargo-deny, cargo-llvm-cov and cargo-nextest run, and cargo nextest
+#     runs a new crate's tests and writes a JUnit report;
 #   - a new crate builds and runs with the image's C linker, and passes
 #     cargo clippy;
 #   - rustup is pinned to the image's own release (epic
@@ -117,6 +118,35 @@ cargo_tools_run() {
     say "'cargo llvm-cov --version' failed"
     rc=1
   }
+  cargo nextest --version >/dev/null || {
+    say "'cargo nextest --version' failed"
+    rc=1
+  }
+  return "${rc}"
+}
+
+# nextest_writes_junit: cargo nextest runs a new crate's test and writes a JUnit
+# report, the reason the image carries it (vergil-containers#885).
+nextest_writes_junit() {
+  local work rc=0 crate report
+  work="$(mktemp -d)" || return 1
+  crate="${work}/vergil-check"
+  report="${crate}/target/nextest/default/junit.xml"
+  if ! (cd "${work}" && cargo new --quiet --vcs none --lib vergil-check); then
+    say "'cargo new --lib' failed"
+    rc=1
+  else
+    mkdir -p "${crate}/.config"
+    printf '[profile.default.junit]\npath = "junit.xml"\n' >"${crate}/.config/nextest.toml"
+    if ! (cd "${crate}" && cargo nextest run); then
+      say "'cargo nextest run' of a new crate failed"
+      rc=1
+    elif ! grep -q '<testsuites' "${report}"; then
+      say "'cargo nextest run' wrote no JUnit report at ${report}"
+      rc=1
+    fi
+  fi
+  rm -rf "${work}"
   return "${rc}"
 }
 
@@ -223,7 +253,8 @@ check "rustc is the pinned release" rustc_is_pinned
 check "cargo is the pinned release" cargo_is_pinned
 check "the pinned release is rustup's default" default_toolchain_is_pinned
 check "components are today's" components_are_todays
-check "cargo-deny and cargo-llvm-cov run" cargo_tools_run
+check "cargo-deny, cargo-llvm-cov and cargo-nextest run" cargo_tools_run
+check "cargo nextest runs a new crate's tests and writes JUnit" nextest_writes_junit
 check "a new crate builds, runs and passes clippy" new_crate_builds_and_passes_clippy
 check "RUSTUP_TOOLCHAIN is the pinned release" rustup_toolchain_is_pinned
 check "rustup's auto-install is off" auto_install_is_off

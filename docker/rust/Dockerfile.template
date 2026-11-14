@@ -30,7 +30,7 @@ RUN apt-get update && \
 # the exact release (set after the install, which reads the build arg of that
 # name, the series), with rustup pinned to it.
 ARG TARGETARCH
-ARG RUST_VERSION=1.93
+ARG RUST_VERSION=1.99
 ARG TOOLCHAIN_VERSION
 ARG RUSTUP_INIT_VERSION
 ARG RUSTUP_INIT_SHA256_AMD64
@@ -79,6 +79,8 @@ ENV RUST_VERSION=${TOOLCHAIN_VERSION} \
 RUN cargo install cargo-deny && \
     cargo install cargo-llvm-cov && \
     rm -rf /usr/local/cargo/registry
+
+# @include common/cargo-nextest.dockerfile
 
 # --- Build-time checks -------------------------------------------------------
 # base's invariants, all three of base's defaults, and the Rust toolchain.
