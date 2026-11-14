@@ -101,6 +101,11 @@ families:
         eol: null
         in_policy: true
         runtime_published: null
+      - version: "1.98"
+        ga: 2026-08-20
+        eol: null
+        in_policy: true
+        runtime_published: null
       - version: "1.93"
         ga: 2026-01-22
         eol: null
