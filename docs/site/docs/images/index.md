@@ -33,7 +33,7 @@ The table is generated from `docker/versions/manifest.yml` by
 | ---------------- | ---------- | ---------------------- | --------------------------------------- |
 | `dev-python`     | python     | 3.15, 3.14, 3.13, 3.12 | `base:latest`                           |
 | `dev-go`         | go         | 1.27, 1.26             | `base:latest`                           |
-| `dev-rust`       | rust       | 1.93, 1.92             | `base:latest`                           |
+| `dev-rust`       | rust       | 1.93                   | `base:latest`                           |
 | `dev-cpp-clang`  | cpp        | 20, 19                 | `base:latest`                           |
 | `dev-cpp-gcc`    | cpp        | 14                     | `base:latest`                           |
 | `dev-ts-node`    | typescript | 24, 22                 | `base:latest`                           |

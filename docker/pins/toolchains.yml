@@ -72,8 +72,6 @@ toolchains:
   rust:
     "1.93":
       version: "1.93.1"
-    "1.92":
-      version: "1.92.0"
 tools:
   rustup-init:
     version: "1.29.3"
