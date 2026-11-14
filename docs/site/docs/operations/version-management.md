@@ -104,7 +104,7 @@ They stay pinned in source (hermetic, reproducible, revertible) while the daily
 [`ops.yml`](https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/ops.yml)
 tracks the leading edge:
 
-- Runs daily at 06:37 UTC with the rest of `ops.yml` (and on demand). It calls the reusable
+- Runs daily at 01:37 UTC with the rest of `ops.yml` (and on demand). It calls the reusable
   `ops-upstream-refresh.yml` workflow from vergil-actions, which runs
   `vrg-upstream-refresh` with this repo's `[upstream-refresh].hook`,
   `docker/pins/upstream-refresh.sh`. For each tool the hook resolves the newest
