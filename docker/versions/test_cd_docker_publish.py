@@ -89,6 +89,74 @@ def test_jobs_are_lint_versions_and_a_build_and_publish_per_tier():
     assert TIERS == tuple(range(mf.MAX_DEPTH + 1))
 
 
+def test_publishes_queue_per_prefix_and_are_never_cancelled_in_flight():
+    # vergil-containers#879, #820: a later CD or nightly run must not cancel the
+    # publish in flight, and one prefix is never published by two runs at once.
+    assert _workflow()["concurrency"] == {
+        "group": "docker-publish-${{ inputs.image-prefix }}", "cancel-in-progress": False}
+
+
+def test_no_input_narrows_what_a_run_publishes():
+    # A newer run replacing a pending one in the concurrency group loses
+    # nothing only while every run publishes the whole matrix. An input that
+    # narrows it (a subset, a changed-only build) breaks that: rethink the
+    # concurrency group before adding one.
+    on = _workflow()[True]  # PyYAML reads the `on` key as True.
+    assert set(on["workflow_call"]["inputs"]) == {"image-prefix", "no-cache", "ref"}
+
+
+def _checkout_ref(job: str) -> str:
+    return _step(job, "Checkout code")["with"]["ref"]
+
+
+def test_every_job_builds_the_pinned_commit():
+    # The versions job resolves `ref` once; every other job checks out that
+    # commit, so a branch that moves mid-run cannot mix trees in one publish.
+    assert _checkout_ref("versions") == "${{ inputs.ref }}"
+    assert _keys("versions")[:3] == ["Checkout code", "commit", "read"]
+    assert _job("versions")["outputs"]["sha"] == "${{ steps.commit.outputs.sha }}"
+    assert _step("versions", "commit")["env"] == {"REF": "${{ inputs.ref }}"}
+    for job in _workflow()["jobs"]:
+        if job == "versions":
+            continue
+        needs = _job(job)["needs"]
+        assert "versions" in (needs if isinstance(needs, list) else [needs]), job
+        assert _checkout_ref(job) == "${{ needs.versions.outputs.sha }}", job
+    # `ref` is read nowhere else.
+    assert WORKFLOW.read_text().count("inputs.ref") == 2
+
+
+def _pin(cwd: Path, out: Path) -> subprocess.CompletedProcess:
+    out.write_text("")
+    return _bash(_step("versions", "commit")["run"], cwd, {
+        "GITHUB_OUTPUT": str(out), "REF": "develop", "GIT_CEILING_DIRECTORIES": str(cwd.parent)})
+
+
+def test_pin_records_the_checked_out_commit(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
+    for args in (["init", "-q"], ["commit", "-q", "--allow-empty", "-m", "c"]):
+        subprocess.run(["git", *args], cwd=repo, env=env, check=True, capture_output=True)
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True,
+                          text=True).stdout.strip()
+    out = tmp_path / "out"
+    result = _pin(repo, out)
+    assert result.returncode == 0, result.stderr
+    assert _outputs(out) == {"sha": head}
+
+
+def test_pin_fails_loudly_without_a_commit(tmp_path):
+    work = tmp_path / "work"
+    work.mkdir()
+    out = tmp_path / "out"
+    result = _pin(work, out)
+    assert result.returncode != 0
+    assert result.stdout.startswith("::error title=No commit to pin::The checkout of 'develop' resolved to ''")
+    assert out.read_text() == ""
+
+
 def test_no_emulation_anywhere():
     text = WORKFLOW.read_text()
     assert "setup-qemu-action" not in text
@@ -106,11 +174,12 @@ def _arch(entries: list[dict]) -> list[dict]:
 
 def test_versions_emits_a_matrix_and_arch_matrix_per_tier(tmp_path):
     assert set(_job("versions")["outputs"]) == {
-        f"{name}-{t}" for t in TIERS for name in ("matrix", "arch-matrix", "has")} | {"upgrade-date"}
+        f"{name}-{t}" for t in TIERS for name in ("matrix", "arch-matrix", "has")} | {"upgrade-date", "sha"}
     result = _read_matrix(tmp_path, MATRIX_JSON.read_text())
     assert result.returncode == 0, result.stderr
     outputs = _outputs(tmp_path / "out")
-    assert set(outputs) == set(_job("versions")["outputs"])
+    # `sha` comes from the commit step (test_every_job_builds_the_pinned_commit).
+    assert set(outputs) == set(_job("versions")["outputs"]) - {"sha"}
     entries = json.loads(MATRIX_JSON.read_text())["include"]
     # base is built FROM pkg-ubuntu (epic vergil-project/.github#649), so it is
     # tier 1, and the language images built FROM base are tier 2.
