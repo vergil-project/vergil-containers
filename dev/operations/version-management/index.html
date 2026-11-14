@@ -3474,7 +3474,7 @@ actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, and trivy.</p>
 <a href="https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/ops.yml"><code>ops.yml</code></a>
 tracks the leading edge:</p>
 <ul>
-<li>Runs daily at 06:37 UTC with the rest of <code>ops.yml</code> (and on demand). It calls the reusable
+<li>Runs daily at 01:37 UTC with the rest of <code>ops.yml</code> (and on demand). It calls the reusable
   <code>ops-upstream-refresh.yml</code> workflow from vergil-actions, which runs
   <code>vrg-upstream-refresh</code> with this repo's <code>[upstream-refresh].hook</code>,
   <code>docker/pins/upstream-refresh.sh</code>. For each tool the hook resolves the newest
