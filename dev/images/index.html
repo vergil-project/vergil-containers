@@ -3528,7 +3528,10 @@ installed with a pinned <code>rustup-init</code> (its SHA-256 checked per archit
 on rustup's minimal profile, under <code>/usr/local/rustup</code> and <code>/usr/local/cargo</code>
 as in the <code>rust:&lt;version&gt;-slim</code> images it replaces. <code>gcc</code> and <code>libc6-dev</code>
 come from Ubuntu as the C linker, and <code>pkg-config</code> as a build helper for crates
-that link system libraries.</p>
+that link system libraries. <code>cargo-nextest</code> comes from nextest's prebuilt
+release binary, checked against the release's per-asset SHA-256; it is the
+test runner that writes JUnit reports on stable Rust, alone or as
+<code>cargo llvm-cov nextest</code>.</p>
 <p>The image owns the toolchain choice. It sets <code>RUSTUP_TOOLCHAIN</code> to its exact
 installed release (the same value as <code>RUST_VERSION</code>) and <code>RUSTUP_AUTO_INSTALL</code>
 to <code>0</code>. rustup ranks <code>RUSTUP_TOOLCHAIN</code> above a directory override and a
@@ -3575,6 +3578,11 @@ change to the image, never through a toolchain file.</p>
 <td>cargo-llvm-cov</td>
 <td>cargo</td>
 <td>Code coverage</td>
+</tr>
+<tr>
+<td>cargo-nextest</td>
+<td>release binary</td>
+<td>Test runner (JUnit reports)</td>
 </tr>
 </tbody>
 </table>
