@@ -630,6 +630,8 @@
       
         
       
+        
+      
     
     
     
@@ -682,6 +684,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.40/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.40
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3253,8 +3283,10 @@ fragment may include another fragment, and <code>generate.sh</code> caps the dep
 that an include cycle is an error.</p>
 <p>This eliminates duplication — shared tool installations (GitHub CLI,
 markdownlint, validation tools) are maintained once in <code>docker/common/</code>.
-Since epic vergil-project/.github#649 the common fragments are included by
-<code>base</code> alone, and every language image gets them by being built <code>FROM</code> it.</p>
+Since epic vergil-project/.github#649 the shared tool fragments are included
+by <code>base</code> alone, and every language image gets them by being built <code>FROM</code> it.
+The package toolchain images and some language images include fragments of
+their own, as <a href="#common-tooling-layer">Common Tooling Layer</a> lists.</p>
 <h3 id="version-management">Version management<a class="headerlink" href="#version-management" title="Permanent link">&para;</a></h3>
 <p>Most tools are unpinned and resolve their latest release at build time.
 Each tool held at a version carries a justification in

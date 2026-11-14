@@ -630,6 +630,8 @@
       
         
       
+        
+      
     
     
     
@@ -682,6 +684,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.40/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.40
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3232,7 +3262,8 @@ common layer: they are the minimal images that package jobs build and
 install-test in, published to <code>ghcr.io/vergil-project/dev-pkg-&lt;distro&gt;:&lt;version&gt;</code>
 (see <a href="#package-toolchain-images">Package toolchain images</a>). Every image is
 published as a multi-architecture manifest (amd64 + arm64), with a <code>dev-</code>
-prefix from <code>develop</code> and a <code>prod-</code> prefix from <code>main</code>.</p>
+prefix from <code>develop</code> and a <code>prod-</code> prefix from <code>main</code>. The OS of each image,
+and why, is in <a href="../operations/os-usage/">OS usage</a>.</p>
 <div class="admonition info">
 <p class="admonition-title">Tool versions are managed, not hand-listed here</p>
 <p>This page is the <strong>inventory</strong> — what each image includes. It deliberately
@@ -3495,8 +3526,17 @@ out of upstream support and its standard library carries HIGH CVEs that no Go
 <p>The series' exact Rust release, pinned in <code>docker/pins/toolchains.yml</code>, is
 installed with a pinned <code>rustup-init</code> (its SHA-256 checked per architecture)
 on rustup's minimal profile, under <code>/usr/local/rustup</code> and <code>/usr/local/cargo</code>
-as in the <code>rust:&lt;version&gt;-slim</code> images it replaces. <code>gcc</code>, <code>libc6-dev</code> and
-<code>pkg-config</code> come from Ubuntu as the C linker.</p>
+as in the <code>rust:&lt;version&gt;-slim</code> images it replaces. <code>gcc</code> and <code>libc6-dev</code>
+come from Ubuntu as the C linker, and <code>pkg-config</code> as a build helper for crates
+that link system libraries.</p>
+<p>The image owns the toolchain choice. It sets <code>RUSTUP_TOOLCHAIN</code> to its exact
+installed release (the same value as <code>RUST_VERSION</code>) and <code>RUSTUP_AUTO_INSTALL</code>
+to <code>0</code>. rustup ranks <code>RUSTUP_TOOLCHAIN</code> above a directory override and a
+<code>rust-toolchain.toml</code>, so a repo's toolchain file cannot change the toolchain.
+A request for any other toolchain fails because it is not installed, and
+rustup downloads nothing. The build checks all of this. A repo that needs a
+component or target the image lacks gets it through a vergil-containers
+change to the image, never through a toolchain file.</p>
 <table>
 <thead>
 <tr>

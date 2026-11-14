@@ -630,6 +630,8 @@
       
         
       
+        
+      
     
     
     
@@ -682,6 +684,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.40/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.40
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3247,8 +3277,11 @@ days.</p>
 <li><strong><code>pr</code> families</strong> (Python and Go) get one pull request per change, on a
   branch named <code>lifecycle/&lt;family&gt;-&lt;kind&gt;-&lt;version&gt;</code>. A change is an add, a
   drop, or, for Python, a <code>runtime</code> change that records a newly published
-  <code>vergil-python</code> runtime in the manifest. Each PR carries the manifest edit
-  and every regenerated file. A rerun refreshes the same PR rather than
+  <code>vergil-python</code> runtime in the manifest. Each PR carries the manifest edit,
+  its own change to the toolchain pins in <code>docker/pins/toolchains.yml</code> (an
+  add's new series pin, a drop's removed one), and every regenerated file,
+  <code>docker/pins/CATALOG.md</code> included. See
+  <a href="../../operations/version-management/#language-toolchain-pins">Language toolchain pins</a>. A rerun refreshes the same PR rather than
   opening a second one, and a PR whose change is no longer reported is closed.</li>
 <li><strong><code>report</code> families</strong> get one issue per change, titled
   <code>language lifecycle: &lt;family&gt; &lt;kind&gt; &lt;version&gt;</code> and labelled
