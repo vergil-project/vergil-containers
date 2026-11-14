@@ -44,7 +44,7 @@ days.
 
 What the check does with a gap depends on the family's automation:
 
-- **`pr` families** (Python and Go) get one pull request per change, on a
+- **`pr` families** (Python, Go and Rust) get one pull request per change, on a
   branch named `lifecycle/<family>-<kind>-<version>`. A change is an add, a
   drop, or, for Python, a `runtime` change that records a newly published
   `vergil-python` runtime in the manifest. Each PR carries the manifest edit,
@@ -182,7 +182,7 @@ upstream fact cites its source and the date it was checked.
 |---|---|---|
 | `python` | `pr` | [Python](python.md) |
 | `go` | `pr` | [Go](go.md) |
-| `rust` | `report` | [Rust](rust.md) |
+| `rust` | `pr` | [Rust](rust.md) |
 | `ts-node` | `report` | [TypeScript / Node.js](ts-node.md) |
 | `cpp-clang` | `report` | [C++ / Clang](cpp-clang.md) |
 | `cpp-gcc` | `report` | [C++ / GCC](cpp-gcc.md) |
