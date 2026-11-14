@@ -96,11 +96,6 @@ families:
       name: "base"
       version: "latest"
     versions:
-      - version: "1.93"
-        ga: 2026-01-22
-        eol: null
-        in_policy: true
-        runtime_published: null
       - version: "1.92"
         ga: 2025-12-11
         eol: null
