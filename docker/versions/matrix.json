@@ -148,6 +148,22 @@
     },
     {
       "language": "rust",
+      "version": "1.99",
+      "build-args": {
+        "RUST_VERSION": "1.99",
+        "TOOLCHAIN_VERSION": "1.99.1",
+        "RUSTUP_INIT_VERSION": "1.29.3",
+        "RUSTUP_INIT_SHA256_AMD64": "b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55",
+        "RUSTUP_INIT_SHA256_ARM64": "9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282"
+      },
+      "parent": {
+        "language": "base",
+        "version": "latest"
+      },
+      "depth": 2
+    },
+    {
+      "language": "rust",
       "version": "1.93",
       "build-args": {
         "RUST_VERSION": "1.93",
