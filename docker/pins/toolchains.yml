@@ -74,8 +74,6 @@ toolchains:
       version: "1.99.1"
     "1.98":
       version: "1.98.1"
-    "1.92":
-      version: "1.92.0"
 tools:
   rustup-init:
     version: "1.29.3"
