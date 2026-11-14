@@ -58,8 +58,14 @@ day of the check.
   the most effort.
 - Upstream EOL comes with the next release, not on a fixed date. The adapter
   computes the window from release order, not from EOL dates.
-- A repo's `rust-toolchain.toml` chooses a toolchain behind Vergil's back
-  (rule 13). It is handled when Rust's automation is turned on.
+- A repo's `rust-toolchain.toml` (or legacy `rust-toolchain`) would choose a
+  toolchain behind Vergil's back (rule 13), so `vrg-validate` treats one at
+  the repo root as an error; the fix is to delete it. The image also pins
+  rustup to its own release (`RUSTUP_TOOLCHAIN`, with auto-install off), so a
+  toolchain file cannot select or download another toolchain (see
+  [Rust](../images/index.md#rust)). A repo that needs a component or target
+  the image lacks gets it through a vergil-containers change, never through a
+  toolchain file.
 
 ## Deployed runtime package
 
@@ -68,8 +74,10 @@ package.
 
 ## Automation
 
-**`report`.** The lifecycle check reports the gap and tracks it in an issue.
-Rust is next in the queue for `pr` automation.
+**`pr`.** The lifecycle check opens the pull request that adds or drops a Rust
+version. Each PR carries its own toolchain pin change in
+`docker/pins/toolchains.yml` (an add's new series pin, a drop's removed one)
+and is merged by a human.
 
 ## Current out-of-policy versions
 

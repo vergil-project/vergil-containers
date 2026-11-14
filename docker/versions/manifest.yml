@@ -91,7 +91,7 @@ families:
     language: "rust"
     token_prefix: ""
     build_arg: "RUST_VERSION"
-    automation: "report"
+    automation: "pr"
     parent:
       name: "base"
       version: "latest"
