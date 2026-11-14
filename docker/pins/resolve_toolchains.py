@@ -47,6 +47,7 @@ import yaml
 HERE = Path(__file__).resolve().parent
 sys.path.append(str(HERE.parent / "versions"))
 
+import content_coding  # noqa: E402
 import manifest as mf  # noqa: E402
 
 TOOLCHAINS_YML = HERE / "toolchains.yml"
@@ -348,16 +349,23 @@ TIMEOUT_SECONDS = 30
 
 
 def fetch_url(url: str) -> bytes:
-    """GET `url` and return the body. Any HTTP, network or timeout failure
-    raises ResolutionError naming the URL."""
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    """GET `url` and return the body, decoded by its Content-Encoding. Any
+    HTTP, network or timeout failure, an unsupported coding or a body that
+    does not decode raises ResolutionError naming the URL."""
+    headers = {"User-Agent": USER_AGENT, "Accept-Encoding": content_coding.ACCEPT_ENCODING}
+    request = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            return response.read()
+            encoding = response.headers.get("Content-Encoding")
+            body = response.read()
     except urllib.error.HTTPError as exc:
         raise ResolutionError(f"{url}: HTTP {exc.code} {exc.reason}") from exc
     except (urllib.error.URLError, OSError) as exc:  # URLError, timeouts, resets
         raise ResolutionError(f"{url}: {exc}") from exc
+    try:
+        return content_coding.decode(url, encoding, body)
+    except content_coding.ContentCodingError as exc:
+        raise ResolutionError(str(exc)) from exc
 
 
 def _text(fetch: Fetch, url: str) -> str:
