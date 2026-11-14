@@ -36,11 +36,15 @@ permissions:
 # GitHub keeps at most one pending run per group: a newer run replaces the
 # pending one, which is cancelled with GitHub's annotation "Canceling since a
 # higher priority waiting request for 'docker-publish-<prefix>' exists" on it.
-# That replacement loses nothing: every run publishes the whole matrix (no input
-# narrows it), from the one commit its versions job pins, and the newer run's
-# commit is the same or later (a CD run builds its push's commit, a nightly its
-# branch's head when it starts). A superseded run's images are published by the
-# run that replaced it, and a failure of that run fails it, visibly.
+# That replacement loses no image: every run publishes the whole matrix (no
+# input narrows it), from the one commit its versions job pins, and the newer
+# run's commit is the same or later (a CD run builds its push's commit, a
+# nightly its branch's head when it starts). A superseded run's images are
+# published by the run that replaced it, and a failure of that run fails it,
+# visibly. One thing can be lost: a pending no-cache nightly replaced by a CD
+# run is rebuilt from the registry cache, so that prefix's fresh rebuild waits
+# for the next nightly. no-cache stays out of the group, since a group per
+# value would let two runs publish the same tags at once.
 concurrency:
   group: docker-publish-${{ inputs.image-prefix }}
   cancel-in-progress: false

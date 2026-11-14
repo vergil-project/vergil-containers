@@ -97,10 +97,12 @@ def test_publishes_queue_per_prefix_and_are_never_cancelled_in_flight():
 
 
 def test_no_input_narrows_what_a_run_publishes():
-    # A newer run replacing a pending one in the concurrency group loses
-    # nothing only while every run publishes the whole matrix. An input that
+    # A newer run replacing a pending one in the concurrency group loses no
+    # image only while every run publishes the whole matrix. An input that
     # narrows it (a subset, a changed-only build) breaks that: rethink the
-    # concurrency group before adding one.
+    # concurrency group before adding one. (no-cache changes how a run builds,
+    # not what it publishes; the workflow's concurrency comment says what a
+    # replaced no-cache run loses.)
     on = _workflow()[True]  # PyYAML reads the `on` key as True.
     assert set(on["workflow_call"]["inputs"]) == {"image-prefix", "no-cache", "ref"}
 
