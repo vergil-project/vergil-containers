@@ -144,7 +144,10 @@ installed with a pinned `rustup-init` (its SHA-256 checked per architecture)
 on rustup's minimal profile, under `/usr/local/rustup` and `/usr/local/cargo`
 as in the `rust:<version>-slim` images it replaces. `gcc` and `libc6-dev`
 come from Ubuntu as the C linker, and `pkg-config` as a build helper for crates
-that link system libraries.
+that link system libraries. `cargo-nextest` comes from nextest's prebuilt
+release binary, checked against the release's per-asset SHA-256; it is the
+test runner that writes JUnit reports on stable Rust, alone or as
+`cargo llvm-cov nextest`.
 
 The image owns the toolchain choice. It sets `RUSTUP_TOOLCHAIN` to its exact
 installed release (the same value as `RUST_VERSION`) and `RUSTUP_AUTO_INSTALL`
@@ -163,6 +166,7 @@ change to the image, never through a toolchain file.
 | llvm-tools     | rustup component | Coverage instrumentation    |
 | cargo-deny     | cargo            | Dependency security checker |
 | cargo-llvm-cov | cargo            | Code coverage               |
+| cargo-nextest  | release binary   | Test runner (JUnit reports) |
 
 ## C++ toolset
 

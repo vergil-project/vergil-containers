@@ -4,10 +4,16 @@ against the version manifest, the resolvers and the build args generate.py
 emits. Every fetch is INJECTED: no test touches the network."""
 from __future__ import annotations
 
+import email.message
+import gzip
 import hashlib
+import io
 import json
 import shutil
 import sys
+import urllib.error
+import urllib.request
+import zlib
 from dataclasses import replace
 from pathlib import Path
 
@@ -563,14 +569,80 @@ def test_resolve_failure_exits_nonzero(tmp_path, capsys):
 
 
 def test_fetch_url_wraps_http_errors(monkeypatch):
-    import urllib.error
-    import urllib.request
-
     def urlopen(request, timeout):
         raise urllib.error.HTTPError(request.full_url, 503, "Service Unavailable", {}, None)
 
     monkeypatch.setattr(urllib.request, "urlopen", urlopen)
     with pytest.raises(rt.ResolutionError, match="HTTP 503"):
+        rt.fetch_url("https://example.invalid/x")
+
+
+class _Response(io.BytesIO):
+    """A fake urlopen response: the body, and the headers it was sent with."""
+
+    def __init__(self, body: bytes, headers: dict[str, str] | None = None):
+        super().__init__(body)
+        self.headers = email.message.Message()
+        for name, value in (headers or {}).items():
+            self.headers[name] = value
+
+
+def _serve(monkeypatch, body: bytes, headers: dict[str, str] | None = None) -> dict:
+    """Make urlopen answer every request with `body` and `headers`;
+    the returned dict records the request headers, lower-cased."""
+    seen: dict = {}
+
+    def urlopen(request, timeout):
+        seen.update({k.lower(): v for k, v in request.header_items()})
+        return _Response(body, headers)
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    return seen
+
+
+def _gzip(data: bytes) -> bytes:
+    return gzip.compress(data)
+
+
+def _deflate(data: bytes) -> bytes:
+    return zlib.compress(data)
+
+
+# Issue #883: an upstream may answer with a gzip body; it must be decoded.
+
+
+def test_fetch_url_sends_accept_encoding_and_user_agent(monkeypatch):
+    seen = _serve(monkeypatch, b"body")
+    assert rt.fetch_url("https://example.invalid/x") == b"body"
+    assert seen["accept-encoding"] == "gzip, deflate"
+    assert seen["user-agent"] == rt.USER_AGENT
+
+
+@pytest.mark.parametrize("coding, encode", [("gzip", _gzip), ("x-gzip", _gzip), ("deflate", _deflate)])
+def test_fetch_url_decodes_body(monkeypatch, coding, encode):
+    _serve(monkeypatch, encode(b'{"ok": true}'), {"Content-Encoding": coding})
+    assert rt.fetch_url("https://example.invalid/x") == b'{"ok": true}'
+
+
+@pytest.mark.parametrize("headers", [None, {"Content-Encoding": "identity"}])
+def test_fetch_url_identity_body_unchanged(monkeypatch, headers):
+    _serve(monkeypatch, b"\x1f\x8b plain", headers)
+    assert rt.fetch_url("https://example.invalid/x") == b"\x1f\x8b plain"
+
+
+def test_fetch_url_unknown_coding_is_an_error(monkeypatch):
+    _serve(monkeypatch, b"\xce\xb2rotli", {"Content-Encoding": "br"})
+    with pytest.raises(rt.ResolutionError, match=r"https://example\.invalid/x: unsupported Content-Encoding 'br'"):
+        rt.fetch_url("https://example.invalid/x")
+
+
+@pytest.mark.parametrize(
+    "coding, body",
+    [("gzip", b"not gzip at all"), ("gzip", _gzip(b"truncated body")[:-6]), ("deflate", b"not zlib")],
+)
+def test_fetch_url_corrupt_body_is_an_error(monkeypatch, coding, body):
+    _serve(monkeypatch, body, {"Content-Encoding": coding})
+    with pytest.raises(rt.ResolutionError, match=rf"https://example\.invalid/x: body does not decode as Content-Encoding '{coding}'"):
         rt.fetch_url("https://example.invalid/x")
 
 
