@@ -2,7 +2,7 @@
 
 Image family: `dev-rust`. Shared rules: [Language version
 lifecycle](lifecycle.md). Upstream facts on this page were checked on
-2026-10-21.
+2026-11-15.
 
 ## Upstream source of truth
 
@@ -22,6 +22,9 @@ Data, from those pages:
   EOL, so "each version is supported for six weeks".
 - endoflife.date lists 1.99 (released 2026-10-01) as the only supported
   release, and 1.98 (released 2026-08-20) as EOL on 2026-10-01.
+- The Rust release channel's stable manifest already carries 1.100, which
+  endoflife.date does not list yet. The window is read from endoflife.date,
+  so 1.100 joins it once endoflife.date lists it.
 
 ## Support rule
 
@@ -37,7 +40,7 @@ support a version upstream has stopped supporting) for at most one release
 cycle. That is accepted because the older version was supported until the day
 the newer one shipped.
 
-On 2026-10-21 that is 1.99 and 1.98.
+On 2026-11-15 that is 1.99 and 1.98.
 
 ## What counts as GA
 
@@ -81,9 +84,9 @@ and is merged by a human.
 
 ## Current out-of-policy versions
 
-As of 2026-11-14: **none.** The manifest builds 1.99 and 1.98, the newest
+As of 2026-11-15: **none.** The manifest builds 1.99 and 1.98, the newest
 stable release and the one before it, so the window is in sync with upstream.
-endoflife.date, checked on 2026-11-14, still lists 1.99 as the newest release.
+endoflife.date, checked on 2026-11-15, still lists 1.99 as the newest release.
 
 Under `pr` automation, a new release is added and a version that leaves the
 window is dropped through a lifecycle pull request, so the manifest is out of
