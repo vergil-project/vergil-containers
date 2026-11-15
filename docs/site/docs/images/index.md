@@ -60,6 +60,7 @@ they carry.
 | hadolint         | Dockerfile linting             |
 | uv               | Python package manager         |
 | yamllint         | YAML linting                   |
+| yq (mikefarah)   | YAML processing                |
 | ansible-lint     | Ansible playbook/role linting  |
 | nfpm             | Build `.deb`/`.rpm` packages   |
 | rpm              | Inspect `.rpm`, `rpm.vercmp`   |

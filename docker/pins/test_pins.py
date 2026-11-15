@@ -63,6 +63,15 @@ def test_cargo_nextest_is_an_auto_managed_pin():
     assert check_pins.load_pins(DOCKER)["cargo-nextest"]["state"] == "auto-managed"
 
 
+def test_yq_is_an_auto_managed_pin():
+    # vergil-containers#884: common/yq.dockerfile pins YQ_VERSION for base,
+    # which every validation image is built on; the daily upstream refresh
+    # floats it.
+    pins = {p.tool: p for p in extract_pins.extract(DOCKER)}
+    assert pins["yq"].source == "common/yq.dockerfile"
+    assert check_pins.load_pins(DOCKER)["yq"]["state"] == "auto-managed"
+
+
 def test_go_test_coverage_is_a_documented_pin():
     # #606: held at v2.19.0 on Go 1.26 (v2.20.0 needs Go 1.27). Guards the
     # pairing this suite exists to protect — an extracted pin with a matching

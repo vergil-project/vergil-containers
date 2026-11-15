@@ -9,7 +9,7 @@ import resolve_latest as rl
 
 TOOLS = {
     "shellcheck", "shfmt", "actionlint", "git-cliff", "hadolint",
-    "opentofu", "nfpm", "trivy", "scorecard", "uv", "cargo-nextest",
+    "opentofu", "nfpm", "trivy", "scorecard", "uv", "cargo-nextest", "yq",
 }
 
 NEXTEST_ASSET = ("https://github.com/nextest-rs/nextest/releases/download/"

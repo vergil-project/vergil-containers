@@ -16,6 +16,8 @@
 #     is all it promises, spec §5.5);
 #   - each core tool runs, mike --help, a material-themed fixture builds, and
 #     markdownlint runs;
+#   - yq is mikefarah's Go yq and reads a value from YAML
+#     (vergil-project/vergil-containers#884);
 #   - a real semgrep scan passes through both entry points, semgrep and
 #     pysemgrep: one inline rule against one file, exit 0 and one finding
 #     (vergil-project/vergil-containers#825: `semgrep --version` passed while
@@ -138,6 +140,32 @@ core_tools_run() {
     rc=1
   fi
   return "${rc}"
+}
+
+# yq_is_mikefarahs: yq is mikefarah's Go yq, the one the GitHub-hosted runners
+# carry (vergil-containers#884), and reads a value from YAML. The Python yq of
+# the same name would print a different --version and need jq's syntax.
+yq_is_mikefarahs() {
+  local got
+  got="$(yq --version)" || {
+    say "'yq --version' failed"
+    return 1
+  }
+  case "${got}" in
+    *mikefarah/yq*) ;;
+    *)
+      say "'yq --version' is '${got}', want mikefarah/yq"
+      return 1
+      ;;
+  esac
+  got="$(printf 'a:\n  b: 42\n' | yq '.a.b')" || {
+    say "yq could not read .a.b from a YAML document"
+    return 1
+  }
+  [ "${got}" = 42 ] || {
+    say "yq read .a.b as '${got}', want 42"
+    return 1
+  }
 }
 
 material_fixture_builds() {
@@ -276,6 +304,7 @@ check "Ubuntu 24.04" os_is_ubuntu_2404
 check "core Python is the core series" core_python_is_core_series
 check "/usr/local/bin/python3 imports tomllib" python3_imports_tomllib
 check "core tools run" core_tools_run
+check "yq is mikefarah's and reads YAML" yq_is_mikefarahs
 check "material fixture builds" material_fixture_builds
 check "semgrep scan finds the fixture's one result" semgrep_scan_finds
 check "uv tools run on the core Python" uv_tools_on_core_python
