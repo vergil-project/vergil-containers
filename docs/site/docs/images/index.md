@@ -60,6 +60,7 @@ they carry.
 | hadolint         | Dockerfile linting             |
 | uv               | Python package manager         |
 | yamllint         | YAML linting                   |
+| yq (mikefarah)   | YAML processing                |
 | ansible-lint     | Ansible playbook/role linting  |
 | nfpm             | Build `.deb`/`.rpm` packages   |
 | rpm              | Inspect `.rpm`, `rpm.vercmp`   |
@@ -167,6 +168,130 @@ change to the image, never through a toolchain file.
 | cargo-deny     | cargo            | Dependency security checker |
 | cargo-llvm-cov | cargo            | Code coverage               |
 | cargo-nextest  | release binary   | Test runner (JUnit reports) |
+
+## C++ toolset
+
+Both C++ families, [C++ (Clang)](#c-clang) and [C++ (GCC)](#c-gcc), carry the
+same compiler-agnostic toolset, from `common/cpp-analysis.dockerfile`, so a
+repo lints, analyses and measures coverage the same way under either
+compiler. Only the compiler differs between them.
+
+| Tool                         | Source            | Purpose                          |
+| ---------------------------- | ----------------- | -------------------------------- |
+| clang-format                 | LLVM apt channel  | Code formatter                   |
+| clang-tidy, `run-clang-tidy` | LLVM apt channel  | Linter and its parallel driver   |
+| cppcheck                     | Ubuntu apt        | Static analysis                  |
+| CMake, make, Ninja           | Ubuntu apt        | Build system and generators      |
+| pkg-config                   | Ubuntu apt        | Build helper for system libs     |
+| Conan 2                      | uv tool           | Dependency and package manager   |
+| gcovr                        | uv tool           | Code coverage reports            |
+
+clang-format and clang-tidy come from the official LLVM apt channel
+(`apt.llvm.org`) at one LLVM major, the primary Clang major, in every C++
+image, the GCC one and every Clang major included. cmake and cppcheck are
+the versions Ubuntu 24.04 ships, and Conan and gcovr float on their leading
+edge. None has a pin in `docker/pins/`.
+
+`CONAN_HOME` is `/opt/conan2` and holds a default Conan profile, detected
+when the image is built for the image's compiler, so `conan install` works
+under any `HOME` without a `conan profile detect` first. `docker/build.sh`
+and PR CI smoke-test each C++ image with a CMake and Conan 2 project
+(`docker/cpp/smoke/`).
+
+## C++ (Clang)
+
+**Base**: `base:latest`
+**Tags**: `dev-cpp-clang:<major>` and `prod-cpp-clang:<major>`, one per Clang
+major in [Versions](#versions)
+
+The C++ image built with the Clang/LLVM compiler. The compiler is the
+prebuilt `clang-<major>` from the official LLVM apt channel's
+`llvm-toolchain-noble-<major>` suite, never built from source. It comes from
+apt, so it has no hash pin: apt checks it against the channel's signed index,
+and each rebuild takes the newest release of the major there. The major is the
+image's version (the `CLANG_VERSION` build arg). Its support policy is in
+[C++ / Clang](../languages/cpp-clang.md).
+
+`CC` is `clang` and `CXX` is `clang++`, and the standard library is GNU
+libstdc++. The image installs `g++-14` for it, not Ubuntu's unversioned
+`g++` (13), because Clang builds against the newest GCC installation that
+has a `g++`.
+
+| Tool           | Source           | Purpose                                 |
+| -------------- | ---------------- | --------------------------------------- |
+| clang, clang++ | LLVM apt channel | C and C++ compiler                      |
+| lld            | LLVM apt channel | Linker                                  |
+| libclang-rt    | LLVM apt channel | Sanitizer runtimes (ASan, UBSan)        |
+| llvm-cov       | LLVM apt channel | Coverage, through the `gcov` shim       |
+| g++-14         | Ubuntu apt       | GNU libstdc++ headers and runtime       |
+
+Clang's coverage notes are readable only by `llvm-cov gcov`, while gcovr
+runs a bare `gcov`, so `/usr/local/bin/gcov` is a shim that runs
+`llvm-cov gcov`. The C++ toolset is in [C++ toolset](#c-toolset).
+
+## C++ (GCC)
+
+**Base**: `base:latest`
+**Tags**: `dev-cpp-gcc:<major>` and `prod-cpp-gcc:<major>`, one per GCC major
+in [Versions](#versions)
+
+The C++ image built with the GCC compiler. The compiler is the prebuilt
+`gcc-<major>` and `g++-<major>` from Ubuntu 24.04 (noble) itself, never built
+from source. For GCC 14 that is the release in `noble-updates`, since noble's
+release pocket holds only a pre-release snapshot. It comes from apt, so it
+has no hash pin, and each rebuild takes Ubuntu's newest release of the series. The
+major is the image's version (the `GCC_VERSION` build arg). Its support
+policy is in [C++ / GCC](../languages/cpp-gcc.md).
+
+`CC` is `gcc` and `CXX` is `g++`, and the standard library is GCC's own
+libstdc++. `gcc`, `g++` and `gcov` point at the series' versioned binaries,
+so gcovr uses GCC's native `gcov`.
+
+| Tool     | Source     | Purpose                      |
+| -------- | ---------- | ---------------------------- |
+| gcc, g++ | Ubuntu apt | C and C++ compiler           |
+| gcov     | Ubuntu apt | Coverage, which gcovr drives |
+
+The C++ toolset is in [C++ toolset](#c-toolset).
+
+## TypeScript (Node.js)
+
+**Base**: `base:latest`
+**Tags**: `dev-ts-node:<major>` and `prod-ts-node:<major>`, one per Node.js
+major in [Versions](#versions)
+
+The TypeScript image, on the Node.js runtime. The family Node is the
+nodejs.org prebuilt tarball of the major, unpacked at `/opt/node/<major>`.
+Its release and each architecture's SHA-256 are pinned in
+`docker/pins/toolchains.yml`, the build checks the download against the
+hash, and the daily upstream refresh moves the pin to the newest release of
+the major. The major is the image's version (the `NODE_MAJOR` build arg).
+Its support policy is in [TypeScript / Node.js](../languages/ts-node.md).
+
+`node`, `npm` and `npx` in `/usr/local/bin` link into the family Node, so it
+is the image's default Node. npm's global prefix is `/usr`, so
+`npm root -g` is `/usr/lib/node_modules` and global commands land in
+`/usr/bin`. The bundled npm is never upgraded in place: a fix comes with a
+newer pin of the major. `markdownlint` stays base's wrapper on the core Node
+(see [Base](#base)), never this one.
+
+| Tool                | Purpose                                     |
+| ------------------- | ------------------------------------------- |
+| typescript (`tsc`)  | Typechecker, held to the TypeScript 5 line  |
+| eslint              | Linter                                      |
+| typescript-eslint   | Type-aware lint rules for ESLint            |
+| prettier            | Code formatter                              |
+| vitest              | Test runner                                 |
+| @vitest/coverage-v8 | V8 coverage for `vitest --coverage`         |
+| license-checker     | Dependency license listing                  |
+| pkg-config          | Build helper for native addons              |
+
+The npm tools are installed globally from `common/typescript-analysis.dockerfile`
+and float on their leading edge, except `typescript`, held to its 5 line
+(`typescript@5`): an unconstrained install would take the native TypeScript 7
+line. pkg-config comes from Ubuntu apt. `docker/build.sh` and PR CI
+smoke-test each image with a small project (`docker/ts-node/smoke/`):
+`npm ci`, `tsc --noEmit` and one `vitest run`.
 
 ## Base
 

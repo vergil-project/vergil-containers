@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.42] - 2026-11-15
+
+### Bug fixes
+
+- queue image publishes instead of cancelling the one in flight (#898)
+- force IPv4 and retry the apt.llvm.org apt steps in the C++ images (#905)
+
+### Build
+
+- run hadolint in validate-custom so local validation matches CI (#896)
+
+### CI
+
+- fail the nightly when the pin-exposure report itself fails (#902)
+
+### Documentation
+
+- bring the Rust policy page's dated window facts to the 2026-11-15 check (#895)
+- add the C++ and TypeScript family sections to the images page (#897)
+- describe the nightly config update and scope the no-auto-merge rule (#900)
+
+### Features
+
+- add yq to the base image (#903)
+
 ## [2.1.41] - 2026-11-14
 
 ### Bug fixes

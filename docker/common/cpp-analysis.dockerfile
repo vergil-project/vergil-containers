@@ -21,13 +21,17 @@ ARG CLANG_TOOLS_VERSION=20
 # update-alternatives also exposes the unversioned run-clang-tidy driver (shipped
 # by the clang-tidy package as run-clang-tidy-${CLANG_TOOLS_VERSION}) so the LINT
 # command resolves `run-clang-tidy` without a version suffix (issue #487).
+# Every apt-get from here on fetches from apt.llvm.org, so it runs through
+# llvm-apt-get (IPv4 only, with retries; see common/llvm-apt).
+# @include common/llvm-apt.dockerfile
+
 RUN curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
       https://apt.llvm.org/llvm-snapshot.gpg.key \
       -o /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
     echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-${CLANG_TOOLS_VERSION} main" \
       > "/etc/apt/sources.list.d/llvm-toolchain-${CLANG_TOOLS_VERSION}.list" && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
+    /usr/local/libexec/vergil/llvm-apt-get update && \
+    /usr/local/libexec/vergil/llvm-apt-get install -y --no-install-recommends \
       "clang-format-${CLANG_TOOLS_VERSION}" \
       "clang-tidy-${CLANG_TOOLS_VERSION}" \
       cppcheck \

@@ -25,9 +25,29 @@ permissions:
   attestations: write
   id-token: write
 
+# One publish at a time per prefix, queued, never cancelled in flight
+# (vergil-containers#879, #820). Every caller shares its prefix's group: CD on a
+# develop push (dev) or a main push (prod, a release's publish), and the Ops
+# nightly rebuilds (dev and prod). With cancel-in-progress a later run cancelled
+# the one in flight and nothing retried it, so a release's prod publish could be
+# lost to a nightly. Two runs must not publish one prefix in parallel either:
+# both promote the same tags, and the one that finishes last wins, older or not.
+#
+# GitHub keeps at most one pending run per group: a newer run replaces the
+# pending one, which is cancelled with GitHub's annotation "Canceling since a
+# higher priority waiting request for 'docker-publish-<prefix>' exists" on it.
+# That replacement loses no image: every run publishes the whole matrix (no
+# input narrows it), from the one commit its versions job pins, and the newer
+# run's commit is the same or later (a CD run builds its push's commit, a
+# nightly its branch's head when it starts). A superseded run's images are
+# published by the run that replaced it, and a failure of that run fails it,
+# visibly. One thing can be lost: a pending no-cache nightly replaced by a CD
+# run is rebuilt from the registry cache, so that prefix's fresh rebuild waits
+# for the next nightly. no-cache stays out of the group, since a group per
+# value would let two runs publish the same tags at once.
 concurrency:
   group: docker-publish-${{ inputs.image-prefix }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   # Bounded back-off before the single retry of a failed attestation (issue #743).
@@ -41,6 +61,7 @@ env:
 jobs:
   hadolint:
     name: Lint Dockerfiles
+    needs: [versions]
     runs-on: ubuntu-24.04
     container:
       image: ghcr.io/vergil-project/prod-base:latest
@@ -48,7 +69,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.versions.outputs.sha }}
 
       - name: Generate Dockerfiles from templates
         run: docker/generate.sh
@@ -71,6 +92,11 @@ jobs:
   # that builds it) and `has-N` ("true" or "false"; an empty tier's jobs are
   # skipped). One more, `upgrade-date`, is this run's UTC date (YYYY-MM-DD),
   # which every image that declares the UPGRADE_DATE build arg is built with.
+  # And `sha`, the commit this run builds: `ref` (or the caller's commit)
+  # resolved once, here, and checked out by every other job. A nightly passes a
+  # branch name, and without the pin a branch that moved mid-run would have the
+  # later tiers built from a newer tree than their parents and the matrix: a
+  # queued run is no longer cancelled when it moves (vergil-containers#879).
   versions:
     name: Read the version matrix
     runs-on: ubuntu-24.04
@@ -85,11 +111,25 @@ jobs:
       arch-matrix-2: ${{ steps.read.outputs.arch-matrix-2 }}
       has-2: ${{ steps.read.outputs.has-2 }}
       upgrade-date: ${{ steps.read.outputs.upgrade-date }}
+      sha: ${{ steps.commit.outputs.sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
+
+      - name: Pin the commit this run builds
+        id: commit
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          sha=""
+          if ! sha="$(git rev-parse --verify 'HEAD^{commit}')" || ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error title=No commit to pin::The checkout of '${REF}' resolved to '${sha}', not a commit SHA, so this run's jobs cannot all build one commit."
+            exit 1
+          fi
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
 
       - name: Read docker/versions/matrix.json
         id: read
@@ -148,7 +188,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.versions.outputs.sha }}
 
       - name: Generate Dockerfile from template
         run: docker/generate.sh ${{ matrix.language }}
@@ -373,7 +413,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.versions.outputs.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4

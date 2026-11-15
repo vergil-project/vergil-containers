@@ -93,11 +93,11 @@ Most package-manager tools (installed via `npm`, `pip`, `uv`, `go install`,
 `cargo`) were **freed** in the pin audit: dropping the version token lets them
 resolve latest at build time, so they float cleanly and need no entry.
 
-Eleven tools install from a **binary release download** whose URL and
+Twelve tools install from a **binary release download** whose URL and
 per-version checksum embed an explicit version, so they cannot float by simply
 dropping a token. Rather than add an unauthenticated GitHub version-resolution
 round-trip to every image build, these are **auto-managed**: shellcheck, shfmt,
-actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, trivy, uv (the
+actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, trivy, yq, uv (the
 package toolchain images only) and cargo-nextest (the rust image only).
 
 They stay pinned in source (hermetic, reproducible, revertible) while the daily
@@ -119,7 +119,8 @@ tracks the leading edge:
   and authored by the GitHub App (so the PR fires CI and every bump is
   validated). A later run refreshes that PR in place rather than opening
   another, and a run with nothing to bump closes a stale one. **Nothing is
-  auto-merged** — fleet policy keeps a human merge gate.
+  auto-merged**: upstream-refresh PRs keep a human merge gate (only the
+  automation App's sync PRs on `automation/*` branches merge themselves).
 
 This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy `0.70.0 → 0.72.0` security bump landed through the bumper.

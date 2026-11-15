@@ -87,3 +87,7 @@ pins:
   # resolved through get.nexte.st, not the repo's /releases/latest (see
   # resolve_latest.py).
   cargo-nextest: {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#885) — nextest's prebuilt release tarball + per-asset .sha256 embed the version (rust image only); floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
+  # yq (mikefarah/yq) in base (#884) comes from its release binary, verified
+  # against the release's multi-hash `checksums` file, so it joins the
+  # auto-managed set. Every image built on base inherits it.
+  yq:          {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#884) — GitHub release binary + per-version checksums (SHA-256 column located through checksums_hashes_order) embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}

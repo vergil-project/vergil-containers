@@ -47,6 +47,7 @@ RUN apt-get update && \
 # @include common/validation-tools.dockerfile
 # @include common/security-tools.dockerfile
 # @include common/opentofu.dockerfile
+# @include common/yq.dockerfile
 # @include common/rpm.dockerfile
 # @include common/pandoc.dockerfile
 # @include common/core-tools.dockerfile

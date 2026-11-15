@@ -42,6 +42,7 @@ TOOL_REPOS = {
     "scorecard": "ossf/scorecard",
     "uv": "astral-sh/uv",
     "cargo-nextest": "nextest-rs/nextest",
+    "yq": "mikefarah/yq",
 }
 
 # tool → the URL whose redirect names its latest release, for a tool whose
@@ -79,6 +80,7 @@ TOOL_ARGS = {
     "scorecard": "SCORECARD_VERSION",
     "uv": "UV_VERSION",
     "cargo-nextest": "CARGO_NEXTEST_VERSION",
+    "yq": "YQ_VERSION",
 }
 
 # A release tag page (`.../releases/tag/<tag>`) or a release asset

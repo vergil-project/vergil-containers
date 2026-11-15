@@ -148,7 +148,8 @@ Every language image includes:
 - **uv** — Python package manager
 - **nfpm**, **rpm** — build and inspect `.deb`/`.rpm` packages
 - **pandoc** — convert Markdown to `.docx`/HTML
-- **jq**, git, curl, **openssh-client** (SSH for git remote operations)
+- **jq**, **yq** (mikefarah's Go yq) — JSON and YAML processing
+- git, curl, **openssh-client** (SSH for git remote operations)
 
 Tool versions are deliberately not listed here, because a hand-copied list
 goes stale. Most tools float on their leading edge; the few that are pinned,
