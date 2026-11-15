@@ -79,6 +79,9 @@ carries them because it is built `FROM` `dev-base`:
   binary for amd64 or arm64.
 - **`security-tools.dockerfile`** — Security analysis tools installed
   from binary releases: scorecard (OpenSSF) and trivy.
+- **`yq.dockerfile`** — mikefarah's Go yq, the one the GitHub-hosted
+  runners carry, from its release binary, checked against the release's
+  SHA-256 checksum.
 - **`rpm.dockerfile`** — The distro's `rpm`, the peer of `dpkg`, for
   inspecting `.rpm` packages and comparing versions (`rpm.vercmp`).
 - **`pandoc.dockerfile`** — pandoc for Markdown to `.docx`/HTML
