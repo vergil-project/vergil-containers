@@ -2393,6 +2393,50 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#c-toolset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++ toolset
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#c-clang" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++ (Clang)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#c-gcc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++ (GCC)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typescript-nodejs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TypeScript (Node.js)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#base" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3244,6 +3288,50 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#c-toolset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++ toolset
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#c-clang" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++ (Clang)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#c-gcc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++ (GCC)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typescript-nodejs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TypeScript (Node.js)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#base" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3616,6 +3704,222 @@ change to the image, never through a toolchain file.</p>
 </tr>
 </tbody>
 </table>
+<h2 id="c-toolset">C++ toolset<a class="headerlink" href="#c-toolset" title="Permanent link">&para;</a></h2>
+<p>Both C++ families, <a href="#c-clang">C++ (Clang)</a> and <a href="#c-gcc">C++ (GCC)</a>, carry the
+same compiler-agnostic toolset, from <code>common/cpp-analysis.dockerfile</code>, so a
+repo lints, analyses and measures coverage the same way under either
+compiler. Only the compiler differs between them.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Source</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>clang-format</td>
+<td>LLVM apt channel</td>
+<td>Code formatter</td>
+</tr>
+<tr>
+<td>clang-tidy, <code>run-clang-tidy</code></td>
+<td>LLVM apt channel</td>
+<td>Linter and its parallel driver</td>
+</tr>
+<tr>
+<td>cppcheck</td>
+<td>Ubuntu apt</td>
+<td>Static analysis</td>
+</tr>
+<tr>
+<td>CMake, make, Ninja</td>
+<td>Ubuntu apt</td>
+<td>Build system and generators</td>
+</tr>
+<tr>
+<td>pkg-config</td>
+<td>Ubuntu apt</td>
+<td>Build helper for system libs</td>
+</tr>
+<tr>
+<td>Conan 2</td>
+<td>uv tool</td>
+<td>Dependency and package manager</td>
+</tr>
+<tr>
+<td>gcovr</td>
+<td>uv tool</td>
+<td>Code coverage reports</td>
+</tr>
+</tbody>
+</table>
+<p>clang-format and clang-tidy come from the official LLVM apt channel
+(<code>apt.llvm.org</code>) at one LLVM major, the primary Clang major, in every C++
+image, the GCC one and every Clang major included. cmake and cppcheck are
+the versions Ubuntu 24.04 ships, and Conan and gcovr float on their leading
+edge. None has a pin in <code>docker/pins/</code>.</p>
+<p><code>CONAN_HOME</code> is <code>/opt/conan2</code> and holds a default Conan profile, detected
+when the image is built for the image's compiler, so <code>conan install</code> works
+under any <code>HOME</code> without a <code>conan profile detect</code> first. <code>docker/build.sh</code>
+and PR CI smoke-test each C++ image with a CMake and Conan 2 project
+(<code>docker/cpp/smoke/</code>).</p>
+<h2 id="c-clang">C++ (Clang)<a class="headerlink" href="#c-clang" title="Permanent link">&para;</a></h2>
+<p><strong>Base</strong>: <code>base:latest</code>
+<strong>Tags</strong>: <code>dev-cpp-clang:&lt;major&gt;</code> and <code>prod-cpp-clang:&lt;major&gt;</code>, one per Clang
+major in <a href="#versions">Versions</a></p>
+<p>The C++ image built with the Clang/LLVM compiler. The compiler is the
+prebuilt <code>clang-&lt;major&gt;</code> from the official LLVM apt channel's
+<code>llvm-toolchain-noble-&lt;major&gt;</code> suite, never built from source. It comes from
+apt, so it has no hash pin: apt checks it against the channel's signed index,
+and each rebuild takes the newest release of the major there. The major is the
+image's version (the <code>CLANG_VERSION</code> build arg). Its support policy is in
+<a href="../languages/cpp-clang/">C++ / Clang</a>.</p>
+<p><code>CC</code> is <code>clang</code> and <code>CXX</code> is <code>clang++</code>, and the standard library is GNU
+libstdc++. The image installs <code>g++-14</code> for it, not Ubuntu's unversioned
+<code>g++</code> (13), because Clang builds against the newest GCC installation that
+has a <code>g++</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Source</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>clang, clang++</td>
+<td>LLVM apt channel</td>
+<td>C and C++ compiler</td>
+</tr>
+<tr>
+<td>lld</td>
+<td>LLVM apt channel</td>
+<td>Linker</td>
+</tr>
+<tr>
+<td>libclang-rt</td>
+<td>LLVM apt channel</td>
+<td>Sanitizer runtimes (ASan, UBSan)</td>
+</tr>
+<tr>
+<td>llvm-cov</td>
+<td>LLVM apt channel</td>
+<td>Coverage, through the <code>gcov</code> shim</td>
+</tr>
+<tr>
+<td>g++-14</td>
+<td>Ubuntu apt</td>
+<td>GNU libstdc++ headers and runtime</td>
+</tr>
+</tbody>
+</table>
+<p>Clang's coverage notes are readable only by <code>llvm-cov gcov</code>, while gcovr
+runs a bare <code>gcov</code>, so <code>/usr/local/bin/gcov</code> is a shim that runs
+<code>llvm-cov gcov</code>. The C++ toolset is in <a href="#c-toolset">C++ toolset</a>.</p>
+<h2 id="c-gcc">C++ (GCC)<a class="headerlink" href="#c-gcc" title="Permanent link">&para;</a></h2>
+<p><strong>Base</strong>: <code>base:latest</code>
+<strong>Tags</strong>: <code>dev-cpp-gcc:&lt;major&gt;</code> and <code>prod-cpp-gcc:&lt;major&gt;</code>, one per GCC major
+in <a href="#versions">Versions</a></p>
+<p>The C++ image built with the GCC compiler. The compiler is the prebuilt
+<code>gcc-&lt;major&gt;</code> and <code>g++-&lt;major&gt;</code> from Ubuntu 24.04 (noble) itself, never built
+from source. For GCC 14 that is the release in <code>noble-updates</code>, since noble's
+release pocket holds only a pre-release snapshot. It comes from apt, so it
+has no hash pin, and each rebuild takes Ubuntu's newest release of the series. The
+major is the image's version (the <code>GCC_VERSION</code> build arg). Its support
+policy is in <a href="../languages/cpp-gcc/">C++ / GCC</a>.</p>
+<p><code>CC</code> is <code>gcc</code> and <code>CXX</code> is <code>g++</code>, and the standard library is GCC's own
+libstdc++. <code>gcc</code>, <code>g++</code> and <code>gcov</code> point at the series' versioned binaries,
+so gcovr uses GCC's native <code>gcov</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Source</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gcc, g++</td>
+<td>Ubuntu apt</td>
+<td>C and C++ compiler</td>
+</tr>
+<tr>
+<td>gcov</td>
+<td>Ubuntu apt</td>
+<td>Coverage, which gcovr drives</td>
+</tr>
+</tbody>
+</table>
+<p>The C++ toolset is in <a href="#c-toolset">C++ toolset</a>.</p>
+<h2 id="typescript-nodejs">TypeScript (Node.js)<a class="headerlink" href="#typescript-nodejs" title="Permanent link">&para;</a></h2>
+<p><strong>Base</strong>: <code>base:latest</code>
+<strong>Tags</strong>: <code>dev-ts-node:&lt;major&gt;</code> and <code>prod-ts-node:&lt;major&gt;</code>, one per Node.js
+major in <a href="#versions">Versions</a></p>
+<p>The TypeScript image, on the Node.js runtime. The family Node is the
+nodejs.org prebuilt tarball of the major, unpacked at <code>/opt/node/&lt;major&gt;</code>.
+Its release and each architecture's SHA-256 are pinned in
+<code>docker/pins/toolchains.yml</code>, the build checks the download against the
+hash, and the daily upstream refresh moves the pin to the newest release of
+the major. The major is the image's version (the <code>NODE_MAJOR</code> build arg).
+Its support policy is in <a href="../languages/ts-node/">TypeScript / Node.js</a>.</p>
+<p><code>node</code>, <code>npm</code> and <code>npx</code> in <code>/usr/local/bin</code> link into the family Node, so it
+is the image's default Node. npm's global prefix is <code>/usr</code>, so
+<code>npm root -g</code> is <code>/usr/lib/node_modules</code> and global commands land in
+<code>/usr/bin</code>. The bundled npm is never upgraded in place: a fix comes with a
+newer pin of the major. <code>markdownlint</code> stays base's wrapper on the core Node
+(see <a href="#base">Base</a>), never this one.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>typescript (<code>tsc</code>)</td>
+<td>Typechecker, held to the TypeScript 5 line</td>
+</tr>
+<tr>
+<td>eslint</td>
+<td>Linter</td>
+</tr>
+<tr>
+<td>typescript-eslint</td>
+<td>Type-aware lint rules for ESLint</td>
+</tr>
+<tr>
+<td>prettier</td>
+<td>Code formatter</td>
+</tr>
+<tr>
+<td>vitest</td>
+<td>Test runner</td>
+</tr>
+<tr>
+<td>@vitest/coverage-v8</td>
+<td>V8 coverage for <code>vitest --coverage</code></td>
+</tr>
+<tr>
+<td>license-checker</td>
+<td>Dependency license listing</td>
+</tr>
+<tr>
+<td>pkg-config</td>
+<td>Build helper for native addons</td>
+</tr>
+</tbody>
+</table>
+<p>The npm tools are installed globally from <code>common/typescript-analysis.dockerfile</code>
+and float on their leading edge, except <code>typescript</code>, held to its 5 line
+(<code>typescript@5</code>): an unconstrained install would take the native TypeScript 7
+line. pkg-config comes from Ubuntu apt. <code>docker/build.sh</code> and PR CI
+smoke-test each image with a small project (<code>docker/ts-node/smoke/</code>):
+<code>npm ci</code>, <code>tsc --noEmit</code> and one <code>vitest run</code>.</p>
 <h2 id="base">Base<a class="headerlink" href="#base" title="Permanent link">&para;</a></h2>
 <p><strong>Base</strong>: <code>pkg-ubuntu:24.04</code> (Ubuntu 24.04, with uv and nFPM)
 <strong>Version</strong>: latest</p>
