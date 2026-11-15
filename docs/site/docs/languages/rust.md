@@ -40,7 +40,7 @@ support a version upstream has stopped supporting) for at most one release
 cycle. That is accepted because the older version was supported until the day
 the newer one shipped.
 
-On 2026-11-15 that is 1.99 and 1.98.
+On 2026-11-15, read from endoflife.date, that is 1.99 and 1.98.
 
 ## What counts as GA
 
@@ -84,9 +84,10 @@ and is merged by a human.
 
 ## Current out-of-policy versions
 
-As of 2026-11-15: **none.** The manifest builds 1.99 and 1.98, the newest
-stable release and the one before it, so the window is in sync with upstream.
-endoflife.date, checked on 2026-11-15, still lists 1.99 as the newest release.
+As of 2026-11-15: **none.** The manifest builds 1.99 and 1.98, the two newest
+releases endoflife.date lists, so the window is in sync with it. The stable
+channel already carries 1.100 (see the data above); it enters the window
+through a lifecycle pull request once endoflife.date lists it.
 
 Under `pr` automation, a new release is added and a version that leaves the
 window is dropped through a lifecycle pull request, so the manifest is out of
