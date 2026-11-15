@@ -3519,7 +3519,8 @@ tracks the leading edge:</p>
   and authored by the GitHub App (so the PR fires CI and every bump is
   validated). A later run refreshes that PR in place rather than opening
   another, and a run with nothing to bump closes a stale one. <strong>Nothing is
-  auto-merged</strong> — fleet policy keeps a human merge gate.</li>
+  auto-merged</strong>: upstream-refresh PRs keep a human merge gate (only the
+  automation App's sync PRs on <code>automation/*</code> branches merge themselves).</li>
 </ul>
 <p>This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy <code>0.70.0 → 0.72.0</code> security bump landed through the bumper.</p>
