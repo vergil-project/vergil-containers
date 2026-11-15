@@ -634,6 +634,8 @@
       
         
       
+        
+      
     
     
     
@@ -686,6 +688,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.42/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.42
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3337,6 +3367,9 @@ carries them because it is built <code>FROM</code> <code>dev-base</code>:</p>
   binary for amd64 or arm64.</li>
 <li><strong><code>security-tools.dockerfile</code></strong> — Security analysis tools installed
   from binary releases: scorecard (OpenSSF) and trivy.</li>
+<li><strong><code>yq.dockerfile</code></strong> — mikefarah's Go yq, the one the GitHub-hosted
+  runners carry, from its release binary, checked against the release's
+  SHA-256 checksum.</li>
 <li><strong><code>rpm.dockerfile</code></strong> — The distro's <code>rpm</code>, the peer of <code>dpkg</code>, for
   inspecting <code>.rpm</code> packages and comparing versions (<code>rpm.vercmp</code>).</li>
 <li><strong><code>pandoc.dockerfile</code></strong> — pandoc for Markdown to <code>.docx</code>/HTML
