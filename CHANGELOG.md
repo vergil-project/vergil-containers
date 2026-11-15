@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.41] - 2026-11-14
+
+### Bug fixes
+
+- decode gzip and deflate response bodies in the upstream fetchers (#888)
+
+### CI
+
+- move the nightly ops cron to the 01:xx UTC hour (#881)
+
+### Chores
+
+- sync the managed files with the released templates (#873)
+
+### Documentation
+
+- describe Rust's versions under pr automation (#887)
+
+### Features
+
+- move Rust to pr lifecycle automation (#874)
+- add rust 1.99 (#875)
+- add rust 1.98 (#876)
+- drop rust 1.93 (EOL 2026-03-06) (#877)
+- drop rust 1.92 (EOL 2026-01-22) (#878)
+- add cargo-nextest to the rust images (#890)
+
 ## [2.1.40] - 2026-11-13
 
 ### Bug fixes

@@ -113,7 +113,7 @@ manifest, never a generated list, then run `docker/versions/generate.py`
 
 ## Tool versions
 
-Never hardcode a tool version list here. Ten binary-download tools are
+Never hardcode a tool version list here. The binary-download tools are
 auto-managed (bumped daily by the `upstream-refresh` job). Every pin, auto-managed
 or held, is recorded with its justification in `docker/pins/pins.yml`, and a CI
 gate blocks any undocumented pin. Current state:

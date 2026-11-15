@@ -81,3 +81,9 @@ pins:
   # its release tarball, verified against the per-version .sha256, so it joins
   # the auto-managed set. The dev images still float uv (`pip install uv`).
   uv:          {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#728) — GitHub release tarball + per-version .sha256 embed the version (package toolchain images only; the dev images float uv via pip); floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
+  # cargo-nextest in the rust image (#885) comes from nextest's prebuilt
+  # release tarball, verified against the per-asset .sha256, rather than
+  # `cargo install`, so it joins the auto-managed set. Its latest release is
+  # resolved through get.nexte.st, not the repo's /releases/latest (see
+  # resolve_latest.py).
+  cargo-nextest: {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#885) — nextest's prebuilt release tarball + per-asset .sha256 embed the version (rust image only); floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
