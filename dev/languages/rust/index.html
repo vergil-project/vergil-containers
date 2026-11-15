@@ -3290,7 +3290,7 @@
 <h1 id="rust-support-policy">Rust support policy<a class="headerlink" href="#rust-support-policy" title="Permanent link">&para;</a></h1>
 <p>Image family: <code>dev-rust</code>. Shared rules: <a href="../lifecycle/">Language version
 lifecycle</a>. Upstream facts on this page were checked on
-2026-10-21.</p>
+2026-11-15.</p>
 <h2 id="upstream-source-of-truth">Upstream source of truth<a class="headerlink" href="#upstream-source-of-truth" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Official:</strong> the Rust <a href="https://www.rust-lang.org/policies/security">security
@@ -3309,6 +3309,9 @@ lifecycle</a>. Upstream facts on this page were checked on
   EOL, so "each version is supported for six weeks".</li>
 <li>endoflife.date lists 1.99 (released 2026-10-01) as the only supported
   release, and 1.98 (released 2026-08-20) as EOL on 2026-10-01.</li>
+<li>The Rust release channel's stable manifest already carries 1.100, which
+  endoflife.date does not list yet. The window is read from endoflife.date,
+  so 1.100 joins it once endoflife.date lists it.</li>
 </ul>
 <h2 id="support-rule">Support rule<a class="headerlink" href="#support-rule" title="Permanent link">&para;</a></h2>
 <p>The newest stable release and the one before it (newest and newest−1). This
@@ -3321,7 +3324,7 @@ not forced to move on the day a release ships. It conflicts with rule 1 (never
 support a version upstream has stopped supporting) for at most one release
 cycle. That is accepted because the older version was supported until the day
 the newer one shipped.</p>
-<p>On 2026-10-21 that is 1.99 and 1.98.</p>
+<p>On 2026-11-15, read from endoflife.date, that is 1.99 and 1.98.</p>
 <h2 id="what-counts-as-ga">What counts as GA<a class="headerlink" href="#what-counts-as-ga" title="Permanent link">&para;</a></h2>
 <p>The stable <code>1.N.0</code> release. Beta and nightly builds are pre-releases and never
 GA. In endoflife.date, a cycle is GA once its <code>releaseDate</code> is on or before the
@@ -3357,9 +3360,10 @@ version. Each PR carries its own toolchain pin change in
 <code>docker/pins/toolchains.yml</code> (an add's new series pin, a drop's removed one)
 and is merged by a human.</p>
 <h2 id="current-out-of-policy-versions">Current out-of-policy versions<a class="headerlink" href="#current-out-of-policy-versions" title="Permanent link">&para;</a></h2>
-<p>As of 2026-11-14: <strong>none.</strong> The manifest builds 1.99 and 1.98, the newest
-stable release and the one before it, so the window is in sync with upstream.
-endoflife.date, checked on 2026-11-14, still lists 1.99 as the newest release.</p>
+<p>As of 2026-11-15: <strong>none.</strong> The manifest builds 1.99 and 1.98, the two newest
+releases endoflife.date lists, so the window is in sync with it. The stable
+channel already carries 1.100 (see the data above); it enters the window
+through a lifecycle pull request once endoflife.date lists it.</p>
 <p>Under <code>pr</code> automation, a new release is added and a version that leaves the
 window is dropped through a lifecycle pull request, so the manifest is out of
 policy only while such a PR waits for a human to merge it. The open lifecycle
