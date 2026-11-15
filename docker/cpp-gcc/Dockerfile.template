@@ -33,11 +33,15 @@ ARG DEBIAN_FRONTEND=noninteractive
 # g++-<v>, not noble's unversioned g++ (13), brings libstdc++ <v>.
 # update-alternatives exposes unversioned gcc/g++/gcov so CMake, Conan profile
 # detection, and gcovr resolve them without a version suffix. gcov is GCC's
-# coverage tool, which gcovr drives by default.
+# coverage tool, which gcovr drives by default. The packages come from noble,
+# but apt-get update also refreshes the apt.llvm.org source the cpp-analysis
+# fragment added (and fails on it under APT::Update::Error-Mode "any"), so
+# apt-get runs through that fragment's llvm-apt-get (IPv4 only, with retries;
+# see common/llvm-apt).
 ARG GCC_VERSION
 RUN if [ -z "${GCC_VERSION}" ]; then echo "cpp-gcc: the GCC_VERSION build arg is not set" >&2; exit 1; fi && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
+    /usr/local/libexec/vergil/llvm-apt-get update && \
+    /usr/local/libexec/vergil/llvm-apt-get install -y --no-install-recommends \
       "gcc-${GCC_VERSION}" \
       "g++-${GCC_VERSION}" && \
     update-alternatives --install /usr/bin/gcc gcc \
