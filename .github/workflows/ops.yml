@@ -22,12 +22,17 @@ jobs:
   # --no-probe skips the per-image Docker harvest: this job runs inside the
   # prod-base container with no Docker socket, and the drift signals need only
   # pins.yml, the templates, and one unmetered /releases/latest redirect per
-  # tool. continue-on-error because this is an observability signal, never a
-  # gate — a flaky upstream lookup must not fail the nightly.
+  # tool.
+  #
+  # NO continue-on-error (#819): the report is informational, but the script
+  # itself failing (an import error, a crash before it reports) must turn the
+  # nightly red, or nobody learns the report has stopped working. A finding is
+  # not a failure: report_exposure.py prints it and exits 0, and a flaky
+  # upstream lookup is already downgraded to a ::warning:: inside the script.
+  # docker/versions/test_ops_pin_exposure.py enforces it.
   pin-exposure:
     name: "pin exposure report"
     runs-on: ubuntu-24.04
-    continue-on-error: true
     permissions:
       contents: read
     container:
@@ -36,9 +41,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      # bash with pipefail: under the container job's default `sh -e` the
+      # pipeline's status is tee's, so a crash of the script would exit 0.
       - name: Report pin exposure
         working-directory: docker/pins
+        shell: bash
         run: |
+          set -euo pipefail
           uv run report_exposure.py --no-probe | tee -a "${GITHUB_STEP_SUMMARY}"
 
   # The language version lifecycle check (epic vergil-project/.github#407,
