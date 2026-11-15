@@ -22,7 +22,8 @@ system package manager or download the binaries.
 
 The required checks are not set by hand. They come from vergil-tooling's
 generated `CI gates` ruleset, which is computed from `vergil.toml` and kept in
-line by the daily config audit; see
+line by the nightly `github-config` job in `ops.yml`, which runs
+`vrg-github-repo-config update` to converge any drift; see
 [CI gates](https://vergil-project.github.io/vergil-tooling/guides/ci-architecture/#ci-gates)
 for the rule. For this repository they are:
 
