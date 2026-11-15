@@ -1,12 +1,46 @@
+import email.message
+import gzip
 import io
 import json
 import urllib.error
+import zlib
 from datetime import date
 
 import pytest
 
 from lifecycle import sources
 from lifecycle.core import EOL_DATE_UNKNOWN, NotFoundError, SourceError
+
+
+class _Response(io.BytesIO):
+    """A fake urlopen response: the body, and the headers it was sent with."""
+
+    def __init__(self, body: bytes, headers: dict[str, str] | None = None):
+        super().__init__(body)
+        self.headers = email.message.Message()
+        for name, value in (headers or {}).items():
+            self.headers[name] = value
+
+
+def _serve(monkeypatch, body: bytes, headers: dict[str, str] | None = None) -> dict:
+    """Make urlopen answer every request with `body` and `headers`;
+    the returned dict records the request headers, lower-cased."""
+    seen: dict = {}
+
+    def urlopen(request, timeout):
+        seen.update({k.lower(): v for k, v in request.header_items()})
+        return _Response(body, headers)
+
+    monkeypatch.setattr(sources.urllib.request, "urlopen", urlopen)
+    return seen
+
+
+def _gzip(data: bytes) -> bytes:
+    return gzip.compress(data)
+
+
+def _deflate(data: bytes) -> bytes:
+    return zlib.compress(data)
 
 
 def _fetch_json(data):
@@ -113,7 +147,7 @@ def _capture_headers(monkeypatch):
 
     def urlopen(request, timeout):
         seen.update({k.lower(): v for k, v in request.header_items()})
-        return io.BytesIO(b"[]")
+        return _Response(b"[]")
 
     monkeypatch.setattr(sources.urllib.request, "urlopen", urlopen)
     return seen
@@ -164,7 +198,7 @@ def test_fetch_url_returns_body_and_sends_user_agent(monkeypatch):
     def urlopen(request, timeout):
         seen["ua"] = request.get_header("User-agent")
         seen["timeout"] = timeout
-        return io.BytesIO(b"body")
+        return _Response(b"body")
 
     monkeypatch.setattr(sources.urllib.request, "urlopen", urlopen)
     assert sources.fetch_url("https://example.invalid/x") == b"body"
@@ -188,6 +222,53 @@ def test_fetch_url_network_failure_raises(monkeypatch, exc):
     monkeypatch.setattr(sources.urllib.request, "urlopen", urlopen)
     with pytest.raises(SourceError, match=r"https://example\.invalid/x"):
         sources.fetch_url("https://example.invalid/x")
+
+
+# Issue #883: apt.llvm.org answered with a gzip body the parsers read as text.
+
+
+def test_fetch_url_sends_accept_encoding(monkeypatch):
+    seen = _serve(monkeypatch, b"body")
+    sources.fetch_url("https://example.invalid/x")
+    assert seen["accept-encoding"] == "gzip, deflate"
+
+
+@pytest.mark.parametrize(
+    "coding, encode",
+    [("gzip", _gzip), ("GZIP", _gzip), ("x-gzip", _gzip), ("deflate", _deflate)],
+)
+def test_fetch_url_decodes_body(monkeypatch, coding, encode):
+    _serve(monkeypatch, encode(b"<html>index</html>"), {"Content-Encoding": coding})
+    assert sources.fetch_url("https://example.invalid/x") == b"<html>index</html>"
+
+
+@pytest.mark.parametrize("headers", [None, {"Content-Encoding": "identity"}, {"Content-Encoding": ""}])
+def test_fetch_url_identity_body_unchanged(monkeypatch, headers):
+    _serve(monkeypatch, b"\x1f\x8b plain", headers)
+    assert sources.fetch_url("https://example.invalid/x") == b"\x1f\x8b plain"
+
+
+def test_fetch_url_undoes_codings_last_first(monkeypatch):
+    body = _gzip(_deflate(b"twice"))  # deflate applied first, then gzip
+    _serve(monkeypatch, body, {"Content-Encoding": "deflate, gzip"})
+    assert sources.fetch_url("https://example.invalid/x") == b"twice"
+
+
+def test_fetch_url_unknown_coding_is_an_error(monkeypatch):
+    _serve(monkeypatch, b"\xce\xb2rotli", {"Content-Encoding": "br"})
+    with pytest.raises(SourceError, match=r"https://example\.invalid/x: unsupported Content-Encoding 'br'"):
+        sources.fetch_url("https://example.invalid/x")
+
+
+@pytest.mark.parametrize(
+    "coding, body",
+    [("gzip", b"not gzip at all"), ("gzip", _gzip(b"truncated body")[:-6]), ("deflate", b"not zlib")],
+)
+def test_fetch_url_corrupt_body_is_an_error(monkeypatch, coding, body):
+    _serve(monkeypatch, body, {"Content-Encoding": coding})
+    with pytest.raises(SourceError, match=rf"https://example\.invalid/x: body does not decode as Content-Encoding '{coding}'") as info:
+        sources.fetch_url("https://example.invalid/x")
+    assert not isinstance(info.value, NotFoundError)
 
 
 def _not_found(url):
