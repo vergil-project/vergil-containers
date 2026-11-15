@@ -53,6 +53,13 @@ which `docker/build.sh` reads, is generated from it.
   plan T1's "shared base layer", expressed as an `@include` fragment so that
   both C++ families, each built on `base`, carry the same layer. The GCC family
   (T2) includes the same fragment.
+- **`common/llvm-apt.dockerfile`** — included by `cpp-analysis`: installs
+  `/usr/local/libexec/vergil/llvm-apt-get`, the `apt-get` every later step runs
+  once the apt.llvm.org source is configured. It forces IPv4 (the arm64 runners
+  have no IPv6 route to apt.llvm.org), raises apt's immediate retries to 5, and
+  reruns a failed command up to 3 attempts 15 s and 30 s apart to outlast a DNS
+  outage; the last failure still fails the build
+  (vergil-project/vergil-containers#904).
 - **`docker/cpp/smoke/`** + **`docker/cpp/smoke-test.sh`** — the trivial
   CMake + Conan 2 project used as the build-time smoke check (shared across the
   clang and gcc families).
