@@ -17,6 +17,14 @@ docker/pins/workflow-images.txt), but never across a major version: a newest
 release in another major raises `MajorVersionError` before anything is written
 (#914).
 
+**Digests in source.** A prebuilt tool in TOOL_DIGESTS (cargo-nextest) also has
+its per-architecture sha256 pinned in its fragment, `ARG <STEM>_SHA256_AMD64=`
+and `_ARM64=` (epic vergil-project/.github#1165, spec §6.3), and the image
+build verifies against those, not against a checksum it downloads. `--write`
+resolves them from the release's checksum files at the version it writes and
+writes versions and digests together, all or nothing, so a refresh PR shows
+every digest change beside its version change.
+
 **Fail loud.** Any resolution failure raises `ResolutionError` — there is no
 silent fallback that would let a broken lookup masquerade as "no change".
 
@@ -30,6 +38,8 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 # tool → GitHub release repo (OWNER/REPO). The binary-download mechanism tools
@@ -108,6 +118,46 @@ WORKFLOW_PIN_NAMES = {
 
 # The workflow image pins, relative to docker/.
 WORKFLOW_PINS = Path("pins") / "workflow-images.txt"
+
+# The architectures a prebuilt tool's digests are pinned for, as they appear in
+# the fragment's `ARG <STEM>_SHA256_<ARCH>=` lines (STEM is the tool's TOOL_ARGS
+# name less `_VERSION`), the same naming as the toolchain pins'
+# `RUSTUP_INIT_SHA256_AMD64`.
+ARCHES = ("AMD64", "ARM64")
+
+
+@dataclass(frozen=True)
+class DigestSource:
+    """Where a prebuilt tool's release publishes each architecture's sha256.
+
+    `checksum_urls` maps each of ARCHES to the URL template of the release's
+    checksum file for that architecture's asset, and `assets` to the asset's
+    file name; both take `{version}`, the bare `x.y.z` of the ARG. A checksum
+    file holds the digest alone or `<digest>  <asset>`; when it names a file,
+    that must be the expected asset."""
+
+    checksum_urls: dict[str, str]
+    assets: dict[str, str]
+
+
+_NEXTEST_DOWNLOAD = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-{version}/"
+_NEXTEST_TRIPLES = {"AMD64": "x86_64-unknown-linux-gnu", "ARM64": "aarch64-unknown-linux-gnu"}
+
+# tool → its DigestSource, for every prebuilt tool whose per-architecture
+# sha256 is pinned in source beside its version (epic vergil-project/.github
+# #1165, spec §6.3). The image build verifies the tarball against the pinned
+# digest, never against a checksum downloaded beside it; the refresh writes the
+# digests in the same run that floats the version, so a refresh PR shows both
+# changes together.
+TOOL_DIGESTS = {
+    # nextest publishes a `.sha256` per asset, `<digest>  <asset>`.
+    "cargo-nextest": DigestSource(
+        checksum_urls={arch: f"{_NEXTEST_DOWNLOAD}cargo-nextest-{{version}}-{triple}.sha256"
+                       for arch, triple in _NEXTEST_TRIPLES.items()},
+        assets={arch: f"cargo-nextest-{{version}}-{triple}.tar.gz"
+                for arch, triple in _NEXTEST_TRIPLES.items()},
+    ),
+}
 
 # A release tag page (`.../releases/tag/<tag>`) or a release asset
 # (`.../releases/download/<tag>/<asset>`).
@@ -295,24 +345,155 @@ def write_workflow_pins(docker_root: Path, changed: dict[str, tuple[str, str]]) 
     path.write_text(text)
 
 
-def main(argv: list[str], docker_root: Path | None = None, fetch=_curl_location) -> int:
-    if docker_root is None:
-        docker_root = Path(__file__).resolve().parent.parent
+_SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _curl_text(url: str) -> str:
+    """Default checksum fetcher: GET `url` with curl (retrying transient
+    errors, failing on an HTTP error) into a file, and return it as text.
+    Raises ResolutionError on any curl failure or a body that is not UTF-8."""
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "body"
+        try:
+            subprocess.run(
+                ["curl", "-fsSL", "--retry", "5", "--retry-all-errors", "--retry-delay", "2",
+                 url, "-o", str(out)],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            raise ResolutionError(f"curl failed fetching {url}: {exc.stderr.strip() or exc}") from exc
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise ResolutionError(f"curl failed fetching {url}: {exc}") from exc
+        try:
+            return out.read_bytes().decode("utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            raise ResolutionError(f"{url}: unreadable checksum body: {exc}") from exc
+
+
+def parse_checksum(where: str, text: str, asset: str) -> str:
+    """The sha256 in a release checksum file: one line, holding the digest
+    alone or `<digest>  <file>` (a leading `*` on the file, binary mode, is
+    allowed). A file it names must be `asset`. Raises ResolutionError, naming
+    `where`, on anything else."""
+    lines = [line for line in text.splitlines() if line.strip()]
+    if len(lines) != 1:
+        raise ResolutionError(f"{where}: expected one checksum line, got {len(lines)}")
+    parts = lines[0].split()
+    if len(parts) > 2:
+        raise ResolutionError(f"{where}: expected '<sha256>' or '<sha256>  <file>', got {lines[0]!r}")
+    digest = parts[0].lower()
+    if not _SHA256_HEX.match(digest):
+        raise ResolutionError(f"{where}: {parts[0]!r} is not a SHA-256 hex digest")
+    if len(parts) == 2 and parts[1].lstrip("*") != asset:
+        raise ResolutionError(f"{where}: the checksum is for {parts[1]!r}, not {asset!r}")
+    return digest
+
+
+def resolve_digests(tool: str, version: str, fetch=_curl_text) -> dict[str, str]:
+    """Resolve `tool`'s per-architecture sha256 at `version` from its release's
+    checksum files (TOOL_DIGESTS) → {"AMD64": <hex>, "ARM64": <hex>}. `fetch`
+    takes a URL and returns its body as text. A missing or malformed checksum
+    raises ResolutionError naming the tool and the architecture."""
+    source = TOOL_DIGESTS.get(tool)
+    if source is None:
+        raise ResolutionError(f"{tool}: no digest source in TOOL_DIGESTS")
+    digests: dict[str, str] = {}
+    for arch in ARCHES:
+        where = f"{tool} {version} {arch}"
+        if arch not in source.checksum_urls or arch not in source.assets:
+            raise ResolutionError(f"{where}: TOOL_DIGESTS names no checksum for this architecture")
+        url = source.checksum_urls[arch].format(version=version)
+        try:
+            text = fetch(url)
+        except ResolutionError as exc:
+            raise ResolutionError(f"{where}: no checksum: {exc}") from exc
+        digests[arch] = parse_checksum(f"{where} ({url})", text, source.assets[arch].format(version=version))
+    return digests
+
+
+def rewrite_digests(docker_root: Path, tool: str, digests: dict[str, str]) -> bool:
+    """Rewrite the `ARG <STEM>_SHA256_<ARCH>=` lines (STEM is the tool's
+    TOOL_ARGS name less `_VERSION`) in the fragment that pins its version.
+    Returns whether the fragment changed. Raises ResolutionError if no fragment
+    pins the version, a line is missing, or `digests` does not hold a sha256
+    for exactly ARCHES."""
+    if set(digests) != set(ARCHES):
+        raise ResolutionError(f"{tool}: digests for {sorted(digests)}, want {list(ARCHES)}")
+    for arch, digest in digests.items():
+        if not _SHA256_HEX.match(digest):
+            raise ResolutionError(f"{tool} {arch}: {digest!r} is not a SHA-256 hex digest")
+    arg = TOOL_ARGS[tool]
+    stem = arg.removesuffix("_VERSION")
+    version_line = re.compile(rf"^ARG\s+{re.escape(arg)}=", re.MULTILINE)
+    frag = next((f for f in _fragment_files(docker_root) if version_line.search(f.read_text())), None)
+    if frag is None:
+        raise ResolutionError(f"no 'ARG {arg}=' found in any fragment for {tool}")
+    text = frag.read_text()
+    new = text
+    for arch in ARCHES:
+        line = re.compile(rf"^(ARG\s+{re.escape(stem)}_SHA256_{arch}=)[0-9a-f]{{64}}$", re.MULTILINE)
+        if not line.search(new):
+            raise ResolutionError(f"no 'ARG {stem}_SHA256_{arch}=<sha256>' in {frag.name} for {tool}")
+        new = line.sub(rf"\g<1>{digests[arch]}", new)
+    if new == text:
+        return False
+    frag.write_text(new)
+    return True
+
+
+def write(docker_root: Path, resolved: dict[str, str],
+          digests: dict[str, dict[str, str]]) -> tuple[dict[str, tuple[str, str]], list[str]]:
+    """Write the resolved versions (rewrite_args) and digests (rewrite_digests)
+    together, all or nothing: if any rewrite fails, every fragment is restored
+    to what it held before and the error propagates. Returns the version
+    changes and the tools whose digests changed."""
+    before = {frag: frag.read_text() for frag in _fragment_files(docker_root)}
+    try:
+        changed = rewrite_args(docker_root, resolved)
+        redigested = sorted(tool for tool, d in digests.items() if rewrite_digests(docker_root, tool, d))
+    except BaseException:
+        for frag, text in before.items():
+            frag.write_text(text)
+        raise
+    return changed, redigested
+
+
+def main(argv: list[str], docker_root: Path | None = None,
+         fetch=_curl_location, fetch_text=_curl_text) -> int:
+    """Resolve every tool's latest version, and every TOOL_DIGESTS tool's
+    digests at that version, before writing anything; print them, or with
+    `--write` write them (see write). Any failed lookup raises ResolutionError
+    and nothing is written."""
+    docker_root = Path(__file__).resolve().parent.parent if docker_root is None else docker_root
     resolved = resolve_all(fetch=fetch)
     workflow_resolved = resolve_all(WORKFLOW_PIN_REPOS, fetch=fetch)
+    digests = {tool: resolve_digests(tool, resolved[tool], fetch=fetch_text) for tool in TOOL_DIGESTS}
     if "--write" not in argv:
         for tool, ver in sorted({**resolved, **workflow_resolved}.items()):
             print(f"{tool}\t{ver}")
+        for tool, by_arch in sorted(digests.items()):
+            for arch, digest in by_arch.items():
+                print(f"{tool}\tsha256-{arch.lower()}\t{digest}")
         return 0
     # The major-version guard runs before any file is written.
     workflow_changed = plan_workflow_pins(docker_root, workflow_resolved)
-    changed = rewrite_args(docker_root, resolved)
+    changed, redigested = write(docker_root, resolved, digests)
     write_workflow_pins(docker_root, workflow_changed)
     changed.update(workflow_changed)
-    if not changed:
+    if not changed and not redigested:
         print("no version changes")
     for tool, (old, new) in sorted(changed.items()):
         print(f"bumped {tool}: {old} -> {new}")
+    for tool in redigested:
+        print(f"pinned {tool} {resolved[tool]} digests")
+        if tool not in changed:
+            # The release's assets changed under an unchanged version: the
+            # refresh PR shows the digest change alone, for a human to check.
+            print(f"::warning::{tool} {resolved[tool]}: its release checksums changed with no "
+                  "version change; check the release before merging", file=sys.stderr)
     return 0
 
 

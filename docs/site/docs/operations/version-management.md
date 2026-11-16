@@ -113,7 +113,13 @@ tracks the leading edge:
   (`docker/pins/resolve_latest.py`; cargo-nextest through nextest's
   `get.nexte.st/latest/linux` redirect instead, since its repository also
   publishes other crates' releases), rewrites the `ARG *_VERSION=` pins in
-  `docker/common/*`, and regenerates `CATALOG.md`.
+  `docker/common/*`, and regenerates `CATALOG.md`. For a prebuilt tool whose
+  digests are pinned in source (cargo-nextest, `TOOL_DIGESTS`), it also reads
+  each architecture's sha256 from the release's checksum files and rewrites
+  the `ARG *_SHA256_AMD64=` and `_ARM64=` lines in the same run. The lookups
+  all finish before anything is written, so a missing or malformed checksum
+  fails the refresh, naming the tool and the architecture, with no fragment
+  changed.
 - **Only if something drifted** it opens one bump PR from the fixed
   `upstream-refresh` branch, titled `chore(upstream): refresh upstream inputs`
   and authored by the GitHub App (so the PR fires CI and every bump is
