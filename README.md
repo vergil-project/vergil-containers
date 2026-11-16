@@ -42,13 +42,13 @@ The table is generated from
 [`docker/versions/manifest.yml`](docker/versions/manifest.yml), the single
 source of every language version this repo builds. Each language's versions
 follow its upstream support window; see
-[Language version lifecycle](https://vergil-project.github.io/vergil-containers/languages/lifecycle/).
+[Language version lifecycle](https://vergil-project.github.io/vergil-containers/latest/languages/lifecycle/).
 
 The `pkg-ubuntu` and `pkg-rhel` rows are the package toolchain images:
 the upstream image plus the OS prerequisites, uv, nFPM and a toolchain
 marker, without the common tooling. vergil-tooling's package jobs build and
 install-test in their `prod-` images. See
-[Package toolchain images](https://vergil-project.github.io/vergil-containers/images/#package-toolchain-images).
+[Package toolchain images](https://vergil-project.github.io/vergil-containers/latest/images/#package-toolchain-images).
 
 ## Usage
 
@@ -156,7 +156,7 @@ goes stale. Most tools float on their leading edge; the few that are pinned,
 and why, are recorded in [`docker/pins/pins.yml`](docker/pins/pins.yml), and
 the generated [`docker/pins/CATALOG.md`](docker/pins/CATALOG.md) shows every
 pinned version currently in the Dockerfiles. See
-[Tool Version Management](https://vergil-project.github.io/vergil-containers/operations/version-management/).
+[Tool Version Management](https://vergil-project.github.io/vergil-containers/latest/operations/version-management/).
 
 All images are published as multi-architecture manifests supporting
 both **amd64** and **arm64**.
@@ -172,7 +172,7 @@ inclusion system. Shared tooling installations are maintained once in
 `docker/common/` and included via `# @include` directives. `generate.sh`
 expands templates into final Dockerfiles before each build.
 
-See [Architecture](https://vergil-project.github.io/vergil-containers/architecture/)
+See [Architecture](https://vergil-project.github.io/vergil-containers/latest/architecture/)
 for details.
 
 ## Publishing
@@ -190,7 +190,7 @@ tab.
 Pull requests publish nothing. Their `images` CI job (`ci-images.yml`)
 builds and scans only the images the change reaches, and its
 `images / evidence` gate is a required check. See
-[Architecture](https://vergil-project.github.io/vergil-containers/architecture/#pull-request-builds).
+[Architecture](https://vergil-project.github.io/vergil-containers/latest/architecture/#pull-request-builds).
 
 Image URLs use the user namespace (`ghcr.io/vergil-project/...`), not a
 repo-specific namespace, so paths remain stable across repo migrations.
