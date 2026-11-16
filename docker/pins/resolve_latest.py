@@ -156,17 +156,22 @@ def resolve(source: str, fetch=_curl_location, prefix: str = "") -> str:
     return normalize_version(parse_tag_from_location(fetch(source)), prefix)
 
 
+def resolve_tool(tool: str, repo: str, fetch=_curl_location) -> str:
+    """Resolve one tool's latest release version as bare `x.y.z`: from its
+    TOOL_LATEST_URLS entry if it has one, else `repo`, and with its
+    TOOL_TAG_PREFIXES prefix. The bumper and the pin-exposure report
+    (report_exposure.py) both resolve through this, so they agree on where each
+    tool's latest release comes from."""
+    return resolve(TOOL_LATEST_URLS.get(tool, repo), fetch=fetch,
+                   prefix=TOOL_TAG_PREFIXES.get(tool, ""))
+
+
 def resolve_all(tools: dict[str, str] | None = None, fetch=_curl_location) -> dict[str, str]:
-    """Resolve every tool in `tools` (default: TOOL_REPOS) → {tool: x.y.z},
-    each from its TOOL_LATEST_URLS entry if it has one, else its repo, and with
-    its TOOL_TAG_PREFIXES prefix. Propagates ResolutionError from the first tool
-    that fails."""
+    """Resolve every tool in `tools` (default: TOOL_REPOS) → {tool: x.y.z}
+    through resolve_tool. Propagates ResolutionError from the first tool that
+    fails."""
     tools = TOOL_REPOS if tools is None else tools
-    return {
-        tool: resolve(TOOL_LATEST_URLS.get(tool, repo), fetch=fetch,
-                      prefix=TOOL_TAG_PREFIXES.get(tool, ""))
-        for tool, repo in tools.items()
-    }
+    return {tool: resolve_tool(tool, repo, fetch=fetch) for tool, repo in tools.items()}
 
 
 def _fragment_files(docker_root: Path) -> list[Path]:
