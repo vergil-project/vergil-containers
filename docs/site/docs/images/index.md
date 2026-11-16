@@ -146,7 +146,8 @@ on rustup's minimal profile, under `/usr/local/rustup` and `/usr/local/cargo`
 as in the `rust:<version>-slim` images it replaces. `gcc` and `libc6-dev`
 come from Ubuntu as the C linker, and `pkg-config` as a build helper for crates
 that link system libraries. `cargo-nextest` comes from nextest's prebuilt
-release binary, checked against the release's per-asset SHA-256; it is the
+release binary, checked against the per-architecture SHA-256 pinned in its
+fragment beside its version (see [Rust](../languages/rust.md#adapter-quirks)); it is the
 test runner that writes JUnit reports on stable Rust, alone or as
 `cargo llvm-cov nextest`.
 
