@@ -1,6 +1,7 @@
 name: Package cleanup
 
-# Two jobs, one arming mechanism:
+# Two jobs, both live: they delete for real unless a manual run asks for a
+# preview.
 #
 # `cleanup` prunes the untagged version cruft the publish pipeline mints on
 # every run (per-arch child manifests, provenance attestations, superseded
@@ -18,9 +19,10 @@ name: Package cleanup
 # 3.14, 1.26, 17, 21), build cache-* tags, and pre-promotion *-candidate tags
 # never match its delete rule.
 #
-# Ships in DRY-RUN by default. After reviewing a preview run's logs, arm real
-# deletions by setting the repository variable PACKAGE_CLEANUP_DRY_RUN=false
-# (Settings → Secrets and variables → Actions → Variables). No code change.
+# Live by default (issue #912): the scheduled run always deletes for real. A
+# manual run (workflow_dispatch) deletes too, unless the caller sets the
+# `dry_run` input to true for a preview that only logs what would be deleted.
+# No repository variable arms or disarms it; what runs is what git records.
 #
 # Token: the default GITHUB_TOKEN can list/preview. Real deletion of
 # org-owned package versions may require a PAT with `delete:packages` stored
@@ -32,7 +34,8 @@ name: Package cleanup
 # own per-request retry (axios-retry, 3 tries, sub-second exponential backoff
 # honouring Retry-After) ran out within seconds. Two workflow-level defences:
 #   1. `max-parallel` caps how many legs of each job hit the registry at once
-#      (3 per job, so at most 6 legs in flight instead of 32);
+#      (3 per job; the jobs run one after the other, so at most 3 legs are in
+#      flight instead of 32);
 #   2. each leg retries the action ONCE after a bounded, jittered back-off
 #      (RETRY_BACKOFF_BASE_SECONDS + up to RETRY_BACKOFF_JITTER_SECONDS), so a
 #      transient 429 burst clears and the run completes. A second failure fails
@@ -42,6 +45,15 @@ name: Package cleanup
 # a non-transient failure costs one back-off and then fails the same way.
 # Keep the attempt-1 and attempt-2 `with:` blocks identical —
 # docker/versions/test_package_cleanup.py enforces it.
+#
+# Job ordering (issue #911): `reap-aliases` runs only after `cleanup` has
+# finished, so the two never work on the same package at once. When they
+# overlapped, a reap leg loaded a package's manifests while the cleanup leg
+# was deleting that package's untagged versions, and failed with HTTP 404 on
+# a manifest that had just gone. GitHub cannot make one matrix leg wait for
+# the matching leg of another job, so the whole job waits. It also runs after
+# a failed cleanup leg (`!cancelled()`): a reap does not depend on the prune
+# succeeding, and skipping it would let the aliases pile up.
 #
 # The cold start itself is avoided by package-cache-warm.yml, which restores
 # the action's manifest cache mid-week so GitHub's 7-day eviction never empties
@@ -56,7 +68,7 @@ on:
       dry_run:
         description: "Preview only — log what would be deleted, delete nothing"
         type: boolean
-        default: true
+        default: false
 
 permissions:
   packages: write
@@ -117,18 +129,14 @@ jobs:
           # Same age floor as attempt 2 below (documented there).
           older-than: 24 hours
           validate: true
-          # Same arming expression as attempt 2 below (documented there).
-          dry-run: >-
-            ${{ !(
-            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
-            ) }}
+          # Same dry-run expression as attempt 2 below (documented there).
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
 
       - name: Back off before retrying
         if: steps.attempt1.outcome == 'failure'
         run: |
           delay=$(( RETRY_BACKOFF_BASE_SECONDS + RANDOM % (RETRY_BACKOFF_JITTER_SECONDS + 1) ))
-          echo "::warning title=Package cleanup retry::Attempt 1 failed (often a ghcr.io 429 rate limit: 'Request failed with status code 429' above). Backing off ${delay}s, then retrying once."
+          echo "::warning title=Package cleanup retry::Attempt 1 failed (often a ghcr.io 429 rate limit: 'Request failed with status code 429' above; a 'Request failed with status code 404' instead means a manifest was deleted while the action read it). Backing off ${delay}s, then retrying once."
           sleep "${delay}"
 
       - name: Prune untagged versions (attempt 2)
@@ -148,35 +156,30 @@ jobs:
           # the platform children of tagged images are never pruned anyway.
           older-than: 24 hours
           validate: true
-          # Real deletion is armed only when a trigger explicitly asks for it:
-          # a manual run with "Preview only" unchecked, or a scheduled run with
-          # the repo variable PACKAGE_CLEANUP_DRY_RUN set to 'false'. Everything
-          # else (default) stays in preview. Written as !(armed) rather than
-          # `cond && a || b` to avoid the Actions falsy-fall-through pitfall,
-          # where an unchecked box (inputs.dry_run == false) would otherwise
-          # fall through to the scheduled branch.
+          # Live unless a manual run asks for a preview (issue #912): only a
+          # workflow_dispatch run with "Preview only" checked is a dry run. A
+          # scheduled run has no inputs, so the expression is false and the
+          # run deletes. No `|| ...` branch, so the Actions falsy-fall-through
+          # pitfall (issue #388) cannot apply.
           #
-          # Folded-scalar rule: every continuation line below MUST stay at the
-          # SAME indentation as the `${{` line. A `>-` scalar preserves newlines
-          # on more-indented lines, and a newline *inside* ${{ }} makes GitHub
-          # reject the whole file at startup (startup_failure, issue #449) —
-          # actionlint tokenizes expressions loosely and will not catch it.
-          dry-run: >-
-            ${{ !(
-            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
-            ) }}
+          # Keep the expression on one line: a newline inside ${{ }} makes
+          # GitHub reject the whole file at startup (startup_failure, issue
+          # #449), and actionlint does not catch it.
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
 
       - name: Report persistent failure
         if: failure() && steps.attempt2.outcome == 'failure'
         env:
           PACKAGE: ${{ matrix.package }}
         run: |
-          echo "::error title=Package cleanup failed twice::ghcr-cleanup-action failed on both attempts for ${PACKAGE}, with a ${RETRY_BACKOFF_BASE_SECONDS}-$(( RETRY_BACKOFF_BASE_SECONDS + RETRY_BACKOFF_JITTER_SECONDS ))s back-off between them. If the attempt logs show 'Request failed with status code 429', ghcr.io is still rate limiting this token after the action's per-request retries (which honour Retry-After) and this workflow's retry: re-run the failed legs later, or lower max-parallel. Any other error is not a rate limit; read the attempt logs (issue #652)."
+          echo "::error title=Package cleanup failed twice::ghcr-cleanup-action failed on both attempts for ${PACKAGE}, with a ${RETRY_BACKOFF_BASE_SECONDS}-$(( RETRY_BACKOFF_BASE_SECONDS + RETRY_BACKOFF_JITTER_SECONDS ))s back-off between them. If the attempt logs show 'Request failed with status code 429', ghcr.io is still rate limiting this token after the action's per-request retries (which honour Retry-After) and this workflow's retry: re-run the failed legs later, or lower max-parallel. If they show 'Request failed with status code 404', it is not a rate limit: a manifest was deleted while the action read it, so another deletion was working on the same package at the same time (as cleanup and reap-aliases once did, issue #911); check for an overlapping run before re-running. Any other error is not a rate limit either; read the attempt logs (issue #652)."
           exit 1
 
   reap-aliases:
     name: "reap: ${{ matrix.package }} (older than ${{ matrix.older_than }})"
+    # Never overlap `cleanup` on the same package (issue #911; see the header).
+    needs: cleanup
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -240,17 +243,13 @@ jobs:
           use-regex: true
           delete-tags: '^.+-\d{8}$'
           validate: true
-          dry-run: >-
-            ${{ !(
-            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
-            ) }}
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
 
       - name: Back off before retrying
         if: steps.attempt1.outcome == 'failure'
         run: |
           delay=$(( RETRY_BACKOFF_BASE_SECONDS + RANDOM % (RETRY_BACKOFF_JITTER_SECONDS + 1) ))
-          echo "::warning title=Package cleanup retry::Attempt 1 failed (often a ghcr.io 429 rate limit: 'Request failed with status code 429' above). Backing off ${delay}s, then retrying once."
+          echo "::warning title=Package cleanup retry::Attempt 1 failed (often a ghcr.io 429 rate limit: 'Request failed with status code 429' above; a 'Request failed with status code 404' instead means a manifest was deleted while the action read it). Backing off ${delay}s, then retrying once."
           sleep "${delay}"
 
       - name: Reap datestamp aliases past the retention window (attempt 2)
@@ -276,31 +275,20 @@ jobs:
           # / cache / candidate tag ends in -YYYYMMDD, so nothing else can match.
           # An earlier exclude-tags pattern was removed because the action's
           # ReDoS guard rejected its nested quantifier (\d+(\.\d+)*); the delete
-          # rule's precision plus the DRY-RUN-by-default arming make it moot
-          # (issue #453).
+          # rule's precision makes it moot (issue #453).
           delete-tags: '^.+-\d{8}$'
           # delete-untagged is left unset (defaults off because a delete rule
           # is present): untagged pruning is the `cleanup` job's remit, not
           # this one's.
           validate: true
-          # Same arming mechanism as `cleanup`: preview unless a manual run
-          # explicitly unchecks "Preview only", or a scheduled run has the repo
-          # variable PACKAGE_CLEANUP_DRY_RUN set to 'false'. !(armed) form
-          # avoids the Actions falsy-fall-through pitfall.
-          #
-          # Folded-scalar rule (see `cleanup` above): keep every continuation
-          # line at the SAME indentation as the `${{` line — a newline inside
-          # ${{ }} is a startup_failure (issue #449).
-          dry-run: >-
-            ${{ !(
-            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
-            ) }}
+          # Same dry-run expression as `cleanup` (documented there): live
+          # unless a manual run checks "Preview only". Keep it on one line.
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
 
       - name: Report persistent failure
         if: failure() && steps.attempt2.outcome == 'failure'
         env:
           PACKAGE: ${{ matrix.package }}
         run: |
-          echo "::error title=Package cleanup failed twice::ghcr-cleanup-action failed on both attempts for ${PACKAGE}, with a ${RETRY_BACKOFF_BASE_SECONDS}-$(( RETRY_BACKOFF_BASE_SECONDS + RETRY_BACKOFF_JITTER_SECONDS ))s back-off between them. If the attempt logs show 'Request failed with status code 429', ghcr.io is still rate limiting this token after the action's per-request retries (which honour Retry-After) and this workflow's retry: re-run the failed legs later, or lower max-parallel. Any other error is not a rate limit; read the attempt logs (issue #652)."
+          echo "::error title=Package cleanup failed twice::ghcr-cleanup-action failed on both attempts for ${PACKAGE}, with a ${RETRY_BACKOFF_BASE_SECONDS}-$(( RETRY_BACKOFF_BASE_SECONDS + RETRY_BACKOFF_JITTER_SECONDS ))s back-off between them. If the attempt logs show 'Request failed with status code 429', ghcr.io is still rate limiting this token after the action's per-request retries (which honour Retry-After) and this workflow's retry: re-run the failed legs later, or lower max-parallel. If they show 'Request failed with status code 404', it is not a rate limit: a manifest was deleted while the action read it, so another deletion was working on the same package at the same time (as cleanup and reap-aliases once did, issue #911); check for an overlapping run before re-running. Any other error is not a rate limit either; read the attempt logs (issue #652)."
           exit 1

@@ -38,6 +38,8 @@ jobs:
       arch-matrix: ${{ steps.select.outputs.arch-matrix }}
       has: ${{ steps.select.outputs.has }}
       upgrade-date: ${{ steps.select.outputs.upgrade-date }}
+      trivy-image: ${{ steps.trivy-image.outputs.image }}
+      registry-image: ${{ steps.registry-image.outputs.image }}
     steps:
       # The whole history, so the PR's base and head commits are both present.
       - name: Checkout code
@@ -102,6 +104,28 @@ jobs:
           printf 'matrix=%s\narch-matrix=%s\nhas=%s\nupgrade-date=%s\n' \
             "$matrix" "$arch_matrix" "$has" "$upgrade_date" >> "$GITHUB_OUTPUT"
 
+      # The Trivy image the build scans with and the evidence names: the
+      # images' own Trivy, read from its auto-managed pin, so the gate moves
+      # with every upstream-refresh bump and never names a version itself
+      # (vergil-containers#855). A failure fails this job, and `evidence`.
+      - name: Resolve the Trivy image
+        id: trivy-image
+        run: |
+          set -euo pipefail
+          image="$(python3 docker/pins/workflow_images.py trivy-image)"
+          printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"
+
+      # The image of the build job's registry service, read from its pin in
+      # docker/pins/workflow-images.txt, which the upstream refresh moves
+      # within its major version (vergil-containers#914). A failure fails this
+      # job, and `evidence`.
+      - name: Resolve the registry image
+        id: registry-image
+        run: |
+          set -euo pipefail
+          image="$(python3 docker/pins/workflow_images.py registry-image)"
+          printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"
+
   build:
     name: "build: ${{ matrix.name }} (${{ matrix.arch }})"
     needs: select
@@ -111,10 +135,11 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.select.outputs.arch-matrix) }}
     # A parent built in this job is pushed here, and only here, for its
-    # children to be built FROM: the registry lives and dies with the job.
+    # children to be built FROM: the registry lives and dies with the job. Its
+    # image comes from the select job, never a version written here.
     services:
       registry:
-        image: registry:2.8.3
+        image: ${{ needs.select.outputs.registry-image }}
         ports:
           - 5000:5000
     steps:
@@ -133,7 +158,7 @@ jobs:
         env:
           ARCH: ${{ matrix.arch }}
           ENTRIES_JSON: ${{ toJSON(matrix.entries) }}
-          TRIVY_IMAGE: aquasec/trivy:0.72.0
+          TRIVY_IMAGE: ${{ needs.select.outputs.trivy-image }}
           UPGRADE_DATE: ${{ needs.select.outputs.upgrade-date }}
         run: scripts/bin/pr-image-build "$ARCH"
 
@@ -193,9 +218,14 @@ jobs:
           BUILD_RESULT: ${{ needs.build.result }}
           MATRIX: ${{ needs.select.outputs.matrix }}
           JOBS: ${{ needs.select.outputs.arch-matrix }}
+          TRIVY_IMAGE: ${{ needs.select.outputs.trivy-image }}
           REPORT_DIR: ${{ runner.temp }}/images-report
         run: |
           set -euo pipefail
+          if [ -z "$TRIVY_IMAGE" ]; then
+            echo "::error title=No Trivy image::The select job's trivy-image output is empty, so the evidence cannot name the scanner that gated the images."
+            exit 1
+          fi
           mkdir -p "$REPORT_DIR"
           jq -n \
             --arg select "$SELECT_RESULT" \
@@ -209,7 +239,10 @@ jobs:
             > "$REPORT_DIR/selected.json"
           jq -c '{selected: (.selected | length), jobs: (.jobs | length), build: .build}' \
             "$REPORT_DIR/selected.json" > "$REPORT_DIR/metrics"
-          printf 'path=%s\nmetrics=%s\n' "$REPORT_DIR/selected.json" "$(cat "$REPORT_DIR/metrics")" >> "$GITHUB_OUTPUT"
+          jq -cn --arg trivy "$TRIVY_IMAGE" \
+            '[{name: "docker-buildx"}, {name: "trivy", image: $trivy}]' > "$REPORT_DIR/tools"
+          printf 'path=%s\nmetrics=%s\ntools=%s\n' "$REPORT_DIR/selected.json" \
+            "$(cat "$REPORT_DIR/metrics")" "$(cat "$REPORT_DIR/tools")" >> "$GITHUB_OUTPUT"
 
       # Uploads the ci-evidence-images artifact (evidence.json and the report)
       # that a release of this repo harvests, since vergil.toml sets
@@ -220,5 +253,5 @@ jobs:
         with:
           gate: images
           files: ${{ steps.report.outputs.path }}
-          tools: '[{"name": "docker-buildx"}, {"name": "trivy", "image": "aquasec/trivy:0.72.0"}]'
+          tools: ${{ steps.report.outputs.tools }}
           metrics: ${{ steps.report.outputs.metrics }}

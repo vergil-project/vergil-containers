@@ -75,6 +75,51 @@ def test_matrix_fan_out_is_capped(job):
     assert 1 <= strategy["max-parallel"] <= MAX_PARALLEL_CEILING
 
 
+def test_cleanup_and_reap_never_run_at_the_same_time():
+    # Issue #911: overlapping legs on one package made reap-aliases read
+    # manifests cleanup was deleting, and fail with 404. reap-aliases must wait
+    # for the whole cleanup job, and these must be the only two jobs.
+    jobs = _workflow()["jobs"]
+    assert set(jobs) == set(JOBS)
+    assert "needs" not in jobs["cleanup"]
+    assert jobs["reap-aliases"]["needs"] in ("cleanup", ["cleanup"])
+
+
+def test_reap_still_runs_after_a_failed_cleanup_leg():
+    # The default `success()` would skip every reap leg when one cleanup leg
+    # failed; `!cancelled()` still stops it when the run is cancelled.
+    assert _workflow()["jobs"]["reap-aliases"]["if"] == "${{ !cancelled() }}"
+
+
+def _on() -> dict:
+    # PyYAML reads the bare key `on` as the boolean True.
+    wf = _workflow()
+    return wf["on"] if "on" in wf else wf[True]
+
+
+# Issue #912: live by default. Only a manual run that asks for a preview is a
+# dry run; a scheduled run, or a manual run with default inputs, deletes.
+LIVE_DRY_RUN = "${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}"
+
+
+def test_manual_run_deletes_unless_a_preview_is_asked_for():
+    dry_run = _on()["workflow_dispatch"]["inputs"]["dry_run"]
+    assert dry_run["type"] == "boolean"
+    assert dry_run["default"] is False
+
+
+def test_schedule_is_not_gated_by_a_repository_variable():
+    assert "schedule" in _on()
+    # Nothing outside git may arm or disarm the deletions.
+    assert "vars." not in WORKFLOW.read_text()
+
+
+@pytest.mark.parametrize("job", JOBS)
+@pytest.mark.parametrize("step_id", ["attempt1", "attempt2"])
+def test_dry_run_only_for_a_manual_preview(job, step_id):
+    assert _step(job, step_id=step_id)["with"]["dry-run"] == LIVE_DRY_RUN
+
+
 @pytest.mark.parametrize("job", JOBS)
 def test_steps_are_attempt_backoff_retry_report_in_order(job):
     ids_or_names = [s.get("id", s["name"]) for s in _steps(job)]
@@ -96,7 +141,7 @@ def test_attempt2_is_an_identical_rerun_that_can_fail_the_leg(job):
     first, second = _step(job, step_id="attempt1"), _step(job, step_id="attempt2")
     assert second["uses"] == first["uses"]
     # Same inputs, so the retry is the same cleanup — including the dry-run
-    # arming expression; drift here would let a retry delete when attempt 1
+    # dry-run expression; drift here would let a retry delete when attempt 1
     # only previewed, or the reverse.
     assert second["with"] == first["with"]
     assert second["if"] == "steps.attempt1.outcome == 'failure'"
@@ -130,6 +175,8 @@ def test_backoff_sleeps_within_bounds_and_warns(job, tmp_path):
         assert result.returncode == 0, result.stderr
         assert "::warning title=Package cleanup retry::" in result.stdout
         assert "429" in result.stdout
+        # A 404 is named too, so a race is not read as a rate limit (#911).
+        assert "Request failed with status code 404" in result.stdout
     slept = [int(x) for x in (tmp_path / "slept").read_text().split()]
     assert len(slept) == 25
     assert all(lo <= s <= hi for s in slept), slept
@@ -150,6 +197,9 @@ def test_report_fails_loudly_with_rate_limit_details(job, tmp_path):
     assert "dev-python" in line
     assert f"{lo}-{hi}s back-off" in line
     assert "Request failed with status code 429" in line
+    # Issue #911: a 404 is a deletion race, not a rate limit, and says so.
+    assert "Request failed with status code 404" in line
+    assert "not a rate limit" in line
     assert "max-parallel" in line
     assert not (tmp_path / "slept").exists()
 

@@ -3,8 +3,10 @@ from pathlib import Path
 
 import yaml
 
+import check_pins
 import harvest_installed
 import report_exposure as r
+import resolve_latest
 
 DOCKER = Path(__file__).resolve().parent.parent
 
@@ -46,8 +48,76 @@ def test_auto_managed_surfaced_as_own_category():
     assert "## Auto-managed" in md
     section = md.split("## Auto-managed", 1)[1]
     for tool in ("shellcheck", "shfmt", "actionlint", "git-cliff", "hadolint",
-                 "opentofu", "nfpm", "trivy", "scorecard", "uv"):
+                 "opentofu", "nfpm", "trivy", "scorecard", "uv", "cargo-nextest", "yq",
+                 "cargo-deny", "cargo-llvm-cov"):
         assert f"- {tool}:" in section
+
+
+# --- #901: every pinned tool's upstream is known to the report --------------
+# yq and cargo-nextest were added to the pins but not to the report's own repo
+# map, so the report showed their upstream as unknown. The map is now built from
+# the bumper's, and these tests fail when a pinned tool has no entry.
+
+def test_every_pinned_tool_has_an_upstream_repo():
+    missing = sorted(set(check_pins.load_pins(DOCKER)) - set(r._GITHUB_REPOS))
+    assert missing == []
+
+
+def test_repo_map_carries_the_bumpers_map():
+    for tool, repo in resolve_latest.TOOL_REPOS.items():
+        assert r._GITHUB_REPOS[tool] == repo
+
+
+def test_report_only_repos_are_pinned_tools_the_bumper_lacks():
+    # A report-only entry for a tool the bumper already knows would shadow its
+    # repo; one for an unpinned tool is dead and would hide a stale map.
+    pinned = set(check_pins.load_pins(DOCKER))
+    for tool in r._REPORT_ONLY_REPOS:
+        assert tool in pinned
+        assert tool not in resolve_latest.TOOL_REPOS
+
+
+def test_build_latest_resolves_every_pinned_tool_as_the_bumper_does():
+    # Each lookup goes where resolve_latest sends it: cargo-nextest to
+    # get.nexte.st, with its cargo-nextest- tag prefix; every other tool to its
+    # repo's /releases/latest.
+    def location(tool, repo):
+        prefix = resolve_latest.TOOL_TAG_PREFIXES.get(tool, "v")
+        return f"https://github.com/{repo}/releases/tag/{prefix}9.9.9"
+
+    sources = {resolve_latest.TOOL_LATEST_URLS.get(tool, repo): location(tool, repo)
+               for tool, repo in r._GITHUB_REPOS.items()}
+    assert sources.keys() >= {"https://get.nexte.st/latest/linux", "mikefarah/yq"}
+    pinned = sorted(check_pins.load_pins(DOCKER))
+    got = r._build_latest(pinned, fetch=lambda source: sources[source])
+    assert got == {tool: "9.9.9" for tool in pinned}
+
+
+def test_exposure_report_resolves_rust_tools():
+    # vergil-containers#916 dropped cargo-deny and cargo-llvm-cov from the
+    # report; registering them with the bumper (epic vergil-project/.github
+    # #1165) brings them back, each resolved from its own repo and tag form.
+    assert r._GITHUB_REPOS["cargo-deny"] == "EmbarkStudios/cargo-deny"
+    assert r._GITHUB_REPOS["cargo-llvm-cov"] == "taiki-e/cargo-llvm-cov"
+    sources = {
+        "EmbarkStudios/cargo-deny": "https://github.com/EmbarkStudios/cargo-deny/releases/tag/0.21.1",
+        "taiki-e/cargo-llvm-cov": "https://github.com/taiki-e/cargo-llvm-cov/releases/tag/v0.9.2",
+    }
+    got = r._build_latest(["cargo-deny", "cargo-llvm-cov"], fetch=lambda source: sources[source])
+    assert got == {"cargo-deny": "0.21.1", "cargo-llvm-cov": "0.9.2"}
+
+
+def test_build_latest_warns_and_leaves_out_an_unresolvable_tool(capsys):
+    def fetch(source):
+        raise resolve_latest.ResolutionError(f"{source}: boom")
+
+    assert r._build_latest(["yq"], fetch=fetch) == {}
+    assert "::warning::could not resolve latest for yq (mikefarah/yq)" in capsys.readouterr().err
+
+
+def test_build_latest_warns_on_a_tool_with_no_repo(capsys):
+    assert r._build_latest(["not-a-tool"], fetch=lambda source: "") == {}
+    assert "::warning::no upstream repo known for pinned tool not-a-tool" in capsys.readouterr().err
 
 
 def test_auto_managed_not_flagged_for_reevaluation():

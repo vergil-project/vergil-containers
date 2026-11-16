@@ -48,6 +48,16 @@
 #         follow-up. They are re-documented as mechanism pins below.
 #       * semgrep stays intentionally floating (`uv tool install semgrep`, no
 #         version) — no entry needed.
+#   - REVERSED for the Rust validation tools by epic vergil-project/.github#1165
+#     (spec §6.3): cargo-deny and cargo-llvm-cov, freed above as
+#     `cargo install` tools, are pinned again. A validation tool decides whether
+#     a Rust repo passes its gate, so an unpinned one lets an upstream release
+#     change a repo's verdict between two builds of the same image source, with
+#     no reviewed change to show for it. They are pinned and verified like the
+#     toolchain: cargo-deny (as cargo-nextest) from its prebuilt release with
+#     per-architecture digests pinned in source, cargo-llvm-cov built from
+#     crates.io at its pinned version with --locked. Both are AUTO-MANAGED, so
+#     the daily upstream refresh still floats them, through reviewed PRs.
 pins:
   go-test-coverage:
     constraint: "==2.19.0 on Go 1.26, else latest (unpinned)"
@@ -76,17 +86,31 @@ pins:
   opentofu:    {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version SHA256SUMS embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
   nfpm:        {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version checksums embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
   scorecard:   {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — scorecard release tarball + scorecard_checksums.txt embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
-  trivy:       {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — trivy release tarball + per-version checksums embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml (the bumps also pick up CVE-fix releases, e.g. the 0.70.0 → 0.72.0 bump under #438).", state: auto-managed, tracking_issue: null}
+  trivy:       {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — trivy release tarball + per-version checksums embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml (the bumps also pick up CVE-fix releases, e.g. the 0.70.0 → 0.72.0 bump under #438). The CI and publish Trivy gates run this same version, read from this pin by docker/pins/workflow_images.py (#855).", state: auto-managed, tracking_issue: null}
   # uv in the package toolchain images (pkg-ubuntu, pkg-rhel; #728) comes from
   # its release tarball, verified against the per-version .sha256, so it joins
   # the auto-managed set. The dev images still float uv (`pip install uv`).
   uv:          {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#728) — GitHub release tarball + per-version .sha256 embed the version (package toolchain images only; the dev images float uv via pip); floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
   # cargo-nextest in the rust image (#885) comes from nextest's prebuilt
-  # release tarball, verified against the per-asset .sha256, rather than
-  # `cargo install`, so it joins the auto-managed set. Its latest release is
-  # resolved through get.nexte.st, not the repo's /releases/latest (see
-  # resolve_latest.py).
-  cargo-nextest: {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#885) — nextest's prebuilt release tarball + per-asset .sha256 embed the version (rust image only); floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
+  # release tarball rather than `cargo install`, so it joins the auto-managed
+  # set. Its latest release is resolved through get.nexte.st, not the repo's
+  # /releases/latest (see resolve_latest.py). Its per-architecture sha256 is
+  # pinned in its fragment beside the version (epic vergil-project/.github
+  # #1165, spec §6.3): the build verifies against the pinned digests, and the
+  # refresh writes them from the release's per-asset .sha256 together with the
+  # version (resolve_latest.py, TOOL_DIGESTS).
+  cargo-nextest: {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#885) — nextest's prebuilt release tarball embeds the version in its URL, and its per-architecture sha256 is pinned in source beside it (vergil-project/.github#1165) and verified at build; the daily upstream-refresh job in ops.yml floats the version and writes the digests from the release's per-asset .sha256 in the same PR (rust image only).", state: auto-managed, tracking_issue: null}
+  # cargo-deny and cargo-llvm-cov in the rust image are the Rust validation
+  # tools the WS2 audit (#418) had freed as `cargo install` tools; epic
+  # vergil-project/.github#1165 (spec §6.3) pins them again (see the header).
+  # cargo-deny comes from its prebuilt musl release tarball, verified against
+  # the per-architecture sha256 pinned in its fragment, which the refresh
+  # writes with the version (resolve_latest.py, TOOL_DIGESTS). cargo-llvm-cov's
+  # release assets carry no checksum and no version in their names, so it is
+  # built from crates.io with --locked at its pinned version; cargo verifies the
+  # crate checksum against the index.
+  cargo-deny:  {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (vergil-project/.github#1165) — a Rust validation tool, pinned so an upstream release cannot change a repo's gate verdict unreviewed (reverses the #418 free); its prebuilt musl release tarball embeds the version, and its per-architecture sha256 is pinned in source and verified at build; the daily upstream-refresh job in ops.yml floats the version and writes the digests from the release's per-asset .tar.gz.sha256 in the same PR (rust image only).", state: auto-managed, tracking_issue: null}
+  cargo-llvm-cov: {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (vergil-project/.github#1165) — a Rust validation tool, pinned so an upstream release cannot change a repo's coverage verdict unreviewed (reverses the #418 free); built from crates.io with `cargo install --locked` at the pinned version, cargo verifying the crate checksum against the index; the daily upstream-refresh job in ops.yml floats the version (rust image only).", state: auto-managed, tracking_issue: null}
   # yq (mikefarah/yq) in base (#884) comes from its release binary, verified
   # against the release's multi-hash `checksums` file, so it joins the
   # auto-managed set. Every image built on base inherits it.

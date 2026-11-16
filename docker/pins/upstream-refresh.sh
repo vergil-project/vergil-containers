@@ -7,7 +7,12 @@
 # each language toolchain pin to the newest patch of its series:
 #
 #   1. resolve_latest.py --write rewrites the `ARG *_VERSION=` pins in
-#      docker/common/* to each tool's newest release (#435);
+#      docker/common/* to each tool's newest release (#435), and, for a tool
+#      whose digests are pinned in source (cargo-nextest), its
+#      `ARG *_SHA256_<ARCH>=` lines to that release's checksums, all or
+#      nothing (epic vergil-project/.github#1165); and the workflow image
+#      pins in docker/pins/workflow-images.txt to theirs, refusing with an
+#      error any that would change the major version (#914);
 #   2. resolve_toolchains.py --write rewrites docker/pins/toolchains.yml to the
 #      newest patch of each series, with both architectures' hashes (epic
 #      vergil-project/.github#649);

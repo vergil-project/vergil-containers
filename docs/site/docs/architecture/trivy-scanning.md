@@ -72,10 +72,16 @@ tag. It then scans each candidate once per platform:
 
 - **amd64** goes through the shared `trivy` action with `scan-type: image`
   and `sarif-category: trivy-image-<prefix>-<language>-<version>-amd64`.
-- **arm64** runs Trivy directly in a pinned `aquasec/trivy` container with
-  `--platform linux/arm64`, through `scripts/bin/trivy-image-scan`. Its SARIF
-  is uploaded under
+- **arm64** runs Trivy directly in a `ghcr.io/aquasecurity/trivy` container
+  with `--platform linux/arm64`, through `scripts/bin/trivy-image-scan`. Its
+  SARIF is uploaded under
   `trivy-image-<prefix>-<language>-<version>-arm64`.
+
+Both scans, and PR CI's image scans, run the Trivy the images ship: a workflow
+step reads the auto-managed `ARG TRIVY_VERSION=` in
+`docker/common/security-tools.dockerfile` through
+`docker/pins/workflow_images.py trivy-image`, so the gate moves with every
+upstream-refresh bump and no workflow names a Trivy version (issue #855).
 
 `<prefix>` is the workflow's `image-prefix` input, `dev` or `prod`. `base`
 uses `trivy-image-<prefix>-base-amd64` and `trivy-image-<prefix>-base-arm64`.

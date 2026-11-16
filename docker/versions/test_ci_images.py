@@ -24,6 +24,7 @@ import yaml
 
 import frozen
 import generate as g
+import workflow_images
 from test_generate import _tree
 from test_includes import _synthetic_repo
 
@@ -135,6 +136,8 @@ def test_select_reads_the_whole_history_and_outputs_the_matrices():
         "arch-matrix": "${{ steps.select.outputs.arch-matrix }}",
         "has": "${{ steps.select.outputs.has }}",
         "upgrade-date": "${{ steps.select.outputs.upgrade-date }}",
+        "trivy-image": "${{ steps.trivy-image.outputs.image }}",
+        "registry-image": "${{ steps.registry-image.outputs.image }}",
     }
     env = _step("select", "select")["env"]
     assert env["BASE_SHA"] == "${{ github.event.pull_request.base.sha }}"
@@ -154,9 +157,37 @@ def test_build_has_a_job_local_registry_for_its_parents():
     # A parent built in this job is handed to its children through a
     # throwaway registry on the runner, never through GHCR.
     assert job["services"]["registry"]["ports"] == ["5000:5000"]
-    assert job["services"]["registry"]["image"].startswith("registry:")
+    # Its image is resolved by select from the managed pin, never named here
+    # (vergil-containers#914).
+    assert job["services"]["registry"]["image"] == "${{ needs.select.outputs.registry-image }}"
     buildx = _uses("build", "docker/setup-buildx-action")
     assert buildx["with"] == {"driver-opts": "network=host"}
+
+
+def test_select_resolves_the_registry_image(tmp_path):
+    # vergil-containers#914: the registry service runs the version pinned in
+    # docker/pins/workflow-images.txt, which the upstream refresh moves.
+    assert _job("select")["outputs"]["registry-image"] == "${{ steps.registry-image.outputs.image }}"
+    out = tmp_path / "out"
+    out.write_text("")
+    result = _bash(_step("select", "registry-image")["run"], frozen.LIVE_ROOT, {"GITHUB_OUTPUT": str(out)})
+    assert result.returncode == 0, result.stderr
+    image = workflow_images.registry_image(frozen.LIVE_ROOT / "docker")
+    assert _outputs(out) == {"image": image}
+    assert re.fullmatch(r"registry:3\.\d+\.\d+", image)
+
+
+def test_select_fails_without_the_registry_pin(tmp_path):
+    # A missing pin fails select, and so `evidence`, rather than start the
+    # build with an empty service image.
+    shutil.copytree(frozen.LIVE_ROOT / "docker" / "pins", tmp_path / "docker" / "pins",
+                    ignore=shutil.ignore_patterns("workflow-images.txt", "__pycache__"))
+    out = tmp_path / "out"
+    out.write_text("")
+    result = _bash(_step("select", "registry-image")["run"], tmp_path, {"GITHUB_OUTPUT": str(out)})
+    assert result.returncode != 0
+    assert "workflow-images.txt" in result.stderr
+    assert out.read_text() == ""
 
 
 def test_build_runs_the_build_script_with_its_entries():
@@ -166,9 +197,19 @@ def test_build_runs_the_build_script_with_its_entries():
     assert step["env"]["ENTRIES_JSON"] == "${{ toJSON(matrix.entries) }}"
     # One date for the run, from select, so both architectures share it.
     assert step["env"]["UPGRADE_DATE"] == "${{ needs.select.outputs.upgrade-date }}"
-    # The publish pipeline's Trivy image, so PR CI scans as publish does.
-    publish = (WORKFLOWS / "cd-docker-publish.yml").read_text()
-    assert f"TRIVY_IMAGE: {step['env']['TRIVY_IMAGE']}" in publish
+    # The images' own Trivy, resolved once by select (vergil-containers#855).
+    assert step["env"]["TRIVY_IMAGE"] == "${{ needs.select.outputs.trivy-image }}"
+
+
+def test_select_resolves_the_images_trivy(tmp_path):
+    # vergil-containers#855: the gate runs the Trivy the images ship, read from
+    # its auto-managed pin, never a version the workflow names itself.
+    assert _job("select")["outputs"]["trivy-image"] == "${{ steps.trivy-image.outputs.image }}"
+    out = tmp_path / "out"
+    out.write_text("")
+    result = _bash(_step("select", "trivy-image")["run"], frozen.LIVE_ROOT, {"GITHUB_OUTPUT": str(out)})
+    assert result.returncode == 0, result.stderr
+    assert _outputs(out) == {"image": workflow_images.trivy_image(frozen.LIVE_ROOT / "docker")}
 
 
 def test_evidence_runs_whatever_the_builds_did():
@@ -247,9 +288,8 @@ def test_emit_uploads_the_images_gate_with_the_report():
     assert emit["with"]["gate"] == "images"
     assert emit["with"]["files"] == "${{ steps.report.outputs.path }}"
     assert emit["with"]["metrics"] == "${{ steps.report.outputs.metrics }}"
-    tools = json.loads(emit["with"]["tools"])
-    trivy = next(t for t in tools if t["name"] == "trivy")
-    assert trivy["image"] == _step("build", "Build, scan and smoke-test")["env"]["TRIVY_IMAGE"]
+    # The report step names the Trivy image the build ran (see _report below).
+    assert emit["with"]["tools"] == "${{ steps.report.outputs.tools }}"
 
 
 def test_report_reads_the_select_and_build_results():
@@ -260,16 +300,22 @@ def test_report_reads_the_select_and_build_results():
         "BUILD_RESULT": "${{ needs.build.result }}",
         "MATRIX": "${{ needs.select.outputs.matrix }}",
         "JOBS": "${{ needs.select.outputs.arch-matrix }}",
+        # The same output the build's TRIVY_IMAGE is, so the evidence names the
+        # scanner that gated the images.
+        "TRIVY_IMAGE": "${{ needs.select.outputs.trivy-image }}",
         "REPORT_DIR": "${{ runner.temp }}/images-report",
     }
 
 
-def _report(tmp_path, has, build, matrix, jobs):
+TRIVY_IMAGE = "ghcr.io/aquasecurity/trivy:9.8.7"
+
+
+def _report(tmp_path, has, build, matrix, jobs, trivy=TRIVY_IMAGE):
     out = tmp_path / "out"
     out.write_text("")
     env = {"SELECT_RESULT": "success", "HAS": has, "BUILD_RESULT": build,
-           "MATRIX": matrix, "JOBS": jobs, "REPORT_DIR": str(tmp_path / "report"),
-           "GITHUB_OUTPUT": str(out)}
+           "MATRIX": matrix, "JOBS": jobs, "TRIVY_IMAGE": trivy,
+           "REPORT_DIR": str(tmp_path / "report"), "GITHUB_OUTPUT": str(out)}
     return _bash(_step("evidence", "report")["run"], tmp_path, env), out
 
 
@@ -289,6 +335,7 @@ def test_report_of_a_build_lists_what_was_selected_and_each_job(tmp_path):
                  {"name": "go:1.26", "arch": "arm64", "runner": RUNNERS["arm64"], "result": "success"}],
     }
     assert json.loads(outputs["metrics"]) == {"selected": 1, "jobs": 2, "build": "success"}
+    assert json.loads(outputs["tools"]) == [{"name": "docker-buildx"}, {"name": "trivy", "image": TRIVY_IMAGE}]
 
 
 def test_report_is_written_when_nothing_was_selected(tmp_path):
@@ -308,6 +355,14 @@ def test_report_is_written_when_nothing_was_selected(tmp_path):
 def test_report_fails_on_malformed_select_outputs(tmp_path, matrix, jobs):
     result, out = _report(tmp_path, "false", "skipped", matrix, jobs)
     assert result.returncode != 0
+    assert out.read_text() == ""
+
+
+def test_report_fails_without_the_trivy_image(tmp_path):
+    empty = '{"include":[]}'
+    result, out = _report(tmp_path, "false", "skipped", empty, empty, trivy="")
+    assert result.returncode != 0
+    assert result.stdout.startswith("::error title=No Trivy image::")
     assert out.read_text() == ""
 
 

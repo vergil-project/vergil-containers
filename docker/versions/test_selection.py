@@ -88,6 +88,9 @@ def test_dropped_entry_selects_nothing():
     ".github/workflows/cd-docker-publish.yml", ".github/workflows/ci.yml",
     ".github/workflows/ci-images.yml", "scripts/bin/pr-image-build",
     "scripts/bin/trivy-gate", "scripts/bin/trivy-image-scan",
+    # The build job's registry service pin: a bump re-proves every build,
+    # parents pushed to the registry included (vergil-containers#914).
+    "docker/pins/workflow-images.txt",
 ])
 def test_full_set_paths_select_everything(path):
     assert _select([path]) == LIVE["include"]

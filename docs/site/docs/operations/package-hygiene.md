@@ -101,20 +101,21 @@ the whole trailing segment). Rolling tags (`latest`, `3.14`, `1.26`, `17`,
 and are explicitly excluded — they are never reaped by this job. Untagged
 pruning remains the `cleanup` job's remit.
 
-### Arming it
+### Running it
 
-The workflow ships in **dry-run by default** so the first runs only log what
-they *would* delete:
+Both jobs delete for real
+([#912](https://github.com/vergil-project/vergil-containers/issues/912)). A
+preview is the explicit exception:
 
-- **Preview on demand:** Actions → *Package cleanup* → *Run workflow* (leave
-  "Preview only" checked). Review the logs.
-- **Delete on demand (one-off):** the same manual run with "Preview only"
-  **unchecked** performs a real deletion for that run only, without changing the
-  schedule.
-- **Arm scheduled deletions:** once satisfied, set the repository variable
-  `PACKAGE_CLEANUP_DRY_RUN` to `false` (Settings → Secrets and variables →
-  Actions → Variables). The weekly run then deletes for real. No code change is
-  needed to arm or disarm.
+- **Scheduled run:** every Sunday the workflow deletes for real. No repository
+  variable arms or disarms it; the workflow file in git is the whole record of
+  what it does.
+- **Delete on demand:** Actions → *Package cleanup* → *Run workflow* with the
+  default inputs ("Preview only" unchecked) deletes for real, as the schedule
+  does.
+- **Preview on demand:** the same manual run with "Preview only" **checked**
+  (the `dry_run` input set to `true`) only logs what it *would* delete. Use it
+  before a change to the delete rules, and review the logs.
 
 ### Rate limits
 
@@ -125,16 +126,33 @@ with every leg started at once ghcr.io answered HTTP 429
 action already retries each request a few times, but only for about a second.
 The workflow adds two defences:
 
-- **Capped fan-out:** `max-parallel: 3` on each job, so at most 6 legs hit the
-  registry together.
+- **Capped fan-out:** `max-parallel: 3` on each job, and the jobs run one after
+  the other (see below), so at most 3 legs hit the registry together.
 - **One retry per leg:** if the action fails, the leg waits a bounded, jittered
   back-off (`RETRY_BACKOFF_BASE_SECONDS` plus up to
   `RETRY_BACKOFF_JITTER_SECONDS`), logs a warning, and runs the action once
   more with the same inputs. If that also fails, the leg fails with an error
-  that names the package and says how to read a 429. Nothing is skipped.
+  that names the package and says how to read a 429 or a 404. Nothing is
+  skipped.
 
 `docker/versions/test_package_cleanup.py` pins this structure. If 429s persist,
 lower `max-parallel` first.
+
+### Job ordering
+
+`reap-aliases` starts only once every `cleanup` leg has finished, so the two
+jobs never work on the same package at the same time. When they overlapped, a
+reap leg loaded a package's manifests while the cleanup leg was deleting that
+package's untagged versions, and failed with HTTP 404 on a manifest that had
+just gone
+([#911](https://github.com/vergil-project/vergil-containers/issues/911)).
+GitHub cannot make one matrix leg wait for the matching leg of another job, so
+the whole job waits. It runs even when a cleanup leg failed, since reaping
+aliases does not depend on the prune.
+
+A 404 in a leg's log is therefore not a rate limit: it means something else
+deleted versions of the same package while the action read it, such as an
+overlapping manual run.
 
 ### Manifest cache
 

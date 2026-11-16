@@ -56,6 +56,36 @@ day of the check.
   checked per architecture. A version is installable when the Rust release
   channel has a manifest for it (`channel-rust-<version>.toml`); the adapter
   reads it with the toolchain pins' own fetcher.
+- A prebuilt Rust tool carries its digests in source, as `rustup-init`
+  does. `cargo-nextest` installs from nextest's release tarball, and its
+  fragment, `docker/common/cargo-nextest.dockerfile`, pins one SHA-256 per
+  architecture (`CARGO_NEXTEST_SHA256_AMD64` and `_ARM64`) beside
+  `CARGO_NEXTEST_VERSION`. The build checks the tarball against the pinned
+  digest, never against a checksum downloaded with it, and a mismatch fails
+  the build. The daily upstream refresh writes the new digests from the
+  release's per-asset `.sha256` in the same run that moves the version, so a
+  refresh pull request shows both changes together (epic
+  [vergil-project/.github#1165](https://github.com/vergil-project/.github/issues/1165),
+  spec §6.3). A release with no checksum, or a bad one, for either
+  architecture fails the refresh, which then writes nothing.
+- `cargo-deny` follows the same pattern. Its fragment,
+  `docker/common/cargo-deny.dockerfile`, installs the release's
+  `<arch>-unknown-linux-musl` tarball and checks it against
+  `CARGO_DENY_SHA256_AMD64` or `_ARM64`, pinned beside
+  `CARGO_DENY_VERSION`. The refresh writes the digests from the release's
+  per-asset `.tar.gz.sha256`.
+- `cargo-llvm-cov`'s release assets have no checksum files, and their names
+  carry no version, so it is built from crates.io instead. Its fragment,
+  `docker/common/cargo-llvm-cov.dockerfile`, runs
+  `cargo install --locked cargo-llvm-cov@${CARGO_LLVM_COV_VERSION}`. Cargo
+  checks the crate against the crates.io index's checksum, and `--locked`
+  builds it from its published lockfile. The refresh moves
+  `CARGO_LLVM_COV_VERSION` like any other auto-managed pin.
+- All three are validation tools: they decide whether a Rust repo passes its
+  gate. So each one is pinned and refreshed through reviewed pull requests,
+  never installed at whatever version is latest on the day of the build.
+  This reverses the WS2 audit (#418), which had left the `cargo install`
+  tools unpinned; `docker/pins/pins.yml` records the reversal and the reason.
 - Rust has the fastest cadence of any supported language, a new stable release
   every six weeks. That is where an automated add and drop pull request saves
   the most effort.

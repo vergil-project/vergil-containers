@@ -145,28 +145,23 @@ def render(root: Path, latest: dict[str, str], installed: dict[str, dict[str, st
 
 
 # --- CLI-only best-effort upstream-latest + image harvest -------------------
-# Everything below runs only under __main__; the unit tests inject `latest` and
-# `probe`, so no network or Docker call is ever made during testing.
+# Everything below runs only under __main__; the unit tests inject `latest`,
+# `fetch` and `probe`, so no network or Docker call is ever made during testing.
 
-# Tools whose latest release is a GitHub release we can resolve x.y.z from.
-# Absent tools (npm/PyPI/Go-module distribution) are intentionally not resolved
-# here — that is the drift-tracker's job, not this internal-state report.
-_GITHUB_REPOS = {
-    "shellcheck": "koalaman/shellcheck",
-    "shfmt": "mvdan/sh",
-    "actionlint": "rhysd/actionlint",
-    "git-cliff": "orhun/git-cliff",
-    "hadolint": "hadolint/hadolint",
-    "scorecard": "ossf/scorecard",
-    "trivy": "aquasecurity/trivy",
-    "uv": "astral-sh/uv",
-    "opentofu": "opentofu/opentofu",
-    "nfpm": "goreleaser/nfpm",
-    "golangci-lint": "golangci/golangci-lint",
-    "cargo-deny": "EmbarkStudios/cargo-deny",
-    "cargo-llvm-cov": "taiki-e/cargo-llvm-cov",
+# Pinned tool → the GitHub repo its latest release is resolved from. Built from
+# the bumper's map (resolve_latest.TOOL_REPOS), so a tool added to the
+# auto-managed pins is covered here with no second edit: yq and cargo-nextest
+# had dropped out of the hand-kept copy this replaced (vergil-containers#901).
+# Only a pinned tool the bumper does not float (an `active` break-hold) is
+# listed in _REPORT_ONLY_REPOS. test_report.py fails when a pins.yml tool has
+# no entry, or when a report-only entry is not a pinned tool the bumper lacks.
+# Unpinned tools (npm/PyPI/Go-module distribution) are not resolved here: that
+# is the drift-tracker's job, not this internal-state report.
+_REPORT_ONLY_REPOS = {
     "go-test-coverage": "vladopajic/go-test-coverage",
 }
+_GITHUB_REPOS = {**resolve_latest.TOOL_REPOS, **_REPORT_ONLY_REPOS}
+
 
 def _matrix(root: Path) -> dict[str, list[str]]:
     """Image matrix read from docker/versions/manifest.yml (`root` is docker/).
@@ -185,8 +180,11 @@ def _matrix(root: Path) -> dict[str, list[str]]:
     return matrix
 
 
-def _latest_from_github(repo: str) -> str | None:
-    """Best-effort latest x.y.z from a GitHub repo's latest release.
+def _latest_from_github(tool: str, repo: str, fetch=resolve_latest._curl_location) -> str | None:
+    """Best-effort latest x.y.z for `tool`, resolved as the bumper resolves it
+    (resolve_latest.resolve_tool): from its documented latest-binary URL where
+    it has one (cargo-nextest), else `repo`'s latest release, with its tag
+    prefix.
 
     Uses the same `/releases/latest` **redirect** as `resolve_latest.py` rather
     than `api.github.com`: #435 rejected the API here because its unauthenticated
@@ -200,19 +198,23 @@ def _latest_from_github(repo: str) -> str | None:
     rather than flagged. The bumper must fail loud because it rewrites pins; a
     read-only observability view must not fail a build over one bad lookup."""
     try:
-        return resolve_latest.resolve(repo)
+        return resolve_latest.resolve_tool(tool, repo, fetch=fetch)
     except resolve_latest.ResolutionError as exc:
-        print(f"::warning::could not resolve latest for {repo}: {exc}", file=sys.stderr)
+        print(f"::warning::could not resolve latest for {tool} ({repo}): {exc}", file=sys.stderr)
         return None
 
 
-def _build_latest(tools) -> dict[str, str]:
+def _build_latest(tools, fetch=resolve_latest._curl_location) -> dict[str, str]:
+    """Latest x.y.z per tool in `tools` (the pinned tools). A tool with no
+    _GITHUB_REPOS entry, or whose lookup fails, is warned about and left out,
+    so the report shows it as unknown."""
     latest: dict[str, str] = {}
     for tool in tools:
         repo = _GITHUB_REPOS.get(tool)
         if not repo:
+            print(f"::warning::no upstream repo known for pinned tool {tool}", file=sys.stderr)
             continue
-        newest = _latest_from_github(repo)
+        newest = _latest_from_github(tool, repo, fetch=fetch)
         if newest:
             latest[tool] = newest
     return latest

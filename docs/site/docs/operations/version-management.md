@@ -113,7 +113,13 @@ tracks the leading edge:
   (`docker/pins/resolve_latest.py`; cargo-nextest through nextest's
   `get.nexte.st/latest/linux` redirect instead, since its repository also
   publishes other crates' releases), rewrites the `ARG *_VERSION=` pins in
-  `docker/common/*`, and regenerates `CATALOG.md`.
+  `docker/common/*`, and regenerates `CATALOG.md`. For a prebuilt tool whose
+  digests are pinned in source (cargo-nextest, `TOOL_DIGESTS`), it also reads
+  each architecture's sha256 from the release's checksum files and rewrites
+  the `ARG *_SHA256_AMD64=` and `_ARM64=` lines in the same run. The lookups
+  all finish before anything is written, so a missing or malformed checksum
+  fails the refresh, naming the tool and the architecture, with no fragment
+  changed.
 - **Only if something drifted** it opens one bump PR from the fixed
   `upstream-refresh` branch, titled `chore(upstream): refresh upstream inputs`
   and authored by the GitHub App (so the PR fires CI and every bump is
@@ -124,6 +130,33 @@ tracks the leading edge:
 
 This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy `0.70.0 → 0.72.0` security bump landed through the bumper.
+
+### Tool images in workflows
+
+The refresh rewrites only the Dockerfile fragments, and its App token has no
+`workflows` permission, so it can never move a version written into a
+workflow. A workflow therefore never pins a tool image itself: the CI and
+publish Trivy gates read the images' own Trivy from its auto-managed pin
+(`docker/pins/workflow_images.py trivy-image`).
+
+A tool image that no image ships has no fragment pin to read, so its version
+is a line in `docker/pins/workflow-images.txt`. Today that is PR CI's job-local
+`registry` service (`ci-images.yml`), read by
+`docker/pins/workflow_images.py registry-image` (issue #914). The refresh moves
+each of these pins to the newest release of its upstream repository
+(`distribution/distribution` for the registry) **within its major version
+only**. A newest release in another major version fails the refresh with an
+error naming the tool, so a major move is always made by hand, in a reviewed
+PR, after checking the new major's changes against how the workflow uses the
+image. Until that PR lands, every refresh fails, so no other bump is
+delivered either. A change to the pin file rebuilds every image in PR CI,
+which runs the new registry as it builds them.
+
+The gate `docker/pins/workflow_images.py check`, run by
+`scripts/bin/validate-custom`, fails on any image a workflow pins by a literal
+version or digest unless it is declared, with why it is accepted, in that
+script's `UNMANAGED` map (empty today), and on a declaration no workflow uses
+any more (issue #855).
 
 ## Language toolchain pins
 
