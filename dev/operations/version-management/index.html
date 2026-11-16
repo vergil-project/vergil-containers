@@ -3045,6 +3045,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Auto-managed tools and the daily bumper">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tool-images-in-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool images in workflows
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3326,6 +3343,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Auto-managed tools and the daily bumper">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tool-images-in-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool images in workflows
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3554,6 +3588,17 @@ tracks the leading edge:</p>
 </ul>
 <p>This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy <code>0.70.0 → 0.72.0</code> security bump landed through the bumper.</p>
+<h3 id="tool-images-in-workflows">Tool images in workflows<a class="headerlink" href="#tool-images-in-workflows" title="Permanent link">&para;</a></h3>
+<p>The refresh rewrites only the Dockerfile fragments, and its App token has no
+<code>workflows</code> permission, so it can never move a version written into a
+workflow. A workflow therefore never pins a tool image itself: the CI and
+publish Trivy gates read the images' own Trivy from its auto-managed pin
+(<code>docker/pins/workflow_images.py trivy-image</code>). The gate
+<code>docker/pins/workflow_images.py check</code>, run by <code>scripts/bin/validate-custom</code>,
+fails on any image a workflow pins by a literal version or digest unless it is
+declared, with why it is accepted, in that script's <code>UNMANAGED</code> map (today only
+PR CI's job-local <code>registry</code> service), and on a declaration no workflow uses
+any more (issue #855).</p>
 <h2 id="language-toolchain-pins">Language toolchain pins<a class="headerlink" href="#language-toolchain-pins" title="Permanent link">&para;</a></h2>
 <p>The language images download their toolchain rather than install it from a
 package: python-build-standalone for the python family, the go.dev tarballs,
