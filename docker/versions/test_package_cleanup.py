@@ -91,6 +91,35 @@ def test_reap_still_runs_after_a_failed_cleanup_leg():
     assert _workflow()["jobs"]["reap-aliases"]["if"] == "${{ !cancelled() }}"
 
 
+def _on() -> dict:
+    # PyYAML reads the bare key `on` as the boolean True.
+    wf = _workflow()
+    return wf["on"] if "on" in wf else wf[True]
+
+
+# Issue #912: live by default. Only a manual run that asks for a preview is a
+# dry run; a scheduled run, or a manual run with default inputs, deletes.
+LIVE_DRY_RUN = "${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}"
+
+
+def test_manual_run_deletes_unless_a_preview_is_asked_for():
+    dry_run = _on()["workflow_dispatch"]["inputs"]["dry_run"]
+    assert dry_run["type"] == "boolean"
+    assert dry_run["default"] is False
+
+
+def test_schedule_is_not_gated_by_a_repository_variable():
+    assert "schedule" in _on()
+    # Nothing outside git may arm or disarm the deletions.
+    assert "vars." not in WORKFLOW.read_text()
+
+
+@pytest.mark.parametrize("job", JOBS)
+@pytest.mark.parametrize("step_id", ["attempt1", "attempt2"])
+def test_dry_run_only_for_a_manual_preview(job, step_id):
+    assert _step(job, step_id=step_id)["with"]["dry-run"] == LIVE_DRY_RUN
+
+
 @pytest.mark.parametrize("job", JOBS)
 def test_steps_are_attempt_backoff_retry_report_in_order(job):
     ids_or_names = [s.get("id", s["name"]) for s in _steps(job)]
@@ -112,7 +141,7 @@ def test_attempt2_is_an_identical_rerun_that_can_fail_the_leg(job):
     first, second = _step(job, step_id="attempt1"), _step(job, step_id="attempt2")
     assert second["uses"] == first["uses"]
     # Same inputs, so the retry is the same cleanup — including the dry-run
-    # arming expression; drift here would let a retry delete when attempt 1
+    # dry-run expression; drift here would let a retry delete when attempt 1
     # only previewed, or the reverse.
     assert second["with"] == first["with"]
     assert second["if"] == "steps.attempt1.outcome == 'failure'"

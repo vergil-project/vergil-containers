@@ -17,8 +17,7 @@ name: Package cache warm
 # next cleanup starts warm. The restore is a download from the GitHub cache
 # service and makes no ghcr.io requests. A second weekly cleanup run would
 # also keep the cache alive, but it costs a run's worth of registry requests
-# (about 16,800 on the warm 2026-10-18 run) and, once deletions are armed, a
-# second deletion pass.
+# (about 16,800 on the warm 2026-10-18 run) and a second deletion pass.
 #
 # Cold start: if a package has no cache entry at all (evicted, a new package,
 # or the action's cache scheme changed), the leg warns and rebuilds the cache
@@ -113,7 +112,7 @@ jobs:
           # it would delete from the cache it saves, so delete-untagged here
           # would leave the untagged versions out of the rebuilt cache.
           delete-tags: vergil-cache-warm-matches-no-tag
-          # Never deletes, whatever the arming of package-cleanup.yml.
+          # Never deletes: a preview whatever package-cleanup.yml does.
           dry-run: true
 
       - name: Confirm the rebuilt cache

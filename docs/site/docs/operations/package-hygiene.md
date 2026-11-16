@@ -101,20 +101,21 @@ the whole trailing segment). Rolling tags (`latest`, `3.14`, `1.26`, `17`,
 and are explicitly excluded — they are never reaped by this job. Untagged
 pruning remains the `cleanup` job's remit.
 
-### Arming it
+### Running it
 
-The workflow ships in **dry-run by default** so the first runs only log what
-they *would* delete:
+Both jobs delete for real
+([#912](https://github.com/vergil-project/vergil-containers/issues/912)). A
+preview is the explicit exception:
 
-- **Preview on demand:** Actions → *Package cleanup* → *Run workflow* (leave
-  "Preview only" checked). Review the logs.
-- **Delete on demand (one-off):** the same manual run with "Preview only"
-  **unchecked** performs a real deletion for that run only, without changing the
-  schedule.
-- **Arm scheduled deletions:** once satisfied, set the repository variable
-  `PACKAGE_CLEANUP_DRY_RUN` to `false` (Settings → Secrets and variables →
-  Actions → Variables). The weekly run then deletes for real. No code change is
-  needed to arm or disarm.
+- **Scheduled run:** every Sunday the workflow deletes for real. No repository
+  variable arms or disarms it; the workflow file in git is the whole record of
+  what it does.
+- **Delete on demand:** Actions → *Package cleanup* → *Run workflow* with the
+  default inputs ("Preview only" unchecked) deletes for real, as the schedule
+  does.
+- **Preview on demand:** the same manual run with "Preview only" **checked**
+  (the `dry_run` input set to `true`) only logs what it *would* delete. Use it
+  before a change to the delete rules, and review the logs.
 
 ### Rate limits
 

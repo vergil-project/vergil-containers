@@ -1,6 +1,7 @@
 name: Package cleanup
 
-# Two jobs, one arming mechanism:
+# Two jobs, both live: they delete for real unless a manual run asks for a
+# preview.
 #
 # `cleanup` prunes the untagged version cruft the publish pipeline mints on
 # every run (per-arch child manifests, provenance attestations, superseded
@@ -18,9 +19,10 @@ name: Package cleanup
 # 3.14, 1.26, 17, 21), build cache-* tags, and pre-promotion *-candidate tags
 # never match its delete rule.
 #
-# Ships in DRY-RUN by default. After reviewing a preview run's logs, arm real
-# deletions by setting the repository variable PACKAGE_CLEANUP_DRY_RUN=false
-# (Settings → Secrets and variables → Actions → Variables). No code change.
+# Live by default (issue #912): the scheduled run always deletes for real. A
+# manual run (workflow_dispatch) deletes too, unless the caller sets the
+# `dry_run` input to true for a preview that only logs what would be deleted.
+# No repository variable arms or disarms it; what runs is what git records.
 #
 # Token: the default GITHUB_TOKEN can list/preview. Real deletion of
 # org-owned package versions may require a PAT with `delete:packages` stored
@@ -66,7 +68,7 @@ on:
       dry_run:
         description: "Preview only — log what would be deleted, delete nothing"
         type: boolean
-        default: true
+        default: false
 
 permissions:
   packages: write
@@ -127,12 +129,8 @@ jobs:
           # Same age floor as attempt 2 below (documented there).
           older-than: 24 hours
           validate: true
-          # Same arming expression as attempt 2 below (documented there).
-          dry-run: >-
-            ${{ !(
-            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
-            ) }}
+          # Same dry-run expression as attempt 2 below (documented there).
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
 
       - name: Back off before retrying
         if: steps.attempt1.outcome == 'failure'
@@ -158,24 +156,16 @@ jobs:
           # the platform children of tagged images are never pruned anyway.
           older-than: 24 hours
           validate: true
-          # Real deletion is armed only when a trigger explicitly asks for it:
-          # a manual run with "Preview only" unchecked, or a scheduled run with
-          # the repo variable PACKAGE_CLEANUP_DRY_RUN set to 'false'. Everything
-          # else (default) stays in preview. Written as !(armed) rather than
-          # `cond && a || b` to avoid the Actions falsy-fall-through pitfall,
-          # where an unchecked box (inputs.dry_run == false) would otherwise
-          # fall through to the scheduled branch.
+          # Live unless a manual run asks for a preview (issue #912): only a
+          # workflow_dispatch run with "Preview only" checked is a dry run. A
+          # scheduled run has no inputs, so the expression is false and the
+          # run deletes. No `|| ...` branch, so the Actions falsy-fall-through
+          # pitfall (issue #388) cannot apply.
           #
-          # Folded-scalar rule: every continuation line below MUST stay at the
-          # SAME indentation as the `${{` line. A `>-` scalar preserves newlines
-          # on more-indented lines, and a newline *inside* ${{ }} makes GitHub
-          # reject the whole file at startup (startup_failure, issue #449) —
-          # actionlint tokenizes expressions loosely and will not catch it.
-          dry-run: >-
-            ${{ !(
-            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
-            ) }}
+          # Keep the expression on one line: a newline inside ${{ }} makes
+          # GitHub reject the whole file at startup (startup_failure, issue
+          # #449), and actionlint does not catch it.
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
 
       - name: Report persistent failure
         if: failure() && steps.attempt2.outcome == 'failure'
@@ -253,11 +243,7 @@ jobs:
           use-regex: true
           delete-tags: '^.+-\d{8}$'
           validate: true
-          dry-run: >-
-            ${{ !(
-            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
-            ) }}
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
 
       - name: Back off before retrying
         if: steps.attempt1.outcome == 'failure'
@@ -289,26 +275,15 @@ jobs:
           # / cache / candidate tag ends in -YYYYMMDD, so nothing else can match.
           # An earlier exclude-tags pattern was removed because the action's
           # ReDoS guard rejected its nested quantifier (\d+(\.\d+)*); the delete
-          # rule's precision plus the DRY-RUN-by-default arming make it moot
-          # (issue #453).
+          # rule's precision makes it moot (issue #453).
           delete-tags: '^.+-\d{8}$'
           # delete-untagged is left unset (defaults off because a delete rule
           # is present): untagged pruning is the `cleanup` job's remit, not
           # this one's.
           validate: true
-          # Same arming mechanism as `cleanup`: preview unless a manual run
-          # explicitly unchecks "Preview only", or a scheduled run has the repo
-          # variable PACKAGE_CLEANUP_DRY_RUN set to 'false'. !(armed) form
-          # avoids the Actions falsy-fall-through pitfall.
-          #
-          # Folded-scalar rule (see `cleanup` above): keep every continuation
-          # line at the SAME indentation as the `${{` line — a newline inside
-          # ${{ }} is a startup_failure (issue #449).
-          dry-run: >-
-            ${{ !(
-            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-            || (github.event_name == 'schedule' && vars.PACKAGE_CLEANUP_DRY_RUN == 'false')
-            ) }}
+          # Same dry-run expression as `cleanup` (documented there): live
+          # unless a manual run checks "Preview only". Keep it on one line.
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
 
       - name: Report persistent failure
         if: failure() && steps.attempt2.outcome == 'failure'
