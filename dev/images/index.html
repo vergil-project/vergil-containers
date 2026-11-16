@@ -3681,7 +3681,8 @@ on rustup's minimal profile, under <code>/usr/local/rustup</code> and <code>/usr
 as in the <code>rust:&lt;version&gt;-slim</code> images it replaces. <code>gcc</code> and <code>libc6-dev</code>
 come from Ubuntu as the C linker, and <code>pkg-config</code> as a build helper for crates
 that link system libraries. <code>cargo-nextest</code> comes from nextest's prebuilt
-release binary, checked against the release's per-asset SHA-256; it is the
+release binary, checked against the per-architecture SHA-256 pinned in its
+fragment beside its version (see <a href="../languages/rust/#adapter-quirks">Rust</a>); it is the
 test runner that writes JUnit reports on stable Rust, alone or as
 <code>cargo llvm-cov nextest</code>.</p>
 <p>The image owns the toolchain choice. It sets <code>RUSTUP_TOOLCHAIN</code> to its exact
