@@ -10,7 +10,7 @@
 # The tarball holds a uv-<triple>/ directory with uv and uvx; both land in
 # /usr/local/bin.
 ARG TARGETARCH
-ARG UV_VERSION=0.13.7
+ARG UV_VERSION=0.13.8
 
 # hadolint ignore=DL3003
 RUN case "${TARGETARCH}" in \
