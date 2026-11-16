@@ -125,16 +125,33 @@ with every leg started at once ghcr.io answered HTTP 429
 action already retries each request a few times, but only for about a second.
 The workflow adds two defences:
 
-- **Capped fan-out:** `max-parallel: 3` on each job, so at most 6 legs hit the
-  registry together.
+- **Capped fan-out:** `max-parallel: 3` on each job, and the jobs run one after
+  the other (see below), so at most 3 legs hit the registry together.
 - **One retry per leg:** if the action fails, the leg waits a bounded, jittered
   back-off (`RETRY_BACKOFF_BASE_SECONDS` plus up to
   `RETRY_BACKOFF_JITTER_SECONDS`), logs a warning, and runs the action once
   more with the same inputs. If that also fails, the leg fails with an error
-  that names the package and says how to read a 429. Nothing is skipped.
+  that names the package and says how to read a 429 or a 404. Nothing is
+  skipped.
 
 `docker/versions/test_package_cleanup.py` pins this structure. If 429s persist,
 lower `max-parallel` first.
+
+### Job ordering
+
+`reap-aliases` starts only once every `cleanup` leg has finished, so the two
+jobs never work on the same package at the same time. When they overlapped, a
+reap leg loaded a package's manifests while the cleanup leg was deleting that
+package's untagged versions, and failed with HTTP 404 on a manifest that had
+just gone
+([#911](https://github.com/vergil-project/vergil-containers/issues/911)).
+GitHub cannot make one matrix leg wait for the matching leg of another job, so
+the whole job waits. It runs even when a cleanup leg failed, since reaping
+aliases does not depend on the prune.
+
+A 404 in a leg's log is therefore not a rate limit: it means something else
+deleted versions of the same package while the action read it, such as an
+overlapping manual run.
 
 ### Manifest cache
 
