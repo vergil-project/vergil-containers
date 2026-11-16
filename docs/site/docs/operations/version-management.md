@@ -131,11 +131,25 @@ The refresh rewrites only the Dockerfile fragments, and its App token has no
 `workflows` permission, so it can never move a version written into a
 workflow. A workflow therefore never pins a tool image itself: the CI and
 publish Trivy gates read the images' own Trivy from its auto-managed pin
-(`docker/pins/workflow_images.py trivy-image`). The gate
-`docker/pins/workflow_images.py check`, run by `scripts/bin/validate-custom`,
-fails on any image a workflow pins by a literal version or digest unless it is
-declared, with why it is accepted, in that script's `UNMANAGED` map (today only
-PR CI's job-local `registry` service), and on a declaration no workflow uses
+(`docker/pins/workflow_images.py trivy-image`).
+
+A tool image that no image ships has no fragment pin to read, so its version
+is a line in `docker/pins/workflow-images.txt`. Today that is PR CI's job-local
+`registry` service (`ci-images.yml`), read by
+`docker/pins/workflow_images.py registry-image` (issue #914). The refresh moves
+each of these pins to the newest release of its upstream repository
+(`distribution/distribution` for the registry) **within its major version
+only**. A newest release in another major version fails the refresh with an
+error naming the tool, so a major move is always made by hand, in a reviewed
+PR, after checking the new major's changes against how the workflow uses the
+image. Until that PR lands, every refresh fails, so no other bump is
+delivered either. A change to the pin file rebuilds every image in PR CI,
+which runs the new registry as it builds them.
+
+The gate `docker/pins/workflow_images.py check`, run by
+`scripts/bin/validate-custom`, fails on any image a workflow pins by a literal
+version or digest unless it is declared, with why it is accepted, in that
+script's `UNMANAGED` map (empty today), and on a declaration no workflow uses
 any more (issue #855).
 
 ## Language toolchain pins

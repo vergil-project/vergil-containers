@@ -44,6 +44,36 @@ def test_cli_prints_the_trivy_image(capsys):
     assert capsys.readouterr().out == f"{wi.trivy_image(DOCKER)}\n"
 
 
+def test_registry_image_is_its_managed_pin():
+    pins = (DOCKER / "pins" / "workflow-images.txt").read_text()
+    image = wi.registry_image(DOCKER)
+    assert image.startswith("registry:")
+    assert f"\nREGISTRY_VERSION={image.removeprefix('registry:')}\n" in pins
+
+
+def test_registry_image_follows_an_upstream_refresh_bump(tmp_path):
+    (tmp_path / "pins").mkdir()
+    (tmp_path / "pins" / "workflow-images.txt").write_text("# c\nREGISTRY_VERSION=3.9.4\n")
+    assert wi.registry_image(tmp_path) == "registry:3.9.4"
+
+
+@pytest.mark.parametrize("text", [
+    None, "", "REGISTRY_VERSION=3.1\n", "REGISTRY_VERSION=v3.1.2\n", "# REGISTRY_VERSION=3.1.2\n",
+    "REGISTRY_VERSION=3.1.2\nREGISTRY_VERSION=3.1.3\n",
+])
+def test_registry_image_fails_loud_without_one_pin(tmp_path, text):
+    (tmp_path / "pins").mkdir()
+    if text is not None:
+        (tmp_path / "pins" / "workflow-images.txt").write_text(text)
+    with pytest.raises(wi.WorkflowImageError, match="workflow-images.txt"):
+        wi.registry_image(tmp_path)
+
+
+def test_cli_prints_the_registry_image(capsys):
+    assert wi.main(["registry-image"]) == 0
+    assert capsys.readouterr().out == f"{wi.registry_image(DOCKER)}\n"
+
+
 def test_cli_refuses_an_unknown_command(capsys):
     assert wi.main(["bogus"]) == 2
     assert "usage" in capsys.readouterr().err
@@ -54,6 +84,10 @@ def test_live_workflows_pin_only_the_declared_images():
     assert wi.main(["check"]) == 0
     # No workflow names a Trivy version: every gate derives it.
     assert not [p for p in wi.extract(WORKFLOWS) if "trivy" in p.repo]
+    # Nor a registry version: PR CI's service derives it (vergil-containers#914).
+    assert not [p for p in wi.extract(WORKFLOWS) if p.repo == "registry"]
+    # Every workflow tool image is managed: nothing is declared as a gap.
+    assert wi.UNMANAGED == {}
 
 
 @pytest.mark.parametrize("line", [

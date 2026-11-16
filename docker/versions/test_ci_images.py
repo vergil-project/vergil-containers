@@ -137,6 +137,7 @@ def test_select_reads_the_whole_history_and_outputs_the_matrices():
         "has": "${{ steps.select.outputs.has }}",
         "upgrade-date": "${{ steps.select.outputs.upgrade-date }}",
         "trivy-image": "${{ steps.trivy-image.outputs.image }}",
+        "registry-image": "${{ steps.registry-image.outputs.image }}",
     }
     env = _step("select", "select")["env"]
     assert env["BASE_SHA"] == "${{ github.event.pull_request.base.sha }}"
@@ -156,9 +157,37 @@ def test_build_has_a_job_local_registry_for_its_parents():
     # A parent built in this job is handed to its children through a
     # throwaway registry on the runner, never through GHCR.
     assert job["services"]["registry"]["ports"] == ["5000:5000"]
-    assert job["services"]["registry"]["image"].startswith("registry:")
+    # Its image is resolved by select from the managed pin, never named here
+    # (vergil-containers#914).
+    assert job["services"]["registry"]["image"] == "${{ needs.select.outputs.registry-image }}"
     buildx = _uses("build", "docker/setup-buildx-action")
     assert buildx["with"] == {"driver-opts": "network=host"}
+
+
+def test_select_resolves_the_registry_image(tmp_path):
+    # vergil-containers#914: the registry service runs the version pinned in
+    # docker/pins/workflow-images.txt, which the upstream refresh moves.
+    assert _job("select")["outputs"]["registry-image"] == "${{ steps.registry-image.outputs.image }}"
+    out = tmp_path / "out"
+    out.write_text("")
+    result = _bash(_step("select", "registry-image")["run"], frozen.LIVE_ROOT, {"GITHUB_OUTPUT": str(out)})
+    assert result.returncode == 0, result.stderr
+    image = workflow_images.registry_image(frozen.LIVE_ROOT / "docker")
+    assert _outputs(out) == {"image": image}
+    assert re.fullmatch(r"registry:3\.\d+\.\d+", image)
+
+
+def test_select_fails_without_the_registry_pin(tmp_path):
+    # A missing pin fails select, and so `evidence`, rather than start the
+    # build with an empty service image.
+    shutil.copytree(frozen.LIVE_ROOT / "docker" / "pins", tmp_path / "docker" / "pins",
+                    ignore=shutil.ignore_patterns("workflow-images.txt", "__pycache__"))
+    out = tmp_path / "out"
+    out.write_text("")
+    result = _bash(_step("select", "registry-image")["run"], tmp_path, {"GITHUB_OUTPUT": str(out)})
+    assert result.returncode != 0
+    assert "workflow-images.txt" in result.stderr
+    assert out.read_text() == ""
 
 
 def test_build_runs_the_build_script_with_its_entries():

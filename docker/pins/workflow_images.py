@@ -18,6 +18,14 @@ Trivy the images ship, and moves with it on every upstream-refresh bump. The
 refresh cannot rewrite workflow files instead: its App token has no
 `workflows` permission, so GitHub would refuse every push of such a bump.
 
+A tool image no image ships has no fragment ARG to derive from, so its pin is
+a line in docker/pins/workflow-images.txt, which the refresh moves within its
+major version only (resolve_latest.WORKFLOW_PIN_REPOS, vergil-containers#914):
+
+    python3 docker/pins/workflow_images.py registry-image
+
+prints the image of PR CI's job-local registry service (ci-images.yml).
+
     uv run docker/pins/workflow_images.py check
 
 is the gate (scripts/bin/validate-custom): it fails on any image a workflow
@@ -26,8 +34,8 @@ and on any UNMANAGED entry that no workflow pins any more. An image built from
 an expression (`${{ ... }}`), or a floating one (no tag, or `:latest`), is not
 a pin.
 
-`trivy-image` uses only the standard library, so a workflow step can run it
-with the runner's python3.
+`trivy-image` and `registry-image` use only the standard library, so a
+workflow step can run them with the runner's python3.
 """
 from __future__ import annotations
 
@@ -46,19 +54,16 @@ TRIVY_REPOSITORY = "ghcr.io/aquasecurity/trivy"
 # The fragment that installs the images' Trivy; its ARG is the auto-managed pin.
 TRIVY_FRAGMENT = Path("common") / "security-tools.dockerfile"
 
+# The official Docker image of the distribution/distribution registry, which
+# PR CI's image build runs as its job-local registry service.
+REGISTRY_REPOSITORY = "registry"
+
 # Images a workflow may pin by a literal version although no update mechanism
 # moves them: repository → (the pinned version, why it is accepted). Each entry
 # is a known gap, declared so it is reviewed rather than found by accident; a
 # new literal pin fails the gate until it is derived from a managed pin or
-# declared here.
-UNMANAGED = {
-    "registry": (
-        "2.8.3",
-        "the job-local OCI registry service of PR CI's image build "
-        "(ci-images.yml), reachable only on the runner's localhost for the "
-        "length of one job; it scans and publishes nothing",
-    ),
-}
+# declared here. Today there is none.
+UNMANAGED: dict[str, tuple[str, str]] = {}
 
 # An image repository, lower case as every image reference is. A registry host
 # may carry a port (`localhost:5000/x`), which only a `/` follows.
@@ -102,6 +107,16 @@ def trivy_version(docker_root: Path) -> str:
 def trivy_image(docker_root: Path) -> str:
     """The Trivy image the CI and publish gates run: the images' own Trivy."""
     return f"{TRIVY_REPOSITORY}:{trivy_version(docker_root)}"
+
+
+def registry_image(docker_root: Path) -> str:
+    """The image of PR CI's job-local registry service: its pin in
+    docker/pins/workflow-images.txt."""
+    try:
+        version = resolve_latest.read_workflow_pin(docker_root, "registry")
+    except resolve_latest.ResolutionError as exc:
+        raise WorkflowImageError(str(exc)) from exc
+    return f"{REGISTRY_REPOSITORY}:{version}"
 
 
 def _ref_pin(ref: str) -> tuple[str, str] | None:
@@ -171,12 +186,15 @@ def main(argv: list[str]) -> int:
     if argv == ["trivy-image"]:
         print(trivy_image(docker_root))
         return 0
+    if argv == ["registry-image"]:
+        print(registry_image(docker_root))
+        return 0
     if argv == ["check"]:
         found = errors(docker_root.parent / ".github" / "workflows")
         for error in found:
             print(f"::error::{error}", file=sys.stderr)
         return 1 if found else 0
-    print("usage: workflow_images.py trivy-image | check", file=sys.stderr)
+    print("usage: workflow_images.py trivy-image | registry-image | check", file=sys.stderr)
     return 2
 
 

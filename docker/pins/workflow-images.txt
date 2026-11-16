@@ -1,0 +1,16 @@
+# docker/pins/workflow-images.txt: the versions of the tool images a workflow
+# runs that no image ships, so no docker/common fragment ARG pins them
+# (vergil-containers#914). docker/pins/workflow_images.py turns each line into
+# the image a workflow runs; a workflow never names the version itself.
+#
+# The daily upstream refresh (resolve_latest.py --write) moves each pin to its
+# newest release within its major version. A release that changes the major
+# fails the refresh with an error: move the major by hand, in a reviewed PR,
+# after checking its changes against how the workflow uses the image.
+#
+# One `<NAME>=x.y.z` line per tool (resolve_latest.WORKFLOW_PIN_NAMES).
+
+# registry (distribution/distribution): the job-local registry service of PR
+# CI's image build (.github/workflows/ci-images.yml), plain HTTP on the
+# runner's localhost:5000 with no auth, on the image's default configuration.
+REGISTRY_VERSION=3.1.2

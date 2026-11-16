@@ -12,6 +12,11 @@ Why the redirect and not `api.github.com`: the API's unauthenticated limit is
 60 requests/hr and is easily exhausted in CI; the release redirect is unmetered.
 The redirect also resolves to the latest *full* release (never a pre-release).
 
+It also moves the workflow image pins (WORKFLOW_PIN_REPOS, in
+docker/pins/workflow-images.txt), but never across a major version: a newest
+release in another major raises `MajorVersionError` before anything is written
+(#914).
+
 **Fail loud.** Any resolution failure raises `ResolutionError` — there is no
 silent fallback that would let a broken lookup masquerade as "no change".
 
@@ -83,6 +88,27 @@ TOOL_ARGS = {
     "yq": "YQ_VERSION",
 }
 
+# Workflow image pins (vergil-containers#914): tools a workflow runs as an image
+# that no image ships, so no fragment carries an ARG for them. Each is a
+# `<NAME>=x.y.z` line in WORKFLOW_PINS, which docker/pins/workflow_images.py
+# turns into the image the workflow runs. The refresh moves each to its newest
+# release, but only within its major version: a release that changes the major
+# fails the refresh (MajorVersionError), so a major move is always a by-hand
+# change in a reviewed PR. tool → GitHub release repo (OWNER/REPO).
+WORKFLOW_PIN_REPOS = {
+    # The job-local registry service of PR CI's image build (ci-images.yml);
+    # the official `registry` image is built from these releases.
+    "registry": "distribution/distribution",
+}
+
+# tool → the name of its `<NAME>=x.y.z` line in WORKFLOW_PINS.
+WORKFLOW_PIN_NAMES = {
+    "registry": "REGISTRY_VERSION",
+}
+
+# The workflow image pins, relative to docker/.
+WORKFLOW_PINS = Path("pins") / "workflow-images.txt"
+
 # A release tag page (`.../releases/tag/<tag>`) or a release asset
 # (`.../releases/download/<tag>/<asset>`).
 _TAG_IN_LOCATION = re.compile(
@@ -94,6 +120,12 @@ _SEMVER = re.compile(r"^v?(?P<ver>\d+\.\d+\.\d+)$")
 class ResolutionError(RuntimeError):
     """A tool's latest version could not be resolved. Raised loudly so a broken
     lookup fails the bumper rather than silently skipping the tool."""
+
+
+class MajorVersionError(ResolutionError):
+    """A workflow image pin's newest release is another major version. Raised
+    so the refresh fails rather than move a major on its own: a major move
+    needs a human, in a reviewed PR."""
 
 
 def _latest_url(source: str) -> str:
@@ -203,14 +235,80 @@ def rewrite_args(docker_root: Path, resolved: dict[str, str]) -> dict[str, tuple
     return changed
 
 
-def main(argv: list[str]) -> int:
-    docker_root = Path(__file__).resolve().parent.parent
-    resolved = resolve_all()
+def _workflow_pin_line(tool: str) -> re.Pattern[str]:
+    name = WORKFLOW_PIN_NAMES[tool]
+    return re.compile(rf"^({re.escape(name)}=)(\d+\.\d+\.\d+)[ \t]*$", re.MULTILINE)
+
+
+def read_workflow_pin(docker_root: Path, tool: str) -> str:
+    """The bare `x.y.z` that WORKFLOW_PINS pins `tool` at. Raises
+    ResolutionError when the file cannot be read or does not hold exactly one
+    well-formed line for the tool."""
+    path = docker_root / WORKFLOW_PINS
+    try:
+        text = path.read_text()
+    except OSError as exc:
+        raise ResolutionError(f"cannot read the workflow image pins {path}: {exc}") from exc
+    found = _workflow_pin_line(tool).findall(text)
+    if len(found) != 1:
+        raise ResolutionError(
+            f"{path}: expected exactly one '{WORKFLOW_PIN_NAMES[tool]}=x.y.z' line "
+            f"for {tool}, found {len(found)}"
+        )
+    return found[0][1]
+
+
+def check_same_major(tool: str, old: str, new: str) -> None:
+    """Refuse, with MajorVersionError, a move of `tool` from `old` to `new`
+    that changes the major version."""
+    if old.split(".")[0] != new.split(".")[0]:
+        raise MajorVersionError(
+            f"{tool}: its newest release, {new}, is not in the major version of the "
+            f"pinned {old}. The upstream refresh never moves a major version: move it "
+            f"by hand in a reviewed PR, after checking the new major's changes against "
+            f"how the workflows use it (docker/{WORKFLOW_PINS}; vergil-containers#914)."
+        )
+
+
+def plan_workflow_pins(docker_root: Path, resolved: dict[str, str]) -> dict[str, tuple[str, str]]:
+    """{tool: (old, new)} for each workflow image pin in `resolved` whose
+    version differs from WORKFLOW_PINS. Raises MajorVersionError for any that
+    would change the major version; it writes nothing."""
+    changed: dict[str, tuple[str, str]] = {}
+    for tool, new in resolved.items():
+        old = read_workflow_pin(docker_root, tool)
+        check_same_major(tool, old, new)
+        if old != new:
+            changed[tool] = (old, new)
+    return changed
+
+
+def write_workflow_pins(docker_root: Path, changed: dict[str, tuple[str, str]]) -> None:
+    """Rewrite WORKFLOW_PINS to the new versions of `changed`, a
+    plan_workflow_pins result."""
+    if not changed:
+        return
+    path = docker_root / WORKFLOW_PINS
+    text = path.read_text()
+    for tool, (_old, new) in changed.items():
+        text = _workflow_pin_line(tool).sub(rf"\g<1>{new}", text)
+    path.write_text(text)
+
+
+def main(argv: list[str], docker_root: Path | None = None, fetch=_curl_location) -> int:
+    if docker_root is None:
+        docker_root = Path(__file__).resolve().parent.parent
+    resolved = resolve_all(fetch=fetch)
+    workflow_resolved = resolve_all(WORKFLOW_PIN_REPOS, fetch=fetch)
     if "--write" not in argv:
-        for tool, ver in sorted(resolved.items()):
+        for tool, ver in sorted({**resolved, **workflow_resolved}.items()):
             print(f"{tool}\t{ver}")
         return 0
+    # The major-version guard runs before any file is written.
+    workflow_changed = plan_workflow_pins(docker_root, workflow_resolved)
     changed = rewrite_args(docker_root, resolved)
+    write_workflow_pins(docker_root, workflow_changed)
+    changed.update(workflow_changed)
     if not changed:
         print("no version changes")
     for tool, (old, new) in sorted(changed.items()):
