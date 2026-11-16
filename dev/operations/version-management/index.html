@@ -3587,13 +3587,20 @@ cannot merge undocumented.</strong> A companion <code>generate_catalog.py --chec
 <h2 id="auto-managed-tools-and-the-daily-bumper">Auto-managed tools and the daily bumper<a class="headerlink" href="#auto-managed-tools-and-the-daily-bumper" title="Permanent link">&para;</a></h2>
 <p>Most package-manager tools (installed via <code>npm</code>, <code>pip</code>, <code>uv</code>, <code>go install</code>,
 <code>cargo</code>) were <strong>freed</strong> in the pin audit: dropping the version token lets them
-resolve latest at build time, so they float cleanly and need no entry.</p>
-<p>Twelve tools install from a <strong>binary release download</strong> whose URL and
+resolve latest at build time, so they float cleanly and need no entry. The Rust
+validation tools are the exception: epic
+<a href="https://github.com/vergil-project/.github/issues/1165">vergil-project/.github#1165</a>
+pinned them again, reversing the #418 free for them, so an upstream release
+cannot change a repo's validation verdict unreviewed.</p>
+<p>Thirteen tools install from a <strong>binary release download</strong> whose URL and
 per-version checksum embed an explicit version, so they cannot float by simply
 dropping a token. Rather than add an unauthenticated GitHub version-resolution
 round-trip to every image build, these are <strong>auto-managed</strong>: shellcheck, shfmt,
 actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, trivy, yq, uv (the
-package toolchain images only) and cargo-nextest (the rust image only).</p>
+package toolchain images only), and cargo-nextest and cargo-deny (the rust
+image only). cargo-llvm-cov (the rust image only) is auto-managed the same way,
+through its <code>ARG CARGO_LLVM_COV_VERSION=</code> pin, though it is built from
+crates.io with <code>cargo install --locked</code> rather than downloaded.</p>
 <p>They stay pinned in source (hermetic, reproducible, revertible) while the daily
 <code>upstream-refresh</code> job in
 <a href="https://github.com/vergil-project/vergil-containers/blob/develop/.github/workflows/ops.yml"><code>ops.yml</code></a>
@@ -3608,7 +3615,7 @@ tracks the leading edge:</p>
   <code>get.nexte.st/latest/linux</code> redirect instead, since its repository also
   publishes other crates' releases), rewrites the <code>ARG *_VERSION=</code> pins in
   <code>docker/common/*</code>, and regenerates <code>CATALOG.md</code>. For a prebuilt tool whose
-  digests are pinned in source (cargo-nextest, <code>TOOL_DIGESTS</code>), it also reads
+  digests are pinned in source (cargo-nextest, cargo-deny, <code>TOOL_DIGESTS</code>), it also reads
   each architecture's sha256 from the release's checksum files and rewrites
   the <code>ARG *_SHA256_AMD64=</code> and <code>_ARM64=</code> lines in the same run. The lookups
   all finish before anything is written, so a missing or malformed checksum
