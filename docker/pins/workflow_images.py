@@ -60,10 +60,12 @@ UNMANAGED = {
     ),
 }
 
+# An image repository, lower case as every image reference is. A registry host
+# may carry a port (`localhost:5000/x`), which only a `/` follows.
+_NAME = (r"(?:[a-z0-9][a-z0-9.-]*(?::\d+)?/)?"
+         r"[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?(?:/[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)*")
 # A version or digest pin inside free text (an env value, a JSON string, a
-# script): `<repository>:<x.y…>` or `<repository>@sha256:<hex>`. A repository
-# here is lower case, as every image reference is.
-_NAME = r"[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?(?::\d+)?(?:/[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)*"
+# script): `<repository>:<x.y…>` or `<repository>@sha256:<hex>`.
 _TEXT_PIN = re.compile(
     rf"(?<![\w./@:-])(?P<repo>{_NAME})"
     rf"(?::(?P<tag>v?\d+\.\d+[\w.+-]*)|@(?P<digest>sha256:[0-9a-f]{{64}}))"

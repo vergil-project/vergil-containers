@@ -136,6 +136,7 @@ def test_select_reads_the_whole_history_and_outputs_the_matrices():
         "arch-matrix": "${{ steps.select.outputs.arch-matrix }}",
         "has": "${{ steps.select.outputs.has }}",
         "upgrade-date": "${{ steps.select.outputs.upgrade-date }}",
+        "trivy-image": "${{ steps.trivy-image.outputs.image }}",
     }
     env = _step("select", "select")["env"]
     assert env["BASE_SHA"] == "${{ github.event.pull_request.base.sha }}"
