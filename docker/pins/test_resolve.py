@@ -183,3 +183,112 @@ def test_rewrite_args_fails_loud_when_arg_missing(tmp_path):
     (tmp_path / "common" / "tools.dockerfile").write_text("ARG SHELLCHECK_VERSION=0.11.0\n")
     with pytest.raises(rl.ResolutionError):
         rl.rewrite_args(tmp_path, {"nfpm": "2.48.0"})
+
+
+# --- workflow image pins (vergil-containers#914) ------------------------------
+
+REGISTRY_REPO = "distribution/distribution"
+
+
+def test_workflow_pins_cover_exactly_the_registry():
+    assert rl.WORKFLOW_PIN_REPOS == {"registry": REGISTRY_REPO}
+    assert set(rl.WORKFLOW_PIN_NAMES) == set(rl.WORKFLOW_PIN_REPOS)
+    # A workflow image pin is not a fragment ARG: rewrite_args never sees it.
+    assert not set(rl.WORKFLOW_PIN_REPOS) & set(rl.TOOL_REPOS)
+
+
+def test_every_workflow_pin_is_in_the_live_file():
+    docker = Path(__file__).resolve().parent.parent
+    current = {tool: rl.read_workflow_pin(docker, tool) for tool in rl.WORKFLOW_PIN_REPOS}
+    assert re.fullmatch(r"3\.\d+\.\d+", current["registry"])
+    assert rl.plan_workflow_pins(docker, current) == {}
+
+
+def _workflow_pins(root: Path, text: str) -> Path:
+    (root / "pins").mkdir(parents=True, exist_ok=True)
+    path = root / "pins" / "workflow-images.txt"
+    path.write_text(text)
+    return path
+
+
+def test_a_bump_within_the_major_is_planned_and_written(tmp_path):
+    path = _workflow_pins(tmp_path, "# keep me\nREGISTRY_VERSION=3.1.2\n")
+    changed = rl.plan_workflow_pins(tmp_path, {"registry": "3.2.0"})
+    assert changed == {"registry": ("3.1.2", "3.2.0")}
+    assert path.read_text() == "# keep me\nREGISTRY_VERSION=3.1.2\n"  # planning writes nothing
+    rl.write_workflow_pins(tmp_path, changed)
+    assert path.read_text() == "# keep me\nREGISTRY_VERSION=3.2.0\n"
+
+
+def test_an_unchanged_pin_plans_nothing(tmp_path):
+    _workflow_pins(tmp_path, "REGISTRY_VERSION=3.1.2\n")
+    assert rl.plan_workflow_pins(tmp_path, {"registry": "3.1.2"}) == {}
+
+
+@pytest.mark.parametrize("old, new", [("3.1.2", "4.0.0"), ("3.1.2", "2.8.3"), ("3.9.9", "30.0.0")])
+def test_a_major_version_change_is_refused(tmp_path, old, new):
+    path = _workflow_pins(tmp_path, f"REGISTRY_VERSION={old}\n")
+    with pytest.raises(rl.MajorVersionError, match=rf"registry: its newest release, {re.escape(new)}, "
+                                                    rf"is not in the major version of the pinned {re.escape(old)}"):
+        rl.plan_workflow_pins(tmp_path, {"registry": new})
+    assert path.read_text() == f"REGISTRY_VERSION={old}\n"
+
+
+def test_the_major_guard_is_a_resolution_error():
+    # The refresh hook fails on it as on any other resolution failure.
+    assert issubclass(rl.MajorVersionError, rl.ResolutionError)
+
+
+@pytest.mark.parametrize("text", [
+    None, "", "REGISTRY_VERSION=3.1\n", "REGISTRY_VERSION=v3.1.2\n",
+    "REGISTRY_VERSION=3.1.2\nREGISTRY_VERSION=3.1.3\n",
+])
+def test_reading_a_missing_or_malformed_workflow_pin_fails_loud(tmp_path, text):
+    if text is None:
+        (tmp_path / "pins").mkdir()
+    else:
+        _workflow_pins(tmp_path, text)
+    with pytest.raises(rl.ResolutionError, match="workflow-images.txt"):
+        rl.read_workflow_pin(tmp_path, "registry")
+
+
+def _refresh_tree(root: Path, registry: str) -> Path:
+    """A docker/ tree with every fragment ARG at 1.0.0 and the registry at
+    `registry`; returns the fragment."""
+    (root / "common").mkdir()
+    fragment = root / "common" / "tools.dockerfile"
+    fragment.write_text("".join(f"ARG {arg}=1.0.0\n" for arg in rl.TOOL_ARGS.values()))
+    _workflow_pins(root, f"REGISTRY_VERSION={registry}\n")
+    return fragment
+
+
+def _refresh_fetch(registry_tag: str):
+    def tag(tool):
+        return f"{rl.TOOL_TAG_PREFIXES.get(tool, 'v')}1.0.1"
+    mapping = {rl.TOOL_LATEST_URLS.get(tool, repo): f"https://github.com/{repo}/releases/tag/{tag(tool)}"
+               for tool, repo in rl.TOOL_REPOS.items()}
+    mapping[REGISTRY_REPO] = f"https://github.com/{REGISTRY_REPO}/releases/tag/{registry_tag}"
+    return _fetch(mapping)
+
+
+def test_refresh_moves_the_registry_within_its_major(tmp_path, capsys):
+    fragment = _refresh_tree(tmp_path, "3.1.2")
+    assert rl.main(["--write"], docker_root=tmp_path, fetch=_refresh_fetch("v3.1.3")) == 0
+    assert (tmp_path / "pins" / "workflow-images.txt").read_text() == "REGISTRY_VERSION=3.1.3\n"
+    assert "ARG TRIVY_VERSION=1.0.1\n" in fragment.read_text()
+    assert "bumped registry: 3.1.2 -> 3.1.3" in capsys.readouterr().out
+
+
+def test_refresh_fails_on_a_new_major_before_writing_anything(tmp_path):
+    fragment = _refresh_tree(tmp_path, "3.1.2")
+    before = fragment.read_text()
+    with pytest.raises(rl.MajorVersionError):
+        rl.main(["--write"], docker_root=tmp_path, fetch=_refresh_fetch("v4.0.0"))
+    assert fragment.read_text() == before
+    assert (tmp_path / "pins" / "workflow-images.txt").read_text() == "REGISTRY_VERSION=3.1.2\n"
+
+
+def test_refresh_dry_run_lists_the_registry(tmp_path, capsys):
+    _refresh_tree(tmp_path, "3.1.2")
+    assert rl.main([], docker_root=tmp_path, fetch=_refresh_fetch("v3.1.3")) == 0
+    assert "registry\t3.1.3\n" in capsys.readouterr().out

@@ -39,6 +39,7 @@ jobs:
       has: ${{ steps.select.outputs.has }}
       upgrade-date: ${{ steps.select.outputs.upgrade-date }}
       trivy-image: ${{ steps.trivy-image.outputs.image }}
+      registry-image: ${{ steps.registry-image.outputs.image }}
     steps:
       # The whole history, so the PR's base and head commits are both present.
       - name: Checkout code
@@ -114,6 +115,17 @@ jobs:
           image="$(python3 docker/pins/workflow_images.py trivy-image)"
           printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"
 
+      # The image of the build job's registry service, read from its pin in
+      # docker/pins/workflow-images.txt, which the upstream refresh moves
+      # within its major version (vergil-containers#914). A failure fails this
+      # job, and `evidence`.
+      - name: Resolve the registry image
+        id: registry-image
+        run: |
+          set -euo pipefail
+          image="$(python3 docker/pins/workflow_images.py registry-image)"
+          printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"
+
   build:
     name: "build: ${{ matrix.name }} (${{ matrix.arch }})"
     needs: select
@@ -123,10 +135,11 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.select.outputs.arch-matrix) }}
     # A parent built in this job is pushed here, and only here, for its
-    # children to be built FROM: the registry lives and dies with the job.
+    # children to be built FROM: the registry lives and dies with the job. Its
+    # image comes from the select job, never a version written here.
     services:
       registry:
-        image: registry:2.8.3
+        image: ${{ needs.select.outputs.registry-image }}
         ports:
           - 5000:5000
     steps:
