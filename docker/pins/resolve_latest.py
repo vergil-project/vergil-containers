@@ -17,10 +17,11 @@ docker/pins/workflow-images.txt), but never across a major version: a newest
 release in another major raises `MajorVersionError` before anything is written
 (#914).
 
-**Digests in source.** A prebuilt tool in TOOL_DIGESTS (cargo-nextest) also has
-its per-architecture sha256 pinned in its fragment, `ARG <STEM>_SHA256_AMD64=`
-and `_ARM64=` (epic vergil-project/.github#1165, spec §6.3), and the image
-build verifies against those, not against a checksum it downloads. `--write`
+**Digests in source.** A prebuilt tool in TOOL_DIGESTS (cargo-nextest,
+cargo-deny) also has its per-architecture sha256 pinned in its fragment,
+`ARG <STEM>_SHA256_AMD64=` and `_ARM64=` (epic vergil-project/.github#1165,
+spec §6.3), and the image build verifies against those, not against a
+checksum it downloads. `--write`
 resolves them from the release's checksum files at the version it writes and
 writes versions and digests together, all or nothing, so a refresh PR shows
 every digest change beside its version change.
@@ -58,6 +59,11 @@ TOOL_REPOS = {
     "uv": "astral-sh/uv",
     "cargo-nextest": "nextest-rs/nextest",
     "yq": "mikefarah/yq",
+    # The Rust validation tools pinned under epic vergil-project/.github#1165
+    # (spec §6.3). cargo-deny tags its releases with a bare `x.y.z`,
+    # cargo-llvm-cov with `vX.Y.Z`.
+    "cargo-deny": "EmbarkStudios/cargo-deny",
+    "cargo-llvm-cov": "taiki-e/cargo-llvm-cov",
 }
 
 # tool → the URL whose redirect names its latest release, for a tool whose
@@ -96,6 +102,8 @@ TOOL_ARGS = {
     "uv": "UV_VERSION",
     "cargo-nextest": "CARGO_NEXTEST_VERSION",
     "yq": "YQ_VERSION",
+    "cargo-deny": "CARGO_DENY_VERSION",
+    "cargo-llvm-cov": "CARGO_LLVM_COV_VERSION",
 }
 
 # Workflow image pins (vergil-containers#914): tools a workflow runs as an image
@@ -142,6 +150,8 @@ class DigestSource:
 
 _NEXTEST_DOWNLOAD = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-{version}/"
 _NEXTEST_TRIPLES = {"AMD64": "x86_64-unknown-linux-gnu", "ARM64": "aarch64-unknown-linux-gnu"}
+_DENY_DOWNLOAD = "https://github.com/EmbarkStudios/cargo-deny/releases/download/{version}/"
+_DENY_TRIPLES = {"AMD64": "x86_64-unknown-linux-musl", "ARM64": "aarch64-unknown-linux-musl"}
 
 # tool → its DigestSource, for every prebuilt tool whose per-architecture
 # sha256 is pinned in source beside its version (epic vergil-project/.github
@@ -156,6 +166,15 @@ TOOL_DIGESTS = {
                        for arch, triple in _NEXTEST_TRIPLES.items()},
         assets={arch: f"cargo-nextest-{{version}}-{triple}.tar.gz"
                 for arch, triple in _NEXTEST_TRIPLES.items()},
+    ),
+    # cargo-deny publishes a `<asset>.sha256` per asset holding the digest
+    # alone. cargo-llvm-cov has no entry: it is built from crates.io, whose
+    # index carries the crate checksum cargo verifies.
+    "cargo-deny": DigestSource(
+        checksum_urls={arch: f"{_DENY_DOWNLOAD}cargo-deny-{{version}}-{triple}.tar.gz.sha256"
+                       for arch, triple in _DENY_TRIPLES.items()},
+        assets={arch: f"cargo-deny-{{version}}-{triple}.tar.gz"
+                for arch, triple in _DENY_TRIPLES.items()},
     ),
 }
 

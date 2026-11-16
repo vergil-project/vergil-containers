@@ -39,9 +39,13 @@ def test_extractor_drops_freed_package_manager_pins():
     # toolchain images install it as a checksum-verified release tarball, an
     # auto-managed mechanism pin (vergil-containers#728); see
     # test_uv_is_an_auto_managed_pin.
+    #
+    # cargo-deny and cargo-llvm-cov were freed here too, until epic
+    # vergil-project/.github#1165 pinned them again as validation tools; see
+    # test_pins_entries_for_rust_tools.
     tools = {p.tool for p in extract_pins.extract(DOCKER)}
     for freed in ("markdownlint-cli", "yamllint",
-                  "cargo-deny", "mkdocs-material", "pyyaml",
+                  "mkdocs-material", "pyyaml",
                   "golangci-lint", "govulncheck", "goimports"):
         assert freed not in tools
 
@@ -61,6 +65,30 @@ def test_cargo_nextest_is_an_auto_managed_pin():
     pins = {p.tool: p for p in extract_pins.extract(DOCKER)}
     assert pins["cargo-nextest"].source == "common/cargo-nextest.dockerfile"
     assert check_pins.load_pins(DOCKER)["cargo-nextest"]["state"] == "auto-managed"
+
+
+def test_pins_entries_for_rust_tools():
+    # Epic vergil-project/.github#1165 (spec §6.3): the Rust validation tools
+    # are pinned in their own fragments, auto-managed, and the pins.yml header
+    # records that this reverses the WS2 (#418) free.
+    pins = {p.tool: p for p in extract_pins.extract(DOCKER)}
+    documented = check_pins.load_pins(DOCKER)
+    for tool in ("cargo-deny", "cargo-llvm-cov"):
+        assert pins[tool].source == f"common/{tool}.dockerfile"
+        assert documented[tool]["state"] == "auto-managed"
+        assert documented[tool]["inducing_release"] is None
+        assert "vergil-project/.github#1165" in documented[tool]["reason"]
+    header = (DOCKER / "pins" / "pins.yml").read_text().split("\npins:", 1)[0]
+    assert "REVERSED for the Rust validation tools by epic vergil-project/.github#1165" in header
+
+
+def test_template_has_no_bare_cargo_install():
+    # Every Rust tool comes from a pinned fragment; the template installs none
+    # itself and includes all three.
+    template = (DOCKER / "rust" / "Dockerfile.template").read_text()
+    assert "cargo install" not in template
+    for fragment in ("cargo-deny", "cargo-llvm-cov", "cargo-nextest"):
+        assert f"\n# @include common/{fragment}.dockerfile\n" in template
 
 
 def test_yq_is_an_auto_managed_pin():

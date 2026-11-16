@@ -10,6 +10,7 @@ import resolve_latest as rl
 TOOLS = {
     "shellcheck", "shfmt", "actionlint", "git-cliff", "hadolint",
     "opentofu", "nfpm", "trivy", "scorecard", "uv", "cargo-nextest", "yq",
+    "cargo-deny", "cargo-llvm-cov",
 }
 
 NEXTEST_ASSET = ("https://github.com/nextest-rs/nextest/releases/download/"
@@ -258,7 +259,7 @@ def _refresh_tree(root: Path, registry: str) -> Path:
     (root / "common").mkdir()
     fragment = root / "common" / "tools.dockerfile"
     fragment.write_text("".join(f"ARG {arg}=1.0.0\n" for arg in rl.TOOL_ARGS.values())
-                        + f"ARG CARGO_NEXTEST_SHA256_AMD64={HEX_A}\nARG CARGO_NEXTEST_SHA256_ARM64={HEX_B}\n")
+                        + _digest_args(rl.TOOL_DIGESTS, {"AMD64": HEX_A, "ARM64": HEX_B}))
     _workflow_pins(root, f"REGISTRY_VERSION={registry}\n")
     return fragment
 
@@ -273,8 +274,8 @@ def _refresh_fetch(registry_tag: str):
 
 
 def _refresh_sums():
-    """nextest's checksums at the 1.0.1 the refresh tree floats it to."""
-    return _text_fetch(_nextest_sums({"AMD64": HEX_A, "ARM64": HEX_B}, version="1.0.1"))
+    """Every digest tool's checksums at the 1.0.1 the refresh tree floats it to."""
+    return _text_fetch(_all_sums({"AMD64": HEX_A, "ARM64": HEX_B}, version="1.0.1"))
 
 
 def test_refresh_moves_the_registry_within_its_major(tmp_path, capsys):
@@ -327,6 +328,34 @@ def _text_fetch(bodies):
     return fetch
 
 
+def _sums(tool, version, digests):
+    """Canned `<digest>  <asset>` checksum bodies for any TOOL_DIGESTS `tool` at
+    `version`, keyed by the URL its DigestSource names."""
+    source = rl.TOOL_DIGESTS[tool]
+    return {source.checksum_urls[arch].format(version=version):
+            f"{digest}  {source.assets[arch].format(version=version)}\n"
+            for arch, digest in digests.items()}
+
+
+def _all_sums(digests, version):
+    """Every TOOL_DIGESTS tool's checksum bodies at one `version`."""
+    return {url: body for tool in rl.TOOL_DIGESTS for url, body in _sums(tool, version, digests).items()}
+
+
+def _digest_args(tools, digests):
+    """The `ARG <STEM>_SHA256_<ARCH>=` lines of each of `tools`."""
+    return "".join(f"ARG {rl.TOOL_ARGS[tool].removesuffix('_VERSION')}_SHA256_{arch}={digests[arch]}\n"
+                   for tool in sorted(tools) for arch in rl.ARCHES)
+
+
+def _main_sums(nextest_digests):
+    """A checksum fetch for _main_fixture: cargo-nextest's at 0.9.153 as given,
+    and every other digest tool's at the 1.0.0 it stays at, unchanged."""
+    others = {url: body for tool in set(rl.TOOL_DIGESTS) - {"cargo-nextest"}
+              for url, body in _sums(tool, "1.0.0", {"AMD64": HEX_A, "ARM64": HEX_B}).items()}
+    return _text_fetch({**_nextest_sums(nextest_digests), **others})
+
+
 def _nextest_fragment(tmp_path, version="0.9.152", amd64=HEX_A, arm64=HEX_B, extra=""):
     (tmp_path / "common").mkdir(exist_ok=True)
     frag = tmp_path / "common" / "cargo-nextest.dockerfile"
@@ -339,7 +368,7 @@ def _nextest_fragment(tmp_path, version="0.9.152", amd64=HEX_A, arm64=HEX_B, ext
 
 
 def test_tool_digests_cover_only_registered_tools():
-    assert set(rl.TOOL_DIGESTS) == {"cargo-nextest"}
+    assert set(rl.TOOL_DIGESTS) == {"cargo-nextest", "cargo-deny"}
     assert set(rl.TOOL_DIGESTS) <= set(rl.TOOL_REPOS)
     for source in rl.TOOL_DIGESTS.values():
         assert set(source.checksum_urls) == set(rl.ARCHES) == set(source.assets)
@@ -428,7 +457,8 @@ def _main_fixture(tmp_path):
     _nextest_fragment(tmp_path)
     other = tmp_path / "common" / "tools.dockerfile"
     other.write_text("".join(f"ARG {arg}=1.0.0\n" for tool, arg in rl.TOOL_ARGS.items()
-                             if tool != "cargo-nextest"))
+                             if tool != "cargo-nextest")
+                     + _digest_args(set(rl.TOOL_DIGESTS) - {"cargo-nextest"}, {"AMD64": HEX_A, "ARM64": HEX_B}))
     _workflow_pins(tmp_path, "REGISTRY_VERSION=1.0.0\n")
 
     def fetch(source):
@@ -443,7 +473,7 @@ def test_write_pins_versions_and_digests_together(tmp_path, capsys):
     other, fetch = _main_fixture(tmp_path)
     before = other.read_text()
     assert rl.main(["--write"], docker_root=tmp_path, fetch=fetch,
-                   fetch_text=_text_fetch(_nextest_sums({"AMD64": HEX_C, "ARM64": HEX_A}))) == 0
+                   fetch_text=_main_sums({"AMD64": HEX_C, "ARM64": HEX_A})) == 0
     assert (tmp_path / "common" / "cargo-nextest.dockerfile").read_text() == (
         "ARG CARGO_NEXTEST_VERSION=0.9.153\n"
         f"ARG CARGO_NEXTEST_SHA256_AMD64={HEX_C}\n"
@@ -460,7 +490,7 @@ def test_write_warns_on_a_digest_change_without_a_version_change(tmp_path, capsy
     _, fetch = _main_fixture(tmp_path)
     _nextest_fragment(tmp_path, version="0.9.153")
     assert rl.main(["--write"], docker_root=tmp_path, fetch=fetch,
-                   fetch_text=_text_fetch(_nextest_sums({"AMD64": HEX_C, "ARM64": HEX_B}))) == 0
+                   fetch_text=_main_sums({"AMD64": HEX_C, "ARM64": HEX_B})) == 0
     out = capsys.readouterr()
     assert "bumped" not in out.out
     assert "::warning::cargo-nextest 0.9.153: its release checksums changed" in out.err
@@ -474,7 +504,7 @@ def test_write_is_all_or_nothing(tmp_path):
     before = {nextest: nextest.read_text(), other: other.read_text()}
     with pytest.raises(rl.ResolutionError, match="cargo-nextest 0.9.153 ARM64"):
         rl.main(["--write"], docker_root=tmp_path, fetch=fetch,
-                fetch_text=_text_fetch(_nextest_sums({"AMD64": HEX_C})))
+                fetch_text=_main_sums({"AMD64": HEX_C}))
     assert {f: f.read_text() for f in before} == before
 
 
@@ -487,7 +517,7 @@ def test_write_restores_every_fragment_when_a_digest_rewrite_fails(tmp_path):
     before = {nextest: nextest.read_text(), other: other.read_text()}
     with pytest.raises(rl.ResolutionError, match="CARGO_NEXTEST_SHA256_ARM64"):
         rl.main(["--write"], docker_root=tmp_path, fetch=fetch,
-                fetch_text=_text_fetch(_nextest_sums({"AMD64": HEX_C, "ARM64": HEX_A})))
+                fetch_text=_main_sums({"AMD64": HEX_C, "ARM64": HEX_A}))
     assert {f: f.read_text() for f in before} == before
 
 
@@ -496,7 +526,7 @@ def test_main_without_write_prints_digests_and_writes_nothing(tmp_path, capsys):
     nextest = tmp_path / "common" / "cargo-nextest.dockerfile"
     before = nextest.read_text()
     assert rl.main([], docker_root=tmp_path, fetch=fetch,
-                   fetch_text=_text_fetch(_nextest_sums({"AMD64": HEX_C, "ARM64": HEX_A}))) == 0
+                   fetch_text=_main_sums({"AMD64": HEX_C, "ARM64": HEX_A})) == 0
     assert nextest.read_text() == before
     out = capsys.readouterr().out
     assert "cargo-nextest\t0.9.153" in out
@@ -552,3 +582,99 @@ def test_nextest_fragment_verifies_pinned_digest():
     assert 'echo "${NEXTEST_SHA256}  /tmp/${NEXTEST_TARBALL}" | sha256sum -c -' in body
     assert ".sha256" not in body
     assert body.count("curl ") == 1
+
+
+# --- cargo-deny and cargo-llvm-cov (epic vergil-project/.github#1165, spec §6.3)
+
+DENY_DOWNLOAD = "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.21.1/"
+
+
+def test_cargo_deny_registered_with_digests():
+    assert rl.TOOL_REPOS["cargo-deny"] == "EmbarkStudios/cargo-deny"
+    assert rl.TOOL_ARGS["cargo-deny"] == "CARGO_DENY_VERSION"
+    assert "cargo-deny" not in rl.TOOL_TAG_PREFIXES
+    # cargo-deny publishes `<asset>.sha256` for each musl tarball, holding the
+    # digest alone with no trailing newline.
+    bodies = {
+        f"{DENY_DOWNLOAD}cargo-deny-0.21.1-x86_64-unknown-linux-musl.tar.gz.sha256": HEX_A,
+        f"{DENY_DOWNLOAD}cargo-deny-0.21.1-aarch64-unknown-linux-musl.tar.gz.sha256": HEX_B,
+    }
+    assert rl.resolve_digests("cargo-deny", "0.21.1", fetch=_text_fetch(bodies)) == {
+        "AMD64": HEX_A, "ARM64": HEX_B}
+    del bodies[f"{DENY_DOWNLOAD}cargo-deny-0.21.1-aarch64-unknown-linux-musl.tar.gz.sha256"]
+    with pytest.raises(rl.ResolutionError, match=r"cargo-deny 0\.21\.1 ARM64: no checksum"):
+        rl.resolve_digests("cargo-deny", "0.21.1", fetch=_text_fetch(bodies))
+
+
+def test_cargo_deny_resolves_from_its_bare_release_tag():
+    fetch = _fetch({"EmbarkStudios/cargo-deny":
+                    "https://github.com/EmbarkStudios/cargo-deny/releases/tag/0.21.1"})
+    assert rl.resolve_tool("cargo-deny", rl.TOOL_REPOS["cargo-deny"], fetch=fetch) == "0.21.1"
+
+
+def test_cargo_llvm_cov_registered():
+    # Built from crates.io (no checksummed, versioned release asset), so it
+    # has a version ARG for the refresh and no digests.
+    assert rl.TOOL_REPOS["cargo-llvm-cov"] == "taiki-e/cargo-llvm-cov"
+    assert rl.TOOL_ARGS["cargo-llvm-cov"] == "CARGO_LLVM_COV_VERSION"
+    assert "cargo-llvm-cov" not in rl.TOOL_DIGESTS
+    assert "cargo-llvm-cov" not in rl.TOOL_LATEST_URLS
+    fetch = _fetch({"taiki-e/cargo-llvm-cov":
+                    "https://github.com/taiki-e/cargo-llvm-cov/releases/tag/v0.9.2"})
+    assert rl.resolve_tool("cargo-llvm-cov", rl.TOOL_REPOS["cargo-llvm-cov"], fetch=fetch) == "0.9.2"
+
+
+def _live_common_copy(tmp_path):
+    docker = Path(__file__).resolve().parent.parent
+    (tmp_path / "common").mkdir()
+    for frag in (docker / "common").glob("*.dockerfile"):
+        (tmp_path / "common" / frag.name).write_text(frag.read_text())
+    return tmp_path / "common"
+
+
+def test_rewrite_args_finds_new_fragments(tmp_path):
+    common = _live_common_copy(tmp_path)
+    deny_before = (common / "cargo-deny.dockerfile").read_text()
+    cov_before = (common / "cargo-llvm-cov.dockerfile").read_text()
+    old_deny = re.search(r"^ARG CARGO_DENY_VERSION=(\S+)$", deny_before, re.MULTILINE).group(1)
+    old_cov = re.search(r"^ARG CARGO_LLVM_COV_VERSION=(\S+)$", cov_before, re.MULTILINE).group(1)
+    changed = rl.rewrite_args(tmp_path, {"cargo-deny": "9.9.9", "cargo-llvm-cov": "9.9.8"})
+    assert changed == {"cargo-deny": (old_deny, "9.9.9"), "cargo-llvm-cov": (old_cov, "9.9.8")}
+    assert (common / "cargo-deny.dockerfile").read_text() == deny_before.replace(
+        f"ARG CARGO_DENY_VERSION={old_deny}\n", "ARG CARGO_DENY_VERSION=9.9.9\n")
+    assert (common / "cargo-llvm-cov.dockerfile").read_text() == cov_before.replace(
+        f"ARG CARGO_LLVM_COV_VERSION={old_cov}\n", "ARG CARGO_LLVM_COV_VERSION=9.9.8\n")
+    # The refresh writes cargo-deny's digests into the same fragment.
+    assert rl.rewrite_digests(tmp_path, "cargo-deny", {"AMD64": HEX_C, "ARM64": HEX_A}) is True
+    text = (common / "cargo-deny.dockerfile").read_text()
+    assert f"ARG CARGO_DENY_SHA256_AMD64={HEX_C}\n" in text
+    assert f"ARG CARGO_DENY_SHA256_ARM64={HEX_A}\n" in text
+
+
+def _code(fragment):
+    text = (Path(__file__).resolve().parent.parent / "common" / fragment).read_text()
+    return "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
+
+
+def test_deny_fragment_verifies_pinned_digest():
+    # The build verifies the musl tarball against the digest pinned in source
+    # and downloads no checksum file.
+    body = _code("cargo-deny.dockerfile")
+    assert re.search(r"amd64\) DENY_TRIPLE=x86_64-unknown-linux-musl; "
+                     r"DENY_SHA256=\"\$\{CARGO_DENY_SHA256_AMD64\}\"", body)
+    assert re.search(r"arm64\) DENY_TRIPLE=aarch64-unknown-linux-musl; "
+                     r"DENY_SHA256=\"\$\{CARGO_DENY_SHA256_ARM64\}\"", body)
+    assert 'echo "${DENY_SHA256}  /tmp/${DENY_TARBALL}" | sha256sum -c -' in body
+    assert "releases/download/${CARGO_DENY_VERSION}/${DENY_TARBALL}" in body
+    assert ".sha256" not in body
+    assert body.count("curl ") == 1
+    assert "cargo install" not in body
+    assert "cargo deny --version" in body
+
+
+def test_llvm_cov_fragment_installs_locked_at_the_pinned_version():
+    body = _code("cargo-llvm-cov.dockerfile")
+    assert 'cargo install --locked "cargo-llvm-cov@${CARGO_LLVM_COV_VERSION}"' in body
+    assert body.count("cargo install") == 1
+    assert 'rm -rf "${CARGO_HOME:?}/registry"' in body
+    assert "cargo llvm-cov --version" in body

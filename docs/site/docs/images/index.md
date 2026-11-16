@@ -145,9 +145,12 @@ installed with a pinned `rustup-init` (its SHA-256 checked per architecture)
 on rustup's minimal profile, under `/usr/local/rustup` and `/usr/local/cargo`
 as in the `rust:<version>-slim` images it replaces. `gcc` and `libc6-dev`
 come from Ubuntu as the C linker, and `pkg-config` as a build helper for crates
-that link system libraries. `cargo-nextest` comes from nextest's prebuilt
-release binary, checked against the per-architecture SHA-256 pinned in its
-fragment beside its version (see [Rust](../languages/rust.md#adapter-quirks)); it is the
+that link system libraries. The validation tools are each pinned in their own
+fragment and moved by the daily upstream refresh (see
+[Rust](../languages/rust.md#adapter-quirks)). `cargo-nextest` and `cargo-deny`
+come from their prebuilt release binaries, each checked against the
+per-architecture SHA-256 pinned beside its version. `cargo-llvm-cov` is built
+from crates.io at its pinned version with `--locked`. `cargo-nextest` is the
 test runner that writes JUnit reports on stable Rust, alone or as
 `cargo llvm-cov nextest`.
 
@@ -166,8 +169,8 @@ change to the image, never through a toolchain file.
 | clippy         | rustup component | Rust linter                 |
 | rustfmt        | rustup component | Code formatter              |
 | llvm-tools     | rustup component | Coverage instrumentation    |
-| cargo-deny     | cargo            | Dependency security checker |
-| cargo-llvm-cov | cargo            | Code coverage               |
+| cargo-deny     | release binary   | Dependency security checker |
+| cargo-llvm-cov | crates.io        | Code coverage               |
 | cargo-nextest  | release binary   | Test runner (JUnit reports) |
 
 ## C++ toolset
