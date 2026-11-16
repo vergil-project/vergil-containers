@@ -8,7 +8,7 @@
 #
 #   1. resolve_latest.py --write rewrites the `ARG *_VERSION=` pins in
 #      docker/common/* to each tool's newest release (#435), and, for a tool
-#      whose digests are pinned in source (cargo-nextest), its
+#      whose digests are pinned in source (cargo-nextest, cargo-deny), its
 #      `ARG *_SHA256_<ARCH>=` lines to that release's checksums, all or
 #      nothing (epic vergil-project/.github#1165); and the workflow image
 #      pins in docker/pins/workflow-images.txt to theirs, refusing with an
