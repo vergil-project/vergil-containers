@@ -48,7 +48,8 @@ def test_auto_managed_surfaced_as_own_category():
     assert "## Auto-managed" in md
     section = md.split("## Auto-managed", 1)[1]
     for tool in ("shellcheck", "shfmt", "actionlint", "git-cliff", "hadolint",
-                 "opentofu", "nfpm", "trivy", "scorecard", "uv", "cargo-nextest", "yq"):
+                 "opentofu", "nfpm", "trivy", "scorecard", "uv", "cargo-nextest", "yq",
+                 "cargo-deny", "cargo-llvm-cov"):
         assert f"- {tool}:" in section
 
 
@@ -90,6 +91,20 @@ def test_build_latest_resolves_every_pinned_tool_as_the_bumper_does():
     pinned = sorted(check_pins.load_pins(DOCKER))
     got = r._build_latest(pinned, fetch=lambda source: sources[source])
     assert got == {tool: "9.9.9" for tool in pinned}
+
+
+def test_exposure_report_resolves_rust_tools():
+    # vergil-containers#916 dropped cargo-deny and cargo-llvm-cov from the
+    # report; registering them with the bumper (epic vergil-project/.github
+    # #1165) brings them back, each resolved from its own repo and tag form.
+    assert r._GITHUB_REPOS["cargo-deny"] == "EmbarkStudios/cargo-deny"
+    assert r._GITHUB_REPOS["cargo-llvm-cov"] == "taiki-e/cargo-llvm-cov"
+    sources = {
+        "EmbarkStudios/cargo-deny": "https://github.com/EmbarkStudios/cargo-deny/releases/tag/0.21.1",
+        "taiki-e/cargo-llvm-cov": "https://github.com/taiki-e/cargo-llvm-cov/releases/tag/v0.9.2",
+    }
+    got = r._build_latest(["cargo-deny", "cargo-llvm-cov"], fetch=lambda source: sources[source])
+    assert got == {"cargo-deny": "0.21.1", "cargo-llvm-cov": "0.9.2"}
 
 
 def test_build_latest_warns_and_leaves_out_an_unresolvable_tool(capsys):
