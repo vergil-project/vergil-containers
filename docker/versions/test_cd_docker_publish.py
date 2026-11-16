@@ -26,6 +26,7 @@ import yaml
 import frozen
 import generate as g
 import manifest as mf
+import workflow_images
 from test_generate import _tree
 
 WORKFLOW = frozen.LIVE_ROOT / ".github" / "workflows" / "cd-docker-publish.yml"
@@ -464,6 +465,21 @@ def test_publish_uploads_the_promoted_digest(tmp_path):
     assert result.returncode != 0
     assert result.stdout.startswith("::error title=No published digest::")
     assert not (tmp_path / "x").exists()
+
+
+def test_both_scans_run_the_images_trivy(tmp_path):
+    # vergil-containers#855: both platforms' scans run the Trivy the images
+    # ship, read from its auto-managed pin, never a version named here.
+    keys = _keys("publish-0")
+    assert keys.index("trivy-image") < keys.index("trivy-amd64")
+    image = "${{ steps.trivy-image.outputs.image }}"
+    assert _step("publish-0", "trivy-amd64")["with"]["trivy-image"] == image
+    assert _step("publish-0", "trivy-arm64")["env"]["TRIVY_IMAGE"] == image
+    out = tmp_path / "out"
+    out.write_text("")
+    result = _bash(_step("publish-0", "trivy-image")["run"], frozen.LIVE_ROOT, {"GITHUB_OUTPUT": str(out)})
+    assert result.returncode == 0, result.stderr
+    assert out.read_text() == f"image={workflow_images.trivy_image(frozen.LIVE_ROOT / 'docker')}\n"
 
 
 def test_sarif_categories_keep_their_names():
