@@ -636,6 +636,8 @@
       
         
       
+        
+      
     
     
     
@@ -688,6 +690,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.43/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.43
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3680,8 +3710,12 @@ installed with a pinned <code>rustup-init</code> (its SHA-256 checked per archit
 on rustup's minimal profile, under <code>/usr/local/rustup</code> and <code>/usr/local/cargo</code>
 as in the <code>rust:&lt;version&gt;-slim</code> images it replaces. <code>gcc</code> and <code>libc6-dev</code>
 come from Ubuntu as the C linker, and <code>pkg-config</code> as a build helper for crates
-that link system libraries. <code>cargo-nextest</code> comes from nextest's prebuilt
-release binary, checked against the release's per-asset SHA-256; it is the
+that link system libraries. The validation tools are each pinned in their own
+fragment and moved by the daily upstream refresh (see
+<a href="../languages/rust/#adapter-quirks">Rust</a>). <code>cargo-nextest</code> and <code>cargo-deny</code>
+come from their prebuilt release binaries, each checked against the
+per-architecture SHA-256 pinned beside its version. <code>cargo-llvm-cov</code> is built
+from crates.io at its pinned version with <code>--locked</code>. <code>cargo-nextest</code> is the
 test runner that writes JUnit reports on stable Rust, alone or as
 <code>cargo llvm-cov nextest</code>.</p>
 <p>The image owns the toolchain choice. It sets <code>RUSTUP_TOOLCHAIN</code> to its exact
@@ -3723,12 +3757,12 @@ change to the image, never through a toolchain file.</p>
 </tr>
 <tr>
 <td>cargo-deny</td>
-<td>cargo</td>
+<td>release binary</td>
 <td>Dependency security checker</td>
 </tr>
 <tr>
 <td>cargo-llvm-cov</td>
-<td>cargo</td>
+<td>crates.io</td>
 <td>Code coverage</td>
 </tr>
 <tr>

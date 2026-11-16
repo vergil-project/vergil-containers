@@ -636,6 +636,8 @@
       
         
       
+        
+      
     
     
     
@@ -688,6 +690,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.43/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.43
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3447,11 +3477,16 @@ tag. It then scans each candidate once per platform:</p>
 <ul>
 <li><strong>amd64</strong> goes through the shared <code>trivy</code> action with <code>scan-type: image</code>
   and <code>sarif-category: trivy-image-&lt;prefix&gt;-&lt;language&gt;-&lt;version&gt;-amd64</code>.</li>
-<li><strong>arm64</strong> runs Trivy directly in a pinned <code>aquasec/trivy</code> container with
-  <code>--platform linux/arm64</code>, through <code>scripts/bin/trivy-image-scan</code>. Its SARIF
-  is uploaded under
+<li><strong>arm64</strong> runs Trivy directly in a <code>ghcr.io/aquasecurity/trivy</code> container
+  with <code>--platform linux/arm64</code>, through <code>scripts/bin/trivy-image-scan</code>. Its
+  SARIF is uploaded under
   <code>trivy-image-&lt;prefix&gt;-&lt;language&gt;-&lt;version&gt;-arm64</code>.</li>
 </ul>
+<p>Both scans, and PR CI's image scans, run the Trivy the images ship: a workflow
+step reads the auto-managed <code>ARG TRIVY_VERSION=</code> in
+<code>docker/common/security-tools.dockerfile</code> through
+<code>docker/pins/workflow_images.py trivy-image</code>, so the gate moves with every
+upstream-refresh bump and no workflow names a Trivy version (issue #855).</p>
 <p><code>&lt;prefix&gt;</code> is the workflow's <code>image-prefix</code> input, <code>dev</code> or <code>prod</code>. <code>base</code>
 uses <code>trivy-image-&lt;prefix&gt;-base-amd64</code> and <code>trivy-image-&lt;prefix&gt;-base-arm64</code>.</p>
 <p>Each scan step uses <code>continue-on-error</code>, so both platforms always get
