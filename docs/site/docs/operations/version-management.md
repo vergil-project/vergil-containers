@@ -91,14 +91,21 @@ cannot merge undocumented.** A companion `generate_catalog.py --check` fails if
 
 Most package-manager tools (installed via `npm`, `pip`, `uv`, `go install`,
 `cargo`) were **freed** in the pin audit: dropping the version token lets them
-resolve latest at build time, so they float cleanly and need no entry.
+resolve latest at build time, so they float cleanly and need no entry. The Rust
+validation tools are the exception: epic
+[vergil-project/.github#1165](https://github.com/vergil-project/.github/issues/1165)
+pinned them again, reversing the #418 free for them, so an upstream release
+cannot change a repo's validation verdict unreviewed.
 
-Twelve tools install from a **binary release download** whose URL and
+Thirteen tools install from a **binary release download** whose URL and
 per-version checksum embed an explicit version, so they cannot float by simply
 dropping a token. Rather than add an unauthenticated GitHub version-resolution
 round-trip to every image build, these are **auto-managed**: shellcheck, shfmt,
 actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, trivy, yq, uv (the
-package toolchain images only) and cargo-nextest (the rust image only).
+package toolchain images only), and cargo-nextest and cargo-deny (the rust
+image only). cargo-llvm-cov (the rust image only) is auto-managed the same way,
+through its `ARG CARGO_LLVM_COV_VERSION=` pin, though it is built from
+crates.io with `cargo install --locked` rather than downloaded.
 
 They stay pinned in source (hermetic, reproducible, revertible) while the daily
 `upstream-refresh` job in
@@ -114,7 +121,7 @@ tracks the leading edge:
   `get.nexte.st/latest/linux` redirect instead, since its repository also
   publishes other crates' releases), rewrites the `ARG *_VERSION=` pins in
   `docker/common/*`, and regenerates `CATALOG.md`. For a prebuilt tool whose
-  digests are pinned in source (cargo-nextest, `TOOL_DIGESTS`), it also reads
+  digests are pinned in source (cargo-nextest, cargo-deny, `TOOL_DIGESTS`), it also reads
   each architecture's sha256 from the release's checksum files and rewrites
   the `ARG *_SHA256_AMD64=` and `_ARM64=` lines in the same run. The lookups
   all finish before anything is written, so a missing or malformed checksum

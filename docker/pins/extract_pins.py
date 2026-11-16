@@ -24,7 +24,8 @@ _PATTERNS = [
     # go install <module-path>[/vN]@vX.Y.Z — the tool is the last path segment
     # before the (optional) /vN major-version suffix, not "cmd" or "vN".
     (re.compile(r"go install\s+\S*?/([a-zA-Z0-9._-]+)(?:/v\d+)?@v(\d+\.\d+\.\d+)\b"), 1, 2),
-    # cargo install cargo-deny@0.19.6
+    # cargo install cargo-llvm-cov@0.9.1  (a literal version; the rust image's
+    # cargo-llvm-cov fragment pins its version through an ARG, matched above)
     (re.compile(r"cargo install\s+([a-z0-9-]+)@(\d+\.\d+\.\d+)\b"), 1, 2),
     # npm install -g markdownlint-cli@0.48.0
     (re.compile(r"npm install -g\s+([a-z0-9@/-]+)@(\d+\.\d+\.\d+)\b"), 1, 2),
