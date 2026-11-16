@@ -76,9 +76,14 @@ ENV RUST_VERSION=${TOOLCHAIN_VERSION} \
     RUSTUP_AUTO_INSTALL=0
 
 # --- Rust tools --------------------------------------------------------------
-RUN cargo install cargo-deny && \
-    cargo install cargo-llvm-cov && \
-    rm -rf /usr/local/cargo/registry
+# The validation tools, each pinned in its own fragment and floated by the daily
+# upstream refresh (docker/pins/pins.yml; epic vergil-project/.github#1165,
+# spec §6.3): cargo-deny and cargo-nextest from prebuilt release tarballs
+# verified against SHA-256 digests pinned in source, cargo-llvm-cov built from
+# crates.io at its pinned version with --locked.
+# @include common/cargo-deny.dockerfile
+
+# @include common/cargo-llvm-cov.dockerfile
 
 # @include common/cargo-nextest.dockerfile
 
