@@ -58,9 +58,9 @@ def auto_managed_behind(
     *supposed* to move. Folding the two together would conflate "this pin's
     justification may have expired" with "this pin is merely behind".
 
-    Behind means the daily bumper's PR has not been merged (it is never
-    auto-merged — #435 keeps a human merge gate), so nothing has carried the new
-    version into the images. Unresolvable or unparseable versions are skipped:
+    Behind means the daily bumper's PR has not merged (it merges itself once CI
+    passes, epic vergil-project/.github#1168, so the run failed or its PR did not
+    merge), so nothing has carried the new version into the images. Unresolvable or unparseable versions are skipped:
     unknowns never raise a false alarm. Returns (tool, pinned, latest)."""
     out = []
     for tool, meta in pins.items():
@@ -113,9 +113,10 @@ def render(root: Path, latest: dict[str, str], installed: dict[str, dict[str, st
     ] or ["- none\n"]
     lines.append("\n## Auto-managed tools behind the leading edge\n")
     lines.append(
-        "> These float via the daily `upstream-refresh` job in `ops.yml`, which opens a PR "
-        "but never auto-merges (#435). Anything listed here means a bump PR is "
-        "waiting on a human — check for an open `upstream-refresh` PR.\n"
+        "> These float via the daily `upstream-refresh` job in `ops.yml` (#435), whose "
+        "PR merges itself once CI passes (epic vergil-project/.github#1168). Anything "
+        "listed here means the bump has not landed: check the job's latest run, and any "
+        "open PR on an `automation/upstream-refresh/` branch.\n"
     )
     lines += [
         f"- **{t}** — pinned {have}, upstream {newest}; the bump has not landed."

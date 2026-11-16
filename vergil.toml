@@ -28,9 +28,50 @@ vergil = "v2.1"
 extra-allowed-patterns = ["dataaxiom/ghcr-cleanup-action@*"]
 
 [upstream-refresh]
-# The daily leading-edge bump of the auto-managed binary tools (#435), run by
-# vrg-upstream-refresh from the upstream-refresh job in .github/workflows/ops.yml.
-# The hook only
-# edits the pins and the catalog; the command opens, refreshes or closes the one
-# PR on the `upstream-refresh` branch, and a human merges it.
+# The daily refresh of the upstream pins (#435, epic vergil-project/.github#649),
+# run by vrg-upstream-refresh from the upstream-refresh job in
+# .github/workflows/ops.yml. The hook moves the auto-managed binary tools and the
+# language toolchain pins to their newest releases and regenerates what they
+# feed. vrg-upstream-refresh opens the PR on an automation/upstream-refresh/
+# branch, and the job merges it once CI passes (epic vergil-project/.github#1168).
 hook = "docker/pins/upstream-refresh.sh"
+# The path fence's allowlist: exactly the data files the hook writes, and no
+# others. The fence always refuses .github/**, whatever is listed here.
+#
+# - docker/common/* (resolve_latest.py): only `ARG <TOOL>_VERSION=` and
+#   `ARG <TOOL>_SHA256_AMD64=` or `_ARM64=` lines may change, and no version may
+#   go down. No anchor: no fragment has a FROM, and none declares an ARG twice,
+#   so every versioned key is unique in its file. If a fragment ever repeats
+#   one, the fence refuses the change as ambiguous, and the rule then needs an
+#   anchor.
+# - docker/pins/workflow-images.txt (resolve_latest.py): `<NAME>_VERSION=x.y.z`
+#   lines, no version going down.
+# - docker/pins/toolchains.yml (resolve_toolchains.py): the file repeats
+#   `version`, `release` and the hashes once per series, so each series key
+#   (`"3.15":`) and the `rustup-init:` tool key is an anchor, naming the block
+#   whose versioned lines follow it. `version` and the python `release` may
+#   not go down within their block, and each hash is 64 hex digits. Series keys
+#   are unique across the families today; two families sharing one would make
+#   their pins ambiguous, which the fence refuses.
+# - docker/versions/matrix.json (generate.py) and docker/pins/CATALOG.md
+#   (generate_catalog.py): exact paths, regenerated from the pins.
+#
+# generate.py also renders window.json, docker/build.sh, the Dockerfile
+# templates' ARG defaults, the README and docs version tables and two workflow
+# package lists, but from docker/versions/manifest.yml, which the hook never
+# edits, so they are deliberately left out. The hook script and its resolvers
+# and generators (docker/pins/*.sh, docker/pins/*.py, docker/versions/*.py) are
+# never listed.
+#
+# What the fence relies on (epic vergil-project/.github#1168, spec section 6.2):
+# check_pins.py and `generate.py --check` (matrix.json must equal what
+# manifest.yml and toolchains.yml generate) run in PR CI's `quality / custom`
+# job (scripts/bin/validate-custom), which `quality / evidence`, a required
+# status check on develop, needs.
+paths = [
+  { path = "docker/common/*", lines = '^ARG [A-Z0-9_]+_(VERSION=(?P<version>\d+(\.\d+)*)|SHA256_(AMD64|ARM64)=[0-9a-f]{64})$' },
+  { path = "docker/pins/workflow-images.txt", lines = '^[A-Z0-9_]+_VERSION=(?P<version>\d+(\.\d+)*)$' },
+  { path = "docker/pins/toolchains.yml", lines = '^( {2,4}(?P<anchor>"\d+(\.\d+)?"|rustup-init):| {4,6}version: "(?P<version>\d+(\.\d+)*)"| {6}release: "(?P<version_release>\d{8})"| {4,6}sha256:| {6,8}(amd64|arm64): "[0-9a-f]{64}")$' },
+  "docker/versions/matrix.json",
+  "docker/pins/CATALOG.md",
+]
