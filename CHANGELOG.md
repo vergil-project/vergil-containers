@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.43] - 2026-11-16
+
+### Bug fixes
+
+- run reap-aliases after cleanup so the two never race on a package (#911)
+- run the images' auto-managed Trivy in the CI and publish gates (#915)
+- resolve every pinned tool in the pin-exposure report (#916)
+
+### CI
+
+- move the image build's registry service to 3.x under a managed pin (#919)
+
+### Chores
+
+- sync the managed files with the released templates (#909)
+
+### Documentation
+
+- use the versioned /latest/ path in links to Vergil docs sites (#923)
+
+### Features
+
+- make live deletion the default and retire the dry-run gate (#912)
+- pin prebuilt tool digests in source and verify cargo-nextest against them (#920)
+- pin cargo-deny and cargo-llvm-cov through refreshed fragments (#922)
+
 ## [2.1.42] - 2026-11-15
 
 ### Bug fixes
