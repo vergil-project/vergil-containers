@@ -3379,6 +3379,24 @@ day of the check.</p>
   <a href="https://github.com/vergil-project/.github/issues/1165">vergil-project/.github#1165</a>,
   spec §6.3). A release with no checksum, or a bad one, for either
   architecture fails the refresh, which then writes nothing.</li>
+<li><code>cargo-deny</code> follows the same pattern. Its fragment,
+  <code>docker/common/cargo-deny.dockerfile</code>, installs the release's
+  <code>&lt;arch&gt;-unknown-linux-musl</code> tarball and checks it against
+  <code>CARGO_DENY_SHA256_AMD64</code> or <code>_ARM64</code>, pinned beside
+  <code>CARGO_DENY_VERSION</code>. The refresh writes the digests from the release's
+  per-asset <code>.tar.gz.sha256</code>.</li>
+<li><code>cargo-llvm-cov</code>'s release assets have no checksum files, and their names
+  carry no version, so it is built from crates.io instead. Its fragment,
+  <code>docker/common/cargo-llvm-cov.dockerfile</code>, runs
+  <code>cargo install --locked cargo-llvm-cov@${CARGO_LLVM_COV_VERSION}</code>. Cargo
+  checks the crate against the crates.io index's checksum, and <code>--locked</code>
+  builds it from its published lockfile. The refresh moves
+  <code>CARGO_LLVM_COV_VERSION</code> like any other auto-managed pin.</li>
+<li>All three are validation tools: they decide whether a Rust repo passes its
+  gate. So each one is pinned and refreshed through reviewed pull requests,
+  never installed at whatever version is latest on the day of the build.
+  This reverses the WS2 audit (#418), which had left the <code>cargo install</code>
+  tools unpinned; <code>docker/pins/pins.yml</code> records the reversal and the reason.</li>
 <li>Rust has the fastest cadence of any supported language, a new stable release
   every six weeks. That is where an automated add and drop pull request saves
   the most effort.</li>
