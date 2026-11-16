@@ -24,7 +24,10 @@ spec §6.3), and the image build verifies against those, not against a
 checksum it downloads. `--write`
 resolves them from the release's checksum files at the version it writes and
 writes versions and digests together, all or nothing, so a refresh PR shows
-every digest change beside its version change.
+every digest change beside its version change. A digest change with no version
+change (a published release's files changed) raises `ResolutionError` and
+writes nothing: refresh PRs merge themselves (epic vergil-project/.github#1168),
+so such a change is never left for a human to spot in the PR.
 
 **Fail loud.** Any resolution failure raises `ResolutionError` — there is no
 silent fallback that would let a broken lookup masquerade as "no change".
@@ -467,12 +470,22 @@ def write(docker_root: Path, resolved: dict[str, str],
           digests: dict[str, dict[str, str]]) -> tuple[dict[str, tuple[str, str]], list[str]]:
     """Write the resolved versions (rewrite_args) and digests (rewrite_digests)
     together, all or nothing: if any rewrite fails, every fragment is restored
-    to what it held before and the error propagates. Returns the version
-    changes and the tools whose digests changed."""
+    to what it held before and the error propagates. A tool whose digests
+    change while its version does not raises ResolutionError the same way: a
+    published release's files never change, and a refresh PR merges itself,
+    so a human looks into the release before the pins move. Returns the
+    version changes and the tools whose digests changed."""
     before = {frag: frag.read_text() for frag in _fragment_files(docker_root)}
     try:
         changed = rewrite_args(docker_root, resolved)
         redigested = sorted(tool for tool, d in digests.items() if rewrite_digests(docker_root, tool, d))
+        unversioned = [tool for tool in redigested if tool not in changed]
+        if unversioned:
+            raise ResolutionError(
+                "; ".join(f"{tool} {resolved[tool]}" for tool in unversioned)
+                + ": upstream now lists different release checksums for a version that is already pinned."
+                " A published release's files should never change: check the upstream release before"
+                " moving these digests by hand")
     except BaseException:
         for frag, text in before.items():
             frag.write_text(text)
@@ -508,11 +521,6 @@ def main(argv: list[str], docker_root: Path | None = None,
         print(f"bumped {tool}: {old} -> {new}")
     for tool in redigested:
         print(f"pinned {tool} {resolved[tool]} digests")
-        if tool not in changed:
-            # The release's assets changed under an unchanged version: the
-            # refresh PR shows the digest change alone, for a human to check.
-            print(f"::warning::{tool} {resolved[tool]}: its release checksums changed with no "
-                  "version change; check the release before merging", file=sys.stderr)
     return 0
 
 

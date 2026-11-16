@@ -126,7 +126,10 @@ tracks the leading edge:
   the `ARG *_SHA256_AMD64=` and `_ARM64=` lines in the same run. The lookups
   all finish before anything is written, so a missing or malformed checksum
   fails the refresh, naming the tool and the architecture, with no fragment
-  changed.
+  changed. So does a digest change with no version change: a published
+  release's files never change, and the refresh PR merges itself, so the
+  refresh stops, naming the tool and the version, for a human to look into
+  the upstream release before moving the digests by hand.
 - The hook runs in a job that holds no secrets. A second job checks its patch
   against the **path fence**, the `[upstream-refresh].paths` allowlist in
   [`vergil.toml`](https://github.com/vergil-project/vergil-containers/blob/develop/vergil.toml):

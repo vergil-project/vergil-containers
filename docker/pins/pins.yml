@@ -73,7 +73,8 @@ pins:
   # dropping a token. #435 makes them
   # AUTO-MANAGED: they stay pinned in source (hermetic,
   # reproducible, revertible) while the daily `upstream-refresh` job in `ops.yml` tracks the
-  # leading edge via the /releases/latest redirect and opens a reviewed bump PR.
+  # leading edge via the /releases/latest redirect and opens a bump PR that
+  # merges itself once CI passes (epic vergil-project/.github#1168).
   # inducing_release is null (not a Tenet-6 break-hold) and the constraint is
   # descriptive, not a hard-coded version — the version-of-record lives in the
   # template (extract_pins reads it). govulncheck FREED under #422 (installs via
