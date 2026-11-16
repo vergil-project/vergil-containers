@@ -463,11 +463,22 @@ jobs:
       - name: Install vergil-tooling
         uses: vergil-project/vergil-actions/actions/shared/setup/vergil@v2.1
 
+      # Both scans run the images' own Trivy, read from its auto-managed pin,
+      # so the gate moves with every upstream-refresh bump and never names a
+      # version itself (vergil-containers#855).
+      - name: Resolve the Trivy image
+        id: trivy-image
+        run: |
+          set -euo pipefail
+          image="$(python3 docker/pins/workflow_images.py trivy-image)"
+          printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"
+
       - name: Trivy scan (amd64)
         id: trivy-amd64
         continue-on-error: true
         uses: vergil-project/vergil-actions/actions/shared/security/trivy@v2.1
         with:
+          trivy-image: ${{ steps.trivy-image.outputs.image }}
           scan-type: image
           scan-ref: ${{ env.CANDIDATE }}
           exit-code: "1"
@@ -480,7 +491,7 @@ jobs:
         id: trivy-arm64
         continue-on-error: true
         env:
-          TRIVY_IMAGE: aquasec/trivy:0.72.0
+          TRIVY_IMAGE: ${{ steps.trivy-image.outputs.image }}
         run: scripts/bin/trivy-image-scan "$CANDIDATE" linux/arm64 trivy-arm64.sarif
 
       # Skipped when the scan errored and wrote no report; the gate reports that.

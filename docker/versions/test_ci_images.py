@@ -24,6 +24,7 @@ import yaml
 
 import frozen
 import generate as g
+import workflow_images
 from test_generate import _tree
 from test_includes import _synthetic_repo
 
@@ -166,9 +167,19 @@ def test_build_runs_the_build_script_with_its_entries():
     assert step["env"]["ENTRIES_JSON"] == "${{ toJSON(matrix.entries) }}"
     # One date for the run, from select, so both architectures share it.
     assert step["env"]["UPGRADE_DATE"] == "${{ needs.select.outputs.upgrade-date }}"
-    # The publish pipeline's Trivy image, so PR CI scans as publish does.
-    publish = (WORKFLOWS / "cd-docker-publish.yml").read_text()
-    assert f"TRIVY_IMAGE: {step['env']['TRIVY_IMAGE']}" in publish
+    # The images' own Trivy, resolved once by select (vergil-containers#855).
+    assert step["env"]["TRIVY_IMAGE"] == "${{ needs.select.outputs.trivy-image }}"
+
+
+def test_select_resolves_the_images_trivy(tmp_path):
+    # vergil-containers#855: the gate runs the Trivy the images ship, read from
+    # its auto-managed pin, never a version the workflow names itself.
+    assert _job("select")["outputs"]["trivy-image"] == "${{ steps.trivy-image.outputs.image }}"
+    out = tmp_path / "out"
+    out.write_text("")
+    result = _bash(_step("select", "trivy-image")["run"], frozen.LIVE_ROOT, {"GITHUB_OUTPUT": str(out)})
+    assert result.returncode == 0, result.stderr
+    assert _outputs(out) == {"image": workflow_images.trivy_image(frozen.LIVE_ROOT / "docker")}
 
 
 def test_evidence_runs_whatever_the_builds_did():
@@ -247,9 +258,8 @@ def test_emit_uploads_the_images_gate_with_the_report():
     assert emit["with"]["gate"] == "images"
     assert emit["with"]["files"] == "${{ steps.report.outputs.path }}"
     assert emit["with"]["metrics"] == "${{ steps.report.outputs.metrics }}"
-    tools = json.loads(emit["with"]["tools"])
-    trivy = next(t for t in tools if t["name"] == "trivy")
-    assert trivy["image"] == _step("build", "Build, scan and smoke-test")["env"]["TRIVY_IMAGE"]
+    # The report step names the Trivy image the build ran (see _report below).
+    assert emit["with"]["tools"] == "${{ steps.report.outputs.tools }}"
 
 
 def test_report_reads_the_select_and_build_results():
@@ -260,16 +270,22 @@ def test_report_reads_the_select_and_build_results():
         "BUILD_RESULT": "${{ needs.build.result }}",
         "MATRIX": "${{ needs.select.outputs.matrix }}",
         "JOBS": "${{ needs.select.outputs.arch-matrix }}",
+        # The same output the build's TRIVY_IMAGE is, so the evidence names the
+        # scanner that gated the images.
+        "TRIVY_IMAGE": "${{ needs.select.outputs.trivy-image }}",
         "REPORT_DIR": "${{ runner.temp }}/images-report",
     }
 
 
-def _report(tmp_path, has, build, matrix, jobs):
+TRIVY_IMAGE = "ghcr.io/aquasecurity/trivy:9.8.7"
+
+
+def _report(tmp_path, has, build, matrix, jobs, trivy=TRIVY_IMAGE):
     out = tmp_path / "out"
     out.write_text("")
     env = {"SELECT_RESULT": "success", "HAS": has, "BUILD_RESULT": build,
-           "MATRIX": matrix, "JOBS": jobs, "REPORT_DIR": str(tmp_path / "report"),
-           "GITHUB_OUTPUT": str(out)}
+           "MATRIX": matrix, "JOBS": jobs, "TRIVY_IMAGE": trivy,
+           "REPORT_DIR": str(tmp_path / "report"), "GITHUB_OUTPUT": str(out)}
     return _bash(_step("evidence", "report")["run"], tmp_path, env), out
 
 
@@ -289,6 +305,7 @@ def test_report_of_a_build_lists_what_was_selected_and_each_job(tmp_path):
                  {"name": "go:1.26", "arch": "arm64", "runner": RUNNERS["arm64"], "result": "success"}],
     }
     assert json.loads(outputs["metrics"]) == {"selected": 1, "jobs": 2, "build": "success"}
+    assert json.loads(outputs["tools"]) == [{"name": "docker-buildx"}, {"name": "trivy", "image": TRIVY_IMAGE}]
 
 
 def test_report_is_written_when_nothing_was_selected(tmp_path):
@@ -308,6 +325,14 @@ def test_report_is_written_when_nothing_was_selected(tmp_path):
 def test_report_fails_on_malformed_select_outputs(tmp_path, matrix, jobs):
     result, out = _report(tmp_path, "false", "skipped", matrix, jobs)
     assert result.returncode != 0
+    assert out.read_text() == ""
+
+
+def test_report_fails_without_the_trivy_image(tmp_path):
+    empty = '{"include":[]}'
+    result, out = _report(tmp_path, "false", "skipped", empty, empty, trivy="")
+    assert result.returncode != 0
+    assert result.stdout.startswith("::error title=No Trivy image::")
     assert out.read_text() == ""
 
 

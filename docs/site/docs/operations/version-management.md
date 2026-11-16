@@ -125,6 +125,19 @@ tracks the leading edge:
 This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy `0.70.0 → 0.72.0` security bump landed through the bumper.
 
+### Tool images in workflows
+
+The refresh rewrites only the Dockerfile fragments, and its App token has no
+`workflows` permission, so it can never move a version written into a
+workflow. A workflow therefore never pins a tool image itself: the CI and
+publish Trivy gates read the images' own Trivy from its auto-managed pin
+(`docker/pins/workflow_images.py trivy-image`). The gate
+`docker/pins/workflow_images.py check`, run by `scripts/bin/validate-custom`,
+fails on any image a workflow pins by a literal version or digest unless it is
+declared, with why it is accepted, in that script's `UNMANAGED` map (today only
+PR CI's job-local `registry` service), and on a declaration no workflow uses
+any more (issue #855).
+
 ## Language toolchain pins
 
 The language images download their toolchain rather than install it from a
