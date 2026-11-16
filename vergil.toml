@@ -64,8 +64,9 @@ hook = "docker/pins/upstream-refresh.sh"
 # never listed.
 #
 # What the fence relies on (epic vergil-project/.github#1168, spec section 6.2):
-# check_pins.py and `generate.py --check` (matrix.json must equal what
-# manifest.yml and toolchains.yml generate) run in PR CI's `quality / custom`
+# check_pins.py, `generate.py --check` (matrix.json must equal what
+# manifest.yml and toolchains.yml generate) and `generate_catalog.py --check`
+# (CATALOG.md must equal what the pins generate) run in PR CI's `quality / custom`
 # job (scripts/bin/validate-custom), which `quality / evidence`, a required
 # status check on develop, needs.
 paths = [
