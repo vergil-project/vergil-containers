@@ -3429,6 +3429,14 @@ that date is on or before the day of the check.</p>
   proposing an add. It reads the index with the same fetcher the refresh uses.</li>
 <li>endoflife.date's <code>lts</code> field is either a date or <code>false</code>, and the adapter
   must handle both.</li>
+<li>The image carries only two TypeScript tools of its own, prettier and
+  license-checker. <code>typescript</code>, <code>eslint</code>, <code>typescript-eslint</code>, <code>vitest</code> and
+  <code>@vitest/coverage-v8</code> are not in the image: each TypeScript repository
+  declares them as devDependencies, and Vergil's gates run them from the
+  repository's <code>node_modules/.bin</code>, never from a global install. The rule is
+  vergil-tooling's
+  <a href="https://vergil-project.github.io/vergil-tooling/latest/standards/development/tool-ownership/">Tool Ownership Guideline</a>;
+  the image's full tool list is under <a href="../../images/">Images</a>.</li>
 <li>The separate Node.js pin in <code>vergil-vm</code> must line up with this window.</li>
 </ul>
 <h2 id="deployed-runtime-package">Deployed runtime package<a class="headerlink" href="#deployed-runtime-package" title="Permanent link">&para;</a></h2>
