@@ -91,14 +91,21 @@ cannot merge undocumented.** A companion `generate_catalog.py --check` fails if
 
 Most package-manager tools (installed via `npm`, `pip`, `uv`, `go install`,
 `cargo`) were **freed** in the pin audit: dropping the version token lets them
-resolve latest at build time, so they float cleanly and need no entry.
+resolve latest at build time, so they float cleanly and need no entry. The Rust
+validation tools are the exception: epic
+[vergil-project/.github#1165](https://github.com/vergil-project/.github/issues/1165)
+pinned them again, reversing the #418 free for them, so an upstream release
+cannot change a repo's validation verdict without a pinned source change.
 
-Twelve tools install from a **binary release download** whose URL and
+Thirteen tools install from a **binary release download** whose URL and
 per-version checksum embed an explicit version, so they cannot float by simply
 dropping a token. Rather than add an unauthenticated GitHub version-resolution
 round-trip to every image build, these are **auto-managed**: shellcheck, shfmt,
 actionlint, git-cliff, hadolint, opentofu, nfpm, scorecard, trivy, yq, uv (the
-package toolchain images only) and cargo-nextest (the rust image only).
+package toolchain images only), and cargo-nextest and cargo-deny (the rust
+image only). cargo-llvm-cov (the rust image only) is auto-managed the same way,
+through its `ARG CARGO_LLVM_COV_VERSION=` pin, though it is built from
+crates.io with `cargo install --locked` rather than downloaded.
 
 They stay pinned in source (hermetic, reproducible, revertible) while the daily
 `upstream-refresh` job in
@@ -114,28 +121,42 @@ tracks the leading edge:
   `get.nexte.st/latest/linux` redirect instead, since its repository also
   publishes other crates' releases), rewrites the `ARG *_VERSION=` pins in
   `docker/common/*`, and regenerates `CATALOG.md`. For a prebuilt tool whose
-  digests are pinned in source (cargo-nextest, `TOOL_DIGESTS`), it also reads
+  digests are pinned in source (cargo-nextest, cargo-deny, `TOOL_DIGESTS`), it also reads
   each architecture's sha256 from the release's checksum files and rewrites
   the `ARG *_SHA256_AMD64=` and `_ARM64=` lines in the same run. The lookups
   all finish before anything is written, so a missing or malformed checksum
   fails the refresh, naming the tool and the architecture, with no fragment
-  changed.
-- **Only if something drifted** it opens one bump PR from the fixed
-  `upstream-refresh` branch, titled `chore(upstream): refresh upstream inputs`
-  and authored by the GitHub App (so the PR fires CI and every bump is
-  validated). A later run refreshes that PR in place rather than opening
-  another, and a run with nothing to bump closes a stale one. **Nothing is
-  auto-merged**: upstream-refresh PRs keep a human merge gate (only the
-  automation App's sync PRs on `automation/*` branches merge themselves).
+  changed. So does a digest change with no version change: a published
+  release's files never change, and the refresh PR merges itself, so the
+  refresh stops, naming the tool and the version, for a human to look into
+  the upstream release before moving the digests by hand.
+- The hook runs in a job that holds no secrets. A second job checks its patch
+  against the **path fence**, the `[upstream-refresh].paths` allowlist in
+  [`vergil.toml`](https://github.com/vergil-project/vergil-containers/blob/develop/vergil.toml):
+  only the pin lines of `docker/common/*`, `docker/pins/workflow-images.txt`
+  and `docker/pins/toolchains.yml` may change, no pinned version may go down,
+  and the generated `docker/versions/matrix.json` and `CATALOG.md` may be
+  rewritten. Nothing under `.github/` may change. A patch that breaks a rule
+  fails the run, naming the file and the rule, and nothing is pushed.
+- **Only if something drifted** it opens one bump PR on a new
+  `automation/upstream-refresh/<run-id>` branch, titled
+  `chore(upstream): refresh upstream inputs` and authored by the org
+  automation App (so the PR fires CI and every bump is validated). It closes
+  an earlier run's open refresh PR first. **The PR merges itself** once its
+  CI passes, with no human merge (epic
+  [vergil-project/.github#1168](https://github.com/vergil-project/.github/issues/1168)).
+  PR CI is the gate: `quality / evidence`, a required check, needs
+  `quality / custom`, which runs `check_pins.py` and `generate.py --check`.
+  A run whose PR did not merge, or that failed, is a red scheduled run.
 
 This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy `0.70.0 → 0.72.0` security bump landed through the bumper.
 
 ### Tool images in workflows
 
-The refresh rewrites only the Dockerfile fragments, and its App token has no
-`workflows` permission, so it can never move a version written into a
-workflow. A workflow therefore never pins a tool image itself: the CI and
+The refresh rewrites only the data files its path fence allows, and the fence
+always refuses any change under `.github/`, so it can never move a version
+written into a workflow. A workflow therefore never pins a tool image itself: the CI and
 publish Trivy gates read the images' own Trivy from its auto-managed pin
 (`docker/pins/workflow_images.py trivy-image`).
 

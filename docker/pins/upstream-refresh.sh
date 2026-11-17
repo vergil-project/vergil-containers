@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # upstream-refresh.sh — the [upstream-refresh].hook for vergil-containers.
 #
-# vrg-upstream-refresh runs this from the repo root on a clean checkout of the
-# base branch (vergil.toml points at it; epic vergil-project/.github#472).
+# vrg-upstream-refresh runs this from the repo root on a fresh clone of
+# develop, in the prepare job, which holds no secrets (vergil.toml points at
+# it; epics vergil-project/.github#472 and vergil-project/.github#1168).
 # It moves the auto-managed binary-download tools to their leading edge, and
 # each language toolchain pin to the newest patch of its series:
 #
 #   1. resolve_latest.py --write rewrites the `ARG *_VERSION=` pins in
 #      docker/common/* to each tool's newest release (#435), and, for a tool
-#      whose digests are pinned in source (cargo-nextest), its
+#      whose digests are pinned in source (cargo-nextest, cargo-deny), its
 #      `ARG *_SHA256_<ARCH>=` lines to that release's checksums, all or
 #      nothing (epic vergil-project/.github#1165); and the workflow image
 #      pins in docker/pins/workflow-images.txt to theirs, refusing with an

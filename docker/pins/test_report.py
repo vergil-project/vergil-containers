@@ -205,6 +205,18 @@ def test_report_renders_behind_section():
     assert "## Auto-managed tools behind the leading edge" in md
 
 
+def test_behind_note_points_at_the_self_merging_refresh():
+    # Refresh PRs merge themselves once CI passes (epic
+    # vergil-project/.github#1168), on automation/upstream-refresh/<run-id>
+    # branches, so a tool still behind means a run that failed or did not merge.
+    md = r.render(DOCKER, latest={}, installed={})
+    note = md.split("## Auto-managed tools behind the leading edge\n", 1)[1].split("\n- ", 1)[0]
+    assert "merges itself once CI passes" in note
+    assert "`automation/upstream-refresh/`" in note
+    assert "never auto-merges" not in note
+    assert "waiting on a human" not in note
+
+
 def test_image_matrix_is_read_from_the_version_manifest():
     images = _frozen_image_matrix()
     assert images[0] == "prod-base:latest"

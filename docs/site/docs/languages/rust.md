@@ -10,6 +10,11 @@ lifecycle](lifecycle.md). Upstream facts on this page were checked on
   policy](https://www.rust-lang.org/policies/security) and the Rust book's
   [How Rust is Made](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html)
   appendix.
+- **Rust release channel:** the stable channel manifest,
+  [`channel-rust-stable.toml`](https://static.rust-lang.org/dist/channel-rust-stable.toml),
+  names the current stable release. The [release
+  notes](https://doc.rust-lang.org/stable/releases.html) list each release
+  with its date.
 - **endoflife.date product:** `rust` ([page](https://endoflife.date/rust),
   [API](https://endoflife.date/api/rust.json)).
 
@@ -22,9 +27,10 @@ Data, from those pages:
   EOL, so "each version is supported for six weeks".
 - endoflife.date lists 1.99 (released 2026-10-01) as the only supported
   release, and 1.98 (released 2026-08-20) as EOL on 2026-10-01.
-- The Rust release channel's stable manifest already carries 1.100, which
-  endoflife.date does not list yet. The window is read from endoflife.date,
-  so 1.100 joins it once endoflife.date lists it.
+- The Rust release channel's stable manifest, dated 2026-11-12, already
+  carries 1.100, which endoflife.date did not list yet. endoflife.date lags
+  Rust's own releases, so the lifecycle check takes new series from the
+  stable channel (see [Adapter quirks](#adapter-quirks)).
 
 ## Support rule
 
@@ -40,15 +46,27 @@ support a version upstream has stopped supporting) for at most one release
 cycle. That is accepted because the older version was supported until the day
 the newer one shipped.
 
-On 2026-11-15, read from endoflife.date, that is 1.99 and 1.98.
+On 2026-11-15, read from the stable channel, that is 1.100 and 1.99.
 
 ## What counts as GA
 
 The stable `1.N.0` release. Beta and nightly builds are pre-releases and never
-GA. In endoflife.date, a cycle is GA once its `releaseDate` is on or before the
-day of the check.
+GA. A series is GA once its release date is on or before the day of the check:
+endoflife.date's `releaseDate` for a cycle it lists, otherwise the `date` of
+the `1.N.0` release's channel manifest.
 
 ## Adapter quirks
+
+- New series come from Rust's stable channel, not from endoflife.date, which
+  can lag a release by days. The adapter reads the stable channel's release
+  and adds every series after endoflife.date's newest cycle, up to the stable
+  one, with its `.0` release's channel manifest `date` as its GA date.
+  endoflife.date stays the cross-check and the source of every other date. A
+  cycle it lists as newer than the stable release and dated on or before it
+  contradicts the channel, and the check fails for Rust. A newer cycle dated
+  after the stable release has not shipped, and is left out. The channel
+  manifests are read with the toolchain pins' own fetchers in
+  `docker/pins/resolve_toolchains.py`.
 
 - The image is built on `base`, with `RUST_VERSION` (the series) as the build
   argument. It installs the series' exact Rust release, pinned in
@@ -82,8 +100,9 @@ day of the check.
   builds it from its published lockfile. The refresh moves
   `CARGO_LLVM_COV_VERSION` like any other auto-managed pin.
 - All three are validation tools: they decide whether a Rust repo passes its
-  gate. So each one is pinned and refreshed through reviewed pull requests,
-  never installed at whatever version is latest on the day of the build.
+  gate. So each one is pinned in source and moved only by the daily upstream
+  refresh, in a fenced PR that merges itself once CI passes, never installed
+  at whatever version is latest on the day of the build.
   This reverses the WS2 audit (#418), which had left the `cargo install`
   tools unpinned; `docker/pins/pins.yml` records the reversal and the reason.
 - Rust has the fastest cadence of any supported language, a new stable release
@@ -114,10 +133,11 @@ and is merged by a human.
 
 ## Current out-of-policy versions
 
-As of 2026-11-15: **none.** The manifest builds 1.99 and 1.98, the two newest
-releases endoflife.date lists, so the window is in sync with it. The stable
-channel already carries 1.100 (see the data above); it enters the window
-through a lifecycle pull request once endoflife.date lists it.
+As of 2026-11-15: the manifest builds 1.99 and 1.98, the two newest releases
+endoflife.date lists. The stable channel already carries 1.100 (see the data
+above), so the window is 1.100 and 1.99: 1.100 is missing and 1.98 is out of
+policy until the lifecycle pull requests that add 1.100 and drop 1.98 are
+merged.
 
 Under `pr` automation, a new release is added and a version that leaves the
 window is dropped through a lifecycle pull request, so the manifest is out of
