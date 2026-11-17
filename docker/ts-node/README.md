@@ -55,18 +55,27 @@ which `docker/build.sh` reads, is generated from it.
 - **`docker/ts-node/checks.sh`** — the build-time checks, the template's last
   `RUN`: `base`'s invariants, the two `base` defaults the image keeps (`python3`
   is the core Python, no `pip`), the family Node's release and paths, `npm root
-  -g`, the `markdownlint` wrapper on the core Node, and the TypeScript tools.
+  -g`, the `markdownlint` wrapper on the core Node, and the image's TypeScript
+  tools (`prettier`, `license-checker`).
 - **`common/typescript-analysis.dockerfile`** — the shared, runtime-agnostic
-  analysis toolset every TypeScript image carries (`typescript`/`tsc`, `eslint` +
-  `typescript-eslint`, `prettier`, `vitest` + `@vitest/coverage-v8`,
-  `license-checker`). This is plan T1's "shared base layer" ("Dockerfile.base"),
+  TypeScript tools every TypeScript image carries: `prettier` and
+  `license-checker`. `typescript`, `eslint`, `typescript-eslint`, `vitest` and
+  `@vitest/coverage-v8` are not in the image: each repository declares them,
+  and Vergil's gates run them from its `node_modules/.bin`, under vergil-tooling's
+  [Tool Ownership Guideline](https://vergil-project.github.io/vergil-tooling/latest/standards/development/tool-ownership/)
+  (epic [vergil-project/.github#1174](https://github.com/vergil-project/.github/issues/1174)).
+  This is plan T1's "shared base layer" ("Dockerfile.base"),
   expressed as an `@include` fragment because language images in this repo
   compose fragments rather than `FROM`-chaining a locally-built base image. The
   node-22 second image (T2) includes the same fragment.
 - **`docker/ts-node/smoke/`** + **`docker/ts-node/smoke-test.sh`** — the trivial
-  `package.json` + `tsconfig.json` + Vitest project used as the build-time smoke
-  check: `npm ci`, `tsc --noEmit`, and one `vitest run` under the image. Shared
-  across the node-24 and node-22 images.
+  `package.json` + `tsconfig.json` + ESLint + Vitest project used as the
+  build-time smoke check. The project declares the repo-side tools; the check
+  asserts `tsc`, `eslint` and `vitest` are not on the image's `PATH`, runs
+  `npm ci --ignore-scripts`, then `tsc --noEmit`, `eslint .` and one
+  `vitest run --coverage` from `node_modules/.bin`, and the image's `prettier`
+  and `license-checker` on the project. Shared across the node-24 and node-22
+  images.
 
 Images are named `dev-ts-node:<major>` / `prod-ts-node:<major>`, following the
 established `{prefix}-{language}:{version}` convention where the `{language}`

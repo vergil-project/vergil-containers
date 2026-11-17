@@ -279,23 +279,29 @@ is the image's default Node. npm's global prefix is `/usr`, so
 newer pin of the major. `markdownlint` stays base's wrapper on the core Node
 (see [Base](#base)), never this one.
 
-| Tool                | Purpose                                     |
-| ------------------- | ------------------------------------------- |
-| typescript (`tsc`)  | Typechecker, held to the TypeScript 5 line  |
-| eslint              | Linter                                      |
-| typescript-eslint   | Type-aware lint rules for ESLint            |
-| prettier            | Code formatter                              |
-| vitest              | Test runner                                 |
-| @vitest/coverage-v8 | V8 coverage for `vitest --coverage`         |
-| license-checker     | Dependency license listing                  |
-| pkg-config          | Build helper for native addons              |
+| Tool            | Purpose                        |
+| --------------- | ------------------------------ |
+| prettier        | Code formatter                 |
+| license-checker | Dependency license listing     |
+| pkg-config      | Build helper for native addons |
 
-The npm tools are installed globally from `common/typescript-analysis.dockerfile`
-and float on their leading edge, except `typescript`, held to its 5 line
-(`typescript@5`): an unconstrained install would take the native TypeScript 7
-line. pkg-config comes from Ubuntu apt. `docker/build.sh` and PR CI
-smoke-test each image with a small project (`docker/ts-node/smoke/`):
-`npm ci`, `tsc --noEmit` and one `vitest run`.
+prettier and license-checker are installed globally from
+`common/typescript-analysis.dockerfile` and float on their leading edge.
+pkg-config comes from Ubuntu apt.
+
+The image carries no `typescript`, `eslint`, `typescript-eslint`, `vitest` or
+`@vitest/coverage-v8`. Each TypeScript repository declares them as
+devDependencies, at the majors Vergil accepts, and Vergil's gates run them
+from the repository's `node_modules/.bin`. The rule that decides which tools
+the image owns is vergil-tooling's
+[Tool Ownership Guideline](https://vergil-project.github.io/vergil-tooling/latest/standards/development/tool-ownership/).
+
+`docker/build.sh` and PR CI smoke-test each image with a small project
+(`docker/ts-node/smoke/`) that declares those tools. It checks that `tsc`,
+`eslint` and `vitest` are not on the image's `PATH`, runs
+`npm ci --ignore-scripts`, then `tsc --noEmit`, `eslint .` and one
+`vitest run --coverage` from `node_modules/.bin`, and the image's prettier and
+license-checker on the project.
 
 ## Base
 

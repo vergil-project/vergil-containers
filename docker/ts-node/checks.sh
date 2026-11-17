@@ -13,7 +13,8 @@
 #     (spec §5.3, §5.5);
 #   - markdownlint on PATH is still base's wrapper, which runs on the core Node
 #     at /opt/vergil/node/<core-major>, never on the family's;
-#   - the TypeScript analysis tools run on the family's Node.
+#   - the image's TypeScript tools (prettier, license-checker) run on the
+#     family's Node.
 #
 # Usage: checks.sh   (as root, at image build, with NODE_MAJOR and
 # TOOLCHAIN_VERSION set, as the template's build args are, and base's
@@ -140,14 +141,20 @@ markdownlint_is_the_core_wrapper() {
   }
 }
 
+# The image's own TypeScript tools, prettier and license-checker
+# (common/typescript-analysis.dockerfile). The repo-declared tools (tsc,
+# eslint, vitest) are not the image's: the smoke test asserts their absence.
+# license-checker's --version exits 1, so --help is its run check.
 typescript_tools_run() {
-  local rc=0 tool
-  for tool in tsc eslint prettier vitest; do
-    "${tool}" --version >/dev/null || {
-      say "'${tool} --version' failed"
-      rc=1
-    }
-  done
+  local rc=0
+  prettier --version >/dev/null || {
+    say "'prettier --version' failed"
+    rc=1
+  }
+  license-checker --help >/dev/null || {
+    say "'license-checker --help' failed"
+    rc=1
+  }
   return "${rc}"
 }
 
@@ -166,7 +173,7 @@ report "$?" "npm's global prefix is /usr"
 markdownlint_is_the_core_wrapper
 report "$?" "markdownlint is base's wrapper on the core Node"
 typescript_tools_run
-report "$?" "the TypeScript analysis tools run"
+report "$?" "the image's TypeScript tools run"
 
 if [ "${#failed[@]}" -gt 0 ]; then
   echo "checks-ts-node: ${#failed[@]} check(s) failed:" >&2

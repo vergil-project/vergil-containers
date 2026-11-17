@@ -6,11 +6,15 @@
   "description": "Build-time smoke fixture for the ts-node dev images (epic .github#284 T1).",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "lint": "eslint .",
+    "test": "vitest run --coverage"
   },
   "devDependencies": {
-    "typescript": "^5.9.0",
-    "vitest": "^5.0.5",
-    "@vitest/coverage-v8": "^5.0.5"
+    "@eslint/js": "^10.0.0",
+    "@vitest/coverage-v8": "^5.0.5",
+    "eslint": "^10.0.0",
+    "typescript": "^6.0.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^5.0.5"
   }
 }
