@@ -638,6 +638,8 @@
       
         
       
+        
+      
     
     
     
@@ -690,6 +692,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.44/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.44
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3949,28 +3979,8 @@ newer pin of the major. <code>markdownlint</code> stays base's wrapper on the co
 </thead>
 <tbody>
 <tr>
-<td>typescript (<code>tsc</code>)</td>
-<td>Typechecker, held to the TypeScript 5 line</td>
-</tr>
-<tr>
-<td>eslint</td>
-<td>Linter</td>
-</tr>
-<tr>
-<td>typescript-eslint</td>
-<td>Type-aware lint rules for ESLint</td>
-</tr>
-<tr>
 <td>prettier</td>
 <td>Code formatter</td>
-</tr>
-<tr>
-<td>vitest</td>
-<td>Test runner</td>
-</tr>
-<tr>
-<td>@vitest/coverage-v8</td>
-<td>V8 coverage for <code>vitest --coverage</code></td>
 </tr>
 <tr>
 <td>license-checker</td>
@@ -3982,12 +3992,21 @@ newer pin of the major. <code>markdownlint</code> stays base's wrapper on the co
 </tr>
 </tbody>
 </table>
-<p>The npm tools are installed globally from <code>common/typescript-analysis.dockerfile</code>
-and float on their leading edge, except <code>typescript</code>, held to its 5 line
-(<code>typescript@5</code>): an unconstrained install would take the native TypeScript 7
-line. pkg-config comes from Ubuntu apt. <code>docker/build.sh</code> and PR CI
-smoke-test each image with a small project (<code>docker/ts-node/smoke/</code>):
-<code>npm ci</code>, <code>tsc --noEmit</code> and one <code>vitest run</code>.</p>
+<p>prettier and license-checker are installed globally from
+<code>common/typescript-analysis.dockerfile</code> and float on their leading edge.
+pkg-config comes from Ubuntu apt.</p>
+<p>The image carries no <code>typescript</code>, <code>eslint</code>, <code>typescript-eslint</code>, <code>vitest</code> or
+<code>@vitest/coverage-v8</code>. Each TypeScript repository declares them as
+devDependencies, at the majors Vergil accepts, and Vergil's gates run them
+from the repository's <code>node_modules/.bin</code>. The rule that decides which tools
+the image owns is vergil-tooling's
+<a href="https://vergil-project.github.io/vergil-tooling/latest/standards/development/tool-ownership/">Tool Ownership Guideline</a>.</p>
+<p><code>docker/build.sh</code> and PR CI smoke-test each image with a small project
+(<code>docker/ts-node/smoke/</code>) that declares those tools. It checks that <code>tsc</code>,
+<code>eslint</code> and <code>vitest</code> are not on the image's <code>PATH</code>, runs
+<code>npm ci --ignore-scripts</code>, then <code>tsc --noEmit</code>, <code>eslint .</code> and one
+<code>vitest run --coverage</code> from <code>node_modules/.bin</code>, and the image's prettier and
+license-checker on the project.</p>
 <h2 id="base">Base<a class="headerlink" href="#base" title="Permanent link">&para;</a></h2>
 <p><strong>Base</strong>: <code>pkg-ubuntu:24.04</code> (Ubuntu 24.04, with uv and nFPM)
 <strong>Version</strong>: latest</p>
