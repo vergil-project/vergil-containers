@@ -1,32 +1,37 @@
 # --- uv ----------------------------------------------------------------------
 # Pinned uv release binary for the package toolchain images (pkg-ubuntu,
 # pkg-rhel; epic vergil-project/.github#607), which carry no Python to
-# `pip install` it from. The release tarball is verified against the release's
-# own per-asset .sha256 before extraction: sha256sum -c fails loud on any
-# mismatch, so a wrong pin can't slip through silently. UV_VERSION is
-# auto-managed (docker/pins/pins.yml): the daily upstream refresh floats it.
+# `pip install` it from. UV_VERSION is auto-managed (docker/pins/pins.yml): the
+# daily upstream refresh floats it. uv tags its releases with a bare `x.y.z`.
+#
+# Before extraction the tarball is verified against the per-architecture
+# SHA-256 pinned here (UV_SHA256_AMD64 and _ARM64; vergil-containers#945),
+# never against a checksum downloaded beside it: sha256sum -c fails the build
+# on any mismatch. The daily upstream refresh writes both digests from the
+# release's per-asset .sha256 in the same run that floats the version
+# (resolve_latest.py, TOOL_DIGESTS), so every digest change shows in its
+# refresh PR.
 #
 # It needs only curl, sha256sum and tar, so both distro families can include it.
 # The tarball holds a uv-<triple>/ directory with uv and uvx; both land in
 # /usr/local/bin.
 ARG TARGETARCH
 ARG UV_VERSION=0.13.9
+ARG UV_SHA256_AMD64=a7fbaff2b9a271d85c1bdb540941090fd1ce011797b4abeb48e4dcd39c2471d5
+ARG UV_SHA256_ARM64=0797542018e541a9288855df555c8077eed06f7a47d206362030480e8ecc9f3d
 
-# hadolint ignore=DL3003
 RUN case "${TARGETARCH}" in \
-      amd64) UV_TRIPLE=x86_64-unknown-linux-gnu ;; \
-      arm64) UV_TRIPLE=aarch64-unknown-linux-gnu ;; \
+      amd64) UV_TRIPLE=x86_64-unknown-linux-gnu; UV_SHA256="${UV_SHA256_AMD64}" ;; \
+      arm64) UV_TRIPLE=aarch64-unknown-linux-gnu; UV_SHA256="${UV_SHA256_ARM64}" ;; \
       *) echo "uv: unsupported TARGETARCH '${TARGETARCH}'" >&2; exit 1 ;; \
     esac && \
+    : "${UV_SHA256:?uv: no pinned SHA-256 for this TARGETARCH}" && \
     UV_TARBALL="uv-${UV_TRIPLE}.tar.gz" && \
     curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
       "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${UV_TARBALL}" \
       -o "/tmp/${UV_TARBALL}" && \
-    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
-      "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${UV_TARBALL}.sha256" \
-      -o "/tmp/${UV_TARBALL}.sha256" && \
-    (cd /tmp && sha256sum -c "${UV_TARBALL}.sha256") && \
+    echo "${UV_SHA256}  /tmp/${UV_TARBALL}" | sha256sum -c - && \
     tar -xzf "/tmp/${UV_TARBALL}" -C /usr/local/bin/ --strip-components=1 \
       "uv-${UV_TRIPLE}/uv" "uv-${UV_TRIPLE}/uvx" && \
-    rm "/tmp/${UV_TARBALL}" "/tmp/${UV_TARBALL}.sha256" && \
+    rm "/tmp/${UV_TARBALL}" && \
     uv --version

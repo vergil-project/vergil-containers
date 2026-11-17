@@ -45,6 +45,8 @@ RUN apt-get update && \
 # @include common/core-node.dockerfile
 # @include common/github-cli.dockerfile
 # @include common/validation-tools.dockerfile
+# @include common/hadolint.dockerfile
+# @include common/scorecard.dockerfile
 # @include common/security-tools.dockerfile
 # @include common/opentofu.dockerfile
 # @include common/yq.dockerfile

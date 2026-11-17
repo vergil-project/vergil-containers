@@ -74,14 +74,17 @@ carries them because it is built `FROM` `dev-base`:
   entry points across GitHub Actions and local contexts.
 - **`github-cli.dockerfile`** — GitHub CLI via the official apt repo.
 - **`validation-tools.dockerfile`** — Architecture-aware binary
-  installs of shellcheck, shfmt, actionlint, git-cliff, and hadolint.
+  installs of shellcheck, shfmt, actionlint and git-cliff.
   Uses `TARGETARCH` (injected by Docker Buildx) to select the correct
   binary for amd64 or arm64.
-- **`security-tools.dockerfile`** — Security analysis tools installed
-  from binary releases: scorecard (OpenSSF) and trivy.
+- **`hadolint.dockerfile`** — hadolint, the Dockerfile linter, from its
+  release binary.
+- **`scorecard.dockerfile`** — The OpenSSF Scorecard CLI, from its release
+  tarball.
+- **`security-tools.dockerfile`** — trivy, from its release tarball.
+- **`opentofu.dockerfile`** — OpenTofu, from its release tarball.
 - **`yq.dockerfile`** — mikefarah's Go yq, the one the GitHub-hosted
-  runners carry, from its release binary, checked against the release's
-  SHA-256 checksum.
+  runners carry, from its release binary.
 - **`rpm.dockerfile`** — The distro's `rpm`, the peer of `dpkg`, for
   inspecting `.rpm` packages and comparing versions (`rpm.vercmp`).
 - **`pandoc.dockerfile`** — pandoc for Markdown to `.docx`/HTML
@@ -150,8 +153,8 @@ supported).
 ## Multi-Architecture Support
 
 All images are published as multi-architecture manifests supporting
-**amd64** and **arm64**. Binary tool downloads in `validation-tools.dockerfile`
-use `TARGETARCH` (injected by Docker Buildx) to select the correct
+**amd64** and **arm64**. Binary tool downloads in the `docker/common`
+fragments use `TARGETARCH` (injected by Docker Buildx) to select the correct
 platform artifact.
 
 Local builds via `docker/build.sh` build for the host's native
@@ -161,28 +164,42 @@ stitches the two into one multi-arch manifest. Nothing is emulated.
 
 ## Download Integrity
 
-Binary tools installed from GitHub releases are verified against
-checksums published by the upstream project. Each verified download
-follows a three-step pattern: download the artifact to a temporary
-location, verify it against the upstream checksums file, then
-extract and install. The build fails immediately if a checksum does
-not match.
+Binary tools installed from GitHub releases are verified before they are
+installed. Each verified download follows a three-step pattern: download the
+artifact to a temporary location, verify it, then extract and install. The
+build fails immediately if a checksum does not match.
+
+Most are verified against a **digest pinned in source**: one SHA-256 per
+architecture, an `ARG <TOOL>_SHA256_AMD64=` and `_ARM64=` line beside the
+tool's `ARG <TOOL>_VERSION=` in its own fragment. The daily upstream refresh
+writes the digests from the release's published checksums in the same run
+that moves the version, so every digest change shows in a refresh PR beside
+its version change (see
+[Tool Version Management](../operations/version-management.md)). The rest
+are verified against the checksums file the release publishes, downloaded
+at build time.
 
 | Tool | Verification | Algorithm |
 | --- | --- | --- |
-| actionlint | Consolidated checksums file | SHA-256 |
-| git-cliff | Per-artifact sidecar file | SHA-512 |
-| hadolint | Per-artifact sidecar file | SHA-256 |
-| scorecard | Consolidated checksums file | SHA-256 |
+| actionlint | Release checksums file | SHA-256 |
+| git-cliff | Release per-artifact sidecar file | SHA-512 |
+| hadolint | Digest pinned in source | SHA-256 |
+| nfpm | Digest pinned in source | SHA-256 |
+| opentofu | Digest pinned in source | SHA-256 |
+| scorecard | Digest pinned in source | SHA-256 |
 | shellcheck | None (upstream does not publish checksums) | — |
 | shfmt | None (upstream does not publish checksums) | — |
+| trivy | Digest pinned in source | SHA-256 |
+| uv | Digest pinned in source | SHA-256 |
+| yq | Digest pinned in source | SHA-256 |
 
-This protects against corrupted downloads, CDN integrity failures,
-and partial compromise of release artifacts. It does not protect
-against an attacker who compromises both the artifact and its
-checksums file simultaneously — that threat is addressed at a
-different layer (SLSA build provenance attestation on the published
-images).
+The rust image's cargo-nextest and cargo-deny are verified against digests
+pinned in source the same way (see [Rust](../languages/rust.md)).
+
+A checksums file downloaded at build time protects against corrupted
+downloads, CDN integrity failures, and partial compromise of release
+artifacts. The published images also carry SLSA build provenance
+attestation.
 
 Tools whose upstream projects do not publish checksums are installed
 without verification. If a project begins publishing checksums in the
