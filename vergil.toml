@@ -43,16 +43,20 @@ hook = "docker/pins/upstream-refresh.sh"
 #   go down. No anchor: no fragment has a FROM, and none declares an ARG twice,
 #   so every versioned key is unique in its file. If a fragment ever repeats
 #   one, the fence refuses the change as ambiguous, and the rule then needs an
-#   anchor.
+#   anchor. Each digest is a hash group, so an existing digest may change only
+#   when a version in the same fragment changes; with no anchor the whole
+#   fragment is one block, and each fragment that pins digests pins one tool.
 # - docker/pins/workflow-images.txt (resolve_latest.py): `<NAME>_VERSION=x.y.z`
 #   lines, no version going down.
 # - docker/pins/toolchains.yml (resolve_toolchains.py): the file repeats
 #   `version`, `release` and the hashes once per series, so each series key
 #   (`"3.15":`) and the `rustup-init:` tool key is an anchor, naming the block
 #   whose versioned lines follow it. `version` and the python `release` may
-#   not go down within their block, and each hash is 64 hex digits. Series keys
-#   are unique across the families today; two families sharing one would make
-#   their pins ambiguous, which the fence refuses.
+#   not go down within their block. Each hash is 64 hex digits in a hash group,
+#   so an existing hash may change only when its block's `version` or `release`
+#   changes in the same patch. Series keys are unique across the families
+#   today; two families sharing one would make their pins ambiguous, which the
+#   fence refuses.
 # - docker/versions/matrix.json (generate.py) and docker/pins/CATALOG.md
 #   (generate_catalog.py): exact paths, regenerated from the pins.
 #
@@ -70,9 +74,9 @@ hook = "docker/pins/upstream-refresh.sh"
 # job (scripts/bin/validate-custom), which `quality / evidence`, a required
 # status check on develop, needs.
 paths = [
-  { path = "docker/common/*", lines = '^ARG [A-Z0-9_]+_(VERSION=(?P<version>\d+(\.\d+)*)|SHA256_(AMD64|ARM64)=[0-9a-f]{64})$' },
+  { path = "docker/common/*", lines = '^ARG [A-Z0-9_]+_(VERSION=(?P<version>\d+(\.\d+)*)|SHA256_(AMD64|ARM64)=(?P<hash>[0-9a-f]{64}))$' },
   { path = "docker/pins/workflow-images.txt", lines = '^[A-Z0-9_]+_VERSION=(?P<version>\d+(\.\d+)*)$' },
-  { path = "docker/pins/toolchains.yml", lines = '^( {2,4}(?P<anchor>"\d+(\.\d+)?"|rustup-init):| {4,6}version: "(?P<version>\d+(\.\d+)*)"| {6}release: "(?P<version_release>\d{8})"| {4,6}sha256:| {6,8}(amd64|arm64): "[0-9a-f]{64}")$' },
+  { path = "docker/pins/toolchains.yml", lines = '^( {2,4}(?P<anchor>"\d+(\.\d+)?"|rustup-init):| {4,6}version: "(?P<version>\d+(\.\d+)*)"| {6}release: "(?P<version_release>\d{8})"| {4,6}sha256:| {6,8}(amd64|arm64): "(?P<hash>[0-9a-f]{64})")$' },
   "docker/versions/matrix.json",
   "docker/pins/CATALOG.md",
 ]
