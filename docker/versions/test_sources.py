@@ -12,6 +12,14 @@ from lifecycle import sources
 from lifecycle.core import EOL_DATE_UNKNOWN, NotFoundError, SourceError
 
 
+@pytest.fixture(autouse=True)
+def sleeps(monkeypatch) -> list:
+    """Stub fetch_url's back-off so no test waits; records each delay."""
+    delays: list = []
+    monkeypatch.setattr(sources, "_sleep", delays.append)
+    return delays
+
+
 class _Response(io.BytesIO):
     """A fake urlopen response: the body, and the headers it was sent with."""
 
@@ -214,14 +222,72 @@ def test_fetch_url_404_is_not_found(monkeypatch):
         sources.fetch_url("https://example.invalid/x")
 
 
-@pytest.mark.parametrize("exc", [urllib.error.URLError("no route"), TimeoutError("timed out")])
-def test_fetch_url_network_failure_raises(monkeypatch, exc):
+_TRANSIENT = [
+    urllib.error.URLError("no route"),
+    TimeoutError("timed out"),
+    ConnectionResetError("reset"),
+    urllib.error.HTTPError("https://example.invalid/x", 502, "Bad Gateway", None, None),
+    urllib.error.HTTPError("https://example.invalid/x", 503, "Service Unavailable", None, None),
+]
+
+
+def _fail_then_serve(monkeypatch, failures: list, body: bytes = b"body") -> list:
+    """Make urlopen raise each of `failures` in turn, then answer `body`;
+    the returned list counts the calls."""
+    calls: list = []
+
     def urlopen(request, timeout):
-        raise exc
+        calls.append(request.full_url)
+        if len(calls) <= len(failures):
+            raise failures[len(calls) - 1]
+        return _Response(body)
 
     monkeypatch.setattr(sources.urllib.request, "urlopen", urlopen)
-    with pytest.raises(SourceError, match=r"https://example\.invalid/x"):
+    return calls
+
+
+@pytest.mark.parametrize("exc", _TRANSIENT)
+def test_fetch_url_persistent_transient_failure_raises_after_every_attempt(monkeypatch, sleeps, exc):
+    # Issue #946: retries are bounded, and a failure that lasts through them
+    # all is still a SourceError naming the URL, never a silent success.
+    calls = _fail_then_serve(monkeypatch, [exc] * sources.FETCH_ATTEMPTS)
+    with pytest.raises(SourceError, match=r"https://example\.invalid/x.*failed all 3 attempts") as info:
         sources.fetch_url("https://example.invalid/x")
+    assert not isinstance(info.value, NotFoundError)
+    assert type(info.value) is SourceError
+    assert len(calls) == sources.FETCH_ATTEMPTS == 3
+    assert sleeps == list(sources.FETCH_BACKOFF_SECONDS)
+
+
+@pytest.mark.parametrize("failures", [1, 2])
+@pytest.mark.parametrize("exc", _TRANSIENT)
+def test_fetch_url_retries_transient_failure_then_succeeds(monkeypatch, sleeps, capsys, exc, failures):
+    # Issue #946: one Launchpad timeout must not fail the whole check.
+    calls = _fail_then_serve(monkeypatch, [exc] * failures)
+    assert sources.fetch_url("https://example.invalid/x") == b"body"
+    assert len(calls) == failures + 1
+    assert sleeps == list(sources.FETCH_BACKOFF_SECONDS[:failures])
+    err = capsys.readouterr().err
+    assert err.count("warning: fetch attempt") == failures
+    assert "https://example.invalid/x" in err
+
+
+@pytest.mark.parametrize("code", [400, 403, 404, 429])
+def test_fetch_url_never_retries_a_4xx(monkeypatch, sleeps, code):
+    calls = _fail_then_serve(
+        monkeypatch, [urllib.error.HTTPError("https://example.invalid/x", code, "no", None, None)]
+    )
+    with pytest.raises(SourceError, match=f"HTTP {code}"):
+        sources.fetch_url("https://example.invalid/x")
+    assert len(calls) == 1
+    assert sleeps == []
+
+
+def test_fetch_url_never_retries_an_undecodable_body(monkeypatch, sleeps):
+    _serve(monkeypatch, b"not gzip", {"Content-Encoding": "gzip"})
+    with pytest.raises(SourceError):
+        sources.fetch_url("https://example.invalid/x")
+    assert sleeps == []
 
 
 # Issue #883: apt.llvm.org answered with a gzip body the parsers read as text.

@@ -3,13 +3,16 @@
 `fetch_url` is the only real network call. Every other function takes its
 fetcher as an argument, so tests inject canned responses and never touch the
 network. Every fetch or parse failure raises SourceError naming the source:
-nothing here returns an empty or partial result on failure.
+nothing here returns an empty or partial result on failure. A transient fetch
+failure is first retried a bounded number of times (issue #946).
 """
 from __future__ import annotations
 
 import json
 import os
 import re
+import sys
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable
@@ -22,6 +25,19 @@ Fetch = Callable[[str], bytes]
 
 USER_AGENT = "vergil-containers-lifecycle-check (+https://github.com/vergil-project/vergil-containers)"
 TIMEOUT_SECONDS = 30
+
+# Issue #946: one Launchpad timeout failed a whole lifecycle check. A network
+# error, a timeout or an HTTP 5xx is retried, up to FETCH_ATTEMPTS attempts in
+# all, waiting FETCH_BACKOFF_SECONDS[i] before attempt i + 2. A failure that
+# lasts through every attempt still raises SourceError. A 4xx is never retried:
+# a 404 is an answer, and a 403 or 429 rate limit won't clear in seconds.
+FETCH_ATTEMPTS = 3
+FETCH_BACKOFF_SECONDS = (5, 15)
+_sleep = time.sleep
+
+
+class _TransientFetchError(SourceError):
+    """A fetch failure worth retrying: a network error, a timeout or an HTTP 5xx."""
 
 ENDOFLIFE_URL = "https://endoflife.date/api/{product}.json"
 
@@ -56,7 +72,31 @@ def fetch_url(url: str) -> bytes:
     """GET `url` and return the body, decoded by its Content-Encoding. HTTP 404
     raises NotFoundError; any other HTTP failure (a 403 or 429 rate limit
     included), network or timeout failure, an unsupported coding or a body that
-    does not decode raises SourceError naming the URL."""
+    does not decode raises SourceError naming the URL.
+
+    A network or timeout failure or an HTTP 5xx is transient: it is retried,
+    with a warning on stderr, up to FETCH_ATTEMPTS attempts in all. Only when
+    the last attempt fails too does it raise, as SourceError naming the URL,
+    the last failure and the attempt count."""
+    for attempt in range(1, FETCH_ATTEMPTS):
+        try:
+            return _fetch_once(url)
+        except _TransientFetchError as exc:
+            delay = FETCH_BACKOFF_SECONDS[attempt - 1]
+            print(
+                f"warning: fetch attempt {attempt}/{FETCH_ATTEMPTS} failed: {exc}; retrying in {delay}s",
+                file=sys.stderr,
+            )
+            _sleep(delay)
+    try:
+        return _fetch_once(url)
+    except _TransientFetchError as exc:
+        raise SourceError(f"{exc} (failed all {FETCH_ATTEMPTS} attempts)") from exc
+
+
+def _fetch_once(url: str) -> bytes:
+    """One GET of `url`, failing as fetch_url describes, except that a
+    transient failure raises _TransientFetchError."""
     request = urllib.request.Request(url, headers=request_headers(url))
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
@@ -65,9 +105,11 @@ def fetch_url(url: str) -> bytes:
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             raise NotFoundError(f"{url}: HTTP 404 {exc.reason}") from exc
+        if exc.code >= 500:
+            raise _TransientFetchError(f"{url}: HTTP {exc.code} {exc.reason}") from exc
         raise SourceError(f"{url}: HTTP {exc.code} {exc.reason}") from exc
     except (urllib.error.URLError, OSError) as exc:  # URLError, timeouts, resets
-        raise SourceError(f"{url}: {exc}") from exc
+        raise _TransientFetchError(f"{url}: {exc}") from exc
     try:
         return content_coding.decode(url, encoding, body)
     except content_coding.ContentCodingError as exc:
