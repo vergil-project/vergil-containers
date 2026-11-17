@@ -53,8 +53,8 @@
 #     `cargo install` tools, are pinned again. A validation tool decides whether
 #     a Rust repo passes its gate, so an unpinned one lets an upstream release
 #     change a repo's verdict between two builds of the same image source, with
-#     no reviewed change to show for it. They are pinned and verified like the
-#     toolchain: cargo-deny (as cargo-nextest) from its prebuilt release with
+#     no pinned source change to show for it. They are pinned and verified like
+#     the toolchain: cargo-deny (as cargo-nextest) from its prebuilt release with
 #     per-architecture digests pinned in source, cargo-llvm-cov built from
 #     crates.io at its pinned version with --locked. Both are AUTO-MANAGED, so
 #     the daily upstream refresh still floats them, through PRs that merge
