@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.44] - 2026-11-17
+
+### Chores
+
+- add the path fence allowlist and drop the human merge gate from the docs (#931)
+- refresh upstream inputs (#933)
+- mark the pinned digests with the path fence's hash group (#937)
+- refresh upstream inputs (#938)
+
+### Documentation
+
+- describe cargo-deny and cargo-llvm-cov as pinned Rust image tools (#930)
+- say upstream refresh PRs merge themselves once CI passes (#941)
+
+### Features
+
+- detect new Rust series from the stable channel, not endoflife.date (#940)
+- leave repo-declared TypeScript tools to the repo (#942)
+
 ## [2.1.43] - 2026-11-16
 
 ### Bug fixes
