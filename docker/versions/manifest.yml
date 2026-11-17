@@ -106,11 +106,6 @@ families:
         eol: null
         in_policy: true
         runtime_published: null
-      - version: "1.98"
-        ga: 2026-08-20
-        eol: null
-        in_policy: true
-        runtime_published: null
   - key: "cpp-clang"
     language: "cpp"
     token_prefix: "clang-"
