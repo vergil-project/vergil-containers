@@ -70,6 +70,8 @@ toolchains:
         amd64: "c54118104acc524633b5abe106bbf44a53126ec8b4e5fa105cb92b5d7de8a1a1"
         arm64: "8bd3dc69eee8f3f226315a80d7d1d4faccf217a4c8fae500168ac2e38f3bdba3"
   rust:
+    "1.100":
+      version: "1.100.0"
     "1.99":
       version: "1.99.1"
     "1.98":

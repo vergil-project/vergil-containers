@@ -34,6 +34,7 @@ Generated from `docker/pins/toolchains.yml`, which the daily upstream refresh mo
 | go | 1.26 | 1.26.11 | — | `9849f4e04ee35303714e34fbc3ac8ab44ea3e448a95aa182f91e3b9b79c710ec` | `6c2f29b458b5add0835f18b776f69c8881a6d88428f1484a6da55755e620757e` |
 | node | 24 | 24.22.3 | — | `061ec3e3062115705b56b51fa9cc330ab50d34b6969387d4e4b1a50c6809acc2` | `261af2af250dfd7e9f25cf151d1b2713a0adf8f10a9ad116c4947f68627affe8` |
 | node | 22 | 22.23.5 | — | `c54118104acc524633b5abe106bbf44a53126ec8b4e5fa105cb92b5d7de8a1a1` | `8bd3dc69eee8f3f226315a80d7d1d4faccf217a4c8fae500168ac2e38f3bdba3` |
+| rust | 1.100 | 1.100.0 | — | — (rustup verifies) | — (rustup verifies) |
 | rust | 1.99 | 1.99.1 | — | — (rustup verifies) | — (rustup verifies) |
 | rust | 1.98 | 1.98.1 | — | — (rustup verifies) | — (rustup verifies) |
 | rustup-init | — | 1.29.3 | — | `b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55` | `9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282` |
