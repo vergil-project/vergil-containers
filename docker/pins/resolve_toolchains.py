@@ -19,7 +19,8 @@ the manifest lists (each family series of a pinned family, plus the core Node
 major). Without `--write` it prints what would change and writes nothing.
 
 **One fetcher per upstream.** `pbs_releases`, `go_releases`, `node_releases`,
-`rust_release` and `rustup_init_release` each fetch and parse one upstream,
+the Rust channel readers (`rust_release`, `rust_stable_release` and
+`rust_release_date`) and `rustup_init_release` each fetch and parse one upstream,
 taking an injectable `fetch(url) -> bytes`. The lifecycle adapters import them
 rather than fetching the same upstream themselves (spec §5.4; the python
 adapter reads `pbs_series_builds`, the search `resolve_python` pins from), and the tests
@@ -40,6 +41,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 import yaml
@@ -592,13 +594,16 @@ def resolve_node(series: Iterable[str], fetch: Fetch = fetch_url) -> dict[str, P
 
 # The Rust release channel: `channel-rust-<x.y>.toml` is the manifest of the
 # newest release of the series, the one rustup installs for a `<x.y>` toolchain.
+# `channel-rust-stable.toml` is the manifest of the current stable release, and
+# `channel-rust-<x.y.z>.toml` that of one release. A manifest's top-level
+# `date` is the day its release was published.
 RUST_CHANNEL = "https://static.rust-lang.org/dist/channel-rust-{series}.toml"
+RUST_STABLE_CHANNEL = RUST_CHANNEL.format(series="stable")
 _RUST_PKG_VERSION_RE = re.compile(r"^(\d+\.\d+\.\d+) \(")
 
 
-def rust_release(series: str, fetch: Fetch = fetch_url) -> str:
-    """The newest release of a Rust series ("1.93.1"), from its channel manifest."""
-    url = RUST_CHANNEL.format(series=series)
+def _rust_manifest(url: str, fetch: Fetch) -> tuple[str, dict[str, object]]:
+    """The release a Rust channel manifest names ("1.93.1"), and the parsed manifest."""
     try:
         data = tomllib.loads(_text(fetch, url))
     except tomllib.TOMLDecodeError as exc:
@@ -607,10 +612,43 @@ def rust_release(series: str, fetch: Fetch = fetch_url) -> str:
     match = _RUST_PKG_VERSION_RE.match(raw) if isinstance(raw, str) else None
     if match is None:
         raise ResolutionError(f"{url}: pkg.rust.version {raw!r} is not '<x.y.z> (<commit> <date>)'")
-    version = match[1]
+    return match[1], data
+
+
+def rust_release(series: str, fetch: Fetch = fetch_url) -> str:
+    """The newest release of a Rust series ("1.93.1"), from its channel manifest."""
+    url = RUST_CHANNEL.format(series=series)
+    version, _ = _rust_manifest(url, fetch)
     if not version.startswith(f"{series}."):
         raise ResolutionError(f"{url}: pkg.rust.version {version!r} is not a release of {series}")
     return version
+
+
+def _rust_manifest_date(url: str, data: dict[str, object]) -> date:
+    raw = data.get("date")
+    if isinstance(raw, str):
+        try:
+            return date.fromisoformat(raw)
+        except ValueError:
+            pass
+    raise ResolutionError(f"{url}: date {raw!r} is not an ISO date")
+
+
+def rust_stable_release(fetch: Fetch = fetch_url) -> tuple[str, date]:
+    """The current stable Rust release ("1.100.0") and the day it was
+    published, from the stable channel manifest."""
+    version, data = _rust_manifest(RUST_STABLE_CHANNEL, fetch)
+    return version, _rust_manifest_date(RUST_STABLE_CHANNEL, data)
+
+
+def rust_release_date(version: str, fetch: Fetch = fetch_url) -> date:
+    """The day Rust release `version` ("1.100.0") was published: the `date` of
+    that release's own channel manifest."""
+    url = RUST_CHANNEL.format(series=version)
+    named, data = _rust_manifest(url, fetch)
+    if named != version:
+        raise ResolutionError(f"{url}: pkg.rust.version {named!r} is not {version}")
+    return _rust_manifest_date(url, data)
 
 
 def resolve_rust(series: Iterable[str], fetch: Fetch = fetch_url) -> dict[str, Pin]:

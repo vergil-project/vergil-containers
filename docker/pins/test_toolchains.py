@@ -15,6 +15,7 @@ import urllib.error
 import urllib.request
 import zlib
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -481,6 +482,26 @@ def test_resolve_rust_from_the_series_channel_manifest():
     bad = _fetch({url: '[pkg.rust]\nversion = "1.94.0 (abc 2026-03-01)"\n'})
     with pytest.raises(rt.ResolutionError, match="not a release of 1.93"):
         rt.resolve_rust(["1.93"], bad)
+
+
+def test_rust_stable_release_and_its_date():
+    body = 'manifest-version = "2"\ndate = "2026-11-12"\n\n[pkg.rust]\nversion = "1.100.0 (0ef1bc386 2026-11-09)"\n'
+    assert rt.rust_stable_release(_fetch({rt.RUST_STABLE_CHANNEL: body})) == ("1.100.0", date(2026, 11, 12))
+    undated = _fetch({rt.RUST_STABLE_CHANNEL: '[pkg.rust]\nversion = "1.100.0 (abc 2026-11-09)"\n'})
+    with pytest.raises(rt.ResolutionError, match="date None is not an ISO date"):
+        rt.rust_stable_release(undated)
+
+
+def test_rust_release_date_from_the_release_manifest():
+    url = rt.RUST_CHANNEL.format(series="1.100.0")
+    body = 'date = "2026-11-12"\n[pkg.rust]\nversion = "1.100.0 (0ef1bc386 2026-11-09)"\n'
+    assert rt.rust_release_date("1.100.0", _fetch({url: body})) == date(2026, 11, 12)
+    wrong = _fetch({url: 'date = "2026-11-26"\n[pkg.rust]\nversion = "1.100.1 (abc 2026-11-20)"\n'})
+    with pytest.raises(rt.ResolutionError, match="'1.100.1' is not 1.100.0"):
+        rt.rust_release_date("1.100.0", wrong)
+    bad = _fetch({url: 'date = "2026-13-01"\n[pkg.rust]\nversion = "1.100.0 (abc 2026-11-09)"\n'})
+    with pytest.raises(rt.ResolutionError, match="date '2026-13-01' is not an ISO date"):
+        rt.rust_release_date("1.100.0", bad)
 
 
 def test_resolve_rustup_init_hashes_per_arch():

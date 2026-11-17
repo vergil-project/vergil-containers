@@ -94,23 +94,39 @@ def test_run_reports_no_missing_adapter_against_fixtures():
 # --- Rust --------------------------------------------------------------------------
 
 
+def rust_manifest(version, published):
+    """A Rust channel manifest naming release `version`, published on `published`."""
+    return f'date = "{published}"\n\n[pkg.rust]\nversion = "{version} (0123456789 {published})"\n'
+
+
 class RustChannel:
     """A fake Rust release channel in front of the fixtures: each
     `channel-rust-<series>.toml` (the URL the toolchain pins' fetcher reads)
     names release `<series>.1`, or the body given in `bodies`; a series in
-    `missing` answers 404. Records each series asked about, in order."""
+    `missing` answers 404. The stable channel (`channel-rust-stable.toml`)
+    names 1.99.1, the newest release in the endoflife.date fixture, unless
+    `bodies` gives another. A release's own manifest
+    (`channel-rust-<x.y.z>.toml`) is served only from `bodies`. Records each
+    series asked about, in order, but not the stable channel."""
 
     def __init__(self, missing=(), bodies=None):
         self.missing = set(missing)
-        self.bodies = dict(bodies or {})
+        self.bodies = {"stable": rust_manifest("1.99.1", "2026-10-15"), **(bodies or {})}
         self.asked = []
+        self.asked_releases = []
 
     def __call__(self, url):
         prefix, suffix = rust_adapter.rt.RUST_CHANNEL.split("{series}")
         if not (url.startswith(prefix) and url.endswith(suffix)):
             return fixture_fetch(url)
         series = url[len(prefix):-len(suffix)]
-        self.asked.append(series)
+        if series.count(".") == 2:
+            self.asked_releases.append(series)
+            if series not in self.bodies:
+                raise NotFoundError(f"{url}: HTTP 404")
+            return self.bodies[series].encode()
+        if series != "stable":
+            self.asked.append(series)
         if series in self.missing:
             raise NotFoundError(f"{url}: HTTP 404")
         body = self.bodies.get(series, f'[pkg.rust]\nversion = "{series}.1 (0123456789 2026-10-15)"\n')
@@ -186,14 +202,110 @@ def test_rust_unusable_channel_manifest_is_loud(body, needle):
 
 
 def test_rust_unreachable_channel_is_loud_not_blocked():
+    channel = RustChannel()
+
     def fetch(url):
-        if "channel-rust-" in url:
+        if "channel-rust-" in url and url != rust_adapter.rt.RUST_STABLE_CHANNEL:
             raise SourceError(f"{url}: HTTP 503 Service Unavailable")
-        return fixture_fetch(url)
+        return channel(url)
 
     adapter = RustAdapter(fetch=fetch)
+    releases = adapter.fetch()
     with pytest.raises(SourceError, match="HTTP 503"):
-        adapter.target(adapter.fetch(), TODAY)
+        adapter.target(releases, TODAY)
+
+
+# Rust's stable channel decides which series are released (#910). The
+# endoflife.date fixture's newest cycle is 1.99 (GA 2026-10-01).
+AFTER_1_100 = date(2026, 11, 15)
+
+
+def test_rust_stable_channel_in_sync_adds_nothing():
+    channel = RustChannel()
+    adapter = RustAdapter(fetch=channel)
+    releases = adapter.fetch()
+    assert releases == rust_adapter.endoflife("rust", fixture_fetch)
+    assert channel.asked_releases == []
+
+
+def test_rust_stable_channel_ahead_of_endoflife_adds_the_new_series():
+    channel = RustChannel(bodies={"stable": rust_manifest("1.100.0", "2026-11-12")})
+    adapter = RustAdapter(fetch=channel)
+    releases = adapter.fetch()
+    assert releases[0] == UpstreamRelease("1.100", date(2026, 11, 12), None, False)
+    # A `.0` stable release gives its own GA date: no further manifest is read.
+    assert channel.asked_releases == []
+    target = adapter.target(releases, AFTER_1_100)
+    assert [(t.version, t.ga, t.eol) for t in target] == [("1.100", date(2026, 11, 12), None), ("1.99", date(2026, 10, 1), None)]
+    assert _kinds(_changes(adapter, AFTER_1_100))[:2] == [("add", "1.100"), ("add", "1.99")]
+
+
+def test_rust_stable_point_release_reads_the_series_ga_from_its_dot_zero_manifest():
+    channel = RustChannel(
+        bodies={
+            "stable": rust_manifest("1.100.1", "2026-11-26"),
+            "1.100.0": rust_manifest("1.100.0", "2026-11-12"),
+        }
+    )
+    releases = RustAdapter(fetch=channel).fetch()
+    assert releases[0] == UpstreamRelease("1.100", date(2026, 11, 12), None, False)
+    assert channel.asked_releases == ["1.100.0"]
+
+
+def test_rust_stable_channel_two_series_ahead_adds_both():
+    channel = RustChannel(
+        bodies={
+            "stable": rust_manifest("1.101.0", "2026-12-24"),
+            "1.100.0": rust_manifest("1.100.0", "2026-11-12"),
+        }
+    )
+    adapter = RustAdapter(fetch=channel)
+    releases = adapter.fetch()
+    assert [(r.version, r.ga) for r in releases[:3]] == [
+        ("1.101", date(2026, 12, 24)),
+        ("1.100", date(2026, 11, 12)),
+        ("1.99", date(2026, 10, 1)),
+    ]
+    assert [t.version for t in adapter.target(releases, date(2026, 12, 25))] == ["1.101", "1.100"]
+
+
+def test_rust_endoflife_cycle_after_the_stable_release_is_left_out():
+    # The stable channel is at 1.98.1 (2026-09-03); endoflife.date's 1.99 is
+    # dated later, so it has not shipped as far as the channel says.
+    channel = RustChannel(bodies={"stable": rust_manifest("1.98.1", "2026-09-03")})
+    releases = RustAdapter(fetch=channel).fetch()
+    assert max(releases, key=lambda r: mf.version_sort_key(r.version)).version == "1.98"
+
+
+def test_rust_endoflife_ahead_of_the_stable_channel_is_loud():
+    channel = RustChannel(bodies={"stable": rust_manifest("1.98.1", "2026-10-05")})
+    with pytest.raises(SourceError, match=r"lists 1\.99 as released on 2026-10-01, but Rust's stable channel is at 1\.98\.1"):
+        RustAdapter(fetch=channel).fetch()
+
+
+@pytest.mark.parametrize(
+    ("bodies", "missing", "needle"),
+    [
+        ({}, {"stable"}, r"Rust stable channel: .*HTTP 404"),
+        ({"stable": "not = toml = at all"}, set(), r"Rust stable channel: .*not valid TOML"),
+        ({"stable": '[pkg.rust]\nversion = "1.100.0 (abc 2026-11-09)"\n'}, set(), r"Rust stable channel: .*date None"),
+        ({"stable": rust_manifest("1.100.1", "2026-11-26")}, set(), r"Rust channel 1\.100\.0: .*HTTP 404"),
+        (
+            {"stable": rust_manifest("1.100.1", "2026-11-26"), "1.100.0": rust_manifest("1.100.1", "2026-11-26")},
+            set(),
+            r"Rust channel 1\.100\.0: .*'1\.100\.1' is not 1\.100\.0",
+        ),
+        (
+            {"stable": rust_manifest("1.101.0", "2026-12-24"), "1.100.0": 'date = "soon"\n[pkg.rust]\nversion = "1.100.0 (a b)"\n'},
+            set(),
+            r"Rust channel 1\.100\.0: .*date 'soon' is not an ISO date",
+        ),
+        ({"stable": rust_manifest("2.0.0", "2027-01-01")}, set(), r"newest cycle 1\.99 is not a 2\.y series"),
+    ],
+)
+def test_rust_unusable_stable_channel_is_loud(bodies, missing, needle):
+    with pytest.raises(SourceError, match=needle):
+        RustAdapter(fetch=RustChannel(missing=missing, bodies=bodies)).fetch()
 
 
 # --- Node --------------------------------------------------------------------------
