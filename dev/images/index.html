@@ -4140,8 +4140,9 @@ nothing else: no common layer, no vergil-tooling.</p>
   conflicts with the full <code>curl</code> package, so the image asks dnf for
   <code>/usr/bin/curl</code> and <code>/usr/bin/gpg</code> by path and accepts whichever package
   provides them.</li>
-<li><strong>uv and nFPM</strong>: both are pinned and checksum-verified, and the daily
-  upstream refresh floats their pins; see
+<li><strong>uv and nFPM</strong>: both are pinned and verified against SHA-256 digests
+  pinned in source, which the daily upstream refresh writes when it floats
+  their pins; see
   <a href="https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md">the catalog</a>.
   The package setup action installs vergil-tooling with uv, under a Python
   that uv fetches itself.</li>
