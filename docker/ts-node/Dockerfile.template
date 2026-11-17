@@ -23,10 +23,11 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG DEBIAN_FRONTEND=noninteractive
 
 # --- System packages ---------------------------------------------------------
-# pkg-config, for native addons a consumer's npm install builds; base has the
-# rest of today's list.
+# pkg-config, for native addons a consumer's npm install builds; libatomic1,
+# which the nodejs.org Node 26 binaries load at startup (on both x64 and
+# arm64), so without it `node` cannot run. base has the rest of today's list.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends pkg-config && \
+    apt-get install -y --no-install-recommends pkg-config libatomic1 && \
     rm -rf /var/lib/apt/lists/*
 
 # --- Node.js runtime (prebuilt, nodejs.org) ----------------------------------
