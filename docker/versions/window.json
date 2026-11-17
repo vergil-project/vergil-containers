@@ -120,6 +120,12 @@
           "token_prefix": "node-",
           "versions": [
             {
+              "version": "26",
+              "eol": "2029-04-30",
+              "in_policy": true,
+              "runtime_published": null
+            },
+            {
               "version": "24",
               "eol": "2028-04-30",
               "in_policy": true,

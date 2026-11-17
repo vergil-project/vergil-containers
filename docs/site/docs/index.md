@@ -25,7 +25,7 @@ All images are published to
 | `dev-rust`       | rust       | 1.99, 1.98             | `base:latest`                           |
 | `dev-cpp-clang`  | cpp        | 20, 19                 | `base:latest`                           |
 | `dev-cpp-gcc`    | cpp        | 14                     | `base:latest`                           |
-| `dev-ts-node`    | typescript | 24, 22                 | `base:latest`                           |
+| `dev-ts-node`    | typescript | 26, 24, 22             | `base:latest`                           |
 | `dev-pkg-ubuntu` | —          | 26.04, 24.04           | `ubuntu:<v>`                            |
 | `dev-pkg-rhel`   | —          | 10, 9                  | `registry.access.redhat.com/ubi<v>/ubi` |
 | `dev-base`       | —          | latest                 | `pkg-ubuntu:24.04`                      |

@@ -41,8 +41,8 @@ releases. The plan states the rule as "LTS (even-numbered) majors". This policy
 uses the LTS status itself, not the parity of the number, because from Node.js
 27 every major becomes LTS.
 
-On 2026-10-21 that is 24 and 22. Node.js 26 joins the window when it becomes
-LTS on 2026-10-28.
+On 2026-11-17 that is 26, 24 and 22. Node.js 26 joined the window when it
+became LTS on 2026-10-28.
 
 ## What counts as GA
 
@@ -85,8 +85,5 @@ runtime package is assessed when one exists.
 
 ## Current out-of-policy versions
 
-As of 2026-10-21: **none.** The manifest builds 24 and 22, which are both LTS
-and not EOL.
-
-Node.js 26 becomes LTS on 2026-10-28. From that day the manifest is behind
-until 26 is built.
+As of 2026-11-17: **none.** The manifest builds 26, 24 and 22, which are all
+LTS and not EOL. Node.js 26 was added after it became LTS on 2026-10-28.

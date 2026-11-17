@@ -19,8 +19,9 @@ architectures:
 
 | Major | Source (prebuilt) | Decision |
 | ----- | ----------------- | -------- |
-| **24** | nodejs.org tarballs, `linux-x64` and `linux-arm64` | **pinned (primary)** |
-| **22** | nodejs.org tarballs, `linux-x64` and `linux-arm64` | **pinned (secondary)** |
+| **26** | nodejs.org tarballs, `linux-x64` and `linux-arm64` | **pinned (primary)** |
+| **24** | nodejs.org tarballs, `linux-x64` and `linux-arm64` | **pinned** |
+| **22** | nodejs.org tarballs, `linux-x64` and `linux-arm64` | **pinned** |
 
 The exact release of each major, and the SHA-256 of each architecture's
 tarball, are pinned in `docker/pins/toolchains.yml`; the daily upstream refresh
@@ -29,9 +30,9 @@ bundles: it is never upgraded in place, so it changes only when the pin moves
 (the site's Trivy CVE triage page, `docs/site/docs/operations/trivy-triage.md`).
 `node-20` is excluded (EOL Apr 2026), per the epic's global constraints.
 
-**Node 24 is the primary major** — `versions[0]`; the `[once]` TYPECHECK / LINT /
-AUDIT stages run on it, and only TEST runs per Node version (spec §3.6). Both
-majors are built from the same `Dockerfile.template` via the `NODE_MAJOR`
+**Node 26 is the primary major** — `versions[0]`; the `[once]` TYPECHECK / LINT /
+AUDIT stages run on it, and only TEST runs per Node version (spec §3.6). Every
+major is built from the same `Dockerfile.template` via the `NODE_MAJOR`
 build-arg.
 
 If a future major is wanted, advance the matrix **only once it is available as a
@@ -74,8 +75,8 @@ which `docker/build.sh` reads, is generated from it.
   asserts `tsc`, `eslint` and `vitest` are not on the image's `PATH`, runs
   `npm ci --ignore-scripts`, then `tsc --noEmit`, `eslint .` and one
   `vitest run --coverage` from `node_modules/.bin`, and the image's `prettier`
-  and `license-checker` on the project. Shared across the node-24 and node-22
-  images.
+  and `license-checker` on the project. Shared across every node-<major>
+  image.
 
 Images are named `dev-ts-node:<major>` / `prod-ts-node:<major>`, following the
 established `{prefix}-{language}:{version}` convention where the `{language}`
@@ -86,7 +87,7 @@ T5's image resolution (`prod-ts-node:<major>`) and T7's CI workflows consume.
 
 ```bash
 docker/build.sh ts-node
-docker/ts-node/smoke-test.sh dev-ts-node:24
+docker/ts-node/smoke-test.sh dev-ts-node:26
 ```
 
 `docker/build.sh ts-node` builds the image's parents (`pkg-ubuntu:24.04`, then
