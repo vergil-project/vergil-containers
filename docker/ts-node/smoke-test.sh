@@ -2,9 +2,12 @@
 # Managed by vergil-containers — DO NOT EDIT in downstream repos.
 # Canonical source: https://github.com/vergil-project/vergil-containers
 # smoke-test.sh — run the trivial TypeScript smoke check against a built
-# ts-node image (epic vergil-project/.github#284 T1: a trivial package.json +
-# tsconfig.json project installs (npm ci), typechecks (tsc --noEmit), and runs
-# one vitest test under the image). Shared across the node-24 and node-22 images.
+# ts-node image (epic vergil-project/.github#284 T1, #1174 §6.3: a trivial
+# project that declares its TypeScript tools installs (npm ci --ignore-scripts),
+# typechecks (tsc --noEmit), lints (eslint .) and runs one vitest test, each
+# from its node_modules/.bin, and checks the image carries prettier and
+# license-checker but none of the repo-declared tools; see
+# smoke/run-in-container.sh). Shared across the node-24 and node-22 images.
 #
 # Usage:
 #   docker/ts-node/smoke-test.sh <image-tag> [runtime]

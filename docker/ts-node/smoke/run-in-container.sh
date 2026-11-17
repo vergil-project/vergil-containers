@@ -3,12 +3,18 @@
 #
 # Runs inside a built dev-ts-node image with the smoke fixture mounted read-only
 # at /smoke. Copies the fixture to a writable dir, then:
-#   1. confirms the shared runtime-agnostic analysis toolset (tsc, eslint,
-#      prettier, vitest, license-checker, @vitest/coverage-v8, typescript-eslint)
-#      is present and runnable — so every ts-node image is verified to carry it;
-#   2. installs the fixture's vendored devDependencies with `npm ci`;
-#   3. typechecks with `tsc --noEmit`;
-#   4. runs one Vitest test.
+#   1. confirms the image tools (prettier, license-checker) are on PATH and run;
+#   2. confirms the repo-declared tools (tsc, eslint, vitest) are NOT on PATH,
+#      and typescript-eslint and @vitest/coverage-v8 are not in the global tree:
+#      a repo declares them and runs its own (vergil-tooling's tool-ownership
+#      guideline, epic vergil-project/.github#1174 §6.3);
+#   3. installs the fixture's declared devDependencies with
+#      `npm ci --ignore-scripts`, as every Vergil gate does;
+#   4. fails if tsc, eslint or vitest is missing from node_modules/.bin;
+#   5. typechecks (tsc --noEmit), lints (eslint .) and runs one Vitest test
+#      with V8 coverage, each from node_modules/.bin;
+#   6. runs the image tools on the project: prettier --check and
+#      license-checker --summary.
 # Any failure exits non-zero.
 set -euo pipefail
 
@@ -20,37 +26,61 @@ echo "--- node runtime ---"
 echo "node: $(node --version)"
 echo "npm:  $(npm --version)"
 
-echo "--- shared TypeScript analysis toolset (global) ---"
-# Every ts-node image carries the same analysis tools
-# (common/typescript-analysis.dockerfile); confirm each is present on PATH.
-for tool in tsc eslint prettier vitest license-checker; do
+echo "--- image tools (global) ---"
+for tool in prettier license-checker; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
-    echo "SMOKE FAIL: analysis tool '${tool}' not found on PATH" >&2
+    echo "SMOKE FAIL: image tool '${tool}' not found on PATH" >&2
     exit 1
   fi
 done
-echo "tsc:             $(tsc --version)"
-echo "eslint:          $(eslint --version)"
 echo "prettier:        $(prettier --version)"
-echo "vitest:          $(vitest --version)"
+# license-checker's --version exits 1, so it is run for real on the project
+# after npm ci below.
 echo "license-checker: $(command -v license-checker)"
 
-# Library packages have no bin; assert they are installed in the global tree.
-for lib in "@vitest/coverage-v8" typescript-eslint; do
-  if ! npm ls -g "${lib}" >/dev/null 2>&1; then
-    echo "SMOKE FAIL: '${lib}' not installed globally" >&2
+echo "--- repo-declared tools (must not be global) ---"
+for tool in tsc eslint vitest; do
+  if entry="$(command -v "${tool}")"; then
+    echo "SMOKE FAIL: '${tool}' is on the image's PATH (${entry}); the repo declares it" >&2
     exit 1
   fi
-  echo "${lib}: present (global)"
+  echo "${tool}: not on PATH"
+done
+for lib in typescript-eslint "@vitest/coverage-v8"; do
+  if npm ls -g "${lib}" >/dev/null 2>&1; then
+    echo "SMOKE FAIL: '${lib}' is installed globally; the repo declares it" >&2
+    exit 1
+  fi
+  echo "${lib}: not installed globally"
 done
 
-echo "--- npm ci (vendored devDependencies) ---"
-npm ci
+echo "--- npm ci --ignore-scripts (declared devDependencies) ---"
+npm ci --ignore-scripts
+
+bin="${work}/node_modules/.bin"
+for tool in tsc eslint vitest; do
+  if [ ! -x "${bin}/${tool}" ]; then
+    echo "SMOKE FAIL: '${tool}' not installed at node_modules/.bin/${tool}" >&2
+    exit 1
+  fi
+done
+echo "tsc:    $("${bin}/tsc" --version)"
+echo "eslint: $("${bin}/eslint" --version)"
+echo "vitest: $("${bin}/vitest" --version)"
 
 echo "--- tsc --noEmit (typecheck) ---"
-npx tsc --noEmit
+"${bin}/tsc" --noEmit
 
-echo "--- vitest run (one test) ---"
-npx vitest run
+echo "--- eslint . (lint) ---"
+"${bin}/eslint" .
+
+echo "--- vitest run --coverage (one test) ---"
+"${bin}/vitest" run --coverage
+
+echo "--- prettier --check (image tool) ---"
+prettier --check src
+
+echo "--- license-checker --summary (image tool) ---"
+license-checker --summary
 
 echo "SMOKE PASS"
