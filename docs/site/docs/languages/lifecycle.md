@@ -66,7 +66,10 @@ merges. Building images in pull-request CI is deferred to epic
 [vergil-project/.github#213](https://github.com/vergil-project/.github/issues/213).
 
 **A failing check is loud.** If an adapter can't fetch or parse upstream data,
-the job fails. It still finishes the other families, and it opens or refreshes
+the job fails. A network error, a timeout or an HTTP 5xx is retried first, up
+to three attempts in all with a warning before each retry, so one transient
+upstream error does not fail the run; a failure that lasts through every
+attempt still fails it. It still finishes the other families, and it opens or refreshes
 one `lifecycle check failing for <family>` issue, which the next clean run
 closes. So no open PR and no open `language-lifecycle` issue reliably means
 "in sync".
