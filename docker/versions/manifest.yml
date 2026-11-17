@@ -148,6 +148,11 @@ families:
       name: "base"
       version: "latest"
     versions:
+      - version: "26"
+        ga: 2026-10-28
+        eol: 2029-04-30
+        in_policy: true
+        runtime_published: null
       - version: "24"
         ga: 2025-10-28
         eol: 2028-04-30

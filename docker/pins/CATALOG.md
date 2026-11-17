@@ -32,6 +32,7 @@ Generated from `docker/pins/toolchains.yml`, which the daily upstream refresh mo
 | python | 3.12 | 3.12.16 | 20261110 | `c2f87d4b4e8db3abddb0f116c6ccfc503d0cbdbb9ee8faacddad1b679ec12e99` | `4792f81750282597fb2a3389fe18b945ed2ba6aad5e45ad406d122c58cb33081` |
 | go | 1.27 | 1.27.4 | — | `7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840` | `3392582988a273a87ab5043ee1b2c9c17a2c3c00580bf9326c47a2e0aaaeac92` |
 | go | 1.26 | 1.26.11 | — | `9849f4e04ee35303714e34fbc3ac8ab44ea3e448a95aa182f91e3b9b79c710ec` | `6c2f29b458b5add0835f18b776f69c8881a6d88428f1484a6da55755e620757e` |
+| node | 26 | 26.13.1 | — | `518674de2b621728a5e4486f5fb3b7d2900bb3cc4aa97969edaa463db99f9778` | `80a330b35415382878df18d41afbd106ea89bfb3be0087d6608e289a14c5cc7d` |
 | node | 24 | 24.22.3 | — | `061ec3e3062115705b56b51fa9cc330ab50d34b6969387d4e4b1a50c6809acc2` | `261af2af250dfd7e9f25cf151d1b2713a0adf8f10a9ad116c4947f68627affe8` |
 | node | 22 | 22.23.5 | — | `c54118104acc524633b5abe106bbf44a53126ec8b4e5fa105cb92b5d7de8a1a1` | `8bd3dc69eee8f3f226315a80d7d1d4faccf217a4c8fae500168ac2e38f3bdba3` |
 | rust | 1.99 | 1.99.1 | — | — (rustup verifies) | — (rustup verifies) |

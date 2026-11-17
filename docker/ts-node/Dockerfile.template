@@ -43,7 +43,7 @@ RUN apt-get update && \
 # exists it is a .trivyignore entry. markdownlint stays base's wrapper on the
 # core Node.
 ARG TARGETARCH
-ARG NODE_MAJOR=24
+ARG NODE_MAJOR=26
 ARG TOOLCHAIN_VERSION
 ARG TOOLCHAIN_SHA256_AMD64
 ARG TOOLCHAIN_SHA256_ARM64
