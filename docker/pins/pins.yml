@@ -57,7 +57,8 @@
 #     toolchain: cargo-deny (as cargo-nextest) from its prebuilt release with
 #     per-architecture digests pinned in source, cargo-llvm-cov built from
 #     crates.io at its pinned version with --locked. Both are AUTO-MANAGED, so
-#     the daily upstream refresh still floats them, through reviewed PRs.
+#     the daily upstream refresh still floats them, through PRs that merge
+#     themselves once CI passes (epic vergil-project/.github#1168).
 pins:
   go-test-coverage:
     constraint: "==2.19.0 on Go 1.26, else latest (unpinned)"
@@ -110,8 +111,8 @@ pins:
   # release assets carry no checksum and no version in their names, so it is
   # built from crates.io with --locked at its pinned version; cargo verifies the
   # crate checksum against the index.
-  cargo-deny:  {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (vergil-project/.github#1165) — a Rust validation tool, pinned so an upstream release cannot change a repo's gate verdict unreviewed (reverses the #418 free); its prebuilt musl release tarball embeds the version, and its per-architecture sha256 is pinned in source and verified at build; the daily upstream-refresh job in ops.yml floats the version and writes the digests from the release's per-asset .tar.gz.sha256 in the same PR (rust image only).", state: auto-managed, tracking_issue: null}
-  cargo-llvm-cov: {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (vergil-project/.github#1165) — a Rust validation tool, pinned so an upstream release cannot change a repo's coverage verdict unreviewed (reverses the #418 free); built from crates.io with `cargo install --locked` at the pinned version, cargo verifying the crate checksum against the index; the daily upstream-refresh job in ops.yml floats the version (rust image only).", state: auto-managed, tracking_issue: null}
+  cargo-deny:  {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (vergil-project/.github#1165) — a Rust validation tool, pinned so an upstream release cannot change a repo's gate verdict without a pinned source change (reverses the #418 free); its prebuilt musl release tarball embeds the version, and its per-architecture sha256 is pinned in source and verified at build; the daily upstream-refresh job in ops.yml floats the version and writes the digests from the release's per-asset .tar.gz.sha256 in the same PR (rust image only).", state: auto-managed, tracking_issue: null}
+  cargo-llvm-cov: {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (vergil-project/.github#1165) — a Rust validation tool, pinned so an upstream release cannot change a repo's coverage verdict without a pinned source change (reverses the #418 free); built from crates.io with `cargo install --locked` at the pinned version, cargo verifying the crate checksum against the index; the daily upstream-refresh job in ops.yml floats the version (rust image only).", state: auto-managed, tracking_issue: null}
   # yq (mikefarah/yq) in base (#884) comes from its release binary, verified
   # against the release's multi-hash `checksums` file, so it joins the
   # auto-managed set. Every image built on base inherits it.

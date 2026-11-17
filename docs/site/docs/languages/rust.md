@@ -82,8 +82,9 @@ day of the check.
   builds it from its published lockfile. The refresh moves
   `CARGO_LLVM_COV_VERSION` like any other auto-managed pin.
 - All three are validation tools: they decide whether a Rust repo passes its
-  gate. So each one is pinned and refreshed through reviewed pull requests,
-  never installed at whatever version is latest on the day of the build.
+  gate. So each one is pinned in source and moved only by the daily upstream
+  refresh, in a fenced PR that merges itself once CI passes, never installed
+  at whatever version is latest on the day of the build.
   This reverses the WS2 audit (#418), which had left the `cargo install`
   tools unpinned; `docker/pins/pins.yml` records the reversal and the reason.
 - Rust has the fastest cadence of any supported language, a new stable release

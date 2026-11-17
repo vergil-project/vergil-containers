@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # upstream-refresh.sh — the [upstream-refresh].hook for vergil-containers.
 #
-# vrg-upstream-refresh runs this from the repo root on a clean checkout of the
-# base branch (vergil.toml points at it; epic vergil-project/.github#472).
+# vrg-upstream-refresh runs this from the repo root on a fresh clone of
+# develop, in the prepare job, which holds no secrets (vergil.toml points at
+# it; epics vergil-project/.github#472 and vergil-project/.github#1168).
 # It moves the auto-managed binary-download tools to their leading edge, and
 # each language toolchain pin to the newest patch of its series:
 #
