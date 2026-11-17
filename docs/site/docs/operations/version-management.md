@@ -95,7 +95,7 @@ resolve latest at build time, so they float cleanly and need no entry. The Rust
 validation tools are the exception: epic
 [vergil-project/.github#1165](https://github.com/vergil-project/.github/issues/1165)
 pinned them again, reversing the #418 free for them, so an upstream release
-cannot change a repo's validation verdict unreviewed.
+cannot change a repo's validation verdict without a pinned source change.
 
 Thirteen tools install from a **binary release download** whose URL and
 per-version checksum embed an explicit version, so they cannot float by simply
