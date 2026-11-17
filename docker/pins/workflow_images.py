@@ -15,8 +15,9 @@ from the auto-managed pin the images are built with, through this script:
 prints the Trivy image for the `ARG TRIVY_VERSION=` in
 docker/common/security-tools.dockerfile, so the CI gate scans with exactly the
 Trivy the images ship, and moves with it on every upstream-refresh bump. The
-refresh cannot rewrite workflow files instead: its App token has no
-`workflows` permission, so GitHub would refuse every push of such a bump.
+refresh cannot rewrite workflow files instead: its path fence (the
+[upstream-refresh].paths allowlist in vergil.toml) always refuses a change
+under .github/, so such a bump would fail the refresh.
 
 A tool image no image ships has no fragment ARG to derive from, so its pin is
 a line in docker/pins/workflow-images.txt, which the refresh moves within its

@@ -486,14 +486,19 @@ def test_write_pins_versions_and_digests_together(tmp_path, capsys):
     assert "::warning::" not in out.err
 
 
-def test_write_warns_on_a_digest_change_without_a_version_change(tmp_path, capsys):
-    _, fetch = _main_fixture(tmp_path)
+def test_write_refuses_a_digest_change_without_a_version_change(tmp_path, capsys):
+    # The release's checksums changed under the pinned version: the refresh
+    # fails, naming the tool and version, and no fragment changes.
+    other, fetch = _main_fixture(tmp_path)
     _nextest_fragment(tmp_path, version="0.9.153")
-    assert rl.main(["--write"], docker_root=tmp_path, fetch=fetch,
-                   fetch_text=_main_sums({"AMD64": HEX_C, "ARM64": HEX_B})) == 0
-    out = capsys.readouterr()
-    assert "bumped" not in out.out
-    assert "::warning::cargo-nextest 0.9.153: its release checksums changed" in out.err
+    nextest = tmp_path / "common" / "cargo-nextest.dockerfile"
+    before = {nextest: nextest.read_text(), other: other.read_text()}
+    with pytest.raises(rl.ResolutionError,
+                       match="cargo-nextest 0.9.153: upstream now lists different release checksums"):
+        rl.main(["--write"], docker_root=tmp_path, fetch=fetch,
+                fetch_text=_main_sums({"AMD64": HEX_C, "ARM64": HEX_B}))
+    assert {f: f.read_text() for f in before} == before
+    assert "pinned" not in capsys.readouterr().out
 
 
 def test_write_is_all_or_nothing(tmp_path):

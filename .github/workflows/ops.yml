@@ -85,9 +85,9 @@ jobs:
     steps:
       # The App token authenticates the GitHub releases API reads (the LLVM
       # adapter), which unauthenticated get only 60 requests an hour per runner
-      # IP, and the add/drop branch pushes and PRs. Minted as the
-      # upstream-refresh reusable workflow does, scoped to this repository
-      # and to exactly what this job calls: contents: write for the branch
+      # IP, and the add/drop branch pushes and PRs. Minted here with
+      # actions/create-github-app-token, scoped to this repository and to
+      # exactly what this job calls: contents: write for the branch
       # pushes and the branch deletes on close, pull-requests: write to list,
       # open, refresh and close the PRs. The issues are written with the
       # separate issues token below. The public releases reads need no
@@ -102,7 +102,8 @@ jobs:
           permission-pull-requests: write
 
       # Checked out with the App token so the add/drop branch pushes are
-      # App-authored (and so trigger CI), as upstream-refresh's are.
+      # App-authored, and so trigger CI: a push made with GITHUB_TOKEN would
+      # not.
       - name: Checkout code
         uses: actions/checkout@v6
         with:
@@ -196,16 +197,20 @@ jobs:
       APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
 
-  # The leading-edge bumper for the binary-download mechanism tools (#435). It
-  # runs vrg-upstream-refresh (epic vergil-project/.github#472): the
-  # [upstream-refresh].hook in vergil.toml (docker/pins/upstream-refresh.sh)
-  # resolves each tool's newest release, rewrites the `ARG *_VERSION=` pins in
-  # docker/common/* and regenerates docker/pins/CATALOG.md, and the reusable
-  # workflow keeps exactly one PR on the fixed `upstream-refresh` branch in step
-  # with the result (opened on drift, refreshed in place, closed when nothing
-  # drifts). The push and PR use the App token minted inside the reusable
-  # workflow, so App-authored PRs fire CI and this job's GITHUB_TOKEN needs
-  # only contents: read. Nothing is auto-merged: a human merges every PR.
+  # The daily refresh of the upstream pins (#435, epic vergil-project/.github#649).
+  # It runs vrg-upstream-refresh (epics vergil-project/.github#472 and #1168):
+  # the [upstream-refresh].hook in vergil.toml (docker/pins/upstream-refresh.sh)
+  # moves the binary-download tools' pins in docker/common/* and
+  # docker/pins/workflow-images.txt and the toolchain pins in
+  # docker/pins/toolchains.yml to their newest releases, and regenerates
+  # docker/versions/matrix.json and docker/pins/CATALOG.md. The reusable
+  # workflow runs the hook in a prepare job that holds no secrets, then a
+  # publish job checks the patch against the path fence (the
+  # [upstream-refresh].paths allowlist in vergil.toml), opens the PR on an
+  # automation/upstream-refresh/<run-id> branch as the org automation App, and
+  # merges it once CI passes. The run is red unless the PR merged or there was
+  # nothing to change. The App token is minted inside the reusable workflow, so
+  # this job's GITHUB_TOKEN needs only contents: read.
   upstream-refresh:
     uses: vergil-project/vergil-actions/.github/workflows/ops-upstream-refresh.yml@v2.1
     permissions:

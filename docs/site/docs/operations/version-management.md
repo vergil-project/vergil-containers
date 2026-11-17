@@ -126,23 +126,37 @@ tracks the leading edge:
   the `ARG *_SHA256_AMD64=` and `_ARM64=` lines in the same run. The lookups
   all finish before anything is written, so a missing or malformed checksum
   fails the refresh, naming the tool and the architecture, with no fragment
-  changed.
-- **Only if something drifted** it opens one bump PR from the fixed
-  `upstream-refresh` branch, titled `chore(upstream): refresh upstream inputs`
-  and authored by the GitHub App (so the PR fires CI and every bump is
-  validated). A later run refreshes that PR in place rather than opening
-  another, and a run with nothing to bump closes a stale one. **Nothing is
-  auto-merged**: upstream-refresh PRs keep a human merge gate (only the
-  automation App's sync PRs on `automation/*` branches merge themselves).
+  changed. So does a digest change with no version change: a published
+  release's files never change, and the refresh PR merges itself, so the
+  refresh stops, naming the tool and the version, for a human to look into
+  the upstream release before moving the digests by hand.
+- The hook runs in a job that holds no secrets. A second job checks its patch
+  against the **path fence**, the `[upstream-refresh].paths` allowlist in
+  [`vergil.toml`](https://github.com/vergil-project/vergil-containers/blob/develop/vergil.toml):
+  only the pin lines of `docker/common/*`, `docker/pins/workflow-images.txt`
+  and `docker/pins/toolchains.yml` may change, no pinned version may go down,
+  and the generated `docker/versions/matrix.json` and `CATALOG.md` may be
+  rewritten. Nothing under `.github/` may change. A patch that breaks a rule
+  fails the run, naming the file and the rule, and nothing is pushed.
+- **Only if something drifted** it opens one bump PR on a new
+  `automation/upstream-refresh/<run-id>` branch, titled
+  `chore(upstream): refresh upstream inputs` and authored by the org
+  automation App (so the PR fires CI and every bump is validated). It closes
+  an earlier run's open refresh PR first. **The PR merges itself** once its
+  CI passes, with no human merge (epic
+  [vergil-project/.github#1168](https://github.com/vergil-project/.github/issues/1168)).
+  PR CI is the gate: `quality / evidence`, a required check, needs
+  `quality / custom`, which runs `check_pins.py` and `generate.py --check`.
+  A run whose PR did not merge, or that failed, is a red scheduled run.
 
 This is how a leading-edge CVE fix reaches the images without a hand edit — for
 example the trivy `0.70.0 → 0.72.0` security bump landed through the bumper.
 
 ### Tool images in workflows
 
-The refresh rewrites only the Dockerfile fragments, and its App token has no
-`workflows` permission, so it can never move a version written into a
-workflow. A workflow therefore never pins a tool image itself: the CI and
+The refresh rewrites only the data files its path fence allows, and the fence
+always refuses any change under `.github/`, so it can never move a version
+written into a workflow. A workflow therefore never pins a tool image itself: the CI and
 publish Trivy gates read the images' own Trivy from its auto-managed pin
 (`docker/pins/workflow_images.py trivy-image`).
 
