@@ -388,8 +388,9 @@ Notes on the rows:
   conflicts with the full `curl` package, so the image asks dnf for
   `/usr/bin/curl` and `/usr/bin/gpg` by path and accepts whichever package
   provides them.
-- **uv and nFPM**: both are pinned and checksum-verified, and the daily
-  upstream refresh floats their pins; see
+- **uv and nFPM**: both are pinned and verified against SHA-256 digests
+  pinned in source, which the daily upstream refresh writes when it floats
+  their pins; see
   [the catalog](https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md).
   The package setup action installs vergil-tooling with uv, under a Python
   that uv fetches itself.
