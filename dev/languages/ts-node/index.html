@@ -3410,7 +3410,7 @@
 <h1 id="typescript-nodejs-support-policy">TypeScript / Node.js support policy<a class="headerlink" href="#typescript-nodejs-support-policy" title="Permanent link">&para;</a></h1>
 <p>Image family: <code>dev-ts-node</code>, the TypeScript image built on the Node.js runtime.
 Shared rules: <a href="../lifecycle/">Language version lifecycle</a>. Upstream facts on
-this page were checked on 2026-10-21.</p>
+this page were checked on 2026-11-18.</p>
 <h2 id="upstream-source-of-truth">Upstream source of truth<a class="headerlink" href="#upstream-source-of-truth" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Official:</strong> Node.js <a href="https://nodejs.org/en/about/previous-releases">Previous
@@ -3497,7 +3497,9 @@ that date is on or before the day of the check.</p>
   vergil-tooling's
   <a href="https://vergil-project.github.io/vergil-tooling/latest/standards/development/tool-ownership/">Tool Ownership Guideline</a>;
   the image's full tool list is under <a href="../../images/">Images</a>.</li>
-<li>The separate Node.js pin in <code>vergil-vm</code> must line up with this window.</li>
+<li>The separate Node.js pin in <code>vergil-vm</code> must line up with this window.
+  Lining it up is the work of epic 4,
+  <a href="https://github.com/vergil-project/.github/issues/959">vergil-project/.github#959</a>.</li>
 </ul>
 <h2 id="deployed-runtime-package">Deployed runtime package<a class="headerlink" href="#deployed-runtime-package" title="Permanent link">&para;</a></h2>
 <p><strong>No.</strong> Vergil has no deployed TypeScript application today. The need for a
@@ -3508,8 +3510,12 @@ Node.js major. Each PR carries its own toolchain pin change in
 <code>docker/pins/toolchains.yml</code> (an add's new series pin, a drop's removed one)
 and is merged by a human.</p>
 <h2 id="current-out-of-policy-versions">Current out-of-policy versions<a class="headerlink" href="#current-out-of-policy-versions" title="Permanent link">&para;</a></h2>
-<p>As of 2026-11-17: <strong>none.</strong> The manifest builds 26, 24 and 22, which are all
-LTS and not EOL. Node.js 26 was added after it became LTS on 2026-10-28.</p>
+<p>As of 2026-11-18: <strong>none.</strong> The manifest builds 26, 24 and 22, the window.
+Under <code>pr</code> automation, a major that leaves the window is dropped through a
+lifecycle pull request, so none is kept out of policy; the manifest lags
+upstream only while such a PR waits for a human to merge it. The open
+lifecycle PRs (branches <code>lifecycle/ts-node-add-&lt;major&gt;</code> and
+<code>lifecycle/ts-node-drop-&lt;major&gt;</code>) show any pending change.</p>
 
 
 
