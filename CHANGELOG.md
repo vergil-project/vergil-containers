@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.46] - 2026-11-18
+
+### Documentation
+
+- describe the ts-node window under pr automation (#957)
+
+### Features
+
+- move ts-node to pr lifecycle automation (#956)
+
 ## [2.1.45] - 2026-11-17
 
 ### Bug fixes
