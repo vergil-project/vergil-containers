@@ -3503,7 +3503,10 @@ that date is on or before the day of the check.</p>
 <p><strong>No.</strong> Vergil has no deployed TypeScript application today. The need for a
 runtime package is assessed when one exists.</p>
 <h2 id="automation">Automation<a class="headerlink" href="#automation" title="Permanent link">&para;</a></h2>
-<p><strong><code>report</code>.</strong> The lifecycle check reports the gap and tracks it in an issue.</p>
+<p><strong><code>pr</code>.</strong> The lifecycle check opens the pull request that adds or drops a
+Node.js major. Each PR carries its own toolchain pin change in
+<code>docker/pins/toolchains.yml</code> (an add's new series pin, a drop's removed one)
+and is merged by a human.</p>
 <h2 id="current-out-of-policy-versions">Current out-of-policy versions<a class="headerlink" href="#current-out-of-policy-versions" title="Permanent link">&para;</a></h2>
 <p>As of 2026-11-17: <strong>none.</strong> The manifest builds 26, 24 and 22, which are all
 LTS and not EOL. Node.js 26 was added after it became LTS on 2026-10-28.</p>

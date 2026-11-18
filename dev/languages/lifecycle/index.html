@@ -3424,7 +3424,7 @@ artifact. The report also flags a version whose EOL falls within the next 90
 days.</p>
 <p>What the check does with a gap depends on the family's automation:</p>
 <ul>
-<li><strong><code>pr</code> families</strong> (Python, Go and Rust) get one pull request per change, on a
+<li><strong><code>pr</code> families</strong> (Python, Go, Rust and TypeScript) get one pull request per change, on a
   branch named <code>lifecycle/&lt;family&gt;-&lt;kind&gt;-&lt;version&gt;</code>. A change is an add, a
   drop, or, for Python, a <code>runtime</code> change that records a newly published
   <code>vergil-python</code> runtime in the manifest. Each PR carries the manifest edit,
@@ -3440,10 +3440,10 @@ days.</p>
   coming soon, or a missing runtime.</li>
 </ul>
 <p>Nothing is ever auto-merged. A person reviews and merges every lifecycle PR.
-This repository's pull-request CI does not build images: an add PR's new
-images are first built and scanned by the CD publish on <code>develop</code> after it
-merges. Building images in pull-request CI is deferred to epic
-<a href="https://github.com/vergil-project/.github/issues/213">vergil-project/.github#213</a>.</p>
+This repository's pull-request CI builds, scans and smoke-tests the images a
+change affects (<code>ci.yml</code>'s <code>images</code> job, which calls <code>ci-images.yml</code>), so an
+add PR's new images are proven on the PR before a person merges it. Nothing is
+pushed to GHCR until the CD publish on <code>develop</code> after the merge.</p>
 <p><strong>A failing check is loud.</strong> If an adapter can't fetch or parse upstream data,
 the job fails. A network error, a timeout or an HTTP 5xx is retried first, up
 to three attempts in all with a warning before each retry, so one transient
@@ -3581,7 +3581,7 @@ upstream fact cites its source and the date it was checked.</p>
 </tr>
 <tr>
 <td><code>ts-node</code></td>
-<td><code>report</code></td>
+<td><code>pr</code></td>
 <td><a href="../ts-node/">TypeScript / Node.js</a></td>
 </tr>
 <tr>
