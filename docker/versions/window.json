@@ -64,13 +64,13 @@
           "token_prefix": "",
           "versions": [
             {
-              "version": "1.99",
+              "version": "1.100",
               "eol": null,
               "in_policy": true,
               "runtime_published": null
             },
             {
-              "version": "1.98",
+              "version": "1.99",
               "eol": null,
               "in_policy": true,
               "runtime_published": null
@@ -119,6 +119,12 @@
           "key": "ts-node",
           "token_prefix": "node-",
           "versions": [
+            {
+              "version": "26",
+              "eol": "2029-04-30",
+              "in_policy": true,
+              "runtime_published": null
+            },
             {
               "version": "24",
               "eol": "2028-04-30",

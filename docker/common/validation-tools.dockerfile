@@ -7,13 +7,9 @@ ARG SHELLCHECK_VERSION=0.11.0
 ARG SHFMT_VERSION=3.14.1
 ARG ACTIONLINT_VERSION=1.7.12
 ARG GIT_CLIFF_VERSION=2.14.2
-ARG HADOLINT_VERSION=2.15.1
 
-# hadolint >= 2.15.1 publishes a single checksums.sha256 (`<sha> *<asset>`)
-# instead of a per-binary .sha256 (issue #602). The grep is anchored on the
-# whole line (-x) so only the exact `hadolint-${HL_ARCH}` asset is selected;
-# no match fails the build (grep exits 1 under pipefail, and `sha256sum -c`
-# also exits 1 on empty input), so verification is never silently skipped.
+# hadolint, verified against digests pinned in source, has its own fragment,
+# common/hadolint.dockerfile (vergil-containers#945).
 #
 # Fetch retries (issue #743): every build-time curl carries
 # `--retry 5 --retry-all-errors --retry-delay 2` so a transient reset or 5xx
@@ -28,14 +24,12 @@ RUN case "${TARGETARCH}" in \
         SC_ARCH="x86_64" ; \
         SHFMT_ARCH="amd64" ; \
         AL_ARCH="amd64" ; \
-        GC_ARCH="x86_64-unknown-linux-gnu" ; \
-        HL_ARCH="linux-x86_64" ;; \
+        GC_ARCH="x86_64-unknown-linux-gnu" ;; \
       arm64) \
         SC_ARCH="aarch64" ; \
         SHFMT_ARCH="arm64" ; \
         AL_ARCH="arm64" ; \
-        GC_ARCH="aarch64-unknown-linux-gnu" ; \
-        HL_ARCH="linux-arm64" ;; \
+        GC_ARCH="aarch64-unknown-linux-gnu" ;; \
       *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac && \
     SC_TARBALL="shellcheck-v${SHELLCHECK_VERSION}.linux.${SC_ARCH}.tar.xz" && \
@@ -66,14 +60,4 @@ RUN case "${TARGETARCH}" in \
       -o "/tmp/${GC_TARBALL}.sha512" && \
     (cd /tmp && sha512sum -c "${GC_TARBALL}.sha512") && \
     tar -xzf "/tmp/${GC_TARBALL}" --strip-components=1 -C /usr/local/bin/ "git-cliff-${GIT_CLIFF_VERSION}/git-cliff" && \
-    rm "/tmp/${GC_TARBALL}" "/tmp/${GC_TARBALL}.sha512" && \
-    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
-      "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-${HL_ARCH}" \
-      -o "/tmp/hadolint-${HL_ARCH}" && \
-    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
-      "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/checksums.sha256" \
-      -o /tmp/hadolint_checksums.sha256 && \
-    grep -x -E "[0-9a-f]{64} [ *]hadolint-${HL_ARCH}" /tmp/hadolint_checksums.sha256 \
-      | (cd /tmp && sha256sum -c) && \
-    mv "/tmp/hadolint-${HL_ARCH}" /usr/local/bin/hadolint && chmod +x /usr/local/bin/hadolint && \
-    rm /tmp/hadolint_checksums.sha256
+    rm "/tmp/${GC_TARBALL}" "/tmp/${GC_TARBALL}.sha512"

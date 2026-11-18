@@ -33,10 +33,10 @@ The table is generated from `docker/versions/manifest.yml` by
 | ---------------- | ---------- | ---------------------- | --------------------------------------- |
 | `dev-python`     | python     | 3.15, 3.14, 3.13, 3.12 | `base:latest`                           |
 | `dev-go`         | go         | 1.27, 1.26             | `base:latest`                           |
-| `dev-rust`       | rust       | 1.99, 1.98             | `base:latest`                           |
+| `dev-rust`       | rust       | 1.100, 1.99            | `base:latest`                           |
 | `dev-cpp-clang`  | cpp        | 20, 19                 | `base:latest`                           |
 | `dev-cpp-gcc`    | cpp        | 14                     | `base:latest`                           |
-| `dev-ts-node`    | typescript | 24, 22                 | `base:latest`                           |
+| `dev-ts-node`    | typescript | 26, 24, 22             | `base:latest`                           |
 | `dev-pkg-ubuntu` | —          | 26.04, 24.04           | `ubuntu:<v>`                            |
 | `dev-pkg-rhel`   | —          | 10, 9                  | `registry.access.redhat.com/ubi<v>/ubi` |
 | `dev-base`       | —          | latest                 | `pkg-ubuntu:24.04`                      |
@@ -388,8 +388,9 @@ Notes on the rows:
   conflicts with the full `curl` package, so the image asks dnf for
   `/usr/bin/curl` and `/usr/bin/gpg` by path and accepts whichever package
   provides them.
-- **uv and nFPM**: both are pinned and checksum-verified, and the daily
-  upstream refresh floats their pins; see
+- **uv and nFPM**: both are pinned and verified against SHA-256 digests
+  pinned in source, which the daily upstream refresh writes when it floats
+  their pins; see
   [the catalog](https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md).
   The package setup action installs vergil-tooling with uv, under a Python
   that uv fetches itself.

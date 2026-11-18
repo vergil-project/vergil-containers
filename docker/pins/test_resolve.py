@@ -328,13 +328,30 @@ def _text_fetch(bodies):
     return fetch
 
 
+# A yq-style algorithm order: SHA-256 is neither first nor last.
+YQ_ORDER = ["CRC32", "MD5", "SHA-1", "SHA-256", "SHA-512"]
+
+
 def _sums(tool, version, digests):
-    """Canned `<digest>  <asset>` checksum bodies for any TOOL_DIGESTS `tool` at
-    `version`, keyed by the URL its DigestSource names."""
+    """Canned checksum bodies for any TOOL_DIGESTS `tool` at `version`, in its
+    DigestSource's layout, keyed by the URL it names: `<digest>  <asset>` per
+    file for `single` and `list` (a release-wide `list` file also lists a decoy
+    asset), and for `columns` an `<asset>  <hash>...` line per asset with the
+    YQ_ORDER file beside it."""
     source = rl.TOOL_DIGESTS[tool]
-    return {source.checksum_urls[arch].format(version=version):
-            f"{digest}  {source.assets[arch].format(version=version)}\n"
-            for arch, digest in digests.items()}
+    bodies: dict[str, str] = {}
+    for arch, digest in digests.items():
+        url = source.checksum_urls[arch].format(version=version)
+        asset = source.assets[arch].format(version=version)
+        if source.layout == "columns":
+            hashes = ["0" * 8 if name != "SHA-256" else digest for name in YQ_ORDER]
+            bodies[url] = bodies.get(url, "") + "  ".join([asset, *hashes]) + "\n"
+            bodies[source.hashes_order_url.format(version=version)] = "\n".join(YQ_ORDER) + "\n"
+        elif source.layout == "list":
+            bodies[url] = bodies.get(url, f"{HEX_C}  decoy-{asset}.sbom.json\n") + f"{digest}  {asset}\n"
+        else:
+            bodies[url] = f"{digest}  {asset}\n"
+    return bodies
 
 
 def _all_sums(digests, version):
@@ -367,11 +384,18 @@ def _nextest_fragment(tmp_path, version="0.9.152", amd64=HEX_A, arm64=HEX_B, ext
     return frag
 
 
+# The prebuilt tools whose digests are pinned in source (epic
+# vergil-project/.github#1165, vergil-containers#945).
+DIGEST_TOOLS = {"cargo-nextest", "cargo-deny", "hadolint", "opentofu", "nfpm", "trivy", "scorecard", "uv", "yq"}
+
+
 def test_tool_digests_cover_only_registered_tools():
-    assert set(rl.TOOL_DIGESTS) == {"cargo-nextest", "cargo-deny"}
+    assert set(rl.TOOL_DIGESTS) == DIGEST_TOOLS
     assert set(rl.TOOL_DIGESTS) <= set(rl.TOOL_REPOS)
     for source in rl.TOOL_DIGESTS.values():
         assert set(source.checksum_urls) == set(rl.ARCHES) == set(source.assets)
+        assert source.layout in rl.LAYOUTS
+        assert (source.layout == "columns") == (source.hashes_order_url is not None)
 
 
 def test_resolve_digests_nextest():
@@ -575,6 +599,147 @@ def test_every_digest_tool_is_pinned_in_its_live_fragment():
                     current[arch] = match.group(1)
         assert set(current) == set(rl.ARCHES), tool
         assert rl.rewrite_digests(docker, tool, current) is False
+
+
+def _version_fragment(tool):
+    """The live fragment that pins `tool`'s version."""
+    docker = Path(__file__).resolve().parent.parent
+    arg = rl.TOOL_ARGS[tool]
+    found = [f for f in sorted((docker / "common").glob("*.dockerfile"))
+             if re.search(rf"^ARG {arg}=", f.read_text(), re.MULTILINE)]
+    assert len(found) == 1, (tool, found)
+    return found[0]
+
+
+def test_each_digest_fragment_pins_one_tool():
+    # The refresh's path fence (vergil.toml) treats a fragment as one block:
+    # a digest may change only when a version in the same fragment does. A
+    # fragment that pins digests therefore pins exactly one tool, so each
+    # digest is tied to its own tool's version.
+    docker = Path(__file__).resolve().parent.parent
+    for frag in sorted((docker / "common").glob("*.dockerfile")):
+        text = frag.read_text()
+        if not re.search(r"^ARG [A-Z0-9_]+_SHA256_(AMD64|ARM64)=", text, re.MULTILINE):
+            continue
+        versions = re.findall(r"^ARG ([A-Z0-9_]+)_VERSION=", text, re.MULTILINE)
+        assert len(versions) == 1, (frag.name, versions)
+        stems = set(re.findall(r"^ARG ([A-Z0-9_]+)_SHA256_(?:AMD64|ARM64)=", text, re.MULTILINE))
+        assert stems == set(versions), (frag.name, stems)
+
+
+@pytest.mark.parametrize("tool", sorted(DIGEST_TOOLS))
+def test_each_digest_fragment_verifies_only_its_pinned_digests(tool):
+    # The build checks the download against a digest pinned in source, chosen
+    # by TARGETARCH, and downloads no checksum file: the only curl is the asset.
+    frag = _version_fragment(tool)
+    stem = rl.TOOL_ARGS[tool].removesuffix("_VERSION")
+    body = "\n".join(line for line in frag.read_text().splitlines() if not line.lstrip().startswith("#"))
+    for arch in rl.ARCHES:
+        assert re.search(rf"{arch.lower()}\)(?: [A-Z0-9_]+=[^;\s]+;)? [A-Z0-9_]+=\"\$\{{{stem}_SHA256_{arch}\}}\" ;;",
+                         body), (tool, arch)
+    assert re.search(r'echo "\$\{[A-Z_]+_SHA256\}  /tmp/[^"]+" \| sha256sum -c -', body), tool
+    assert body.count("curl ") == 1, tool
+    for word in ("checksums", "SHA256SUMS", ".sha256 ", "sha256sum -c \"", "grep "):
+        assert word not in body, (tool, word)
+
+
+def test_resolve_digests_real_layouts():
+    # Each layout parsed from bodies shaped like the upstream releases'.
+    bodies = {
+        "https://github.com/hadolint/hadolint/releases/download/v2.15.1/checksums.sha256":
+            f"{HEX_A} *hadolint-linux-arm64\n{HEX_B} *hadolint-linux-x86_64\n{HEX_C} *hadolint-macos-arm64\n",
+        "https://github.com/goreleaser/nfpm/releases/download/v2.49.0/checksums.txt":
+            f"{HEX_C}  nfpm_2.49.0_Linux_arm64.tar.gz.sbom.json\n{HEX_A}  nfpm_2.49.0_Linux_arm64.tar.gz\n"
+            f"{HEX_B}  nfpm_2.49.0_Linux_x86_64.tar.gz\n{HEX_C}  nfpm_2.49.0_Linux_x86_64.tar.gz.sbom.json\n",
+        "https://github.com/mikefarah/yq/releases/download/v4.54.3/checksums":
+            "yq_linux_arm64  df1b  " + HEX_A + "  9f\nyq_linux_amd64  20e4  " + HEX_B + "  4a\n"
+            "yq_linux_amd64.tar.gz  0000  " + HEX_C + "  00\n",
+        "https://github.com/mikefarah/yq/releases/download/v4.54.3/checksums_hashes_order": "CRC32\nSHA-256\nMD5\n",
+    }
+    fetch = _text_fetch(bodies)
+    assert rl.resolve_digests("hadolint", "2.15.1", fetch=fetch) == {"AMD64": HEX_B, "ARM64": HEX_A}
+    assert rl.resolve_digests("nfpm", "2.49.0", fetch=fetch) == {"AMD64": HEX_B, "ARM64": HEX_A}
+    assert rl.resolve_digests("yq", "4.54.3", fetch=fetch) == {"AMD64": HEX_B, "ARM64": HEX_A}
+
+
+@pytest.mark.parametrize("tool", sorted(DIGEST_TOOLS))
+def test_resolve_digests_every_tool(tool):
+    assert rl.resolve_digests(tool, "1.2.3", fetch=_text_fetch(_sums(tool, "1.2.3", {"AMD64": HEX_A, "ARM64": HEX_B}))) == {
+        "AMD64": HEX_A, "ARM64": HEX_B}
+
+
+def test_resolve_digests_fetches_a_release_wide_file_once():
+    calls = []
+    bodies = _sums("trivy", "0.76.2", {"AMD64": HEX_A, "ARM64": HEX_B})
+
+    def fetch(url):
+        calls.append(url)
+        return bodies[url]
+
+    assert rl.resolve_digests("trivy", "0.76.2", fetch=fetch) == {"AMD64": HEX_A, "ARM64": HEX_B}
+    assert calls == ["https://github.com/aquasecurity/trivy/releases/download/v0.76.2/trivy_0.76.2_checksums.txt"]
+
+
+@pytest.mark.parametrize("body,match", [
+    ("", "expected one checksum line for 'trivy_0.76.2_Linux-ARM64.tar.gz', got 0"),
+    (f"{HEX_A}  trivy_0.76.2_Linux-ARM64.tar.gz.sbom.json\n", "got 0"),
+    (f"{HEX_A}  trivy_0.76.2_Linux-ARM64.tar.gz\n{HEX_B}  trivy_0.76.2_Linux-ARM64.tar.gz\n", "got 2"),
+    (f"{HEX_A}  trivy_0.76.2_Linux-ARM64.tar.gz extra\n", "expected '<sha256>  <file>' lines"),
+    ("zz  trivy_0.76.2_Linux-ARM64.tar.gz\n", "is not a SHA-256"),
+])
+def test_resolve_digests_malformed_list_raises(body, match):
+    url = "https://github.com/aquasecurity/trivy/releases/download/v0.76.2/trivy_0.76.2_checksums.txt"
+    with pytest.raises(rl.ResolutionError, match=re.escape(match)) as exc:
+        rl.resolve_digests("trivy", "0.76.2",
+                           fetch=_text_fetch({url: f"{HEX_B}  trivy_0.76.2_Linux-64bit.tar.gz\n" + body}))
+    # A malformed line fails the file for every architecture, so the first
+    # one read (AMD64) may be the one named.
+    assert re.match(r"trivy 0\.76\.2 (AMD64|ARM64) ", str(exc.value))
+
+
+YQ_URL = "https://github.com/mikefarah/yq/releases/download/v4.54.3/"
+
+
+@pytest.mark.parametrize("sums,order,match", [
+    (f"yq_linux_amd64  1  {HEX_A}\nyq_linux_arm64  1  {HEX_B}\n", "CRC32\nSHA-512\n", "expected one SHA-256 in the hash order, got 0"),
+    (f"yq_linux_amd64  1  {HEX_A}\nyq_linux_arm64  1  {HEX_B}\n", "SHA-256\nSHA-256\n", "got 2"),
+    (f"yq_linux_arm64  1  {HEX_B}\n", "CRC32\nSHA-256\n", "expected one checksum line for 'yq_linux_amd64', got 0"),
+    (f"yq_linux_amd64  1  {HEX_A}\nyq_linux_amd64  1  {HEX_A}\n", "CRC32\nSHA-256\n", "got 2"),
+    (f"yq_linux_amd64  {HEX_A}\n", "CRC32\nSHA-256\n", "has 1 hashes, the order lists 2"),
+    ("yq_linux_amd64  1  2\n", "CRC32\nSHA-256\n", "is not a SHA-256"),
+])
+def test_resolve_digests_malformed_columns_raises(sums, order, match):
+    fetch = _text_fetch({f"{YQ_URL}checksums": sums, f"{YQ_URL}checksums_hashes_order": order})
+    with pytest.raises(rl.ResolutionError, match=re.escape(match)) as exc:
+        rl.resolve_digests("yq", "4.54.3", fetch=fetch)
+    assert "yq 4.54.3 AMD64" in str(exc.value)
+
+
+def test_resolve_digests_columns_follows_a_reordered_release():
+    # The same file with the SHA-256 column moved yields the SHA-256 still.
+    sums = f"yq_linux_amd64  {HEX_C}  {HEX_A}\nyq_linux_arm64  {HEX_C}  {HEX_B}\n"
+    fetch = _text_fetch({f"{YQ_URL}checksums": sums, f"{YQ_URL}checksums_hashes_order": "SHA-512\nSHA-256\n"})
+    assert rl.resolve_digests("yq", "4.54.3", fetch=fetch) == {"AMD64": HEX_A, "ARM64": HEX_B}
+    fetch = _text_fetch({f"{YQ_URL}checksums": sums, f"{YQ_URL}checksums_hashes_order": "SHA-256\nSHA-512\n"})
+    assert rl.resolve_digests("yq", "4.54.3", fetch=fetch) == {"AMD64": HEX_C, "ARM64": HEX_C}
+
+
+def test_resolve_digests_columns_without_its_order_file_raises():
+    fetch = _text_fetch({f"{YQ_URL}checksums": f"yq_linux_amd64  {HEX_A}\n"})
+    with pytest.raises(rl.ResolutionError, match="yq 4.54.3 AMD64: no checksum"):
+        rl.resolve_digests("yq", "4.54.3", fetch=fetch)
+
+
+def test_resolve_digests_refuses_an_inconsistent_source(monkeypatch):
+    base = rl.TOOL_DIGESTS["uv"]
+    for bad, match in [
+        (rl.DigestSource(base.checksum_urls, base.assets, layout="tsv"), "unknown checksum layout"),
+        (rl.DigestSource(base.checksum_urls, base.assets, layout="columns"), "hash order file"),
+        (rl.DigestSource(base.checksum_urls, base.assets, hashes_order_url="x"), "hash order file"),
+    ]:
+        monkeypatch.setitem(rl.TOOL_DIGESTS, "uv", bad)
+        with pytest.raises(rl.ResolutionError, match=match):
+            rl.resolve_digests("uv", "0.13.9", fetch=_text_fetch({}))
 
 
 def test_nextest_fragment_verifies_pinned_digest():

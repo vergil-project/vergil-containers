@@ -59,6 +59,11 @@ toolchains:
         amd64: "9849f4e04ee35303714e34fbc3ac8ab44ea3e448a95aa182f91e3b9b79c710ec"
         arm64: "6c2f29b458b5add0835f18b776f69c8881a6d88428f1484a6da55755e620757e"
   node:
+    "26":
+      version: "26.13.1"
+      sha256:
+        amd64: "518674de2b621728a5e4486f5fb3b7d2900bb3cc4aa97969edaa463db99f9778"
+        arm64: "80a330b35415382878df18d41afbd106ea89bfb3be0087d6608e289a14c5cc7d"
     "24":
       version: "24.22.3"
       sha256:
@@ -70,10 +75,10 @@ toolchains:
         amd64: "c54118104acc524633b5abe106bbf44a53126ec8b4e5fa105cb92b5d7de8a1a1"
         arm64: "8bd3dc69eee8f3f226315a80d7d1d4faccf217a4c8fae500168ac2e38f3bdba3"
   rust:
+    "1.100":
+      version: "1.100.0"
     "1.99":
       version: "1.99.1"
-    "1.98":
-      version: "1.98.1"
 tools:
   rustup-init:
     version: "1.29.3"

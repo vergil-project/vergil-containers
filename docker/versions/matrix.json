@@ -148,10 +148,10 @@
     },
     {
       "language": "rust",
-      "version": "1.99",
+      "version": "1.100",
       "build-args": {
-        "RUST_VERSION": "1.99",
-        "TOOLCHAIN_VERSION": "1.99.1",
+        "RUST_VERSION": "1.100",
+        "TOOLCHAIN_VERSION": "1.100.0",
         "RUSTUP_INIT_VERSION": "1.29.3",
         "RUSTUP_INIT_SHA256_AMD64": "b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55",
         "RUSTUP_INIT_SHA256_ARM64": "9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282"
@@ -164,10 +164,10 @@
     },
     {
       "language": "rust",
-      "version": "1.98",
+      "version": "1.99",
       "build-args": {
-        "RUST_VERSION": "1.98",
-        "TOOLCHAIN_VERSION": "1.98.1",
+        "RUST_VERSION": "1.99",
+        "TOOLCHAIN_VERSION": "1.99.1",
         "RUSTUP_INIT_VERSION": "1.29.3",
         "RUSTUP_INIT_SHA256_AMD64": "b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55",
         "RUSTUP_INIT_SHA256_ARM64": "9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282"
@@ -207,6 +207,21 @@
       "version": "14",
       "build-args": {
         "GCC_VERSION": "14"
+      },
+      "parent": {
+        "language": "base",
+        "version": "latest"
+      },
+      "depth": 2
+    },
+    {
+      "language": "ts-node",
+      "version": "26",
+      "build-args": {
+        "NODE_MAJOR": "26",
+        "TOOLCHAIN_VERSION": "26.13.1",
+        "TOOLCHAIN_SHA256_AMD64": "518674de2b621728a5e4486f5fb3b7d2900bb3cc4aa97969edaa463db99f9778",
+        "TOOLCHAIN_SHA256_ARM64": "80a330b35415382878df18d41afbd106ea89bfb3be0087d6608e289a14c5cc7d"
       },
       "parent": {
         "language": "base",

@@ -121,7 +121,9 @@ tracks the leading edge:
   `get.nexte.st/latest/linux` redirect instead, since its repository also
   publishes other crates' releases), rewrites the `ARG *_VERSION=` pins in
   `docker/common/*`, and regenerates `CATALOG.md`. For a prebuilt tool whose
-  digests are pinned in source (cargo-nextest, cargo-deny, `TOOL_DIGESTS`), it also reads
+  digests are pinned in source (`TOOL_DIGESTS`: hadolint, opentofu, nfpm,
+  scorecard, trivy, uv, yq, cargo-nextest and cargo-deny, each in a fragment of
+  its own), it also reads
   each architecture's sha256 from the release's checksum files and rewrites
   the `ARG *_SHA256_AMD64=` and `_ARM64=` lines in the same run. The lookups
   all finish before anything is written, so a missing or malformed checksum

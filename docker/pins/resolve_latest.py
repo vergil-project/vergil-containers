@@ -18,10 +18,12 @@ release in another major raises `MajorVersionError` before anything is written
 (#914).
 
 **Digests in source.** A prebuilt tool in TOOL_DIGESTS (cargo-nextest,
-cargo-deny) also has its per-architecture sha256 pinned in its fragment,
-`ARG <STEM>_SHA256_AMD64=` and `_ARM64=` (epic vergil-project/.github#1165,
-spec §6.3), and the image build verifies against those, not against a
-checksum it downloads. `--write`
+cargo-deny, hadolint, opentofu, nfpm, trivy, scorecard, uv, yq) also has its
+per-architecture sha256 pinned in its fragment, `ARG <STEM>_SHA256_AMD64=` and
+`_ARM64=` (epic vergil-project/.github#1165, spec §6.3;
+vergil-containers#945), and the image build verifies against those, not
+against a checksum it downloads. Each such fragment pins exactly one tool, so
+the refresh's path fence ties each digest to its own tool's version. `--write`
 resolves them from the release's checksum files at the version it writes and
 writes versions and digests together, all or nothing, so a refresh PR shows
 every digest change beside its version change. A digest change with no version
@@ -137,24 +139,48 @@ WORKFLOW_PINS = Path("pins") / "workflow-images.txt"
 ARCHES = ("AMD64", "ARM64")
 
 
+# How a release's checksum file is laid out (DigestSource.layout).
+#   single  - one file per asset, one line: the digest alone or
+#             `<digest>  <asset>` (parse_checksum).
+#   list    - one file for the whole release, a `<digest>  <file>` line per
+#             file (sha256sum's output); the asset's line is selected by its
+#             exact file name (parse_checksum_list).
+#   columns - one file for the whole release, a `<file>  <hash>...` line per
+#             file with one column per algorithm, in the order a second file
+#             (`hashes_order_url`) lists them, one name a line; the SHA-256
+#             column is found from that order (parse_checksum_columns).
+LAYOUTS = ("single", "list", "columns")
+
+
 @dataclass(frozen=True)
 class DigestSource:
     """Where a prebuilt tool's release publishes each architecture's sha256.
 
     `checksum_urls` maps each of ARCHES to the URL template of the release's
     checksum file for that architecture's asset, and `assets` to the asset's
-    file name; both take `{version}`, the bare `x.y.z` of the ARG. A checksum
-    file holds the digest alone or `<digest>  <asset>`; when it names a file,
-    that must be the expected asset."""
+    file name; both take `{version}`, the bare `x.y.z` of the ARG. `layout`
+    (one of LAYOUTS) says how the file is laid out; a `columns` source also
+    names `hashes_order_url`, the template of its algorithm order file."""
 
     checksum_urls: dict[str, str]
     assets: dict[str, str]
+    layout: str = "single"
+    hashes_order_url: str | None = None
 
 
 _NEXTEST_DOWNLOAD = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-{version}/"
 _NEXTEST_TRIPLES = {"AMD64": "x86_64-unknown-linux-gnu", "ARM64": "aarch64-unknown-linux-gnu"}
 _DENY_DOWNLOAD = "https://github.com/EmbarkStudios/cargo-deny/releases/download/{version}/"
 _DENY_TRIPLES = {"AMD64": "x86_64-unknown-linux-musl", "ARM64": "aarch64-unknown-linux-musl"}
+_UV_DOWNLOAD = "https://github.com/astral-sh/uv/releases/download/{version}/"
+_UV_TRIPLES = {"AMD64": "x86_64-unknown-linux-gnu", "ARM64": "aarch64-unknown-linux-gnu"}
+_YQ_DOWNLOAD = "https://github.com/mikefarah/yq/releases/download/v{version}/"
+
+
+def _release_list(checksum_url: str, assets: dict[str, str]) -> DigestSource:
+    """A DigestSource whose release publishes one `list` checksum file,
+    `checksum_url`, for every architecture's asset."""
+    return DigestSource(checksum_urls={arch: checksum_url for arch in ARCHES}, assets=assets, layout="list")
 
 # tool → its DigestSource, for every prebuilt tool whose per-architecture
 # sha256 is pinned in source beside its version (epic vergil-project/.github
@@ -178,6 +204,42 @@ TOOL_DIGESTS = {
                        for arch, triple in _DENY_TRIPLES.items()},
         assets={arch: f"cargo-deny-{{version}}-{triple}.tar.gz"
                 for arch, triple in _DENY_TRIPLES.items()},
+    ),
+    # The other auto-managed prebuilt tools (vergil-containers#945), each
+    # verified at build against the digests pinned in its own fragment.
+    # hadolint publishes one checksums.sha256 for the release,
+    # `<digest> *<asset>` per binary.
+    "hadolint": _release_list(
+        "https://github.com/hadolint/hadolint/releases/download/v{version}/checksums.sha256",
+        {"AMD64": "hadolint-linux-x86_64", "ARM64": "hadolint-linux-arm64"}),
+    # OpenTofu's tofu_<version>_SHA256SUMS lists every asset of the release.
+    "opentofu": _release_list(
+        "https://github.com/opentofu/opentofu/releases/download/v{version}/tofu_{version}_SHA256SUMS",
+        {"AMD64": "tofu_{version}_linux_amd64.tar.gz", "ARM64": "tofu_{version}_linux_arm64.tar.gz"}),
+    # nfpm's checksums.txt also lists a `.sbom.json` beside each tarball; the
+    # exact file name selects the tarball's line.
+    "nfpm": _release_list(
+        "https://github.com/goreleaser/nfpm/releases/download/v{version}/checksums.txt",
+        {"AMD64": "nfpm_{version}_Linux_x86_64.tar.gz", "ARM64": "nfpm_{version}_Linux_arm64.tar.gz"}),
+    "trivy": _release_list(
+        "https://github.com/aquasecurity/trivy/releases/download/v{version}/trivy_{version}_checksums.txt",
+        {"AMD64": "trivy_{version}_Linux-64bit.tar.gz", "ARM64": "trivy_{version}_Linux-ARM64.tar.gz"}),
+    "scorecard": _release_list(
+        "https://github.com/ossf/scorecard/releases/download/v{version}/scorecard_checksums.txt",
+        {"AMD64": "scorecard_{version}_linux_amd64.tar.gz", "ARM64": "scorecard_{version}_linux_arm64.tar.gz"}),
+    # uv tags its releases with a bare `x.y.z` and publishes a
+    # `<asset>.sha256` per tarball, `<digest>  <asset>`.
+    "uv": DigestSource(
+        checksum_urls={arch: f"{_UV_DOWNLOAD}uv-{triple}.tar.gz.sha256" for arch, triple in _UV_TRIPLES.items()},
+        assets={arch: f"uv-{triple}.tar.gz" for arch, triple in _UV_TRIPLES.items()},
+    ),
+    # yq's `checksums` holds one line per asset with a column per algorithm,
+    # in the order `checksums_hashes_order` lists them.
+    "yq": DigestSource(
+        checksum_urls={arch: f"{_YQ_DOWNLOAD}checksums" for arch in ARCHES},
+        assets={"AMD64": "yq_linux_amd64", "ARM64": "yq_linux_arm64"},
+        layout="columns",
+        hashes_order_url=f"{_YQ_DOWNLOAD}checksums_hashes_order",
     ),
 }
 
@@ -414,6 +476,53 @@ def parse_checksum(where: str, text: str, asset: str) -> str:
     return digest
 
 
+def _hex_digest(where: str, value: str) -> str:
+    digest = value.lower()
+    if not _SHA256_HEX.match(digest):
+        raise ResolutionError(f"{where}: {value!r} is not a SHA-256 hex digest")
+    return digest
+
+
+def parse_checksum_list(where: str, text: str, asset: str) -> str:
+    """The sha256 of `asset` in a release-wide checksum file: one
+    `<digest>  <file>` line per file (a leading `*` on the file, binary mode,
+    is allowed). Exactly one line must name `asset` exactly, so the line of
+    another file whose name contains it (nfpm's `.sbom.json`) is never taken.
+    Raises ResolutionError, naming `where`, on anything else."""
+    found = []
+    for line in text.splitlines():
+        parts = line.split()
+        if not parts:
+            continue
+        if len(parts) != 2:
+            raise ResolutionError(f"{where}: expected '<sha256>  <file>' lines, got {line!r}")
+        if parts[1].lstrip("*") == asset:
+            found.append(parts[0])
+    if len(found) != 1:
+        raise ResolutionError(f"{where}: expected one checksum line for {asset!r}, got {len(found)}")
+    return _hex_digest(where, found[0])
+
+
+def parse_checksum_columns(where: str, text: str, order: str, asset: str) -> str:
+    """The sha256 of `asset` in a release-wide multi-hash checksum file, one
+    `<file>  <hash>...` line per file, its columns in the order `order` lists
+    the algorithms, one a line. Exactly one algorithm must be `SHA-256`,
+    exactly one line must name `asset`, and that line must hold one hash per
+    algorithm. Raises ResolutionError, naming `where`, on anything else, so a
+    reordered file never yields another algorithm's hash."""
+    names = [line.strip() for line in order.splitlines() if line.strip()]
+    if names.count("SHA-256") != 1:
+        raise ResolutionError(f"{where}: expected one SHA-256 in the hash order, got {names.count('SHA-256')}")
+    column = names.index("SHA-256") + 1
+    rows = [parts for parts in (line.split() for line in text.splitlines()) if parts and parts[0] == asset]
+    if len(rows) != 1:
+        raise ResolutionError(f"{where}: expected one checksum line for {asset!r}, got {len(rows)}")
+    if len(rows[0]) != len(names) + 1:
+        raise ResolutionError(
+            f"{where}: the line for {asset!r} has {len(rows[0]) - 1} hashes, the order lists {len(names)}")
+    return _hex_digest(where, rows[0][column])
+
+
 def resolve_digests(tool: str, version: str, fetch=_curl_text) -> dict[str, str]:
     """Resolve `tool`'s per-architecture sha256 at `version` from its release's
     checksum files (TOOL_DIGESTS) → {"AMD64": <hex>, "ARM64": <hex>}. `fetch`
@@ -422,17 +531,37 @@ def resolve_digests(tool: str, version: str, fetch=_curl_text) -> dict[str, str]
     source = TOOL_DIGESTS.get(tool)
     if source is None:
         raise ResolutionError(f"{tool}: no digest source in TOOL_DIGESTS")
+    if source.layout not in LAYOUTS:
+        raise ResolutionError(f"{tool}: unknown checksum layout {source.layout!r}, want one of {list(LAYOUTS)}")
+    order_template = source.hashes_order_url
+    if (source.layout == "columns") != (order_template is not None):
+        raise ResolutionError(f"{tool}: a hash order file goes with the columns layout, and only with it")
+    bodies: dict[str, str] = {}
+
+    def body(where: str, url: str) -> str:
+        # A release-wide file serves both architectures: fetch it once.
+        if url not in bodies:
+            try:
+                bodies[url] = fetch(url)
+            except ResolutionError as exc:
+                raise ResolutionError(f"{where}: no checksum: {exc}") from exc
+        return bodies[url]
+
     digests: dict[str, str] = {}
     for arch in ARCHES:
         where = f"{tool} {version} {arch}"
         if arch not in source.checksum_urls or arch not in source.assets:
             raise ResolutionError(f"{where}: TOOL_DIGESTS names no checksum for this architecture")
         url = source.checksum_urls[arch].format(version=version)
-        try:
-            text = fetch(url)
-        except ResolutionError as exc:
-            raise ResolutionError(f"{where}: no checksum: {exc}") from exc
-        digests[arch] = parse_checksum(f"{where} ({url})", text, source.assets[arch].format(version=version))
+        asset = source.assets[arch].format(version=version)
+        text = body(where, url)
+        if source.layout == "single":
+            digests[arch] = parse_checksum(f"{where} ({url})", text, asset)
+        elif source.layout == "list" or order_template is None:
+            digests[arch] = parse_checksum_list(f"{where} ({url})", text, asset)
+        else:
+            order_url = order_template.format(version=version)
+            digests[arch] = parse_checksum_columns(f"{where} ({url})", text, body(where, order_url), asset)
     return digests
 
 
