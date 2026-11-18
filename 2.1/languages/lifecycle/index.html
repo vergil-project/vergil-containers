@@ -640,6 +640,8 @@
       
         
       
+        
+      
     
     
     
@@ -692,6 +694,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.45/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.45
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3415,7 +3445,10 @@ images are first built and scanned by the CD publish on <code>develop</code> aft
 merges. Building images in pull-request CI is deferred to epic
 <a href="https://github.com/vergil-project/.github/issues/213">vergil-project/.github#213</a>.</p>
 <p><strong>A failing check is loud.</strong> If an adapter can't fetch or parse upstream data,
-the job fails. It still finishes the other families, and it opens or refreshes
+the job fails. A network error, a timeout or an HTTP 5xx is retried first, up
+to three attempts in all with a warning before each retry, so one transient
+upstream error does not fail the run; a failure that lasts through every
+attempt still fails it. It still finishes the other families, and it opens or refreshes
 one <code>lifecycle check failing for &lt;family&gt;</code> issue, which the next clean run
 closes. So no open PR and no open <code>language-lifecycle</code> issue reliably means
 "in sync".</p>

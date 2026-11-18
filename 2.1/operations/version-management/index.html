@@ -640,6 +640,8 @@
       
         
       
+        
+      
     
     
     
@@ -692,6 +694,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.45/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.45
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3645,7 +3675,9 @@ tracks the leading edge:</p>
   <code>get.nexte.st/latest/linux</code> redirect instead, since its repository also
   publishes other crates' releases), rewrites the <code>ARG *_VERSION=</code> pins in
   <code>docker/common/*</code>, and regenerates <code>CATALOG.md</code>. For a prebuilt tool whose
-  digests are pinned in source (cargo-nextest, cargo-deny, <code>TOOL_DIGESTS</code>), it also reads
+  digests are pinned in source (<code>TOOL_DIGESTS</code>: hadolint, opentofu, nfpm,
+  scorecard, trivy, uv, yq, cargo-nextest and cargo-deny, each in a fragment of
+  its own), it also reads
   each architecture's sha256 from the release's checksum files and rewrites
   the <code>ARG *_SHA256_AMD64=</code> and <code>_ARM64=</code> lines in the same run. The lookups
   all finish before anything is written, so a missing or malformed checksum

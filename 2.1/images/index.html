@@ -640,6 +640,8 @@
       
         
       
+        
+      
     
     
     
@@ -692,6 +694,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.45/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.45
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3513,7 +3543,7 @@ The table is generated from <code>docker/versions/manifest.yml</code> by
 <tr>
 <td><code>dev-rust</code></td>
 <td>rust</td>
-<td>1.99, 1.98</td>
+<td>1.100, 1.99</td>
 <td><code>base:latest</code></td>
 </tr>
 <tr>
@@ -3531,7 +3561,7 @@ The table is generated from <code>docker/versions/manifest.yml</code> by
 <tr>
 <td><code>dev-ts-node</code></td>
 <td>typescript</td>
-<td>24, 22</td>
+<td>26, 24, 22</td>
 <td><code>base:latest</code></td>
 </tr>
 <tr>
@@ -4140,8 +4170,9 @@ nothing else: no common layer, no vergil-tooling.</p>
   conflicts with the full <code>curl</code> package, so the image asks dnf for
   <code>/usr/bin/curl</code> and <code>/usr/bin/gpg</code> by path and accepts whichever package
   provides them.</li>
-<li><strong>uv and nFPM</strong>: both are pinned and checksum-verified, and the daily
-  upstream refresh floats their pins; see
+<li><strong>uv and nFPM</strong>: both are pinned and verified against SHA-256 digests
+  pinned in source, which the daily upstream refresh writes when it floats
+  their pins; see
   <a href="https://github.com/vergil-project/vergil-containers/blob/develop/docker/pins/CATALOG.md">the catalog</a>.
   The package setup action installs vergil-tooling with uv, under a Python
   that uv fetches itself.</li>
