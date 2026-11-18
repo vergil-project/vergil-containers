@@ -88,10 +88,11 @@ instead.
   window. Any other repository type is an app, and builds only the newest.
 - `[ci].versions` is an optional pin. A pinned version that is not in the
   window is a fatal error, and so is an app pin with more than one version.
-- C++ and TypeScript are the exception: their versions carry a family prefix
-  (`clang-20`, `gcc-14`, `node-24`), so they have no single default and must
-  still pin `[ci].versions` until each language's lifecycle turn. A missing
-  pin is a fatal error.
+- C++ is the exception: its window holds two families (`clang-20`,
+  `gcc-14`), so it has no single default and must still pin `[ci].versions`
+  until its lifecycle turn. A missing pin is a fatal error. A family prefix
+  alone needs no pin: TypeScript's window has one family (`node-26`), so an
+  unpinned TypeScript repo follows the window as Python and Rust do.
 - A packaged Python app or library deploys on the newest window version that
   has a published `vergil-python` runtime (the manifest's `runtime_published`
   field). See the [Python policy](python.md).
