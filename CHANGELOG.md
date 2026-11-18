@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.45] - 2026-11-17
+
+### Bug fixes
+
+- retry a transient upstream fetch failure in the lifecycle check (#948)
+
+### Features
+
+- pin per-architecture digests in source for the remaining auto-managed prebuilt tools (#950)
+- add ts-node 26 (#949)
+- add rust 1.100 (#935)
+- drop rust 1.98 (EOL 2026-10-01) (#936)
+
 ## [2.1.44] - 2026-11-17
 
 ### Chores
