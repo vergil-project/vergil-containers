@@ -2,7 +2,7 @@
 
 Image family: `dev-ts-node`, the TypeScript image built on the Node.js runtime.
 Shared rules: [Language version lifecycle](lifecycle.md). Upstream facts on
-this page were checked on 2026-10-21.
+this page were checked on 2026-11-18.
 
 ## Upstream source of truth
 
@@ -73,6 +73,8 @@ that date is on or before the day of the check.
   [Tool Ownership Guideline](https://vergil-project.github.io/vergil-tooling/latest/standards/development/tool-ownership/);
   the image's full tool list is under [Images](../images/index.md).
 - The separate Node.js pin in `vergil-vm` must line up with this window.
+  Lining it up is the work of epic 4,
+  [vergil-project/.github#959](https://github.com/vergil-project/.github/issues/959).
 
 ## Deployed runtime package
 
@@ -88,5 +90,9 @@ and is merged by a human.
 
 ## Current out-of-policy versions
 
-As of 2026-11-17: **none.** The manifest builds 26, 24 and 22, which are all
-LTS and not EOL. Node.js 26 was added after it became LTS on 2026-10-28.
+As of 2026-11-18: **none.** The manifest builds 26, 24 and 22, the window.
+Under `pr` automation, a major that leaves the window is dropped through a
+lifecycle pull request, so none is kept out of policy; the manifest lags
+upstream only while such a PR waits for a human to merge it. The open
+lifecycle PRs (branches `lifecycle/ts-node-add-<major>` and
+`lifecycle/ts-node-drop-<major>`) show any pending change.
