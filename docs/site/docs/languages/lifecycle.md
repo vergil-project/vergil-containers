@@ -44,7 +44,7 @@ days.
 
 What the check does with a gap depends on the family's automation:
 
-- **`pr` families** (Python, Go and Rust) get one pull request per change, on a
+- **`pr` families** (Python, Go, Rust and TypeScript) get one pull request per change, on a
   branch named `lifecycle/<family>-<kind>-<version>`. A change is an add, a
   drop, or, for Python, a `runtime` change that records a newly published
   `vergil-python` runtime in the manifest. Each PR carries the manifest edit,
@@ -60,10 +60,10 @@ What the check does with a gap depends on the family's automation:
   coming soon, or a missing runtime.
 
 Nothing is ever auto-merged. A person reviews and merges every lifecycle PR.
-This repository's pull-request CI does not build images: an add PR's new
-images are first built and scanned by the CD publish on `develop` after it
-merges. Building images in pull-request CI is deferred to epic
-[vergil-project/.github#213](https://github.com/vergil-project/.github/issues/213).
+This repository's pull-request CI builds, scans and smoke-tests the images a
+change affects (`ci.yml`'s `images` job, which calls `ci-images.yml`), so an
+add PR's new images are proven on the PR before a person merges it. Nothing is
+pushed to GHCR until the CD publish on `develop` after the merge.
 
 **A failing check is loud.** If an adapter can't fetch or parse upstream data,
 the job fails. A network error, a timeout or an HTTP 5xx is retried first, up
@@ -186,7 +186,7 @@ upstream fact cites its source and the date it was checked.
 | `python` | `pr` | [Python](python.md) |
 | `go` | `pr` | [Go](go.md) |
 | `rust` | `pr` | [Rust](rust.md) |
-| `ts-node` | `report` | [TypeScript / Node.js](ts-node.md) |
+| `ts-node` | `pr` | [TypeScript / Node.js](ts-node.md) |
 | `cpp-clang` | `report` | [C++ / Clang](cpp-clang.md) |
 | `cpp-gcc` | `report` | [C++ / GCC](cpp-gcc.md) |
 

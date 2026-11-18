@@ -81,7 +81,10 @@ runtime package is assessed when one exists.
 
 ## Automation
 
-**`report`.** The lifecycle check reports the gap and tracks it in an issue.
+**`pr`.** The lifecycle check opens the pull request that adds or drops a
+Node.js major. Each PR carries its own toolchain pin change in
+`docker/pins/toolchains.yml` (an add's new series pin, a drop's removed one)
+and is merged by a human.
 
 ## Current out-of-policy versions
 

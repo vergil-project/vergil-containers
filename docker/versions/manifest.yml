@@ -143,7 +143,7 @@ families:
     language: "typescript"
     token_prefix: "node-"
     build_arg: "NODE_MAJOR"
-    automation: "report"
+    automation: "pr"
     parent:
       name: "base"
       version: "latest"
