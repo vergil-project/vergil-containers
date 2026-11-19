@@ -35,13 +35,12 @@ RUN if [ -z "${CORE_PYTHON}" ]; then echo "core-tools: the CORE_PYTHON build arg
     export UV_TOOL_DIR=/opt/vergil/uv/tools UV_TOOL_BIN_DIR=/usr/local/bin \
       UV_PYTHON_INSTALL_DIR="${VERGIL_CORE_PYTHON_DIR}" UV_PYTHON_DOWNLOADS=never UV_NO_CACHE=1 && \
     unset UV_PYTHON UV_PYTHON_PREFERENCE UV_NO_MANAGED_PYTHON && \
-    core=(--no-config --python "${CORE_PYTHON}" --managed-python) && \
-    uv tool install "${core[@]}" yamllint && \
-    uv tool install "${core[@]}" ansible-lint && \
-    uv tool install "${core[@]}" mkdocs --with mkdocs-material --with-executables-from mike && \
+    uv tool install --no-config --python "${CORE_PYTHON}" --managed-python yamllint && \
+    uv tool install --no-config --python "${CORE_PYTHON}" --managed-python ansible-lint && \
+    uv tool install --no-config --python "${CORE_PYTHON}" --managed-python mkdocs --with mkdocs-material --with-executables-from mike && \
     apt-get update && \
     apt-get install -y --no-install-recommends build-essential && \
-    CC=gcc uv tool install "${core[@]}" semgrep && \
+    CC=gcc uv tool install --no-config --python "${CORE_PYTHON}" --managed-python semgrep && \
     apt-get purge -y --auto-remove build-essential && \
     rm -rf /var/lib/apt/lists/*
 
