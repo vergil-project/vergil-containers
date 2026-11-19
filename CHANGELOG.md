@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.47] - 2026-11-19
+
+### Bug fixes
+
+- suppress CVE-2026-97054 in Go CLIs and ubuntu:26.04's pebble (#973)
+
+### CI
+
+- pass the automation App secrets to the release (#969)
+
+### Chores
+
+- refresh upstream inputs (#963)
+
+### Documentation
+
+- name the core.node pin exception for drop PRs; TypeScript needs no pin (#962)
+
+### Features
+
+- move the core Python to a managed 3.15 and drop the vergil apt source (#970)
+
 ## [2.1.46] - 2026-11-18
 
 ### Documentation
