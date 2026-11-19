@@ -145,6 +145,51 @@ CVE-2026-97031
 # nightly rebuild pick these up.
 CVE-2026-111943
 
+# Go 1.26.11 / 1.27.4 batch (issue #971; first gated PR #970's run on
+# 2026-11-19). CVE-2026-97054 — net/http: in an HTTP/1 server, when a
+# MaxBytesReader limit is exceeded, the "Connection: close" response header is
+# set without synchronization. A server whose handler (MaxBytesReader or
+# MaxBytesHandler) reads the request body while it writes the response header
+# can crash on a runtime panic. Server-side only, and the impact is a crash of
+# the serving process.
+#
+# Not fixable by bumping: each carrier's pin below is its newest upstream
+# release, and each is still built with an older Go (stdlib version from the
+# build info in the binary, read by Trivy 0.76.2 from the published dev-go:1.27
+# and dev-pkg-ubuntu:26.04 images; newest releases checked 2026-11-19). Carriers:
+#   - /usr/local/bin/actionlint 1.7.12, go1.26.1 (base and every image built on
+#     it). A static linter of local workflow files; it runs no HTTP server.
+#   - /usr/local/bin/shfmt 3.14.1, go1.27.1 (same images). A local shell
+#     formatter; it runs no HTTP server.
+#   - /usr/local/bin/tofu 1.13.9, go1.27.3 (same images). The images use tofu
+#     for `fmt -check` and `init -backend=false && validate`
+#     (common/opentofu.dockerfile), which start no HTTP server. Its provider
+#     plugins talk gRPC (HTTP/2), with tofu as the client. Only the interactive
+#     `tofu login` opens a short-lived localhost listener for the OAuth
+#     callback, and nothing in the images runs it.
+#   - /usr/local/bin/trivy 0.76.2, go1.27.3 (same images). The images run trivy
+#     as a scanner CLI; its server mode (`trivy server`) is never started.
+#   - /usr/local/bin/yq 4.54.3, go1.27.3 (same images). A local YAML processor;
+#     it makes no network connections.
+#   - /usr/bin/pebble, Canonical's service manager, go1.27.3
+#     (github.com/canonical/pebble v1.33.3-0.20261021134116-aa4f38dbfabd), in
+#     dev-pkg-ubuntu:26.04 only. It comes in the first layer of the official
+#     ubuntu:26.04 image (a rockcraft build), not from a dpkg package, so
+#     `apt-get upgrade` cannot replace it. The newest ubuntu:26.04 image (pushed
+#     2026-11-12) still carries it. pkg-ubuntu sets no ENTRYPOINT or CMD and
+#     inherits ubuntu:26.04's CMD of /bin/bash, so pebble is never started and
+#     its HTTP API is never served.
+# None of these runs an HTTP/1 server in the images, so the vulnerable path is
+# not exercised.
+# gh, nfpm, scorecard, the Go toolchain and the go-installed linters are built
+# with go1.27.4, so they are not carriers.
+#
+# Remove per carrier as each ships a build with Go >= 1.26.11 / 1.27.4: a new
+# actionlint, shfmt, tofu, trivy or yq release (the daily upstream-refresh PR
+# picks each one up), and for pebble a new ubuntu:26.04 image whose pebble is
+# built with a fixed Go (the nightly rebuild pulls it).
+CVE-2026-97054
+
 # =============================================================================
 # Go's x/net idna and dnsmessage code. CVE-2026-39821 is in IDNA Punycode label
 # handling (fixed in Go 1.26.6 and x/net 0.55.0). CVE-2026-46600 is a panic when

@@ -86,7 +86,10 @@ runtime package is assessed when one exists.
 **`pr`.** The lifecycle check opens the pull request that adds or drops a
 Node.js major. Each PR carries its own toolchain pin change in
 `docker/pins/toolchains.yml` (an add's new series pin, a drop's removed one)
-and is merged by a human.
+and is merged by a human. The one exception is the `node` pin of the
+`core.node` major: the manifest still needs it, so it stays when the ts-node
+family drops that major (see
+[Language toolchain pins](../operations/version-management.md#language-toolchain-pins)).
 
 ## Current out-of-policy versions
 

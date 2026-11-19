@@ -107,14 +107,18 @@ and nFPM. It includes the common fragments plus documentation tooling (MkDocs
 Material, mike, semgrep) and OpenTofu (`opentofu.dockerfile`) for in-sandbox
 `tofu fmt -check` / `tofu validate` of OpenTofu modules. It is the fallback
 image for repos with no detected language. Its own tools run on core runtimes
-installed side by side under `/opt/vergil/`, from four fragments only it
-includes:
+installed side by side under `/opt/vergil/`, from three fragments only it
+includes. It carries no vergil apt source or keyring.
 
-- **`vergil-apt.dockerfile`** — The vergil apt repository, set up only after
-  the signing key's primary fingerprint matches the pinned one.
-- **`core-python.dockerfile`** — The core Python, `vergil-python<core>` at
-  `/opt/vergil/python/<core>/`; `/usr/local/bin/python3` links to it and
-  promises the standard library only.
+- **`core-python.dockerfile`** — The core Python, a uv-managed Python of the
+  core series installed with `uv python install` into
+  `/opt/vergil/uv/python`, the directory the image publishes as
+  `VERGIL_CORE_PYTHON_DIR`. The vergil-tooling installs (the container cache
+  build, the setup action in a container job) use it as
+  `UV_PYTHON_INSTALL_DIR` with downloads off, so they never download an
+  interpreter. No `UV_*` variable is set image-wide.
+  `/usr/local/bin/python3` links to it and promises the standard library
+  only.
 - **`core-node.dockerfile`** — The core Node, the pinned nodejs.org tarball
   at `/opt/vergil/node/<core-major>/`, and markdownlint-cli on it. No
   `node`, `npm` or `npx` is on `PATH`; `markdownlint` is a wrapper that

@@ -10,7 +10,8 @@
 #
 # The checks:
 #   check_python3_is_core  /usr/local/bin/python3 is the core Python
-#                          (VERGIL_CORE_PYTHON's series, by its path)
+#                          (VERGIL_CORE_PYTHON's series, the uv-managed one
+#                          under VERGIL_CORE_PYTHON_DIR)
 #   check_no_node          no node, npm or npx on PATH
 #   check_no_pip           no pip or pip3 on PATH
 #
@@ -27,12 +28,23 @@ say() {
 }
 
 check_python3_is_core() {
-  local core_python="${VERGIL_CORE_PYTHON:-}" want got
+  local core_python="${VERGIL_CORE_PYTHON:-}" dir="${VERGIL_CORE_PYTHON_DIR:-}" want got
   if ! [[ "${core_python}" =~ ^[0-9]+\.[0-9]+$ ]]; then
     say "VERGIL_CORE_PYTHON is '${core_python}', want a series such as 3.15"
     return 1
   fi
-  want="/opt/vergil/python/${core_python}/bin/python${core_python}"
+  if ! [[ "${dir}" == /* ]]; then
+    say "VERGIL_CORE_PYTHON_DIR is '${dir}', want an absolute path"
+    return 1
+  fi
+  # The core Python as the vergil-tooling installs find it: uv-managed, under
+  # VERGIL_CORE_PYTHON_DIR, with no download.
+  want="$(env -u UV_PYTHON -u UV_PYTHON_PREFERENCE -u UV_NO_MANAGED_PYTHON \
+    UV_PYTHON_INSTALL_DIR="${dir}" UV_PYTHON_DOWNLOADS=never \
+    uv python find --no-config --managed-python "${core_python}")" || {
+    say "uv finds no managed Python ${core_python} in ${dir}"
+    return 1
+  }
   got="$(readlink -f /usr/local/bin/python3)"
   if [ "${got}" != "$(readlink -f "${want}")" ]; then
     say "/usr/local/bin/python3 resolves to '${got}', want ${want}"

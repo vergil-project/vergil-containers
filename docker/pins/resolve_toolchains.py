@@ -86,8 +86,9 @@ _MINOR = re.compile(r"^\d+\.\d+$")
 _MAJOR = re.compile(r"^\d+$")
 
 # Toolchain key -> what it pins. `node` serves the ts-node family and the core
-# Node (the manifest's `core.node`). The core Python needs no pin: it is the
-# vergil-python package from the vergil apt repository (spec §5.2.1).
+# Node (the manifest's `core.node`). The core Python needs no pin: base installs
+# it with the parent image's pinned uv (`uv python install`, epic
+# vergil-project/.github#1350, spec §4.4).
 KINDS: dict[str, Kind] = {
     "python": Kind(family="python", series_re=_MINOR, hashed=True, release=True),
     "go": Kind(family="go", series_re=_MINOR, hashed=True),

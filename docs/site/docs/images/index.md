@@ -90,7 +90,9 @@ build checks the download against the hash. `python3`, `python`,
 `python<version>`, `pip` and `pip3` in `/usr/local/bin` link into it, so
 `python3` is the series. It is a plain system interpreter, not a uv-managed
 one, so uv finds it with `UV_PYTHON_PREFERENCE=only-system`. base's own tools
-keep running on the core Python under `/opt/vergil/python/`.
+keep running on the core Python under `/opt/vergil/uv/python/`, which is
+uv-managed but outside uv's default Python directory, so uv lists no managed
+interpreter.
 
 | Tool | Purpose                       |
 | ---- | ----------------------------- |
@@ -323,8 +325,11 @@ Its own tools run on core runtimes installed side by side under
 `/opt/vergil/`, whose series come from the version manifest's `core:`
 section (epic vergil-project/.github#649):
 
-- **Core Python**: `vergil-python<core>` from the vergil apt repository, at
-  `/opt/vergil/python/<core>/`. yamllint, ansible-lint, semgrep and MkDocs
+- **Core Python**: a uv-managed Python of the core series (the patch the
+  image's pinned uv offers), in `/opt/vergil/uv/python`, published as
+  `VERGIL_CORE_PYTHON_DIR`. vergil-tooling installs read that variable and
+  install on this interpreter with downloads off. The image has no vergil
+  apt source. yamllint, ansible-lint, semgrep and MkDocs
   (with mkdocs-material and mike) are uv tools on it, each in its own
   environment. `/usr/local/bin/python3` links to it and promises the
   standard library only: nothing is pip-installed into it, and there is no
