@@ -644,6 +644,8 @@
       
         
       
+        
+      
     
     
     
@@ -696,6 +698,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.47/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.47
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3719,7 +3749,9 @@ build checks the download against the hash. <code>python3</code>, <code>python</
 <code>python&lt;version&gt;</code>, <code>pip</code> and <code>pip3</code> in <code>/usr/local/bin</code> link into it, so
 <code>python3</code> is the series. It is a plain system interpreter, not a uv-managed
 one, so uv finds it with <code>UV_PYTHON_PREFERENCE=only-system</code>. base's own tools
-keep running on the core Python under <code>/opt/vergil/python/</code>.</p>
+keep running on the core Python under <code>/opt/vergil/uv/python/</code>, which is
+uv-managed but outside uv's default Python directory, so uv lists no managed
+interpreter.</p>
 <table>
 <thead>
 <tr>
@@ -4103,8 +4135,11 @@ plus documentation tooling. It is the fallback image used by
 <code>/opt/vergil/</code>, whose series come from the version manifest's <code>core:</code>
 section (epic vergil-project/.github#649):</p>
 <ul>
-<li><strong>Core Python</strong>: <code>vergil-python&lt;core&gt;</code> from the vergil apt repository, at
-  <code>/opt/vergil/python/&lt;core&gt;/</code>. yamllint, ansible-lint, semgrep and MkDocs
+<li><strong>Core Python</strong>: a uv-managed Python of the core series (the patch the
+  image's pinned uv offers), in <code>/opt/vergil/uv/python</code>, published as
+  <code>VERGIL_CORE_PYTHON_DIR</code>. vergil-tooling installs read that variable and
+  install on this interpreter with downloads off. The image has no vergil
+  apt source. yamllint, ansible-lint, semgrep and MkDocs
   (with mkdocs-material and mike) are uv tools on it, each in its own
   environment. <code>/usr/local/bin/python3</code> links to it and promises the
   standard library only: nothing is pip-installed into it, and there is no

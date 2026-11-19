@@ -644,6 +644,8 @@
       
         
       
+        
+      
     
     
     
@@ -696,6 +698,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.47/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.47
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3859,9 +3889,9 @@ vergil-containers never patches or upgrades anything inside a runtime: no
 </thead>
 <tbody>
 <tr>
-<td><code>/opt/vergil/python/&lt;core&gt;/</code></td>
-<td>The core Python, the <code>vergil-python&lt;core&gt;</code> package (<code>base</code> and every image built on it)</td>
-<td>A vergil-python release, triaged in <a href="https://github.com/vergil-project/vergil-python">vergil-python</a></td>
+<td><code>/opt/vergil/uv/python/</code></td>
+<td>The core Python, a uv-managed python-build-standalone build of the core series (<code>base</code> and every image built on it)</td>
+<td>A uv release offering a newer patch: the next <code>base</code> build takes it once the <code>uv</code> pin in <code>docker/pins/pins.yml</code> moves</td>
 </tr>
 <tr>
 <td><code>/opt/vergil/node/&lt;core-major&gt;/</code></td>
@@ -3869,8 +3899,8 @@ vergil-containers never patches or upgrades anything inside a runtime: no
 <td>Moving the core Node pin: the <code>node</code> entry for the manifest's <code>core.node</code> major in <code>docker/pins/toolchains.yml</code>, or the <code>core.node</code> major itself in a reviewed PR</td>
 </tr>
 <tr>
-<td><code>/opt/vergil/vergil-tooling/venv</code></td>
-<td>vergil-tooling's package venv, installed when a repo's container cache is built, so not in a published image</td>
+<td><code>/opt/vergil/uv/tools/vergil-tooling/</code></td>
+<td>vergil-tooling's uv tool environment, installed when a repo's container cache is built, so not in a published image</td>
 <td>A vergil-tooling release</td>
 </tr>
 <tr>
