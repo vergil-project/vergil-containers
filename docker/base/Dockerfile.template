@@ -8,9 +8,10 @@
 # The parent comes from docker/versions/manifest.yml (`base: parent:`):
 # docker/build.sh and the publish workflow pass it as PARENT_IMAGE. uv and nFPM
 # come from it. base adds the core runtimes its own tools run on, side by side
-# under /opt/vergil/ (spec §5.2.1): vergil-python from the vergil apt repository
-# and a nodejs.org Node. Their series come from the manifest's `core:` section as
-# the CORE_* build args generate.py emits. base puts no node, npm, npx or pip on
+# under /opt/vergil/ (spec §5.2.1): a uv-managed Python (epic
+# vergil-project/.github#1350, spec §4.4) and a nodejs.org Node. Their series
+# come from the manifest's `core:` section as the CORE_* build args generate.py
+# emits. base carries no vergil apt source, puts no node, npm, npx or pip on
 # PATH, and pip-installs nothing.
 ARG PARENT_IMAGE
 FROM ${PARENT_IMAGE}
@@ -24,9 +25,15 @@ RUN rm -f /etc/vergil/package-toolchain
 # --- Core series -------------------------------------------------------------
 # Persisted for the images built on base, since a build ARG does not carry into
 # a child image: checks-invariants.sh and checks-defaults.sh read these.
+# VERGIL_CORE_PYTHON_DIR is the uv Python directory the core Python is
+# installed in (common/core-python.dockerfile). It is published for the
+# vergil-tooling installs, which use it as UV_PYTHON_INSTALL_DIR with
+# downloads off (epic vergil-project/.github#1350, spec §4.4); it is not a
+# UV_* variable, so no other uv command sees the managed interpreter.
 ARG CORE_PYTHON
 ARG CORE_NODE_MAJOR
 ENV VERGIL_CORE_PYTHON=${CORE_PYTHON} \
+    VERGIL_CORE_PYTHON_DIR=/opt/vergil/uv/python \
     VERGIL_CORE_NODE_MAJOR=${CORE_NODE_MAJOR}
 
 # Build-time only: apt never prompts. An ARG, so it is not set in the image.
@@ -39,7 +46,6 @@ RUN apt-get update && \
       git curl jq openssh-client xz-utils gnupg ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# @include common/vergil-apt.dockerfile
 # @include common/core-python.dockerfile
 # @include common/path-defaults.dockerfile
 # @include common/core-node.dockerfile

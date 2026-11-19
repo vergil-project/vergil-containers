@@ -119,8 +119,9 @@ def _toolchain_args(pins: rt.Toolchains, f: mf.Family, version: str) -> dict[str
 
 def _core_args(m: mf.Manifest, pins: rt.Toolchains) -> dict[str, str]:
     """`base`'s build args: the core runtimes it runs its own tools on (epic
-    vergil-project/.github#649, spec §5.2.1). `CORE_PYTHON` is the vergil-python
-    series `base` installs from the vergil apt repository, which needs no pin;
+    vergil-project/.github#649, spec §5.2.1). `CORE_PYTHON` is the series
+    `base` installs as a uv-managed Python, which needs no pin (the parent's
+    pinned uv picks the patch);
     the core Node is the manifest's `core.node` major and its pinned nodejs.org
     release, with each architecture's tarball hash. Raises GenerateError when the
     manifest has no `core:` section or the core Node major has no pin."""

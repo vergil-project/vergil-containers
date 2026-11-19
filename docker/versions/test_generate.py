@@ -540,7 +540,7 @@ def test_inherited_config_check_catches_each_instruction():
 # --- base on pkg-ubuntu (epic vergil-project/.github#649 Task 7) ---
 
 _PIP_INSTALL_RE = re.compile(r"\bpip3?\s+install\b")
-_CORE_FRAGMENTS = ("vergil-apt", "core-python", "core-node", "core-tools")
+_CORE_FRAGMENTS = ("core-python", "core-node", "core-tools")
 
 
 def _base_sources() -> list[Path]:
@@ -581,9 +581,39 @@ def test_base_template_shape():
         assert f"docker/common/{name}.dockerfile" not in fragments
     text = template.read_text()
     assert "VERGIL_CORE_PYTHON=${CORE_PYTHON}" in text and "VERGIL_CORE_NODE_MAJOR=${CORE_NODE_MAJOR}" in text
+    assert "VERGIL_CORE_PYTHON_DIR=/opt/vergil/uv/python" in text
     assert re.search(r"^RUN --mount=type=bind,source=checks.sh,", text, re.MULTILINE)
     for script in ("checks.sh", "checks-invariants.sh", "checks-defaults.sh"):
         assert (template.parent / script).stat().st_mode & 0o111, f"{script} is not executable"
+
+
+_VERGIL_APT_RE = re.compile(r"vergil-project\.github\.io|vergil-python|vergil-archive-keyring|vergil\.sources")
+# An ENV instruction, its continuation lines included, setting any UV_* name.
+_UV_ENV_RE = re.compile(r"^\s*ENV\b(?:[^\n]*\\\n)*[^\n]*\bUV_[A-Z_]+=", re.MULTILINE)
+
+
+def test_base_reads_no_vergil_apt_source():
+    # Epic vergil-project/.github#1350, spec §4.4: base installs nothing from
+    # the vergil apt repository and sets up no source or keyring for it.
+    for path in _base_sources():
+        found = [line for line in _code_lines(path) if _VERGIL_APT_RE.search(line)]
+        assert found == [], f"{path.relative_to(LIVE_ROOT)} reads the vergil apt repository: {found}"
+
+
+def test_base_sets_no_uv_variable_image_wide():
+    # Spec §4.4: UV_PYTHON_INSTALL_DIR is passed only to the commands that use
+    # the core Python, so no project uv command sees the managed interpreter.
+    for path in _base_sources():
+        assert not _UV_ENV_RE.search("\n".join(_code_lines(path))), path.relative_to(LIVE_ROOT)
+
+
+def test_base_source_checks_catch_them():
+    assert _VERGIL_APT_RE.search('apt-get install -y "vergil-python${CORE_PYTHON}"')
+    assert _VERGIL_APT_RE.search("ARG VERGIL_APT_URL=https://vergil-project.github.io/packages")
+    assert not _VERGIL_APT_RE.search("uv python install --no-config --no-bin 3.15")
+    assert _UV_ENV_RE.search("ENV UV_PYTHON_INSTALL_DIR=/opt/vergil/uv/python")
+    assert _UV_ENV_RE.search("ENV VERGIL_CORE_PYTHON=3.15 \\\n    UV_TOOL_DIR=/x")
+    assert not _UV_ENV_RE.search("ENV VERGIL_CORE_PYTHON_DIR=/opt/vergil/uv/python")
 
 
 def test_core_fragments_are_base_only():
