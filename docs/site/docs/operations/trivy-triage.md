@@ -160,9 +160,9 @@ vergil-containers never patches or upgrades anything inside a runtime: no
 
 | Path | Runtime | Fixed by |
 | ---- | ------- | -------- |
-| `/opt/vergil/python/<core>/` | The core Python, the `vergil-python<core>` package (`base` and every image built on it) | A vergil-python release, triaged in [vergil-python](https://github.com/vergil-project/vergil-python) |
+| `/opt/vergil/uv/python/` | The core Python, a uv-managed python-build-standalone build of the core series (`base` and every image built on it) | A uv release offering a newer patch: the next `base` build takes it once the `uv` pin in `docker/pins/pins.yml` moves |
 | `/opt/vergil/node/<core-major>/` | The core Node, a pinned nodejs.org tarball (`base` and every image built on it) | Moving the core Node pin: the `node` entry for the manifest's `core.node` major in `docker/pins/toolchains.yml`, or the `core.node` major itself in a reviewed PR |
-| `/opt/vergil/vergil-tooling/venv` | vergil-tooling's package venv, installed when a repo's container cache is built, so not in a published image | A vergil-tooling release |
+| `/opt/vergil/uv/tools/vergil-tooling/` | vergil-tooling's uv tool environment, installed when a repo's container cache is built, so not in a published image | A vergil-tooling release |
 | `/opt/python/<series>/` | A python family runtime, a pinned python-build-standalone release (`dev-python:<series>`) | Moving that series' pin in `docker/pins/toolchains.yml` |
 | `/opt/node/<major>/` | A ts-node family runtime, a pinned nodejs.org tarball (`dev-ts-node:<major>`) | Moving that major's pin in `docker/pins/toolchains.yml` |
 

@@ -1,8 +1,12 @@
 # --- core Python tools -------------------------------------------------------
 # base's Python CLI tools as uv tools on the core Python (epic
 # vergil-project/.github#649, spec §5.2 and §5.2.1; include
-# common/core-python.dockerfile first). Each is created with the core Python by
-# its versioned path, in its own environment, so the tools' dependencies never
+# common/core-python.dockerfile first). Each is created on the core Python as
+# the vergil-tooling installs find it (epic vergil-project/.github#1350, spec
+# §4.4): the uv-managed CORE_PYTHON under VERGIL_CORE_PYTHON_DIR, passed as
+# UV_PYTHON_INSTALL_DIR to these installs alone, with UV_PYTHON_DOWNLOADS=never
+# so a missing interpreter fails the build instead of being fetched. Each is
+# in its own environment, so the tools' dependencies never
 # meet each other or any family's interpreter. uv comes from the parent image
 # (pkg-ubuntu). No pip install anywhere: nothing goes into any interpreter's own
 # site-packages.
@@ -17,26 +21,27 @@
 # environment: it then adds its environment's bin to its own PATH without
 # warning that the setup is broken. Their entry points are linked into
 # /usr/local/bin, but for semgrep's, which are wrappers (see the semgrep
-# stack-limit wrapper below). UV_PYTHON_DOWNLOADS=never keeps uv from fetching a managed
-# interpreter in place of the core one.
+# stack-limit wrapper below).
 #
-# semgrep's dependency ruamel.yaml.clib publishes no wheel for the core 3.15, so
-# it compiles: build-essential is installed for that install alone and purged in
-# the same layer. vergil-python's sysconfig names clang as its compiler, so
-# CC=gcc points the build at the gcc build-essential brings. Neither is needed
-# once a wheel for the core series ships.
+# semgrep's dependency ruamel.yaml.clib may publish no wheel for the core
+# series, so it may compile: build-essential is installed for that install
+# alone and purged in the same layer. python-build-standalone's sysconfig names
+# clang as its compiler, so CC=gcc points the build at the gcc build-essential
+# brings. Neither is needed once a wheel for the core series ships.
 ARG CORE_PYTHON
 
 RUN if [ -z "${CORE_PYTHON}" ]; then echo "core-tools: the CORE_PYTHON build arg is not set" >&2; exit 1; fi && \
+    if [ -z "${VERGIL_CORE_PYTHON_DIR}" ]; then echo "core-tools: VERGIL_CORE_PYTHON_DIR is not set" >&2; exit 1; fi && \
     export UV_TOOL_DIR=/opt/vergil/uv/tools UV_TOOL_BIN_DIR=/usr/local/bin \
-      UV_PYTHON_DOWNLOADS=never UV_NO_CACHE=1 && \
-    core="/opt/vergil/python/${CORE_PYTHON}/bin/python${CORE_PYTHON}" && \
-    uv tool install --python "${core}" yamllint && \
-    uv tool install --python "${core}" ansible-lint && \
-    uv tool install --python "${core}" mkdocs --with mkdocs-material --with-executables-from mike && \
+      UV_PYTHON_INSTALL_DIR="${VERGIL_CORE_PYTHON_DIR}" UV_PYTHON_DOWNLOADS=never UV_NO_CACHE=1 && \
+    unset UV_PYTHON UV_PYTHON_PREFERENCE UV_NO_MANAGED_PYTHON && \
+    core=(--no-config --python "${CORE_PYTHON}" --managed-python) && \
+    uv tool install "${core[@]}" yamllint && \
+    uv tool install "${core[@]}" ansible-lint && \
+    uv tool install "${core[@]}" mkdocs --with mkdocs-material --with-executables-from mike && \
     apt-get update && \
     apt-get install -y --no-install-recommends build-essential && \
-    CC=gcc uv tool install --python "${core}" semgrep && \
+    CC=gcc uv tool install "${core[@]}" semgrep && \
     apt-get purge -y --auto-remove build-essential && \
     rm -rf /var/lib/apt/lists/*
 

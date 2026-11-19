@@ -212,7 +212,7 @@ def test_core_node_major_needs_pin():
 
 
 def test_core_python_needs_no_pin():
-    # The core Python is vergil-python from the apt repository: no pin, and a
+    # The core Python is a uv-managed install by the parent's pinned uv: no pin, and a
     # core series outside the family window asks for none.
     m = replace(SEED, core=mf.Core(python="3.16", node="22"))
     assert rt.required_series(m)["python"] == ["3.14", "3.13", "3.12"]

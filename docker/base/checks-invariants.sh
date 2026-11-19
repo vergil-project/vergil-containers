@@ -4,14 +4,17 @@
 # /usr/local/lib/vergil/checks/, so base and every language image built on it
 # run the same file unchanged as part of their last RUN.
 #
-# It reads the core series from base's ENV (VERGIL_CORE_PYTHON,
-# VERGIL_CORE_NODE_MAJOR), never from a build arg: a build ARG does not carry
-# into a child image. Every check runs and reports, then the script exits 1 if
-# any failed, naming each.
+# It reads the core series and the core Python's directory from base's ENV
+# (VERGIL_CORE_PYTHON, VERGIL_CORE_PYTHON_DIR, VERGIL_CORE_NODE_MAJOR), never
+# from a build arg: a build ARG does not carry into a child image. Every check
+# runs and reports, then the script exits 1 if any failed, naming each.
 #
 # The checks:
 #   - no package toolchain marker; /etc/os-release is Ubuntu 24.04;
-#   - the core Python is the core series and imports tomllib;
+#   - the core Python is a uv-managed, released Python of the core series
+#     under VERGIL_CORE_PYTHON_DIR, found as the vergil-tooling installs find
+#     it (--managed-python, that directory as UV_PYTHON_INSTALL_DIR, downloads
+#     off: epic vergil-project/.github#1350, spec §4.4), and imports tomllib;
 #   - /usr/local/bin/python3 exists and imports tomllib (the standard library
 #     is all it promises, spec §5.5);
 #   - each core tool runs, mike --help, a material-themed fixture builds, and
@@ -23,19 +26,19 @@
 #     (vergil-project/vergil-containers#825: `semgrep --version` passed while
 #     every scan crashed);
 #   - each core tool runs on its core runtime: every uv tool environment's
-#     interpreter is under /opt/vergil/python/<core>/ (for a wrapped entry
-#     point, the one it execs), and the markdownlint wrapper names
+#     interpreter is under VERGIL_CORE_PYTHON_DIR (for a wrapped entry point,
+#     the one it execs), and the markdownlint wrapper names
 #     /opt/vergil/node/<core-major>/bin/node;
-#   - the vergil apt source is in place, no bootstrap source or key is left,
-#     and apt-get update passes.
+#   - no vergil apt source, signing key or package is present, so no image
+#     build reads the vergil package repository (spec §4.4), and apt-get
+#     update passes.
 #
 # Usage: checks-invariants.sh   (as root, at image build)
 set -uo pipefail
 
 core_python="${VERGIL_CORE_PYTHON:-}"
+core_python_dir="${VERGIL_CORE_PYTHON_DIR:-}"
 core_node_major="${VERGIL_CORE_NODE_MAJOR:-}"
-core_python_dir="/opt/vergil/python/${core_python}"
-core_python_bin="${core_python_dir}/bin/python${core_python}"
 core_node_bin="/opt/vergil/node/${core_node_major}/bin/node"
 
 # The uv tools base installs, by the entry point each puts in /usr/local/bin.
@@ -67,6 +70,10 @@ core_env_set() {
     say "VERGIL_CORE_PYTHON is '${core_python}', want a series such as 3.15"
     rc=1
   }
+  [[ "${core_python_dir}" == /* ]] || {
+    say "VERGIL_CORE_PYTHON_DIR is '${core_python_dir}', want an absolute path"
+    rc=1
+  }
   [[ "${core_node_major}" =~ ^[0-9]+$ ]] || {
     say "VERGIL_CORE_NODE_MAJOR is '${core_node_major}', want a major such as 22"
     rc=1
@@ -93,21 +100,48 @@ python_series() {
   "$1" -c 'import sys; print("%d.%d" % sys.version_info[:2])'
 }
 
+# core_python_bin: the core Python as the vergil-tooling installs find it, a
+# uv-managed one under VERGIL_CORE_PYTHON_DIR, with no download.
+core_python_bin() {
+  env -u UV_PYTHON -u UV_PYTHON_PREFERENCE -u UV_NO_MANAGED_PYTHON \
+    UV_PYTHON_INSTALL_DIR="${core_python_dir}" UV_PYTHON_DOWNLOADS=never \
+    uv python find --no-config --managed-python "${core_python}"
+}
+
 core_python_is_core_series() {
-  local got
-  [ -x "${core_python_bin}" ] || {
-    say "no core Python at ${core_python_bin}"
+  local bin got
+  [ -d "${core_python_dir}" ] || {
+    say "VERGIL_CORE_PYTHON_DIR '${core_python_dir}' is not a directory"
     return 1
   }
-  got="$(python_series "${core_python_bin}")" || return 1
+  bin="$(core_python_bin)" || {
+    say "uv finds no managed Python ${core_python} in ${core_python_dir}"
+    return 1
+  }
+  case "$(readlink -f "${bin}")" in
+    "${core_python_dir}"/*) ;;
+    *)
+      say "uv's managed Python ${core_python} is ${bin}, not under ${core_python_dir}/"
+      return 1
+      ;;
+  esac
+  got="$(python_series "${bin}")" || return 1
   [ "${got}" = "${core_python}" ] || {
-    say "${core_python_bin} is Python ${got}, want ${core_python}"
+    say "${bin} is Python ${got}, want ${core_python}"
     return 1
   }
-  "${core_python_bin}" -c 'import tomllib' || {
-    say "${core_python_bin} cannot import tomllib"
+  # A released patch, never a pre-release such as 3.15.0rc3, which the setup
+  # action refuses (vergil-project/vergil-actions#1331).
+  got="$("${bin}" -c 'import sys; print(sys.version_info.releaselevel)')" || return 1
+  [ "${got}" = final ] || {
+    say "${bin} is a ${got} release of Python ${core_python}, want a final release"
     return 1
   }
+  "${bin}" -c 'import tomllib' || {
+    say "${bin} cannot import tomllib"
+    return 1
+  }
+  say "core Python: $("${bin}" --version) at ${bin}"
 }
 
 python3_imports_tomllib() {
@@ -232,6 +266,10 @@ entry_target() {
 
 uv_tools_on_core_python() {
   local rc=0 tool entry real cfg home
+  [ -n "${core_python_dir}" ] || {
+    say "VERGIL_CORE_PYTHON_DIR is not set"
+    return 1
+  }
   for tool in "${uv_tools[@]}"; do
     entry="$(command -v "${tool}")" || {
       say "${tool} is not on PATH"
@@ -273,18 +311,29 @@ markdownlint_on_core_node() {
   esac
 }
 
-vergil_apt_source_clean() {
-  local rc=0 path
-  [ -e /etc/apt/sources.list.d/vergil.sources ] || {
-    say "no /etc/apt/sources.list.d/vergil.sources"
-    rc=1
-  }
-  for path in /etc/apt/sources.list.d/vergil-bootstrap.sources /etc/apt/keyrings/vergil-bootstrap.asc; do
+# no_vergil_apt: no vergil apt source, signing key or package: no file named
+# vergil* among the apt sources and keyrings, no apt source naming the vergil
+# package repository, and no vergil-* package installed.
+no_vergil_apt() {
+  local rc=0 path named pkgs
+  for path in /etc/apt/sources.list.d/vergil* /etc/apt/keyrings/vergil* /usr/share/keyrings/vergil*; do
     [ ! -e "${path}" ] || {
-      say "${path} is left from the bootstrap"
+      say "${path} is present"
       rc=1
     }
   done
+  named="$(grep -rls 'vergil-project\.github\.io' /etc/apt/sources.list /etc/apt/sources.list.d)"
+  [ -z "${named}" ] || {
+    say "apt sources name the vergil package repository: ${named//$'\n'/ }"
+    rc=1
+  }
+  # SC2016: the dpkg-query format is dpkg-query's, written literally.
+  # shellcheck disable=SC2016
+  pkgs="$(dpkg-query -W -f='${db:Status-Abbrev} ${Package}\n' 'vergil-*' 2>/dev/null | awk '$1 == "ii" { print $2 }')"
+  [ -z "${pkgs}" ] || {
+    say "vergil packages are installed: ${pkgs//$'\n'/ }"
+    rc=1
+  }
   return "${rc}"
 }
 
@@ -301,7 +350,7 @@ apt_update_passes() {
 check "core series set in ENV" core_env_set
 check "no package toolchain marker" no_package_toolchain_marker
 check "Ubuntu 24.04" os_is_ubuntu_2404
-check "core Python is the core series" core_python_is_core_series
+check "core Python is uv-managed under VERGIL_CORE_PYTHON_DIR" core_python_is_core_series
 check "/usr/local/bin/python3 imports tomllib" python3_imports_tomllib
 check "core tools run" core_tools_run
 check "yq is mikefarah's and reads YAML" yq_is_mikefarahs
@@ -309,7 +358,7 @@ check "material fixture builds" material_fixture_builds
 check "semgrep scan finds the fixture's one result" semgrep_scan_finds
 check "uv tools run on the core Python" uv_tools_on_core_python
 check "markdownlint runs on the core Node" markdownlint_on_core_node
-check "vergil apt source, no bootstrap left" vergil_apt_source_clean
+check "no vergil apt source, keyring or package" no_vergil_apt
 check "apt-get update passes" apt_update_passes
 
 if [ "${#failed[@]}" -gt 0 ]; then

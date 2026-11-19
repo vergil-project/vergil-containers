@@ -202,8 +202,8 @@ another toolchain (see [Rust](../images/index.md#rust)).
   or ts-node series in the version manifest, or the core Node major
   (`core.node` in `manifest.yml`), has no pin; when a pin is for a series that
   is neither; and when a python, go, node or `rustup-init` pin lacks either
-  architecture's hash. The core Python needs no pin: it is the vergil-python
-  package from the vergil apt repository.
+  architecture's hash. The core Python needs no pin: `base` installs it with
+  `uv python install`, and the parent image's pinned uv picks the patch.
 - **The matrix carries the pins.** `generate.py` puts each family's pin into its
   `matrix.json` entry's `build-args` (`TOOLCHAIN_VERSION`,
   `TOOLCHAIN_SHA256_AMD64`, `TOOLCHAIN_SHA256_ARM64`, plus `PBS_RELEASE` for

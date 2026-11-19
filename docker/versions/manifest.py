@@ -83,8 +83,8 @@ HEADER = (
     "# are built and published, but are never in window.json or the lifecycle.\n"
     "#\n"
     "# `core:` names the core runtimes `base` runs its own tools on (epic\n"
-    "# vergil-project/.github#649): the vergil-python series and the nodejs.org\n"
-    "# Node major. They have their own pins, separate from the family windows, and\n"
+    "# vergil-project/.github#649): the uv-managed Python series and the\n"
+    "# nodejs.org Node major. They have their own pins, separate from the family windows, and\n"
     "# move only by a reviewed PR that edits this section. The core Node major is\n"
     "# pinned in docker/pins/toolchains.yml.\n"
 )
@@ -135,7 +135,7 @@ class Toolchain:
 class Core:
     """The core runtimes `base` runs its own tools on (spec §5.2.1). Neither has
     to be a family series: each is checked against its own source."""
-    python: str  # the vergil-python series: "3.15"
+    python: str  # the uv-managed core Python series: "3.15"
     node: str  # the nodejs.org Node major: "22"
 
 

@@ -26,8 +26,8 @@
 # are built and published, but are never in window.json or the lifecycle.
 #
 # `core:` names the core runtimes `base` runs its own tools on (epic
-# vergil-project/.github#649): the vergil-python series and the nodejs.org
-# Node major. They have their own pins, separate from the family windows, and
+# vergil-project/.github#649): the uv-managed Python series and the
+# nodejs.org Node major. They have their own pins, separate from the family windows, and
 # move only by a reviewed PR that edits this section. The core Node major is
 # pinned in docker/pins/toolchains.yml.
 schema: 1
