@@ -75,7 +75,6 @@ NO_BUILD_GLOBS = (
     "docker/versions/window.json",
     "docker/build.sh",
     ".hadolint.yaml",
-    "cliff*.toml",
     "vergil.toml",
     ".github/**",
     "scripts/**",
