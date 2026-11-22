@@ -28,6 +28,15 @@
 # alone and purged in the same layer. python-build-standalone's sysconfig names
 # clang as its compiler, so CC=gcc points the build at the gcc build-essential
 # brings. Neither is needed once a wheel for the core series ships.
+#
+# semgrep pins its mcp dependency to one exact release, and that release has a
+# known vulnerability fixed in a later 1.x release (vergil-project/
+# vergil-containers#991). A constraint cannot raise an exact pin, so an override
+# file raises mcp for the semgrep install alone, to the newest 1.x release from
+# the first fixed one on: the dependency stays on the major semgrep was built
+# against. uv records the override in the tool's receipt, so the file is removed
+# in the same layer. Drop the override once a semgrep release requires a fixed
+# mcp itself.
 ARG CORE_PYTHON
 
 RUN if [ -z "${CORE_PYTHON}" ]; then echo "core-tools: the CORE_PYTHON build arg is not set" >&2; exit 1; fi && \
@@ -40,7 +49,10 @@ RUN if [ -z "${CORE_PYTHON}" ]; then echo "core-tools: the CORE_PYTHON build arg
     uv tool install --no-config --python "${CORE_PYTHON}" --managed-python mkdocs --with mkdocs-material --with-executables-from mike && \
     apt-get update && \
     apt-get install -y --no-install-recommends build-essential && \
-    CC=gcc uv tool install --no-config --python "${CORE_PYTHON}" --managed-python semgrep && \
+    printf '%s\n' 'mcp>=1.30.0,<2' > /tmp/semgrep-overrides.txt && \
+    CC=gcc uv tool install --no-config --python "${CORE_PYTHON}" --managed-python \
+      --overrides /tmp/semgrep-overrides.txt semgrep && \
+    rm /tmp/semgrep-overrides.txt && \
     apt-get purge -y --auto-remove build-essential && \
     rm -rf /var/lib/apt/lists/*
 
