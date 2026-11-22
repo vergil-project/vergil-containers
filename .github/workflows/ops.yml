@@ -14,42 +14,6 @@ permissions:
   id-token: write
 
 jobs:
-  # The pin exposure report was documented as "the internal-state observability
-  # view for a daily morning-review ritual" but no workflow ever invoked it, so
-  # nothing surfaced that trivy had sat a month behind a release carrying a CVE
-  # fix while five unmerged bump PRs stacked up (#574).
-  #
-  # --no-probe skips the per-image Docker harvest: this job runs inside the
-  # prod-base container with no Docker socket, and the drift signals need only
-  # pins.yml, the templates, and one unmetered /releases/latest redirect per
-  # tool.
-  #
-  # NO continue-on-error (#819): the report is informational, but the script
-  # itself failing (an import error, a crash before it reports) must turn the
-  # nightly red, or nobody learns the report has stopped working. A finding is
-  # not a failure: report_exposure.py prints it and exits 0, and a flaky
-  # upstream lookup is already downgraded to a ::warning:: inside the script.
-  # docker/versions/test_ops_pin_exposure.py enforces it.
-  pin-exposure:
-    name: "pin exposure report"
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    container:
-      image: ghcr.io/vergil-project/prod-base:latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      # bash with pipefail: under the container job's default `sh -e` the
-      # pipeline's status is tee's, so a crash of the script would exit 0.
-      - name: Report pin exposure
-        working-directory: docker/pins
-        shell: bash
-        run: |
-          set -euo pipefail
-          uv run report_exposure.py --no-probe | tee -a "${GITHUB_STEP_SUMMARY}"
-
   # The language version lifecycle check (epic vergil-project/.github#407,
   # spec §6.2). Every family's adapter reads upstream release metadata; the
   # report covers every family on every run, and publish.py makes the open
@@ -59,11 +23,9 @@ jobs:
   # add/drop PR per change instead. So no PR and no open issue reliably means
   # "in sync".
   #
-  # NO continue-on-error, and unlike pin-exposure (which reports an
-  # unresolvable upstream lookup as a warning and still passes), a check that
-  # cannot reach or parse upstream (a Docker Hub or GitHub API rate limit
-  # included) fails this job loudly, and still publishes its failure issue
-  # first.
+  # NO continue-on-error: a check that cannot reach or parse upstream (a
+  # Docker Hub or GitHub API rate limit included) fails this job loudly, and
+  # still publishes its failure issue first.
   # The add/drop branches and PRs, and the issues, are written with GitHub App
   # tokens, not this job's GITHUB_TOKEN, so it needs no contents, pull-requests
   # or issues write here. Each App token requests only what its steps call
@@ -216,6 +178,13 @@ jobs:
   # merges it once CI passes. The run is red unless the PR merged or there was
   # nothing to change. The App token is minted inside the reusable workflow, so
   # this job's GITHUB_TOKEN needs only contents: read.
+  #
+  # This job is the path that fixes pin lag. The report-only pin-exposure job
+  # that used to run here is deprecated (epic vergil-project/.github#1494,
+  # spec §5.5): a job reports only whether it worked, so a lag this job cannot
+  # fix (a bump it cannot open or merge) fails it, and that failure is what
+  # surfaces. docker/pins/report_exposure.py stays, runnable by hand;
+  # docker/versions/test_ops_jobs.py keeps the job from coming back.
   upstream-refresh:
     uses: vergil-project/vergil-actions/.github/workflows/ops-upstream-refresh.yml@v2.1
     permissions:
