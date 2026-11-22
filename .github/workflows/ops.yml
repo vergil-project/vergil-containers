@@ -70,8 +70,13 @@ jobs:
   # (contents: write and pull-requests: write for the PR token, issues: write
   # for the issues token), never the installation's full grant. App-authored
   # PRs fire CI.
+  #
+  # Disabled until vergil-project/.github#1128 re-architects the publisher's
+  # GitHub handling; that work re-enables this job. docker/versions/lifecycle/
+  # stays in place meanwhile.
   language-lifecycle:
     name: "language lifecycle check"
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
