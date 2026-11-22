@@ -1,0 +1,11 @@
+# actionlint configuration.
+#
+# The language-lifecycle job in ops.yml is disabled with a constant false
+# condition until vergil-project/.github#1128 re-architects it. actionlint's
+# if-cond rule rejects a constant condition, so this ignores that one error,
+# for that one file only. The work in vergil-project/.github#1128 removes both
+# the condition and this ignore.
+paths:
+  .github/workflows/ops.yml:
+    ignore:
+      - '^constant expression "false" in condition\. remove the if: section$'
