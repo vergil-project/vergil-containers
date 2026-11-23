@@ -3652,6 +3652,14 @@ preview is the explicit exception:</p>
   (the <code>dry_run</code> input set to <code>true</code>) only logs what it <em>would</em> delete. Use it
   before a change to the delete rules, and review the logs.</li>
 </ul>
+<p>A third job, <code>report</code>, deletes nothing. It reports the run to the org's
+operations queue (epic
+<a href="https://github.com/vergil-project/.github/issues/1494">vergil-project/.github#1494</a>)
+under the name <code>package-cleanup</code>, taking both jobs as one result: any failed
+leg makes the run a failure. A failure opens, or comments on, the issue
+<code>ops: vergil-containers / package-cleanup failing</code>, and the first green run
+after it records the recovery. <code>package-cache-warm.yml</code> reports the same way,
+as <code>package-cache-warm</code>. Only runs on <code>develop</code> report.</p>
 <h3 id="rate-limits">Rate limits<a class="headerlink" href="#rate-limits" title="Permanent link">&para;</a></h3>
 <p>Every leg of both jobs fetches every manifest of its package from ghcr.io. On a
 cold manifest cache that is tens of thousands of registry requests per run, and

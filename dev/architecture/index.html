@@ -3411,6 +3411,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#failure-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure reports
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#pull-request-builds" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3806,6 +3817,19 @@ with the registry cache disabled (<code>no-cache: true</code>):</p>
 image updates, apt package refreshes) without waiting for a code change to
 trigger a build. To trigger a rebuild manually, run the CD workflow from the
 Actions tab (<strong>Actions &gt; CD &gt; Run workflow</strong>).</p>
+<h3 id="failure-reports">Failure reports<a class="headerlink" href="#failure-reports" title="Permanent link">&para;</a></h3>
+<p>Nobody watches these runs, so each one reports its own result to the org's
+operations queue (epic
+<a href="https://github.com/vergil-project/.github/issues/1494">vergil-project/.github#1494</a>).
+<code>nightly-rebuild-dev</code>, <code>nightly-rebuild-prod</code> and <code>image-publish</code> (the docker
+publish job in <code>cd.yml</code>) each end with a reporting job that calls
+vergil-actions' <code>ops-report</code> action. A failed or cancelled run opens, or
+comments on, the issue <code>ops: vergil-containers / &lt;job&gt; failing</code> as the org
+automation App, under the org's operations epic; the first green run after
+it records the recovery. Nothing closes the issue automatically. Only runs
+on <code>develop</code> report, and <code>image-publish</code> reports nothing for a release push
+(a push to <code>main</code>, or the release's back-merge to <code>develop</code>), which the
+release records already track.</p>
 <h3 id="pull-request-builds">Pull request builds<a class="headerlink" href="#pull-request-builds" title="Permanent link">&para;</a></h3>
 <p>Pull requests never publish. <code>ci.yml</code> calls <code>ci-images.yml</code>, which builds and
 scans only the images the change reaches. <code>docker/versions/selection.py</code> maps
