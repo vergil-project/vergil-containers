@@ -106,7 +106,7 @@ def test_trivyignore_selects_full():
     "docker/versions/lifecycle/adapters/python.py", "docker/versions/testdata/manifest.yml",
     "docker/versions/fixtures/endoflife-python.json", "docker/versions/manifest.yml",
     "docker/versions/matrix.json", "docker/versions/window.json", "docker/build.sh",
-    ".hadolint.yaml", "cliff.toml", "cliff-release-notes.toml", "vergil.toml",
+    ".hadolint.yaml", "vergil.toml",
     ".github/workflows/package-cleanup.yml", ".github/CODEOWNERS",
     "scripts/bin/validate-custom", "scripts/tests/trivy.test.sh", "LICENSE",
 ])
