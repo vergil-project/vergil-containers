@@ -3,7 +3,7 @@
 #
 # Runs inside a built dev-ts-node image with the smoke fixture mounted read-only
 # at /smoke. Copies the fixture to a writable dir, then:
-#   1. confirms the image tools (prettier, license-checker) are on PATH and run;
+#   1. confirms the image tool (prettier) is on PATH and runs;
 #   2. confirms the repo-declared tools (tsc, eslint, vitest) are NOT on PATH,
 #      and typescript-eslint and @vitest/coverage-v8 are not in the global tree:
 #      a repo declares them and runs its own (vergil-tooling's tool-ownership
@@ -13,8 +13,7 @@
 #   4. fails if tsc, eslint or vitest is missing from node_modules/.bin;
 #   5. typechecks (tsc --noEmit), lints (eslint .) and runs one Vitest test
 #      with V8 coverage, each from node_modules/.bin;
-#   6. runs the image tools on the project: prettier --check and
-#      license-checker --summary.
+#   6. runs the image tool on the project: prettier --check.
 # Any failure exits non-zero.
 set -euo pipefail
 
@@ -27,16 +26,11 @@ echo "node: $(node --version)"
 echo "npm:  $(npm --version)"
 
 echo "--- image tools (global) ---"
-for tool in prettier license-checker; do
-  if ! command -v "${tool}" >/dev/null 2>&1; then
-    echo "SMOKE FAIL: image tool '${tool}' not found on PATH" >&2
-    exit 1
-  fi
-done
-echo "prettier:        $(prettier --version)"
-# license-checker's --version exits 1, so it is run for real on the project
-# after npm ci below.
-echo "license-checker: $(command -v license-checker)"
+if ! command -v prettier >/dev/null 2>&1; then
+  echo "SMOKE FAIL: image tool 'prettier' not found on PATH" >&2
+  exit 1
+fi
+echo "prettier: $(prettier --version)"
 
 echo "--- repo-declared tools (must not be global) ---"
 for tool in tsc eslint vitest; do
@@ -79,8 +73,5 @@ echo "--- vitest run --coverage (one test) ---"
 
 echo "--- prettier --check (image tool) ---"
 prettier --check src
-
-echo "--- license-checker --summary (image tool) ---"
-license-checker --summary
 
 echo "SMOKE PASS"

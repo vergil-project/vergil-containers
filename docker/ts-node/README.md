@@ -57,10 +57,10 @@ which `docker/build.sh` reads, is generated from it.
   `RUN`: `base`'s invariants, the two `base` defaults the image keeps (`python3`
   is the core Python, no `pip`), the family Node's release and paths, `npm root
   -g`, the `markdownlint` wrapper on the core Node, and the image's TypeScript
-  tools (`prettier`, `license-checker`).
+  tool (`prettier`).
 - **`common/typescript-analysis.dockerfile`** — the shared, runtime-agnostic
-  TypeScript tools every TypeScript image carries: `prettier` and
-  `license-checker`. `typescript`, `eslint`, `typescript-eslint`, `vitest` and
+  TypeScript tool every TypeScript image carries: `prettier`.
+  `typescript`, `eslint`, `typescript-eslint`, `vitest` and
   `@vitest/coverage-v8` are not in the image: each repository declares them,
   and Vergil's gates run them from its `node_modules/.bin`, under vergil-tooling's
   [Tool Ownership Guideline](https://vergil-project.github.io/vergil-tooling/latest/standards/development/tool-ownership/)
@@ -75,8 +75,7 @@ which `docker/build.sh` reads, is generated from it.
   asserts `tsc`, `eslint` and `vitest` are not on the image's `PATH`, runs
   `npm ci --ignore-scripts`, then `tsc --noEmit`, `eslint .` and one
   `vitest run --coverage` from `node_modules/.bin`, and the image's `prettier`
-  and `license-checker` on the project. Shared across every node-<major>
-  image.
+  on the project. Shared across every node-<major> image.
 
 Images are named `dev-ts-node:<major>` / `prod-ts-node:<major>`, following the
 established `{prefix}-{language}:{version}` convention where the `{language}`
