@@ -3753,6 +3753,18 @@ promoted digest from the same run, and then tier 2. An image whose parent
 failed fails its own build with an error naming the parent, and its previous
 tags stay published. Today <code>base</code> is the one tier-1 image, built on
 <code>pkg-ubuntu:24.04</code>, and no image is in tier 2.</p>
+<p>Every image names the vergil-containers release that built it, in two OCI
+labels set at build time: <code>org.opencontainers.image.version</code> and
+<code>org.opencontainers.image.revision</code>, the commit the run built. A <code>prod-</code> image's
+version is the release itself (for example <code>2.1.48</code>): the publish refuses to
+build unless the release's <code>v&lt;version&gt;</code> tag names the commit it builds, so a
+<code>prod-</code> image is never labelled with a release it did not come from. A <code>dev-</code>
+image is built from <code>develop</code>, whose <code>VERSION</code> is the release to come, so its
+version carries a <code>-dev</code> suffix (for example <code>2.1.49-dev</code>). To read them from
+a published image:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span>buildx<span class="w"> </span>imagetools<span class="w"> </span>inspect<span class="w"> </span>ghcr.io/vergil-project/prod-ts-node:24<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--format<span class="w"> </span><span class="s1">'{{ json (index .Image "linux/amd64").Config.Labels }}'</span>
+</code></pre></div>
 <p>Each image's <code>--build-arg</code>s come from its <code>build-args</code> map in the generated
 <code>docker/versions/matrix.json</code> (a family's or toolchain's version argument
 and its toolchain pins; for <code>base</code>, its core runtimes), and a child also gets
