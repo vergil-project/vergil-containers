@@ -24,10 +24,12 @@ jobs:
     permissions:
       contents: write
     # The docs workflow reports its own failures as operations issues,
-    # which needs the automation App's credentials.
-    secrets:
-      APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+    # which needs the automation App's credentials. They live only in the
+    # `automation` environment, whose secrets reach a reusable workflow in
+    # another repo only under `secrets: inherit` (epic
+    # vergil-project/.github#1384); a calling job cannot declare the
+    # environment itself.
+    secrets: inherit
 
   release:
     if: github.ref == 'refs/heads/main'
@@ -35,10 +37,9 @@ jobs:
     with:
       container-suffix: base
     # The release pushes its tag with the automation App's token, so
-    # cd-release.yml needs the App's credentials.
-    secrets:
-      APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+    # cd-release.yml needs the App's credentials, inherited from the
+    # `automation` environment as for the docs job.
+    secrets: inherit
     permissions:
       # This job-level block replaces the top-level permissions, so the
       # actions:read granted there does not carry over — cd-release.yml@v2.1's
@@ -74,6 +75,8 @@ jobs:
   # already track and recover a release's failed CD jobs (spec §4.1). The
   # action reports only from refs/heads/develop, as the org automation App
   # with an issues-only token it mints, so this job's GITHUB_TOKEN only reads.
+  # The App's keys live only in the `automation` environment, which this job
+  # declares to read them (epic vergil-project/.github#1384).
   # A composite action cannot read `vars`, so the step delivers the trust
   # layer's inputs in its env. No concurrency group: one would cancel a
   # pending report. The docs job reports from inside cd-docs.yml.
@@ -85,6 +88,7 @@ jobs:
       && !(startsWith(github.event.head_commit.message, 'Merge pull request #')
       && contains(github.event.head_commit.message, format(' from {0}/release/', github.repository_owner))) }}
     runs-on: ubuntu-24.04
+    environment: automation
     permissions:
       contents: read
     steps:

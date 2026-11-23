@@ -28,6 +28,10 @@ name: Package cleanup
 # Token: the default GITHUB_TOKEN can list/preview. Real deletion of
 # org-owned package versions may require a PAT with `delete:packages` stored
 # as the secret GHCR_CLEANUP_TOKEN; the workflow prefers it when present.
+# That token can write, so it lives only in the `automation` environment
+# (epic vergil-project/.github#1384), and both deleting jobs declare the
+# environment to read it, as `report` does for the automation App's keys. Only
+# develop and main may deploy to the environment.
 #
 # Rate limits (issue #652): every leg fetches every manifest of its package
 # from ghcr.io, and on a cold manifest cache that is ~25k registry GETs per
@@ -90,8 +94,9 @@ permissions:
 # when it is a live run on develop, for the group is one for every ref and
 # input. A dry-run dispatch that replaces a pending live run deletes nothing,
 # so that week's deletions wait, unreported, for the next scheduled run. A
-# dispatch from another branch deletes, but its result goes unreported: the
-# report action reports only from refs/heads/develop.
+# dispatch from main deletes, but its result goes unreported: the report
+# action reports only from refs/heads/develop. A dispatch from any other
+# branch runs no job: the `automation` environment refuses it.
 concurrency:
   group: package-cleanup
   cancel-in-progress: false
@@ -105,6 +110,7 @@ jobs:
   cleanup:
     name: "cleanup: ${{ matrix.package }}"
     runs-on: ubuntu-24.04
+    environment: automation
     strategy:
       fail-fast: false
       # Rate-limit cap (issue #652): keep in step with reap-aliases.
@@ -199,6 +205,7 @@ jobs:
     needs: cleanup
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
+    environment: automation
     strategy:
       fail-fast: false
       # Rate-limit cap (issue #652): keep in step with cleanup.
@@ -318,13 +325,16 @@ jobs:
   # records the first green run after one; it never closes an issue. It runs
   # whatever the jobs did (always()), and reports only from refs/heads/develop,
   # as the org automation App with an issues-only token it mints, so this
-  # job's GITHUB_TOKEN only reads. A composite action cannot read `vars`, so
-  # the step delivers the trust layer's inputs in its env.
+  # job's GITHUB_TOKEN only reads. The App's keys live only in the
+  # `automation` environment, which the job declares to read them. A
+  # composite action cannot read `vars`, so the step delivers the trust
+  # layer's inputs in its env.
   # docker/versions/test_ops_reporting.py pins this layout.
   report:
     needs: [cleanup, reap-aliases]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
+    environment: automation
     permissions:
       contents: read
     steps:

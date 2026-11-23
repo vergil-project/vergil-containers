@@ -150,13 +150,17 @@ jobs:
   # green run after one; it never closes an issue. It runs whatever the warm
   # legs did (always()), and reports only from refs/heads/develop, as the org
   # automation App with an issues-only token it mints, so this job's
-  # GITHUB_TOKEN only reads. A composite action cannot read `vars`, so the
+  # GITHUB_TOKEN only reads. The App's keys live only in the `automation`
+  # environment (epic vergil-project/.github#1384), which the job declares to
+  # read them; only develop and main may deploy to it, so a dispatch from any
+  # other branch fails this job. A composite action cannot read `vars`, so the
   # step delivers the trust layer's inputs in its env.
   # docker/versions/test_ops_reporting.py pins this layout.
   report:
     needs: [warm]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
+    environment: automation
     permissions:
       contents: read
     steps:
