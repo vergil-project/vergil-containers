@@ -100,25 +100,25 @@ All other checks are unchanged from the baseline.
 
 - `no GitHub/GitLab publishing workflow detected.`
 
-**Documentation:** https://github.com/ossf/scorecard/blob/main/docs/checks.md#packaging
+**Documentation:** <https://github.com/ossf/scorecard/blob/main/docs/checks.md#packaging>
 
 ##### CII-Best-Practices (0/10)
 
 **Reason:** no effort to earn an OpenSSF best practices badge detected
 
-**Documentation:** https://github.com/ossf/scorecard/blob/main/docs/checks.md#cii-best-practices
+**Documentation:** <https://github.com/ossf/scorecard/blob/main/docs/checks.md#cii-best-practices>
 
 ##### Code-Review (0/10)
 
 **Reason:** Found 0/19 approved changesets -- score normalized to 0
 
-**Documentation:** https://github.com/ossf/scorecard/blob/main/docs/checks.md#code-review
+**Documentation:** <https://github.com/ossf/scorecard/blob/main/docs/checks.md#code-review>
 
 ##### Contributors (0/10)
 
 **Reason:** project has 0 contributing companies or organizations -- score normalized to 0
 
-**Documentation:** https://github.com/ossf/scorecard/blob/main/docs/checks.md#contributors
+**Documentation:** <https://github.com/ossf/scorecard/blob/main/docs/checks.md#contributors>
 
 ##### Dependency-Update-Tool (0/10)
 
@@ -128,7 +128,7 @@ All other checks are unchanged from the baseline.
 
 - `no dependency update tool configurations found`
 
-**Documentation:** https://github.com/ossf/scorecard/blob/main/docs/checks.md#dependency-update-tool
+**Documentation:** <https://github.com/ossf/scorecard/blob/main/docs/checks.md#dependency-update-tool>
 
 ##### Fuzzing (0/10)
 
@@ -138,7 +138,7 @@ All other checks are unchanged from the baseline.
 
 - `no fuzzer integrations found`
 
-**Documentation:** https://github.com/ossf/scorecard/blob/main/docs/checks.md#fuzzing
+**Documentation:** <https://github.com/ossf/scorecard/blob/main/docs/checks.md#fuzzing>
 
 ##### Pinned-Dependencies (0/10)
 
@@ -196,7 +196,7 @@ All other checks are unchanged from the baseline.
 - `npmCommand not pinned by hash: docker/ts-node/Dockerfile.template:43-45`
 - `npmCommand not pinned by hash: docker/ts-node/Dockerfile.template:43-45`
 
-<details><summary>Info details (6 items)</summary>
+**Info details (6 items):**
 
 - `0 out of 11 GitHub-owned GitHubAction dependencies pinned`
 - `0 out of 20 third-party GitHubAction dependencies pinned`
@@ -205,9 +205,7 @@ All other checks are unchanged from the baseline.
 - `1 out of 6 npmCommand dependencies pinned`
 - `0 out of 5 goCommand dependencies pinned`
 
-</details>
-
-**Documentation:** https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies
+**Documentation:** <https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies>
 
 ##### Signed-Releases (0/10)
 
@@ -226,7 +224,7 @@ All other checks are unchanged from the baseline.
 - `release artifact v2.1.21 does not have provenance: https://api.github.com/repos/vergil-project/vergil-containers/releases/368722537`
 - `release artifact v2.1.20 does not have provenance: https://api.github.com/repos/vergil-project/vergil-containers/releases/365754636`
 
-**Documentation:** https://github.com/ossf/scorecard/blob/main/docs/checks.md#signed-releases
+**Documentation:** <https://github.com/ossf/scorecard/blob/main/docs/checks.md#signed-releases>
 
 ##### Token-Permissions (0/10)
 
@@ -253,7 +251,7 @@ All other checks are unchanged from the baseline.
 - `topLevel 'security-events' permission set to 'write': .github/workflows/ops.yml:12`
 - `topLevel 'packages' permission set to 'write': .github/workflows/package-cleanup.yml:40`
 
-<details><summary>Info details (14 items)</summary>
+**Info details (14 items):**
 
 - `jobLevel 'contents' permission set to 'read': .github/workflows/cd.yml:52`
 - `jobLevel 'actions' permission set to 'read': .github/workflows/cd.yml:38`
@@ -270,9 +268,7 @@ All other checks are unchanged from the baseline.
 - `topLevel 'contents' permission set to 'read': .github/workflows/ops.yml:9`
 - `topLevel 'contents' permission set to 'read': .github/workflows/package-cleanup.yml:41`
 
-</details>
-
-**Documentation:** https://github.com/ossf/scorecard/blob/main/docs/checks.md#token-permissions
+**Documentation:** <https://github.com/ossf/scorecard/blob/main/docs/checks.md#token-permissions>
 
 ##### Branch-Protection (4/10)
 
@@ -284,7 +280,7 @@ All other checks are unchanged from the baseline.
 - `codeowners review is not required on branch 'develop'`
 - `'last push approval' is disabled on branch 'develop'`
 
-<details><summary>Info details (7 items)</summary>
+**Info details (7 items):**
 
 - `'allow deletion' disabled on branch 'develop'`
 - `'force pushes' disabled on branch 'develop'`
@@ -294,9 +290,7 @@ All other checks are unchanged from the baseline.
 - `status check found to merge onto on branch 'develop'`
 - `PRs are required in order to make changes on branch 'develop'`
 
-</details>
-
-**Documentation:** https://github.com/ossf/scorecard/blob/main/docs/checks.md#branch-protection
+**Documentation:** <https://github.com/ossf/scorecard/blob/main/docs/checks.md#branch-protection>
 
 ---
 
@@ -344,31 +338,31 @@ All other checks are unchanged from the baseline.
 
 - `no GitHub/GitLab publishing workflow detected.`
 
-**Documentation:** https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#packaging
+**Documentation:** <https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#packaging>
 
 ##### Signed-Releases (-1/10)
 
 **Reason:** no releases found
 
-**Documentation:** https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#signed-releases
+**Documentation:** <https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#signed-releases>
 
 ##### CII-Best-Practices (0/10)
 
 **Reason:** no effort to earn an OpenSSF best practices badge detected
 
-**Documentation:** https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#cii-best-practices
+**Documentation:** <https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#cii-best-practices>
 
 ##### Code-Review (0/10)
 
 **Reason:** Found 0/10 approved changesets -- score normalized to 0
 
-**Documentation:** https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#code-review
+**Documentation:** <https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#code-review>
 
 ##### Contributors (0/10)
 
 **Reason:** project has 0 contributing companies or organizations -- score normalized to 0
 
-**Documentation:** https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#contributors
+**Documentation:** <https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#contributors>
 
 ##### Dependency-Update-Tool (0/10)
 
@@ -378,7 +372,7 @@ All other checks are unchanged from the baseline.
 
 - `no dependency update tool configurations found`
 
-**Documentation:** https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#dependency-update-tool
+**Documentation:** <https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#dependency-update-tool>
 
 ##### Fuzzing (0/10)
 
@@ -388,7 +382,7 @@ All other checks are unchanged from the baseline.
 
 - `no fuzzer integrations found`
 
-**Documentation:** https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#fuzzing
+**Documentation:** <https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#fuzzing>
 
 ##### Maintained (0/10)
 
@@ -398,7 +392,7 @@ All other checks are unchanged from the baseline.
 
 - `Repository was created within the last 90 days.`
 
-**Documentation:** https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#maintained
+**Documentation:** <https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#maintained>
 
 ##### Token-Permissions (0/10)
 
@@ -421,7 +415,7 @@ All other checks are unchanged from the baseline.
 - `topLevel 'packages' permission set to 'write': .github/workflows/ops.yml:11`
 - `topLevel 'security-events' permission set to 'write': .github/workflows/ops.yml:12`
 
-<details><summary>Info details (7 items)</summary>
+**Info details (7 items):**
 
 - `jobLevel 'contents' permission set to 'read': .github/workflows/cd.yml:44`
 - `jobLevel 'contents' permission set to 'read': .github/workflows/ci.yml:53`
@@ -431,9 +425,7 @@ All other checks are unchanged from the baseline.
 - `topLevel 'contents' permission set to 'read': .github/workflows/ci.yml:16`
 - `topLevel 'contents' permission set to 'read': .github/workflows/ops.yml:9`
 
-</details>
-
-**Documentation:** https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#token-permissions
+**Documentation:** <https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#token-permissions>
 
 ##### Pinned-Dependencies (1/10)
 
@@ -445,7 +437,7 @@ warning list from the baseline run was captured in the tracking issue's edit
 history and is not reproduced verbatim here; the 2026-08-12 snapshot above
 carries the current, fully enumerated list.
 
-**Documentation:** https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#pinned-dependencies
+**Documentation:** <https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#pinned-dependencies>
 
 ##### Branch-Protection (4/10)
 
@@ -457,7 +449,7 @@ carries the current, fully enumerated list.
 - `codeowners review is not required on branch 'develop'`
 - `'last push approval' is disabled on branch 'develop'`
 
-<details><summary>Info details (7 items)</summary>
+**Info details (7 items):**
 
 - `'allow deletion' disabled on branch 'develop'`
 - `'force pushes' disabled on branch 'develop'`
@@ -467,6 +459,4 @@ carries the current, fully enumerated list.
 - `status check found to merge onto on branch 'develop'`
 - `PRs are required in order to make changes on branch 'develop'`
 
-</details>
-
-**Documentation:** https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#branch-protection
+**Documentation:** <https://github.com/ossf/scorecard/blob/c395761df6afe1a69e476bc60a013a94bcbc153f/docs/checks.md#branch-protection>
