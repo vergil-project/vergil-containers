@@ -160,6 +160,116 @@ def test_pin_fails_loudly_without_a_commit(tmp_path):
     assert out.read_text() == ""
 
 
+GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
+
+
+def _git(cwd: Path, *args: str) -> str:
+    return subprocess.run(["git", *args], cwd=cwd, env={**os.environ, **GIT_ENV}, check=True,
+                          capture_output=True, text=True).stdout.strip()
+
+
+def _release_repo(tmp_path: Path, version: str | None = "2.1.48") -> tuple[Path, Path, str]:
+    """A checkout whose origin is a local bare repo, as the versions job sees it."""
+    origin = tmp_path / "origin.git"
+    _git(tmp_path, "init", "-q", "--bare", str(origin))
+    work = tmp_path / "work"
+    work.mkdir()
+    _git(work, "init", "-q")
+    if version is not None:
+        (work / "VERSION").write_text(version + "\n")
+    _git(work, "add", "-A")
+    _git(work, "commit", "-q", "--allow-empty", "-m", "release")
+    _git(work, "remote", "add", "origin", str(origin))
+    _git(work, "push", "-q", "origin", "HEAD:refs/heads/main")
+    return work, origin, _git(work, "rev-parse", "HEAD")
+
+
+def _label(work: Path, prefix: str, sha: str) -> tuple[subprocess.CompletedProcess, Path]:
+    out = work.parent / "label-out"
+    out.write_text("")
+    result = _bash(_step("versions", "label")["run"], work, {
+        "GITHUB_OUTPUT": str(out), "PREFIX": prefix, "SHA": sha,
+        "GIT_CEILING_DIRECTORIES": str(work.parent)})
+    return result, out
+
+
+def test_label_step_reads_the_pinned_commit():
+    # vergil-containers#996: resolved once, after the pin, from the pinned tree.
+    keys = _keys("versions")
+    assert keys.index("commit") < keys.index("label")
+    assert _job("versions")["outputs"]["image-version"] == "${{ steps.label.outputs.image-version }}"
+    assert _step("versions", "label")["env"] == {
+        "PREFIX": "${{ inputs.image-prefix }}", "SHA": "${{ steps.commit.outputs.sha }}"}
+
+
+@pytest.mark.parametrize("annotated", [False, True])
+def test_label_prod_is_the_release_its_tag_names(tmp_path, annotated):
+    work, _, sha = _release_repo(tmp_path)
+    _git(work, "tag", *(["-a", "-m", "v2.1.48"] if annotated else []), "v2.1.48")
+    _git(work, "push", "-q", "origin", "v2.1.48")
+    result, out = _label(work, "prod", sha)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _outputs(out) == {"image-version": "2.1.48"}
+
+
+def test_label_prod_refuses_an_untagged_release(tmp_path):
+    work, _, sha = _release_repo(tmp_path)
+    result, out = _label(work, "prod", sha)
+    assert result.returncode != 0
+    assert result.stdout.startswith(
+        f"::error title=Not the release commit::The prod images are built from {sha}, "
+        "but the v2.1.48 tag of its VERSION names '' (empty: no such tag)")
+    assert out.read_text() == ""
+
+
+def test_label_prod_refuses_a_tag_on_another_commit(tmp_path):
+    work, _, tagged = _release_repo(tmp_path)
+    _git(work, "tag", "v2.1.48")
+    _git(work, "push", "-q", "origin", "v2.1.48")
+    _git(work, "commit", "-q", "--allow-empty", "-m", "after the release")
+    sha = _git(work, "rev-parse", "HEAD")
+    result, out = _label(work, "prod", sha)
+    assert result.returncode != 0
+    assert f"the v2.1.48 tag of its VERSION names '{tagged}'" in result.stdout
+    assert out.read_text() == ""
+
+
+def test_label_prod_fails_loudly_when_origin_is_unreadable(tmp_path):
+    work, origin, sha = _release_repo(tmp_path)
+    shutil.rmtree(origin)
+    result, out = _label(work, "prod", sha)
+    assert result.returncode != 0
+    assert result.stdout.startswith("::error title=Release tag unreadable::Could not list the v2.1.48 tag")
+    assert out.read_text() == ""
+
+
+def test_label_dev_is_the_next_release_marked_dev(tmp_path):
+    # develop's VERSION is the release to come, so no tag is looked up.
+    work, _, sha = _release_repo(tmp_path, "2.1.49")
+    result, out = _label(work, "dev", sha)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _outputs(out) == {"image-version": "2.1.49-dev"}
+
+
+@pytest.mark.parametrize("version", [None, "", "2.1", "v2.1.48", "2.1.48-rc1", "2.1.48 "])
+@pytest.mark.parametrize("prefix", ["dev", "prod"])
+def test_label_refuses_a_missing_or_malformed_version(tmp_path, version, prefix):
+    work, _, sha = _release_repo(tmp_path, version)
+    result, out = _label(work, prefix, sha)
+    assert result.returncode != 0
+    assert result.stdout.startswith(f"::error title=No release version::VERSION at {sha} reads ")
+    assert out.read_text() == ""
+
+
+def test_label_refuses_an_unknown_prefix(tmp_path):
+    work, _, sha = _release_repo(tmp_path)
+    result, out = _label(work, "pr", sha)
+    assert result.returncode != 0
+    assert result.stdout.startswith("::error title=Unknown image prefix::'pr' is neither dev nor prod")
+    assert out.read_text() == ""
+
+
 def test_no_emulation_anywhere():
     text = WORKFLOW.read_text()
     assert "setup-qemu-action" not in text
@@ -177,12 +287,13 @@ def _arch(entries: list[dict]) -> list[dict]:
 
 def test_versions_emits_a_matrix_and_arch_matrix_per_tier(tmp_path):
     assert set(_job("versions")["outputs"]) == {
-        f"{name}-{t}" for t in TIERS for name in ("matrix", "arch-matrix", "has")} | {"upgrade-date", "sha"}
+        f"{name}-{t}" for t in TIERS for name in ("matrix", "arch-matrix", "has")} | {"upgrade-date", "sha", "image-version"}
     result = _read_matrix(tmp_path, MATRIX_JSON.read_text())
     assert result.returncode == 0, result.stderr
     outputs = _outputs(tmp_path / "out")
-    # `sha` comes from the commit step (test_every_job_builds_the_pinned_commit).
-    assert set(outputs) == set(_job("versions")["outputs"]) - {"sha"}
+    # `sha` comes from the commit step (test_every_job_builds_the_pinned_commit),
+    # `image-version` from the label step (test_label_*).
+    assert set(outputs) == set(_job("versions")["outputs"]) - {"sha", "image-version"}
     entries = json.loads(MATRIX_JSON.read_text())["include"]
     # base is built FROM pkg-ubuntu (epic vergil-project/.github#649), so it is
     # tier 1, and the language images built FROM base are tier 2.
@@ -291,6 +402,10 @@ def test_build_pushes_by_digest_with_a_per_arch_cache():
     assert build["cache-to"] == "type=registry,ref=${{ env.CACHE_TAG }},mode=max"
     assert build["no-cache"] == "${{ inputs.no-cache }}"
     assert build["build-args"] == "${{ steps.args.outputs.build-args }}"
+    # vergil-containers#996: every image names the release and commit that built it.
+    assert build["labels"] == (
+        "org.opencontainers.image.version=${{ needs.versions.outputs.image-version }}\n"
+        "org.opencontainers.image.revision=${{ needs.versions.outputs.sha }}\n")
 
 
 def test_build_resolves_its_args_and_parent_before_building():

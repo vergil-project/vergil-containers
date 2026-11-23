@@ -97,6 +97,8 @@ jobs:
   # branch name, and without the pin a branch that moved mid-run would have the
   # later tiers built from a newer tree than their parents and the matrix: a
   # queued run is no longer cancelled when it moves (vergil-containers#879).
+  # And `image-version`, the release every image of this run is labelled with
+  # (vergil-containers#996): see the step that resolves it.
   versions:
     name: Read the version matrix
     runs-on: ubuntu-24.04
@@ -112,6 +114,7 @@ jobs:
       has-2: ${{ steps.read.outputs.has-2 }}
       upgrade-date: ${{ steps.read.outputs.upgrade-date }}
       sha: ${{ steps.commit.outputs.sha }}
+      image-version: ${{ steps.label.outputs.image-version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -163,6 +166,57 @@ jobs:
           # architecture of this run gets the same one (vergil-containers#845).
           outputs+="upgrade-date=$(date -u +%Y-%m-%d)"$'\n'
           printf '%s' "$outputs" >> "$GITHUB_OUTPUT"
+
+      # Every image of this run is labelled org.opencontainers.image.version
+      # with its release and org.opencontainers.image.revision with the pinned
+      # commit, so a published digest names the vergil-containers release that
+      # built it (vergil-containers#996). The release is the VERSION file of the
+      # pinned commit. A prod run builds main, which the release job of the same
+      # CD run has already tagged, so the tag must exist and name that commit:
+      # a prod image is never labelled with a release it was not built from. A
+      # dev run builds develop, whose VERSION is the next release, unreleased,
+      # so its images carry that version with a -dev suffix.
+      - name: Resolve the image version label
+        id: label
+        env:
+          PREFIX: ${{ inputs.image-prefix }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          version=""
+          if [ -f VERSION ]; then
+            version="$(< VERSION)"
+          fi
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error title=No release version::VERSION at ${SHA} reads '${version}', not a MAJOR.MINOR.PATCH version, so this run's images cannot be labelled with the release that built them."
+            exit 1
+          fi
+          case "$PREFIX" in
+            prod)
+              tag="v${version}"
+              if ! refs="$(git ls-remote --tags origin "refs/tags/${tag}" "refs/tags/${tag}^{}")"; then
+                echo "::error title=Release tag unreadable::Could not list the ${tag} tag on origin, so the prod images of ${SHA} cannot be tied to their release."
+                exit 1
+              fi
+              # An annotated tag is listed twice; its peeled line names the commit.
+              peeled="$(awk -v ref="refs/tags/${tag}^{}" '$2 == ref { print $1 }' <<< "$refs")"
+              direct="$(awk -v ref="refs/tags/${tag}" '$2 == ref { print $1 }' <<< "$refs")"
+              tagged="${peeled:-$direct}"
+              if [ "$tagged" != "$SHA" ]; then
+                echo "::error title=Not the release commit::The prod images are built from ${SHA}, but the ${tag} tag of its VERSION names '${tagged}' (empty: no such tag), so they would be labelled with a release they were not built from. Nothing is built."
+                exit 1
+              fi
+              image_version="$version"
+              ;;
+            dev)
+              image_version="${version}-dev"
+              ;;
+            *)
+              echo "::error title=Unknown image prefix::'${PREFIX}' is neither dev nor prod, so this run's image version label cannot be resolved."
+              exit 1
+              ;;
+          esac
+          echo "image-version=${image_version}" >> "$GITHUB_OUTPUT"
 
   # Tier 0: one native build per image and architecture, pushed by digest only
   # (no tag). The publish job below stitches the two digests into the
@@ -298,6 +352,10 @@ jobs:
           context: "docker/${{ matrix.language }}"
           platforms: "linux/${{ matrix.arch }}"
           build-args: ${{ steps.args.outputs.build-args }}
+          # The versions job's "Resolve the image version label" step says why.
+          labels: |
+            org.opencontainers.image.version=${{ needs.versions.outputs.image-version }}
+            org.opencontainers.image.revision=${{ needs.versions.outputs.sha }}
           outputs: "type=image,name=${{ env.REPO }},push-by-digest=true,name-canonical=true,push=true"
           no-cache: ${{ inputs.no-cache }}
           cache-from: type=registry,ref=${{ env.CACHE_TAG }}
