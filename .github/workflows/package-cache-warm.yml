@@ -42,6 +42,20 @@ permissions:
   packages: read
   contents: read
 
+# One run at a time, so two runs never warm at once: a cold rebuild fetches
+# every manifest from ghcr.io, and two runs in flight would double the legs
+# past the max-parallel cap (issue #652). The group stays at run level (issue
+# #1010). On a matrix job a job-level group applies to each leg, so one group
+# name would cancel all but two legs of every run, and a group per package
+# would no longer cap the legs of two runs together.
+#
+# The trade-off with failure reporting: GitHub keeps one pending run per group
+# and cancels an older pending one, before any of its jobs start, `report`
+# included, so that cancel is never reported. The cancelled run had done
+# nothing. The newer run that replaced it runs the whole matrix, but reports
+# only when it runs on develop, for the group is one for every ref: a
+# dispatch from another branch that replaces a pending run leaves its result
+# unreported, since the report action reports only from refs/heads/develop.
 concurrency:
   # Own group: sharing package-cleanup's group could cancel a pending cleanup.
   group: package-cache-warm

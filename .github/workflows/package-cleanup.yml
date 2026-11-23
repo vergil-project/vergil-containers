@@ -75,6 +75,23 @@ permissions:
   packages: write
   contents: read
 
+# One run at a time, so two runs never delete at once: a reap leg of one run
+# must not overlap a cleanup leg of the next (issue #911), and two runs in
+# flight would double the legs on ghcr.io past the max-parallel cap (issue
+# #652). The group stays at run level (issue #1010). On a matrix job a
+# job-level group applies to each leg, so one group name would cancel all but
+# two legs of every run, and a group per package would no longer cap the legs
+# of two runs together.
+#
+# The trade-off with failure reporting: GitHub keeps one pending run per group
+# and cancels an older pending one, before any of its jobs start, `report`
+# included, so that cancel is never reported. The cancelled run had done
+# nothing. The newer run that replaced it does the same work and reports only
+# when it is a live run on develop, for the group is one for every ref and
+# input. A dry-run dispatch that replaces a pending live run deletes nothing,
+# so that week's deletions wait, unreported, for the next scheduled run. A
+# dispatch from another branch deletes, but its result goes unreported: the
+# report action reports only from refs/heads/develop.
 concurrency:
   group: package-cleanup
   cancel-in-progress: false
