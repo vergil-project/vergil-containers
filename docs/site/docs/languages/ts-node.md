@@ -64,8 +64,8 @@ that date is on or before the day of the check.
   proposing an add. It reads the index with the same fetcher the refresh uses.
 - endoflife.date's `lts` field is either a date or `false`, and the adapter
   must handle both.
-- The image carries only two TypeScript tools of its own, prettier and
-  license-checker. `typescript`, `eslint`, `typescript-eslint`, `vitest` and
+- The image carries only one TypeScript tool of its own, prettier.
+  `typescript`, `eslint`, `typescript-eslint`, `vitest` and
   `@vitest/coverage-v8` are not in the image: each TypeScript repository
   declares them as devDependencies, and Vergil's gates run them from the
   repository's `node_modules/.bin`, never from a global install. The rule is
