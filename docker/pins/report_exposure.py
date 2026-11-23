@@ -233,8 +233,8 @@ def main(argv: list[str]) -> int:
     root = Path(__file__).resolve().parent.parent
     # --no-probe skips the per-image Docker harvest. The drift signals need only
     # pins.yml + the templates + one upstream lookup per tool, so the report
-    # stays useful anywhere without a Docker socket — including inside the
-    # prod-base container the CI/ops jobs run in, where probing every tool in
+    # stays useful anywhere without a Docker socket — including inside a
+    # prod-base container (vrg-container-run), where probing every tool in
     # every image would otherwise emit hundreds of ::warning:: lines and harvest
     # nothing. Opting out explicitly beats a silent partial result.
     args = [a for a in argv if a != "--no-probe"]
