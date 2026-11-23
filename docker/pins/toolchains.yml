@@ -25,28 +25,28 @@ toolchains:
   python:
     "3.15":
       version: "3.15.2"
-      release: "20261110"
+      release: "20261123"
       sha256:
-        amd64: "182e7adf7e4f0e32dafac5143f00d466afd20eef45918ea170f78884e503ac18"
-        arm64: "362378c07e01f1d7b18406760ace75e794c21dfff3693535b1bbffe88eec2e52"
+        amd64: "c13943cea39c918690c07067d30a44d7525fc630525e618548f2262b712511bf"
+        arm64: "f339b2cb77aa281391329581037f9fb103fcc1491793c14f9b472fdf28e5bfdf"
     "3.14":
       version: "3.14.10"
-      release: "20261110"
+      release: "20261123"
       sha256:
-        amd64: "3fe0d7c0538eb5d190c34582992d26230532551355cbd789fabc6591621cfc07"
-        arm64: "e59f83159984a55e719bb3805a0b2b5b281f645769222218084b78b92eedc07f"
+        amd64: "6f216be7b5209a88586d5b6cf84ffd953db83d8942c5eb3b09517d056dac0d8d"
+        arm64: "e22a598b87c744318e3c0da365f2d2f1880ff4b46c851fb5ec0fcd20a9397ef8"
     "3.13":
       version: "3.13.18"
-      release: "20261110"
+      release: "20261123"
       sha256:
-        amd64: "50c774f6674740739f791c05a9177ed03e2fe02abebda9bca3512eb7309b37cc"
-        arm64: "d25a65036d5e149db902fa52ad65878d0c00e9301360ec197832f99063087e9e"
+        amd64: "7d42d8c2da1e5beeddc4aa086faccb7438b1676e2e14bdf65f06e9a5d0ae9aea"
+        arm64: "2645fd33e83f3251ebc33c1bb8c6c3f80094d68ef22238f0b27bdd061ea60aea"
     "3.12":
       version: "3.12.16"
-      release: "20261110"
+      release: "20261123"
       sha256:
-        amd64: "c2f87d4b4e8db3abddb0f116c6ccfc503d0cbdbb9ee8faacddad1b679ec12e99"
-        arm64: "4792f81750282597fb2a3389fe18b945ed2ba6aad5e45ad406d122c58cb33081"
+        amd64: "386028a53cceb3be3c1ef8d8828f707d7d3aab67631049f9806e0fb3665a40c8"
+        arm64: "8f6648cfd81f96d72fa8a00f1e5a8c460169728cf34969a9b1732ab244e9e99f"
   go:
     "1.27":
       version: "1.27.4"
