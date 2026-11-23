@@ -648,6 +648,8 @@
       
         
       
+        
+      
     
     
     
@@ -700,6 +702,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.49/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.49
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3579,8 +3609,8 @@ that date is on or before the day of the check.</p>
   proposing an add. It reads the index with the same fetcher the refresh uses.</li>
 <li>endoflife.date's <code>lts</code> field is either a date or <code>false</code>, and the adapter
   must handle both.</li>
-<li>The image carries only two TypeScript tools of its own, prettier and
-  license-checker. <code>typescript</code>, <code>eslint</code>, <code>typescript-eslint</code>, <code>vitest</code> and
+<li>The image carries only one TypeScript tool of its own, prettier.
+  <code>typescript</code>, <code>eslint</code>, <code>typescript-eslint</code>, <code>vitest</code> and
   <code>@vitest/coverage-v8</code> are not in the image: each TypeScript repository
   declares them as devDependencies, and Vergil's gates run them from the
   repository's <code>node_modules/.bin</code>, never from a global install. The rule is

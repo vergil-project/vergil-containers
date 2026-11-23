@@ -648,6 +648,8 @@
       
         
       
+        
+      
     
     
     
@@ -700,6 +702,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/v2.1.49/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.49
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -4105,17 +4135,13 @@ newer pin of the major. <code>markdownlint</code> stays base's wrapper on the co
 <td>Code formatter</td>
 </tr>
 <tr>
-<td>license-checker</td>
-<td>Dependency license listing</td>
-</tr>
-<tr>
 <td>pkg-config</td>
 <td>Build helper for native addons</td>
 </tr>
 </tbody>
 </table>
-<p>prettier and license-checker are installed globally from
-<code>common/typescript-analysis.dockerfile</code> and float on their leading edge.
+<p>prettier is installed globally from
+<code>common/typescript-analysis.dockerfile</code> and floats on its leading edge.
 pkg-config comes from Ubuntu apt.</p>
 <p>The image carries no <code>typescript</code>, <code>eslint</code>, <code>typescript-eslint</code>, <code>vitest</code> or
 <code>@vitest/coverage-v8</code>. Each TypeScript repository declares them as
@@ -4127,8 +4153,8 @@ the image owns is vergil-tooling's
 (<code>docker/ts-node/smoke/</code>) that declares those tools. It checks that <code>tsc</code>,
 <code>eslint</code> and <code>vitest</code> are not on the image's <code>PATH</code>, runs
 <code>npm ci --ignore-scripts</code>, then <code>tsc --noEmit</code>, <code>eslint .</code> and one
-<code>vitest run --coverage</code> from <code>node_modules/.bin</code>, and the image's prettier and
-license-checker on the project.</p>
+<code>vitest run --coverage</code> from <code>node_modules/.bin</code>, and the image's prettier on
+the project.</p>
 <h2 id="base">Base<a class="headerlink" href="#base" title="Permanent link">&para;</a></h2>
 <p><strong>Base</strong>: <code>pkg-ubuntu:24.04</code> (Ubuntu 24.04, with uv and nFPM)
 <strong>Version</strong>: latest</p>
