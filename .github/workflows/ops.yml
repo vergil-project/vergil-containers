@@ -32,7 +32,8 @@ jobs:
   # or issues write here. Each App token requests only what its steps call
   # (contents: write and pull-requests: write for the PR token, issues: write
   # for the issues token), never the installation's full grant. App-authored
-  # PRs fire CI.
+  # PRs fire CI. The App's keys live only in the `automation` environment,
+  # which this job declares to read them (epic vergil-project/.github#1384).
   #
   # Disabled until vergil-project/.github#1128 re-architects the publisher's
   # GitHub handling; that work re-enables this job. docker/versions/lifecycle/
@@ -41,6 +42,7 @@ jobs:
     name: "language lifecycle check"
     if: ${{ false }}
     runs-on: ubuntu-24.04
+    environment: automation
     permissions:
       contents: read
     concurrency:
@@ -161,9 +163,11 @@ jobs:
     permissions:
       contents: read
       issues: write
-    secrets:
-      APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+    # The automation App's keys live only in the `automation` environment,
+    # whose secrets reach a reusable workflow in another repo only under
+    # `secrets: inherit`; a calling job cannot declare the environment
+    # (epic vergil-project/.github#1384). The same holds for upstream-refresh.
+    secrets: inherit
 
   # The daily refresh of the upstream pins (#435, epic vergil-project/.github#649).
   # It runs vrg-upstream-refresh (epics vergil-project/.github#472 and #1168):
@@ -190,9 +194,7 @@ jobs:
     uses: vergil-project/vergil-actions/.github/workflows/ops-upstream-refresh.yml@v2.1
     permissions:
       contents: read
-    secrets:
-      APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+    secrets: inherit
 
   nightly-rebuild-dev:
     uses: ./.github/workflows/cd-docker-publish.yml
@@ -236,7 +238,9 @@ jobs:
   # rebuild did (always()), and reports only from refs/heads/develop: on any
   # other ref the action mints no token and reports nothing. It reports as the
   # org automation App, with an issues-only token the action mints, so this
-  # job's GITHUB_TOKEN only reads. A composite action cannot read `vars`, so
+  # job's GITHUB_TOKEN only reads. The App's keys live only in the
+  # `automation` environment, which both reporting jobs declare to read them
+  # (epic vergil-project/.github#1384). A composite action cannot read `vars`, so
   # the step delivers the trust layer's inputs in its env. No concurrency
   # group: one would cancel a pending report. upstream-refresh and
   # github-config's branch-sweep report from inside their shared workflows;
@@ -246,6 +250,7 @@ jobs:
     needs: [nightly-rebuild-dev]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
+    environment: automation
     permissions:
       contents: read
     steps:
@@ -271,6 +276,7 @@ jobs:
     needs: [nightly-rebuild-prod]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
+    environment: automation
     permissions:
       contents: read
     steps:

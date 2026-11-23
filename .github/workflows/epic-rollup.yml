@@ -20,6 +20,7 @@ jobs:
     uses: vergil-project/vergil-actions/.github/workflows/ops-epic-rollup.yml@v2.1
     permissions:
       contents: read
-    secrets:
-      APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+    # The automation App's keys live only in the `automation` environment,
+    # whose secrets reach a reusable workflow in another repo only under
+    # `secrets: inherit` (epic vergil-project/.github#1384).
+    secrets: inherit
