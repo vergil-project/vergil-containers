@@ -41,6 +41,9 @@ REPORTS = [
     ("package-cache-warm.yml", "report", "package-cache-warm", ["warm"]),
 ]
 IDS = [stable for _, _, stable, _ in REPORTS]
+# Workflows that keep a run-level concurrency group, which their reporting
+# job sits inside, with the reason beside it (vergil-containers#1010).
+RUN_LEVEL_GROUPS = {"package-cleanup.yml", "package-cache-warm.yml"}
 
 
 def _jobs(workflow: str) -> dict:
@@ -95,11 +98,28 @@ def test_each_job_has_a_reporting_job(workflow, job_id, stable, needs):
 @pytest.mark.parametrize(("workflow", "job_id", "stable", "needs"), REPORTS, ids=IDS)
 def test_reporting_job_is_plain(workflow, job_id, stable, needs):
     job = _jobs(workflow)[job_id]
-    # A concurrency group keeps one pending run and cancels the older one,
-    # which would drop a failure report (plan, Global Constraints).
-    assert "concurrency" not in job
     # The App token carries the job's GitHub access; GITHUB_TOKEN reads only.
     assert job["permissions"] == {"contents": "read"}
+
+
+@pytest.mark.parametrize(("workflow", "job_id", "stable", "needs"), REPORTS, ids=IDS)
+def test_reporting_job_sits_in_no_concurrency_group(workflow, job_id, stable, needs):
+    # A concurrency group keeps one pending run and cancels the older one,
+    # which would drop a failure report (plan, Global Constraints).
+    text = (WORKFLOWS / workflow).read_text()
+    doc = yaml.safe_load(text)
+    assert "concurrency" not in doc["jobs"][job_id]
+    if "concurrency" not in doc:
+        return
+    # A run-level group puts the reporting job inside it too. Only the
+    # workflows that must keep one have it (vergil-containers#1010), never
+    # cancelling a run in flight, with the trade-off recorded beside it.
+    assert workflow in RUN_LEVEL_GROUPS
+    assert doc["concurrency"]["cancel-in-progress"] is False
+    block = text.split("\nconcurrency:\n", 1)[0].rsplit("\n\n", 1)[-1]
+    comment = " ".join(line.lstrip("#").strip() for line in block.splitlines())
+    assert "The group stays at run level (issue #1010)." in comment
+    assert "The trade-off with failure reporting:" in comment
 
 
 def test_only_the_named_jobs_report():
