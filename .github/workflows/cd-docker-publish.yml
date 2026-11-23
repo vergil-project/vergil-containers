@@ -171,9 +171,11 @@ jobs:
       # with its release and org.opencontainers.image.revision with the pinned
       # commit, so a published digest names the vergil-containers release that
       # built it (vergil-containers#996). The release is the VERSION file of the
-      # pinned commit. A prod run builds main, which the release job of the same
-      # CD run has already tagged, so the tag must exist and name that commit:
-      # a prod image is never labelled with a release it was not built from. A
+      # pinned commit. A prod run builds main's head, which is tagged before any
+      # prod image is built from it (by the release job ahead of CD's publish;
+      # a nightly rebuild runs on main's already-tagged head), so the tag must
+      # exist and name that commit: a prod image is never labelled with a
+      # release it was not built from. A
       # dev run builds develop, whose VERSION is the next release, unreleased,
       # so its images carry that version with a -dev suffix.
       - name: Resolve the image version label
