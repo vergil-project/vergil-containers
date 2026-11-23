@@ -13,7 +13,7 @@
 # publishes, so its dependencies are the versions upstream released with
 # rather than whatever resolves on the day. The registry cache is removed
 # afterwards, so the image keeps only the installed binary.
-ARG CARGO_LLVM_COV_VERSION=0.9.1
+ARG CARGO_LLVM_COV_VERSION=0.9.2
 
 RUN cargo install --locked "cargo-llvm-cov@${CARGO_LLVM_COV_VERSION}" && \
     rm -rf "${CARGO_HOME:?}/registry" && \
