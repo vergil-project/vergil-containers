@@ -94,6 +94,11 @@ Python version. It also opens a `runtime` pull request when a version's
 `runtime_published` field. A newly added version starts with
 `runtime_published: false`.
 
+The check is [turned off](lifecycle.md#the-check-is-turned-off) until
+[vergil-project/.github#1128](https://github.com/vergil-project/.github/issues/1128),
+so for now it opens no pull request, and the absence of one says nothing
+about whether the manifest matches the policy.
+
 ## Current out-of-policy versions
 
 As of 2026-10-23: **none.** The manifest builds 3.15, 3.14, 3.13 and 3.12,
