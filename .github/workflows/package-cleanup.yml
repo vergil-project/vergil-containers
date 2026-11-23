@@ -1,7 +1,8 @@
 name: Package cleanup
 
-# Two jobs, both live: they delete for real unless a manual run asks for a
-# preview.
+# Two deleting jobs, both live: they delete for real unless a manual run asks
+# for a preview. A third, `report`, deletes nothing: it reports the run's
+# result to the org's operations queue.
 #
 # `cleanup` prunes the untagged version cruft the publish pipeline mints on
 # every run (per-arch child manifests, provenance attestations, superseded
@@ -292,3 +293,37 @@ jobs:
         run: |
           echo "::error title=Package cleanup failed twice::ghcr-cleanup-action failed on both attempts for ${PACKAGE}, with a ${RETRY_BACKOFF_BASE_SECONDS}-$(( RETRY_BACKOFF_BASE_SECONDS + RETRY_BACKOFF_JITTER_SECONDS ))s back-off between them. If the attempt logs show 'Request failed with status code 429', ghcr.io is still rate limiting this token after the action's per-request retries (which honour Retry-After) and this workflow's retry: re-run the failed legs later, or lower max-parallel. If they show 'Request failed with status code 404', it is not a rate limit: a manifest was deleted while the action read it, so another deletion was working on the same package at the same time (as cleanup and reap-aliases once did, issue #911); check for an overlapping run before re-running. Any other error is not a rate limit either; read the attempt logs (issue #652)."
           exit 1
+
+  # Report package-cleanup, both its jobs as one result, to the org's
+  # operations queue (epic vergil-project/.github#1494): any failed leg makes
+  # it a failure, else any cancelled one a cancel. The ops-report action opens
+  # or comments on the job's ops issue when it fails or is cancelled, and
+  # records the first green run after one; it never closes an issue. It runs
+  # whatever the jobs did (always()), and reports only from refs/heads/develop,
+  # as the org automation App with an issues-only token it mints, so this
+  # job's GITHUB_TOKEN only reads. A composite action cannot read `vars`, so
+  # the step delivers the trust layer's inputs in its env.
+  # docker/versions/test_ops_reporting.py pins this layout.
+  report:
+    needs: [cleanup, reap-aliases]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      # Setting up Vergil inside the action reads this repo's vergil.toml.
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Report to the operations queue
+        uses: vergil-project/vergil-actions/actions/ops/report@v2.1
+        env:
+          VRG_TRUSTED_AUTHORS: ${{ vars.VRG_TRUSTED_AUTHORS }}
+          VRG_AUTOMATION_APP: ${{ vars.VRG_AUTOMATION_APP }}
+        with:
+          job: package-cleanup
+          results: ${{ needs.cleanup.result }},${{ needs.reap-aliases.result }}
+          app-client-id: ${{ secrets.APP_CLIENT_ID }}
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}

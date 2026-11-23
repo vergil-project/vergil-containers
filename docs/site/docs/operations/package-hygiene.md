@@ -117,6 +117,15 @@ preview is the explicit exception:
   (the `dry_run` input set to `true`) only logs what it *would* delete. Use it
   before a change to the delete rules, and review the logs.
 
+A third job, `report`, deletes nothing. It reports the run to the org's
+operations queue (epic
+[vergil-project/.github#1494](https://github.com/vergil-project/.github/issues/1494))
+under the name `package-cleanup`, taking both jobs as one result: any failed
+leg makes the run a failure. A failure opens, or comments on, the issue
+`ops: vergil-containers / package-cleanup failing`, and the first green run
+after it records the recovery. `package-cache-warm.yml` reports the same way,
+as `package-cache-warm`. Only runs on `develop` report.
+
 ### Rate limits
 
 Every leg of both jobs fetches every manifest of its package from ghcr.io. On a
