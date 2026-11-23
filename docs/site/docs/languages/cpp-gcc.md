@@ -74,6 +74,11 @@ package.
 
 **`report`.** The lifecycle check reports the gap and tracks it in an issue.
 
+The check is [turned off](lifecycle.md#the-check-is-turned-off) until
+[vergil-project/.github#1128](https://github.com/vergil-project/.github/issues/1128),
+so for now it reports no gap and tracks none in an issue, and the absence of
+an issue says nothing about whether the manifest matches the policy.
+
 ## Current out-of-policy versions
 
 As of 2026-10-23: **none.** The manifest builds only 14. GCC 13, which

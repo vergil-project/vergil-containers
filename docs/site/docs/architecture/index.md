@@ -37,8 +37,13 @@ docker/
     ├── includes.py             # Each image's input files, for PR selection
     ├── selection.py            # The images a pull request's change reaches
     ├── pr_jobs.py              # Groups the selected images into PR build jobs
-    └── lifecycle/              # The nightly lifecycle check and adapters
+    └── lifecycle/              # The lifecycle check and adapters (turned off)
 ```
+
+The lifecycle check in `docker/versions/lifecycle/` is
+[turned off](../languages/lifecycle.md#the-check-is-turned-off) until
+[vergil-project/.github#1128](https://github.com/vergil-project/.github/issues/1128)
+turns it back on.
 
 ### Templating
 
