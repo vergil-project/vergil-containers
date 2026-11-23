@@ -19,7 +19,8 @@ jobs:
   # report covers every family on every run, and publish.py makes the open
   # `language-lifecycle` issues match it: one per change on a report-only
   # family, one per family whose check failed (closed on recovery). For the
-  # `pr` families (python, go) `publish.py --prs` opens or refreshes one
+  # `pr` families (those with `automation: "pr"` in
+  # docker/versions/manifest.yml) `publish.py --prs` opens or refreshes one
   # add/drop PR per change instead. So no PR and no open issue reliably means
   # "in sync".
   #
