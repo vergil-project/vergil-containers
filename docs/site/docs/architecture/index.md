@@ -318,6 +318,21 @@ image updates, apt package refreshes) without waiting for a code change to
 trigger a build. To trigger a rebuild manually, run the CD workflow from the
 Actions tab (**Actions > CD > Run workflow**).
 
+### Failure reports
+
+Nobody watches these runs, so each one reports its own result to the org's
+operations queue (epic
+[vergil-project/.github#1494](https://github.com/vergil-project/.github/issues/1494)).
+`nightly-rebuild-dev`, `nightly-rebuild-prod` and `image-publish` (the docker
+publish job in `cd.yml`) each end with a reporting job that calls
+vergil-actions' `ops-report` action. A failed or cancelled run opens, or
+comments on, the issue `ops: vergil-containers / <job> failing` as the org
+automation App, under the org's operations epic; the first green run after
+it records the recovery. Nothing closes the issue automatically. Only runs
+on `develop` report, and `image-publish` reports nothing for a release push
+(a push to `main`, or the release's back-merge to `develop`), which the
+release records already track.
+
 ### Pull request builds
 
 Pull requests never publish. `ci.yml` calls `ci-images.yml`, which builds and

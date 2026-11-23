@@ -129,3 +129,36 @@ jobs:
         run: |
           echo "::error title=Manifest cache not found::The rebuild ran, but there is still no manifest cache entry for ${PACKAGE}. Either the rebuild's save failed (see its log) or this workflow's cache path and key no longer match the scheme of the ghcr-cleanup-action version in use (issue #700)."
           exit 1
+
+  # Report package-cache-warm to the org's operations queue (epic
+  # vergil-project/.github#1494): the ops-report action opens or comments on
+  # the job's ops issue when it fails or is cancelled, and records the first
+  # green run after one; it never closes an issue. It runs whatever the warm
+  # legs did (always()), and reports only from refs/heads/develop, as the org
+  # automation App with an issues-only token it mints, so this job's
+  # GITHUB_TOKEN only reads. A composite action cannot read `vars`, so the
+  # step delivers the trust layer's inputs in its env.
+  # docker/versions/test_ops_reporting.py pins this layout.
+  report:
+    needs: [warm]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      # Setting up Vergil inside the action reads this repo's vergil.toml.
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Report to the operations queue
+        uses: vergil-project/vergil-actions/actions/ops/report@v2.1
+        env:
+          VRG_TRUSTED_AUTHORS: ${{ vars.VRG_TRUSTED_AUTHORS }}
+          VRG_AUTOMATION_APP: ${{ vars.VRG_AUTOMATION_APP }}
+        with:
+          job: package-cache-warm
+          results: ${{ needs.warm.result }}
+          app-client-id: ${{ secrets.APP_CLIENT_ID }}
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}

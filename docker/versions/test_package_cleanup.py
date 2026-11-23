@@ -78,9 +78,12 @@ def test_matrix_fan_out_is_capped(job):
 def test_cleanup_and_reap_never_run_at_the_same_time():
     # Issue #911: overlapping legs on one package made reap-aliases read
     # manifests cleanup was deleting, and fail with 404. reap-aliases must wait
-    # for the whole cleanup job, and these must be the only two jobs.
+    # for the whole cleanup job, and these must be the only two deleting jobs.
+    # The third, `report`, deletes nothing: it reports the run to the
+    # operations queue (test_ops_reporting.py pins it).
     jobs = _workflow()["jobs"]
-    assert set(jobs) == set(JOBS)
+    assert set(jobs) == {*JOBS, "report"}
+    assert not any(ACTION.match(str(s.get("uses", ""))) for s in jobs["report"]["steps"])
     assert "needs" not in jobs["cleanup"]
     assert jobs["reap-aliases"]["needs"] in ("cleanup", ["cleanup"])
 
@@ -110,8 +113,15 @@ def test_manual_run_deletes_unless_a_preview_is_asked_for():
 
 def test_schedule_is_not_gated_by_a_repository_variable():
     assert "schedule" in _on()
-    # Nothing outside git may arm or disarm the deletions.
-    assert "vars." not in WORKFLOW.read_text()
+    # Nothing outside git may arm or disarm the deletions: no `vars.` read
+    # anywhere but the report job, whose only reads are the trust layer's
+    # inputs to its ops-report step (test_ops_reporting.py).
+    wf = _workflow()
+    gating = {key: value for key, value in wf.items() if key != "jobs"}
+    gating["jobs"] = {job: wf["jobs"][job] for job in JOBS}
+    assert "vars." not in yaml.safe_dump(gating)
+    report_vars = set(re.findall(r"vars\.\w+", yaml.safe_dump(wf["jobs"]["report"])))
+    assert report_vars == {"vars.VRG_TRUSTED_AUTHORS", "vars.VRG_AUTOMATION_APP"}
 
 
 @pytest.mark.parametrize("job", JOBS)

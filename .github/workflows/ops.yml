@@ -185,7 +185,7 @@ jobs:
   # spec §5.5): a job reports only whether it worked, so a lag this job cannot
   # fix (a bump it cannot open or merge) fails it, and that failure is what
   # surfaces. docker/pins/report_exposure.py stays, runnable by hand;
-  # docker/versions/test_ops_jobs.py keeps the job from coming back.
+  # docker/versions/test_ops_reporting.py keeps the job from coming back.
   upstream-refresh:
     uses: vergil-project/vergil-actions/.github/workflows/ops-upstream-refresh.yml@v2.1
     permissions:
@@ -228,3 +228,64 @@ jobs:
       security-events: write
       attestations: write
       id-token: write
+
+  # Report each nightly rebuild to the org's operations queue (epic
+  # vergil-project/.github#1494): the ops-report action opens or comments on
+  # the job's ops issue when it fails or is cancelled, and records the first
+  # green run after one; it never closes an issue. It runs whatever the
+  # rebuild did (always()), and reports only from refs/heads/develop: on any
+  # other ref the action mints no token and reports nothing. It reports as the
+  # org automation App, with an issues-only token the action mints, so this
+  # job's GITHUB_TOKEN only reads. A composite action cannot read `vars`, so
+  # the step delivers the trust layer's inputs in its env. No concurrency
+  # group: one would cancel a pending report. upstream-refresh and
+  # github-config's branch-sweep report from inside their shared workflows;
+  # github-config itself is a security signal and files no public issue.
+  # docker/versions/test_ops_reporting.py pins this layout.
+  report-nightly-rebuild-dev:
+    needs: [nightly-rebuild-dev]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      # Setting up Vergil inside the action reads this repo's vergil.toml.
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Report to the operations queue
+        uses: vergil-project/vergil-actions/actions/ops/report@v2.1
+        env:
+          VRG_TRUSTED_AUTHORS: ${{ vars.VRG_TRUSTED_AUTHORS }}
+          VRG_AUTOMATION_APP: ${{ vars.VRG_AUTOMATION_APP }}
+        with:
+          job: nightly-rebuild-dev
+          results: ${{ needs.nightly-rebuild-dev.result }}
+          app-client-id: ${{ secrets.APP_CLIENT_ID }}
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+  # As report-nightly-rebuild-dev, for the prod rebuild.
+  report-nightly-rebuild-prod:
+    needs: [nightly-rebuild-prod]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Report to the operations queue
+        uses: vergil-project/vergil-actions/actions/ops/report@v2.1
+        env:
+          VRG_TRUSTED_AUTHORS: ${{ vars.VRG_TRUSTED_AUTHORS }}
+          VRG_AUTOMATION_APP: ${{ vars.VRG_AUTOMATION_APP }}
+        with:
+          job: nightly-rebuild-prod
+          results: ${{ needs.nightly-rebuild-prod.result }}
+          app-client-id: ${{ secrets.APP_CLIENT_ID }}
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
