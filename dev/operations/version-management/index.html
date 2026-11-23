@@ -3872,7 +3872,10 @@ another toolchain (see <a href="../../images/#rust">Rust</a>).</p>
 </ul>
 <h2 id="exposure-report-pins-due-for-re-evaluation">Exposure report — pins due for re-evaluation<a class="headerlink" href="#exposure-report-pins-due-for-re-evaluation" title="Permanent link">&para;</a></h2>
 <p><code>docker/pins/report_exposure.py</code> (WS4) generates the internal-state
-observability view for a daily morning-review ritual. It reports:</p>
+observability view of the pins. No workflow runs it: run it by hand
+(<code>uv run report_exposure.py</code> in <code>docker/pins/</code>) when you want the view. The
+daily <code>upstream-refresh</code> job is the path that fixes pin lag, and a lag it
+cannot fix fails that job. It reports:</p>
 <ul>
 <li><strong>Due for re-evaluation</strong> (the headline signal): active pins whose
   <code>inducing_release</code> is no longer the leading edge — i.e. Tenet 6's trigger has
