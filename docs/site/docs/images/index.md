@@ -284,11 +284,10 @@ newer pin of the major. `markdownlint` stays base's wrapper on the core Node
 | Tool            | Purpose                        |
 | --------------- | ------------------------------ |
 | prettier        | Code formatter                 |
-| license-checker | Dependency license listing     |
 | pkg-config      | Build helper for native addons |
 
-prettier and license-checker are installed globally from
-`common/typescript-analysis.dockerfile` and float on their leading edge.
+prettier is installed globally from
+`common/typescript-analysis.dockerfile` and floats on its leading edge.
 pkg-config comes from Ubuntu apt.
 
 The image carries no `typescript`, `eslint`, `typescript-eslint`, `vitest` or
@@ -302,8 +301,8 @@ the image owns is vergil-tooling's
 (`docker/ts-node/smoke/`) that declares those tools. It checks that `tsc`,
 `eslint` and `vitest` are not on the image's `PATH`, runs
 `npm ci --ignore-scripts`, then `tsc --noEmit`, `eslint .` and one
-`vitest run --coverage` from `node_modules/.bin`, and the image's prettier and
-license-checker on the project.
+`vitest run --coverage` from `node_modules/.bin`, and the image's prettier on
+the project.
 
 ## Base
 

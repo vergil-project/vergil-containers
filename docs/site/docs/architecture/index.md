@@ -253,6 +253,21 @@ failed fails its own build with an error naming the parent, and its previous
 tags stay published. Today `base` is the one tier-1 image, built on
 `pkg-ubuntu:24.04`, and no image is in tier 2.
 
+Every image names the vergil-containers release that built it, in two OCI
+labels set at build time: `org.opencontainers.image.version` and
+`org.opencontainers.image.revision`, the commit the run built. A `prod-` image's
+version is the release itself (for example `2.1.48`): the publish refuses to
+build unless the release's `v<version>` tag names the commit it builds, so a
+`prod-` image is never labelled with a release it did not come from. A `dev-`
+image is built from `develop`, whose `VERSION` is the release to come, so its
+version carries a `-dev` suffix (for example `2.1.49-dev`). To read them from
+a published image:
+
+```bash
+docker buildx imagetools inspect ghcr.io/vergil-project/prod-ts-node:24 \
+  --format '{{ json (index .Image "linux/amd64").Config.Labels }}'
+```
+
 Each image's `--build-arg`s come from its `build-args` map in the generated
 `docker/versions/matrix.json` (a family's or toolchain's version argument
 and its toolchain pins; for `base`, its core runtimes), and a child also gets
@@ -302,6 +317,21 @@ This keeps both image sets current with upstream security patches (base
 image updates, apt package refreshes) without waiting for a code change to
 trigger a build. To trigger a rebuild manually, run the CD workflow from the
 Actions tab (**Actions > CD > Run workflow**).
+
+### Failure reports
+
+Nobody watches these runs, so each one reports its own result to the org's
+operations queue (epic
+[vergil-project/.github#1494](https://github.com/vergil-project/.github/issues/1494)).
+`nightly-rebuild-dev`, `nightly-rebuild-prod` and `image-publish` (the docker
+publish job in `cd.yml`) each end with a reporting job that calls
+vergil-actions' `ops-report` action. A failed or cancelled run opens, or
+comments on, the issue `ops: vergil-containers / <job> failing` as the org
+automation App, under the org's operations epic; the first green run after
+it records the recovery. Nothing closes the issue automatically. Only runs
+on `develop` report, and `image-publish` reports nothing for a release push
+(a push to `main`, or the release's back-merge to `develop`), which the
+release records already track.
 
 ### Pull request builds
 

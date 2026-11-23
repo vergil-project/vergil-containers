@@ -235,7 +235,10 @@ another toolchain (see [Rust](../images/index.md#rust)).
 ## Exposure report — pins due for re-evaluation
 
 `docker/pins/report_exposure.py` (WS4) generates the internal-state
-observability view for a daily morning-review ritual. It reports:
+observability view of the pins. No workflow runs it: run it by hand
+(`uv run report_exposure.py` in `docker/pins/`) when you want the view. The
+daily `upstream-refresh` job is the path that fixes pin lag, and a lag it
+cannot fix fails that job. It reports:
 
 - **Due for re-evaluation** (the headline signal): active pins whose
   `inducing_release` is no longer the leading edge — i.e. Tenet 6's trigger has

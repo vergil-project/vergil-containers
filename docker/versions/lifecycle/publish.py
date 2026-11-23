@@ -88,7 +88,7 @@ CHANGE_PREFIX = "language lifecycle: "
 FAILURE_PREFIX = "lifecycle check failing for "
 REPORT_AUTOMATION = "report"
 
-# Where a public repo's ad-hoc epic lives, and how it is recognised: the same
+# Where a repo's ad-hoc epic lives, and how it is recognised: the same
 # home, title and labels vergil-tooling's `vrg-issue-create --epic adhoc` uses.
 EPIC_HOME_REPO = ".github"
 ADHOC_EPIC_PREFIX = "Epic (ad hoc): "

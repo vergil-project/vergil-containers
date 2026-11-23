@@ -5,8 +5,8 @@
 # ts-node image (epic vergil-project/.github#284 T1, #1174 §6.3: a trivial
 # project that declares its TypeScript tools installs (npm ci --ignore-scripts),
 # typechecks (tsc --noEmit), lints (eslint .) and runs one vitest test, each
-# from its node_modules/.bin, and checks the image carries prettier and
-# license-checker but none of the repo-declared tools; see
+# from its node_modules/.bin, and checks the image carries prettier but none
+# of the repo-declared tools; see
 # smoke/run-in-container.sh). Shared across the node-24 and node-22 images.
 #
 # Usage:

@@ -23,6 +23,11 @@ jobs:
     uses: vergil-project/vergil-actions/.github/workflows/cd-docs.yml@v2.1
     permissions:
       contents: write
+    # The docs workflow reports its own failures as operations issues,
+    # which needs the automation App's credentials.
+    secrets:
+      APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
 
   release:
     if: github.ref == 'refs/heads/main'
@@ -58,3 +63,44 @@ jobs:
       security-events: write
       attestations: write
       id-token: write
+
+  # Report image-publish to the org's operations queue (epic
+  # vergil-project/.github#1494): the ops-report action opens or comments on
+  # the job's ops issue when it fails or is cancelled, and records the first
+  # green run after one; it never closes an issue. It runs whatever
+  # docker-publish did (always()), except on a release push: a push to main,
+  # or a develop push whose head commit merges a release/* branch's PR (the
+  # back-merge). The release records of epic vergil-project/.github#1440
+  # already track and recover a release's failed CD jobs (spec §4.1). The
+  # action reports only from refs/heads/develop, as the org automation App
+  # with an issues-only token it mints, so this job's GITHUB_TOKEN only reads.
+  # A composite action cannot read `vars`, so the step delivers the trust
+  # layer's inputs in its env. No concurrency group: one would cancel a
+  # pending report. The docs job reports from inside cd-docs.yml.
+  # docker/versions/test_ops_reporting.py pins this layout.
+  report-image-publish:
+    needs: [docker-publish]
+    if: >-
+      ${{ always() && github.ref != 'refs/heads/main'
+      && !(startsWith(github.event.head_commit.message, 'Merge pull request #')
+      && contains(github.event.head_commit.message, format(' from {0}/release/', github.repository_owner))) }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      # Setting up Vergil inside the action reads this repo's vergil.toml.
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Report to the operations queue
+        uses: vergil-project/vergil-actions/actions/ops/report@v2.1
+        env:
+          VRG_TRUSTED_AUTHORS: ${{ vars.VRG_TRUSTED_AUTHORS }}
+          VRG_AUTOMATION_APP: ${{ vars.VRG_AUTOMATION_APP }}
+        with:
+          job: image-publish
+          results: ${{ needs.docker-publish.result }}
+          app-client-id: ${{ secrets.APP_CLIENT_ID }}
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
