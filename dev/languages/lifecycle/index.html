@@ -2689,6 +2689,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-check-is-turned-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The check is turned off
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-lifecycle-check" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3434,6 +3445,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-check-is-turned-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The check is turned off
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-lifecycle-check" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3524,7 +3546,9 @@ also writes
 <code>docker/versions/window.json</code>, the published window that consumer repos read
 at build time. CI fails if any generated file is out of date with the manifest.</p>
 <p>The manifest records <strong>what is built</strong>, and labels each version as in or out of
-policy. Each language family also has an <strong>automation</strong> setting:</p>
+policy. Each language family also has an <strong>automation</strong> setting, which says
+what the lifecycle check does when it runs. The check is
+<a href="#the-check-is-turned-off">turned off</a> for now.</p>
 <ul>
 <li><strong><code>pr</code></strong>: a scheduled lifecycle check opens the pull request that adds or
   drops a version. The manifest and the policy converge, because every
@@ -3534,6 +3558,23 @@ policy. Each language family also has an <strong>automation</strong> setting:</p
   human acts. This is a deliberate, temporary exception to rule 1 below for
   languages whose automation has not been turned on yet.</li>
 </ul>
+<h2 id="the-check-is-turned-off">The check is turned off<a class="headerlink" href="#the-check-is-turned-off" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">The lifecycle check does not run until vergil-project/.github#1128</p>
+<p>The <code>language-lifecycle</code> job in <code>ops.yml</code> is turned off
+(<code>if: ${{ false }}</code>) until
+<a href="https://github.com/vergil-project/.github/issues/1128">vergil-project/.github#1128</a>
+re-architects how its publisher writes to GitHub. That work turns the job
+back on and removes this note. <code>docker/versions/lifecycle/</code> stays in place
+meanwhile, and the rest of this page describes how the check works when it
+runs.</p>
+<p>While it is off, no lifecycle pull request, lifecycle issue, failure issue
+or report is opened, refreshed or closed. <strong>The absence of lifecycle PRs
+and <code>language-lifecycle</code> issues says nothing about whether the manifest
+matches the policy.</strong> A new upstream release or an EOL is not caught for
+you, and a change to the window is a manual add or drop (see
+<a href="../../operations/version-management/#language-toolchain-pins">Language toolchain pins</a>).</p>
+</div>
 <h2 id="the-lifecycle-check">The lifecycle check<a class="headerlink" href="#the-lifecycle-check" title="Permanent link">&para;</a></h2>
 <p>The <code>language-lifecycle</code> job in the nightly <code>ops.yml</code> workflow runs
 <code>docker/versions/lifecycle/check.py</code>. For every family, the family's adapter
@@ -3570,8 +3611,9 @@ to three attempts in all with a warning before each retry, so one transient
 upstream error does not fail the run; a failure that lasts through every
 attempt still fails it. It still finishes the other families, and it opens or refreshes
 one <code>lifecycle check failing for &lt;family&gt;</code> issue, which the next clean run
-closes. So no open PR and no open <code>language-lifecycle</code> issue reliably means
-"in sync".</p>
+closes. So, while the job runs, no open PR and no open <code>language-lifecycle</code>
+issue reliably means "in sync". While it is
+<a href="#the-check-is-turned-off">turned off</a>, their absence means nothing.</p>
 <h2 id="how-consumers-use-the-window">How consumers use the window<a class="headerlink" href="#how-consumers-use-the-window" title="Permanent link">&para;</a></h2>
 <p>Consumer repos read the published window, <code>docker/versions/window.json</code> at the
 <code>v2.1</code> ref, through vergil-tooling's <code>vrg-ci-resolve</code>. It is the single
@@ -3670,7 +3712,8 @@ instead.</p>
 <li><strong>Current out-of-policy versions:</strong> a snapshot, on the date the page was
    checked, of manifest versions the policy says should not be built. Versions
    upstream has released that the manifest lacks are noted too. The lifecycle
-   check's report is the live record.</li>
+   check's report is the live record while the check runs; while it is
+   <a href="#the-check-is-turned-off">turned off</a>, there is none.</li>
 </ol>
 <p>Each page separates <strong>data</strong>, meaning what an upstream source actually says,
 from <strong>judgment</strong>, meaning a rule Vergil chose where upstream has none. Every

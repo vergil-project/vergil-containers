@@ -3553,8 +3553,12 @@
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    ├── includes.py             # Each image's input files, for PR selection
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    ├── selection.py            # The images a pull request's change reaches
 <a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    ├── pr_jobs.py              # Groups the selected images into PR build jobs
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    └── lifecycle/              # The nightly lifecycle check and adapters
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    └── lifecycle/              # The lifecycle check and adapters (turned off)
 </code></pre></div>
+<p>The lifecycle check in <code>docker/versions/lifecycle/</code> is
+<a href="../languages/lifecycle/#the-check-is-turned-off">turned off</a> until
+<a href="https://github.com/vergil-project/.github/issues/1128">vergil-project/.github#1128</a>
+turns it back on.</p>
 <h3 id="templating">Templating<a class="headerlink" href="#templating" title="Permanent link">&para;</a></h3>
 <p>Each <code>Dockerfile.template</code> contains standard Dockerfile instructions plus
 <code># @include common/&lt;fragment&gt;.dockerfile</code> directives. <code>generate.sh</code>
