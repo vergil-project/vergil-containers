@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.48] - 2026-11-23
+
+### Bug fixes
+
+- update a vulnerable base-image Python dependency of semgrep (#992)
+
+### CI
+
+- disable the language lifecycle job until its re-architecture (#984)
+- stop granting actions: read to the security job (#985)
+
+### Chores
+
+- refresh upstream inputs (#993)
+
 ## [2.1.47] - 2026-11-19
 
 ### Bug fixes
