@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.49] - 2026-11-23
+
+### CI
+
+- deprecate the report-only pin-exposure job (#1001)
+- pass the App secrets to the shared docs workflows (#1008)
+
+### Chores
+
+- refresh upstream inputs (#1011)
+
+### Documentation
+
+- drop the public-repo qualifier from the ad-hoc epic comment (#1005)
+- point the lifecycle comment at the manifest for the pr families (#1006)
+
+### Features
+
+- remove license-checker from the ts-node images (#1002)
+- label every image with the release and commit that built it (#1007)
+- report the container jobs to the operations queue (#1009)
+
 ## [2.1.48] - 2026-11-23
 
 ### Bug fixes
