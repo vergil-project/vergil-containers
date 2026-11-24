@@ -101,16 +101,27 @@ and when the workflow is triggered. Duplicating the pipeline would mean
 maintaining two copies of the Trivy scanning, attestation, and
 promotion logic.
 
-### No custom failure notification
+### Failure notification (superseded)
 
-Nightly rebuild failures use built-in GitHub Actions email notifications.
-No custom issue-creation, Slack integration, or auto-recovery is
-implemented.
+**Superseded** by the org's operations queue (epic
+[vergil-project/.github#1494](https://github.com/vergil-project/.github/issues/1494),
+task [#987](https://github.com/vergil-project/vergil-containers/issues/987)).
+[Failure reports](../index.md#failure-reports) describes how the jobs
+report today.
 
-**Why?** The failure rate is low (typically new upstream CVEs that need
-triage, not infrastructure issues), and the team monitors GitHub
-notifications. Custom notification infrastructure would add complexity
-without proportional value at current scale.
+The original decision relied on the built-in GitHub Actions email
+notifications for nightly rebuild failures, with no custom issue
+creation, Slack integration or auto-recovery. Its reasoning was that the
+failure rate was low (typically new upstream CVEs that need triage, not
+infrastructure issues) and that the team watched its GitHub
+notifications.
+
+That stopped holding once the jobs ran unattended: an email nobody reads
+is a silent failure. The nightly rebuilds and the image publish job now
+each end with a reporting job that opens, or comments on, an ops issue in
+this repository, so every failure is tracked in the operations queue.
+There is still no auto-recovery: nothing closes an ops issue
+automatically.
 
 ## Consumer Integration
 
