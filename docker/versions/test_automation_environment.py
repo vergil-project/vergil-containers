@@ -8,11 +8,12 @@ deploy to. A job reads an environment secret only when it declares the
 environment, so every job that reads one itself declares `environment:
 automation`.
 
-A job that calls a reusable workflow cannot declare an environment, and
-environment secrets reach a reusable workflow in another repository only when
-the caller passes `secrets: inherit`. So each caller of a vergil-actions
-workflow that reads the App keys inherits, and nothing else does: inheriting
-hands the callee every secret the caller can read. vrg-validate's
+A job that calls a reusable workflow cannot declare an environment, so it
+hands the callee its secrets: all of them with `secrets: inherit`, or the ones
+an explicit `secrets:` map names. Each caller of a vergil-actions workflow
+that reads the App keys inherits, the route the fleet has chosen for in-org
+callers of those workflows, and nothing else does: inheriting hands the callee
+every secret the caller can read. vrg-validate's
 `secrets-inherit` check enforces the allow-list fleet-wide; these tests pin
 this repo's callers to exactly that set.
 
@@ -24,9 +25,14 @@ org-level App keys hidden from that repo, the keys passed by name from a call
 job, and GitHub's reusable-workflow docs say a secret can be passed by name
 "even if it only exists in the environment". By the human's ruling N0.16 on
 epic vergil-project/.github#1384, a call job here may pass exactly the two App
-keys by name to this repo's own local workflow, as long as every job there
-that reads them declares `environment: automation`. Every other map of a
-write-capable secret is refused.
+keys by name to this repo's own workflow, as long as every job there that
+reads them declares `environment: automation`. By the human's ruling on R2 of
+the merge review of vergil-containers#1030, that workflow may be called by its
+local path or as this repo's workflow at exactly `@main` (the prod nightly
+rebuild runs main's copy, issue #731); the check reads the local copy, which
+can run ahead of main's between releases. A prod login then fails loudly
+until the release, and no key is exposed. Every other map of a write-capable
+secret, and every other repository or ref, is refused.
 """
 
 import re
@@ -66,10 +72,14 @@ INHERITORS = [
 ACTIONS_WORKFLOWS = "vergil-project/vergil-actions/.github/workflows/"
 
 
-# The by-name map a call job may pass to this repo's own local workflow
+# The by-name map a call job may pass to this repo's own workflow
 # (ruling N0.16 on epic vergil-project/.github#1384).
 APP_KEYS = ("APP_CLIENT_ID", "APP_PRIVATE_KEY")
-LOCAL_WORKFLOW = re.compile(r"\./\.github/workflows/([A-Za-z0-9_.-]+\.ya?ml)")
+_FILE = r"([A-Za-z0-9_.-]+\.ya?ml)"
+LOCAL_WORKFLOW = re.compile(r"\./\.github/workflows/" + _FILE)
+# This repo's own workflow at main (the R2 ruling of vergil-containers#1030).
+OWN_WORKFLOWS = "vergil-project/vergil-containers/.github/workflows/"
+OWN_AT_MAIN = re.compile(re.escape(OWN_WORKFLOWS) + _FILE + r"@main")
 # A read of a named secret, by property or by index.
 _NAMED = r"secrets\s*(?:\.\s*({names})\b|\[\s*['\"]({names})['\"]\s*\])"
 WRITE_READ = re.compile(_NAMED.format(names="|".join(WRITE_SECRETS)))
@@ -123,8 +133,9 @@ def _map_refusal(root, job: dict) -> str | None:
 
     A map that reads no write secret is not this test's concern. One that
     does must pass only the App keys, each by its own name, to a workflow in
-    `root` (this repo's .github/workflows), and every job there that reads a
-    key must declare the automation environment.
+    `root` (this repo's .github/workflows), called by its local path or as
+    this repo's workflow at exactly @main, and every job in `root`'s copy
+    that reads a key must declare the automation environment.
     """
     secrets = job.get("secrets")
     if "uses" not in job or not isinstance(secrets, dict):
@@ -132,9 +143,9 @@ def _map_refusal(root, job: dict) -> str | None:
     values = [str(v) for v in secrets.values()]
     if not any(WRITE_READ.search(v) or WHOLE_SECRETS.search(v) for v in values):
         return None
-    local = LOCAL_WORKFLOW.fullmatch(job["uses"])
+    local = LOCAL_WORKFLOW.fullmatch(job["uses"]) or OWN_AT_MAIN.fullmatch(job["uses"])
     if not local or not (root / local.group(1)).is_file():
-        return f"maps a write secret to {job['uses']}, not a local workflow"
+        return f"maps a write secret to {job['uses']}, not this repo's own workflow"
     for name, value in secrets.items():
         if name not in APP_KEYS:
             return f"maps {name}, not an App key"
@@ -293,17 +304,44 @@ def test_map_of_any_other_write_secret_refused(tmp_path, secrets):
     assert _map_refusal(_with_callee(tmp_path), _caller(secrets=secrets))
 
 
+def test_map_allowed_to_the_own_workflow_at_main(tmp_path):
+    caller = _caller(uses=f"{OWN_WORKFLOWS}callee.yml@main")
+    assert _map_refusal(_with_callee(tmp_path), caller) is None
+
+
+def test_map_to_the_own_workflow_at_main_checks_the_local_copy(tmp_path):
+    caller = _caller(uses=f"{OWN_WORKFLOWS}callee.yml@main")
+    assert _map_refusal(_with_callee(tmp_path, "other"), caller)
+
+
 @pytest.mark.parametrize(
     "uses",
     [
-        "vergil-project/vergil-containers/.github/workflows/callee.yml@main",
+        f"{OWN_WORKFLOWS}callee.yml@develop",
+        f"{OWN_WORKFLOWS}callee.yml@v1.2.3",
+        f"{OWN_WORKFLOWS}callee.yml@main2",
+        f"{OWN_WORKFLOWS}callee.yml",
+        f"{OWN_WORKFLOWS}missing.yml@main",
+        "vergil-project/vergil-containers-fork/.github/workflows/callee.yml@main",
+        "other-org/vergil-containers/.github/workflows/callee.yml@main",
         "vergil-project/vergil-actions/.github/workflows/callee.yml@v2.1",
         "./.github/workflows/../callee.yml",
         "./.github/workflows/missing.yml",
     ],
-    ids=["own-repo-by-ref", "other-repo", "path-escape", "missing-file"],
+    ids=[
+        "own-repo-other-branch",
+        "own-repo-tag",
+        "own-repo-ref-prefix",
+        "own-repo-no-ref",
+        "own-repo-missing-file",
+        "other-repo-same-prefix",
+        "other-org-same-name",
+        "other-repo",
+        "path-escape",
+        "missing-file",
+    ],
 )
-def test_map_to_a_non_local_workflow_refused(tmp_path, uses):
+def test_map_to_another_workflow_or_ref_refused(tmp_path, uses):
     assert _map_refusal(_with_callee(tmp_path), _caller(uses=uses))
 
 
@@ -351,7 +389,8 @@ def test_map_to_a_callee_that_passes_a_key_on_refused(tmp_path):
 def test_no_caller_maps_a_write_secret_but_the_app_keys_by_name():
     # A by-name map reaches the called workflow's environment-declaring jobs
     # (mq-gateway-replay-lab run 45390389192), so the two App keys may go by
-    # name to a local workflow whose key readers declare the environment.
+    # name to this repo's own workflow (local, or at @main) whose key
+    # readers declare the environment.
     # No other write secret is ever mapped.
     refusals = [
         f"{workflow}:{job_id}: {refusal}"
