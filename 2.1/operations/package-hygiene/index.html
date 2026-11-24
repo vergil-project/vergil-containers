@@ -650,6 +650,8 @@
       
         
       
+        
+      
     
     
     
@@ -702,6 +704,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.50/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.50
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3681,6 +3711,15 @@ preview is the explicit exception:</p>
 <li><strong>Preview on demand:</strong> the same manual run with "Preview only" <strong>checked</strong>
   (the <code>dry_run</code> input set to <code>true</code>) only logs what it <em>would</em> delete. Use it
   before a change to the delete rules, and review the logs.</li>
+<li><strong>App-token dry run:</strong> the same manual run with "App-token dry run" checked
+  (the <code>app-token-dry-run</code> input set to <code>true</code>) is always a preview, whatever
+  "Preview only" says. Both jobs mint a token as the org automation App, with
+  <code>packages: write</code> only, and make every GHCR call with it. Nothing falls back
+  to <code>GHCR_CLEANUP_TOKEN</code> or <code>GITHUB_TOKEN</code>: if the token cannot be minted,
+  each leg fails. It checks that the App can list the packages the jobs prune
+  (epic
+  <a href="https://github.com/vergil-project/.github/issues/1494">vergil-project/.github#1494</a>).
+  Scheduled runs and the other manual runs do not use the App token.</li>
 </ul>
 <p>A third job, <code>report</code>, deletes nothing. It reports the run to the org's
 operations queue (epic

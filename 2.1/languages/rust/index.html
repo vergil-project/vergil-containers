@@ -650,6 +650,8 @@
       
         
       
+        
+      
     
     
     
@@ -702,6 +704,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/v2.1.50/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2.1.50
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3651,17 +3681,23 @@ package.</p>
 version. Each PR carries its own toolchain pin change in
 <code>docker/pins/toolchains.yml</code> (an add's new series pin, a drop's removed one)
 and is merged by a human.</p>
+<p>The check is <a href="../lifecycle/#the-check-is-turned-off">turned off</a> until
+<a href="https://github.com/vergil-project/.github/issues/1128">vergil-project/.github#1128</a>,
+so for now it opens no pull request, and the absence of one says nothing
+about whether the manifest matches the policy.</p>
 <h2 id="current-out-of-policy-versions">Current out-of-policy versions<a class="headerlink" href="#current-out-of-policy-versions" title="Permanent link">&para;</a></h2>
 <p>As of 2026-11-15: the manifest builds 1.99 and 1.98, the two newest releases
 endoflife.date lists. The stable channel already carries 1.100 (see the data
 above), so the window is 1.100 and 1.99: 1.100 is missing and 1.98 is out of
-policy until the lifecycle pull requests that add 1.100 and drop 1.98 are
-merged.</p>
-<p>Under <code>pr</code> automation, a new release is added and a version that leaves the
-window is dropped through a lifecycle pull request, so the manifest is out of
-policy only while such a PR waits for a human to merge it. The open lifecycle
-PRs (branches <code>lifecycle/rust-add-&lt;x.y&gt;</code> and <code>lifecycle/rust-drop-&lt;x.y&gt;</code>) show
-any pending change.</p>
+policy until 1.100 is added and 1.98 is dropped. While the lifecycle check is
+<a href="../lifecycle/#the-check-is-turned-off">turned off</a>, no lifecycle pull request
+is opened to do either.</p>
+<p>Under <code>pr</code> automation, while the check runs, a new release is added and a
+version that leaves the window is dropped through a lifecycle pull request, so
+the manifest is out of policy only while such a PR waits for a human to merge
+it. The open lifecycle PRs (branches <code>lifecycle/rust-add-&lt;x.y&gt;</code> and
+<code>lifecycle/rust-drop-&lt;x.y&gt;</code>) then show any pending change. While the check is
+turned off, an empty list says nothing.</p>
 
 
 
