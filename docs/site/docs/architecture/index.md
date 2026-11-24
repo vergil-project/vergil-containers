@@ -37,8 +37,13 @@ docker/
     ├── includes.py             # Each image's input files, for PR selection
     ├── selection.py            # The images a pull request's change reaches
     ├── pr_jobs.py              # Groups the selected images into PR build jobs
-    └── lifecycle/              # The nightly lifecycle check and adapters
+    └── lifecycle/              # The lifecycle check and adapters (turned off)
 ```
+
+The lifecycle check in `docker/versions/lifecycle/` is
+[turned off](../languages/lifecycle.md#the-check-is-turned-off) until
+[vergil-project/.github#1128](https://github.com/vergil-project/.github/issues/1128)
+turns it back on.
 
 ### Templating
 
@@ -304,7 +309,12 @@ The `ops.yml` workflow runs every morning (UTC; the `schedule` trigger in
 `.github/workflows/ops.yml` holds the exact time) and rebuilds every image
 with the registry cache disabled (`no-cache: true`):
 
-- `nightly-rebuild-dev` rebuilds all `dev-` images from `develop`.
+- `nightly-rebuild-dev` rebuilds all `dev-` images from `develop`. It logs
+  in to GHCR as the org automation App, not with `GITHUB_TOKEN`: it sets
+  `cd-docker-publish.yml`'s `app-registry-login` input and passes the App's
+  keys by name, and each push job declares the `automation` environment,
+  mints a token with `packages: write` and logs in with it. A missing key or
+  a failed mint fails the job; nothing falls back to `GITHUB_TOKEN`.
 - `nightly-rebuild-prod` rebuilds all `prod-` images from `main`, so they
   pick up upstream fixes without moving past the released source. It calls
   `main`'s copy of `cd-docker-publish.yml` (`@main`), not `develop`'s, so the
@@ -327,7 +337,11 @@ operations queue (epic
 publish job in `cd.yml`) each end with a reporting job that calls
 vergil-actions' `ops-report` action. A failed or cancelled run opens, or
 comments on, the issue `ops: vergil-containers / <job> failing` as the org
-automation App, under the org's operations epic; the first green run after
+automation App. The issue is filed in this repository and linked under the
+org's operations epic, `Epic (operations): vergil-project`, in
+vergil-project/.github (for example
+[#1013](https://github.com/vergil-project/vergil-containers/issues/1013),
+`ops: vergil-containers / image-publish failing`). The first green run after
 it records the recovery. Nothing closes the issue automatically. Only runs
 on `develop` report, and `image-publish` reports nothing for a release push
 (a push to `main`, or the release's back-merge to `develop`), which the

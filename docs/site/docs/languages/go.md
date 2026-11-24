@@ -61,6 +61,11 @@ package.
 **`pr`.** The lifecycle check opens the pull request that adds or drops a Go
 version.
 
+The check is [turned off](lifecycle.md#the-check-is-turned-off) until
+[vergil-project/.github#1128](https://github.com/vergil-project/.github/issues/1128),
+so for now it opens no pull request, and the absence of one says nothing
+about whether the manifest matches the policy.
+
 ## Current out-of-policy versions
 
 As of 2026-10-23: **none.** The manifest builds 1.27 and 1.26, the two

@@ -91,7 +91,7 @@ def test_touch_always_runs_and_rebuild_only_on_a_miss():
 
 def test_rebuild_uses_the_cleanup_action_version_and_never_deletes():
     rebuild = _step(name="Rebuild the manifest cache (preview only)")
-    cleanup_step = _load(CLEANUP)["jobs"]["cleanup"]["steps"][0]
+    cleanup_step = next(s for s in _load(CLEANUP)["jobs"]["cleanup"]["steps"] if s.get("id") == "attempt1")
     # Same version, so the cache scheme above is the one the cleanup uses.
     assert rebuild["uses"] == cleanup_step["uses"]
     inputs = rebuild["with"]

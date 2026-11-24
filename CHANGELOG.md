@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.50] - 2026-11-24
+
+### CI
+
+- record why the package workflows keep a run-level concurrency group (#1010)
+- read the automation App secrets from the automation environment (#1023)
+- add an App-token dry run to package cleanup (#1031)
+- log in to GHCR as the App for the dev rebuild (#1035)
+
+### Chores
+
+- sync the managed files with the released templates (#1022)
+
+### Documentation
+
+- fix the markdownlint errors in the Scorecard snapshots (#1015)
+- say the language-lifecycle job is turned off (#1018)
+- record that container job failures report to the operations queue (#1028)
+
+### Features
+
+- the daily agent audit (#1027)
+
+### Testing
+
+- allow the App keys by name to this repo's own workflow (#1032)
+
 ## [2.1.49] - 2026-11-23
 
 ### CI

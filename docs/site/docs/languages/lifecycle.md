@@ -22,7 +22,9 @@ also writes
 at build time. CI fails if any generated file is out of date with the manifest.
 
 The manifest records **what is built**, and labels each version as in or out of
-policy. Each language family also has an **automation** setting:
+policy. Each language family also has an **automation** setting, which says
+what the lifecycle check does when it runs. The check is
+[turned off](#the-check-is-turned-off) for now.
 
 - **`pr`**: a scheduled lifecycle check opens the pull request that adds or
   drops a version. The manifest and the policy converge, because every
@@ -31,6 +33,24 @@ policy. Each language family also has an **automation** setting:
   not change the manifest. An out-of-policy version stays buildable until a
   human acts. This is a deliberate, temporary exception to rule 1 below for
   languages whose automation has not been turned on yet.
+
+## The check is turned off
+
+!!! warning "The lifecycle check does not run until vergil-project/.github#1128"
+    The `language-lifecycle` job in `ops.yml` is turned off
+    (`if: ${{ false }}`) until
+    [vergil-project/.github#1128](https://github.com/vergil-project/.github/issues/1128)
+    re-architects how its publisher writes to GitHub. That work turns the job
+    back on and removes this note. `docker/versions/lifecycle/` stays in place
+    meanwhile, and the rest of this page describes how the check works when it
+    runs.
+
+    While it is off, no lifecycle pull request, lifecycle issue, failure issue
+    or report is opened, refreshed or closed. **The absence of lifecycle PRs
+    and `language-lifecycle` issues says nothing about whether the manifest
+    matches the policy.** A new upstream release or an EOL is not caught for
+    you, and a change to the window is a manual add or drop (see
+    [Language toolchain pins](../operations/version-management.md#language-toolchain-pins)).
 
 ## The lifecycle check
 
@@ -71,8 +91,9 @@ to three attempts in all with a warning before each retry, so one transient
 upstream error does not fail the run; a failure that lasts through every
 attempt still fails it. It still finishes the other families, and it opens or refreshes
 one `lifecycle check failing for <family>` issue, which the next clean run
-closes. So no open PR and no open `language-lifecycle` issue reliably means
-"in sync".
+closes. So, while the job runs, no open PR and no open `language-lifecycle`
+issue reliably means "in sync". While it is
+[turned off](#the-check-is-turned-off), their absence means nothing.
 
 ## How consumers use the window
 
@@ -174,7 +195,8 @@ Every policy page has the same seven sections:
 7. **Current out-of-policy versions:** a snapshot, on the date the page was
    checked, of manifest versions the policy says should not be built. Versions
    upstream has released that the manifest lacks are noted too. The lifecycle
-   check's report is the live record.
+   check's report is the live record while the check runs; while it is
+   [turned off](#the-check-is-turned-off), there is none.
 
 Each page separates **data**, meaning what an upstream source actually says,
 from **judgment**, meaning a rule Vergil chose where upstream has none. Every

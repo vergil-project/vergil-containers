@@ -131,16 +131,23 @@ version. Each PR carries its own toolchain pin change in
 `docker/pins/toolchains.yml` (an add's new series pin, a drop's removed one)
 and is merged by a human.
 
+The check is [turned off](lifecycle.md#the-check-is-turned-off) until
+[vergil-project/.github#1128](https://github.com/vergil-project/.github/issues/1128),
+so for now it opens no pull request, and the absence of one says nothing
+about whether the manifest matches the policy.
+
 ## Current out-of-policy versions
 
 As of 2026-11-15: the manifest builds 1.99 and 1.98, the two newest releases
 endoflife.date lists. The stable channel already carries 1.100 (see the data
 above), so the window is 1.100 and 1.99: 1.100 is missing and 1.98 is out of
-policy until the lifecycle pull requests that add 1.100 and drop 1.98 are
-merged.
+policy until 1.100 is added and 1.98 is dropped. While the lifecycle check is
+[turned off](lifecycle.md#the-check-is-turned-off), no lifecycle pull request
+is opened to do either.
 
-Under `pr` automation, a new release is added and a version that leaves the
-window is dropped through a lifecycle pull request, so the manifest is out of
-policy only while such a PR waits for a human to merge it. The open lifecycle
-PRs (branches `lifecycle/rust-add-<x.y>` and `lifecycle/rust-drop-<x.y>`) show
-any pending change.
+Under `pr` automation, while the check runs, a new release is added and a
+version that leaves the window is dropped through a lifecycle pull request, so
+the manifest is out of policy only while such a PR waits for a human to merge
+it. The open lifecycle PRs (branches `lifecycle/rust-add-<x.y>` and
+`lifecycle/rust-drop-<x.y>`) then show any pending change. While the check is
+turned off, an empty list says nothing.

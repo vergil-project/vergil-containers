@@ -91,11 +91,18 @@ and is merged by a human. The one exception is the `node` pin of the
 family drops that major (see
 [Language toolchain pins](../operations/version-management.md#language-toolchain-pins)).
 
+The check is [turned off](lifecycle.md#the-check-is-turned-off) until
+[vergil-project/.github#1128](https://github.com/vergil-project/.github/issues/1128),
+so for now it opens no pull request, and the absence of one says nothing
+about whether the manifest matches the policy.
+
 ## Current out-of-policy versions
 
 As of 2026-11-18: **none.** The manifest builds 26, 24 and 22, the window.
-Under `pr` automation, a major that leaves the window is dropped through a
-lifecycle pull request, so none is kept out of policy; the manifest lags
-upstream only while such a PR waits for a human to merge it. The open
-lifecycle PRs (branches `lifecycle/ts-node-add-<major>` and
-`lifecycle/ts-node-drop-<major>`) show any pending change.
+Under `pr` automation, while the lifecycle check runs, a major that leaves the
+window is dropped through a lifecycle pull request, so none is kept out of
+policy; the manifest lags upstream only while such a PR waits for a human to
+merge it. The open lifecycle PRs (branches `lifecycle/ts-node-add-<major>` and
+`lifecycle/ts-node-drop-<major>`) then show any pending change. While the check
+is [turned off](lifecycle.md#the-check-is-turned-off), an empty list says
+nothing.

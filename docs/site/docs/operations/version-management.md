@@ -228,6 +228,11 @@ another toolchain (see [Rust](../images/index.md#rust)).
   `check_pins.py` and `generate_catalog.py --check` as opened. A pin that
   cannot be resolved (the upstream is unreachable or has no release of the
   series) fails that one change in the lifecycle run, and the run reports it.
+  The lifecycle check is
+  [turned off](../languages/lifecycle.md#the-check-is-turned-off) until
+  [vergil-project/.github#1128](https://github.com/vergil-project/.github/issues/1128),
+  so for now it opens no such PR: a window change is a manual add or drop, as
+  the next point says.
 - **Never hand-edit a pin.** Run the resolver instead: it pins exactly the
   series the manifest lists. A manual add or drop edits the manifest, runs the
   resolver and the generators, and commits them together.
