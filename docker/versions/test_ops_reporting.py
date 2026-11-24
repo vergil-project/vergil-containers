@@ -11,8 +11,8 @@ refs/heads/develop and turns the results into one report (spec §5.3).
 The jobs reported by vergil-actions' shared workflows (`branch-sweep` and
 `upstream-refresh`, called from ops.yml, and `docs-deploy-develop`, called
 from cd.yml) report from inside those workflows, so they have no reporting
-job here. `language-lifecycle` is disabled and `github-config` is a
-security-signal job (spec §2.3): neither is reported.
+job here. `language-lifecycle` is disabled, and `github-config` and
+`agent-audit` are security-signal jobs (spec §2.3): none is reported.
 
 The report-only pin-exposure job is deprecated (spec §5.5): a job reports
 only whether it worked, and `upstream-refresh` is the path that fixes pin lag.
@@ -171,3 +171,15 @@ def test_pin_exposure_is_not_a_job():
 
 def test_upstream_refresh_is_a_job():
     assert "upstream-refresh" in _jobs("ops.yml")
+
+
+def test_agent_audit_runs_after_the_config_job():
+    # The daily agent audit (epic vergil-project/.github#1384, Task 13): a job
+    # named agent-audit, the name hoshin reads it by. It runs after the config
+    # job, but a failed config job must not skip it (the epic's ruling N0.14).
+    job = _jobs("ops.yml")["agent-audit"]
+    assert job["uses"] == "vergil-project/vergil-actions/.github/workflows/ops-agent-audit.yml@v2.1"
+    assert job["needs"] == "github-config"
+    assert _expr(job["if"]) == "!cancelled()"
+    assert job["secrets"] == "inherit"
+    assert job["permissions"] == {"contents": "read"}
