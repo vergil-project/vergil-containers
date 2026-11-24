@@ -49,6 +49,7 @@ INHERITORS = [
     ("epic-rollup.yml", "epic-rollup", "ops-epic-rollup.yml"),
     ("ops.yml", "github-config", "ops-github-config.yml"),
     ("ops.yml", "upstream-refresh", "ops-upstream-refresh.yml"),
+    ("ops.yml", "agent-audit", "ops-agent-audit.yml"),
 ]
 ACTIONS_WORKFLOWS = "vergil-project/vergil-actions/.github/workflows/"
 

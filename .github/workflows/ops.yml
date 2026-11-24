@@ -166,7 +166,25 @@ jobs:
     # The automation App's keys live only in the `automation` environment,
     # whose secrets reach a reusable workflow in another repo only under
     # `secrets: inherit`; a calling job cannot declare the environment
-    # (epic vergil-project/.github#1384). The same holds for upstream-refresh.
+    # (epic vergil-project/.github#1384). The same holds for upstream-refresh
+    # and agent-audit.
+    secrets: inherit
+
+  # The daily audit of agent merges (epic vergil-project/.github#1384, Task 13):
+  # vrg-agent-audit audits every merge into develop and main since the
+  # vergil/agent-audit/* markers, as the org automation App, and moves the
+  # markers. The job is named agent-audit, the name hoshin reads it by. It runs
+  # after the config job, but `!cancelled()` keeps a failed config job from
+  # skipping it (the epic's ruling N0.14). It is a security-signal job: it files
+  # no issue and has no reporting job; its findings are its exit status and run
+  # log. The App token is minted inside the reusable workflow, so this job's
+  # GITHUB_TOKEN needs only contents: read.
+  agent-audit:
+    needs: github-config
+    if: ${{ !cancelled() }}
+    uses: vergil-project/vergil-actions/.github/workflows/ops-agent-audit.yml@v2.1
+    permissions:
+      contents: read
     secrets: inherit
 
   # The daily refresh of the upstream pins (#435, epic vergil-project/.github#649).
