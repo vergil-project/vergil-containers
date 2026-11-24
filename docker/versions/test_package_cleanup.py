@@ -101,8 +101,10 @@ def _on() -> dict:
 
 
 # Issue #912: live by default. Only a manual run that asks for a preview is a
-# dry run; a scheduled run, or a manual run with default inputs, deletes.
-LIVE_DRY_RUN = "${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}"
+# dry run (either preview input: `dry_run`, or `app-token-dry-run`, which is
+# always a dry run, test_ops_reporting.py); a scheduled run, or a manual run
+# with default inputs, deletes.
+LIVE_DRY_RUN = "${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run == true || inputs.app-token-dry-run == true) }}"
 
 
 def test_manual_run_deletes_unless_a_preview_is_asked_for():
@@ -133,7 +135,14 @@ def test_dry_run_only_for_a_manual_preview(job, step_id):
 @pytest.mark.parametrize("job", JOBS)
 def test_steps_are_attempt_backoff_retry_report_in_order(job):
     ids_or_names = [s.get("id", s["name"]) for s in _steps(job)]
-    assert ids_or_names == ["attempt1", "Back off before retrying", "attempt2", "Report persistent failure"]
+    assert ids_or_names == [
+        "app-token",
+        "app-token-set",
+        "attempt1",
+        "Back off before retrying",
+        "attempt2",
+        "Report persistent failure",
+    ]
 
 
 @pytest.mark.parametrize("job", JOBS)

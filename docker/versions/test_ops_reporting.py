@@ -20,7 +20,9 @@ A lag it cannot fix fails that job, and the failure reaches the operations
 queue. docker/pins/report_exposure.py stays, runnable by hand.
 """
 
+import os
 import re
+import subprocess
 
 import pytest
 import yaml
@@ -183,3 +185,111 @@ def test_agent_audit_runs_after_the_config_job():
     assert _expr(job["if"]) == "!cancelled()"
     assert job["secrets"] == "inherit"
     assert job["permissions"] == {"contents": "read"}
+
+
+# The GHCR proof (epic vergil-project/.github#1494, Task 15, spec §5.4):
+# whether the automation App can work GHCR is unverified, so package-cleanup
+# gains a manual App-token dry run that proves it without deleting anything.
+CLEANUP_JOBS = ("cleanup", "reap-aliases")
+CLEANUP_ACTION = "dataaxiom/ghcr-cleanup-action@"
+APP_TOKEN_ACTION = "actions/create-github-app-token@v3"
+APP_DRY_RUN = "github.event_name == 'workflow_dispatch' && inputs.app-token-dry-run == true"
+_EXPR_TOKEN = re.compile(r"\s*('[^']*'|&&|\|\||==|\(|\)|[A-Za-z_][\w.-]*)")
+
+
+def _evaluate(expression: str, context: dict):
+    """Evaluate a GitHub Actions expression of the shapes these workflows use:
+    dotted names, quoted strings, `true`/`false`, `==`, `&&`, `||` and
+    parentheses. `&&` and `||` return an operand, as in Actions, so a falsy
+    value falls through `||`. A name missing from `context` is ''."""
+    out, pos = [], 0
+    expression = expression.rstrip()
+    while pos < len(expression):
+        match = _EXPR_TOKEN.match(expression, pos)
+        assert match, f"cannot parse {expression[pos:]!r}"
+        token, pos = match.group(1), match.end()
+        if token == "&&":
+            out.append(" and ")
+        elif token == "||":
+            out.append(" or ")
+        elif token in ("==", "(", ")") or token.startswith("'"):
+            out.append(f" {token} ")
+        elif token in ("true", "false"):
+            out.append(f" {token == 'true'} ")
+        else:
+            out.append(f" _v({token!r}) ")
+    return eval("".join(out), {"__builtins__": {}, "_v": lambda name: context.get(name, "")})
+
+
+def _cleanup_workflow() -> dict:
+    return yaml.safe_load((WORKFLOWS / "package-cleanup.yml").read_text())
+
+
+def test_cleanup_app_token_dry_run_is_dry_and_app_only(tmp_path):
+    workflow = _cleanup_workflow()
+    # PyYAML reads the bare key `on` as the boolean True.
+    on = workflow["on"] if "on" in workflow else workflow[True]
+    option = on["workflow_dispatch"]["inputs"]["app-token-dry-run"]
+    assert option["type"] == "boolean"
+    assert option["default"] is False
+
+    secrets = {"secrets.GHCR_CLEANUP_TOKEN": "pat", "secrets.GITHUB_TOKEN": "github"}
+    scheduled = {"github.event_name": "schedule", **secrets}
+    # A scheduled run never mints: the App-token steps are skipped.
+    assert _evaluate(APP_DRY_RUN, scheduled) is False
+
+    for job_id in CLEANUP_JOBS:
+        steps = workflow["jobs"][job_id]["steps"]
+        mint, check = steps[0], steps[1]
+        # Minted first, packages: write only, and never absorbed.
+        assert mint["id"] == "app-token"
+        assert mint["uses"] == APP_TOKEN_ACTION
+        assert _expr(mint["if"]) == APP_DRY_RUN
+        assert mint["with"] == {
+            "app-id": "${{ secrets.APP_CLIENT_ID }}",
+            "private-key": "${{ secrets.APP_PRIVATE_KEY }}",
+            "permission-packages": "write",
+        }
+        assert "continue-on-error" not in mint
+        # Then an empty token fails the leg, so no `||` can fall through.
+        assert check["id"] == "app-token-set"
+        assert _expr(check["if"]) == APP_DRY_RUN
+        assert check["env"] == {"APP_TOKEN": "${{ steps.app-token.outputs.token }}"}
+        assert "continue-on-error" not in check
+        for token, code in (("", 1), ("app", 0)):
+            result = subprocess.run(
+                ["bash", "-e", "-c", check["run"]],
+                env={**os.environ, "APP_TOKEN": token},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            assert result.returncode == code, (job_id, token, result.stdout)
+            assert ("::error title=No App token::" in result.stdout) is (code != 0)
+
+        calls = [s for s in steps if str(s.get("uses", "")).startswith(CLEANUP_ACTION)]
+        assert len(calls) == 2, job_id
+        assert all(steps.index(call) > steps.index(check) for call in calls)
+        for call in calls:
+            token, dry = _expr(call["with"]["token"]), _expr(call["with"]["dry-run"])
+            for dry_run in (False, True):
+                # App-token dry run: always a dry run, always the App token.
+                app = {
+                    "github.event_name": "workflow_dispatch",
+                    "inputs.app-token-dry-run": True,
+                    "inputs.dry_run": dry_run,
+                    "steps.app-token.outputs.token": "app",
+                    **secrets,
+                }
+                assert _evaluate(dry, app) is True, job_id
+                assert _evaluate(token, app) == "app", job_id
+                # A manual run with the input off is as before.
+                manual = {**app, "inputs.app-token-dry-run": False}
+                manual["steps.app-token.outputs.token"] = ""
+                assert _evaluate(dry, manual) is dry_run, job_id
+                assert _evaluate(token, manual) == "pat", job_id
+            # A scheduled run is unchanged: live, with the PAT, else GITHUB_TOKEN.
+            assert _evaluate(dry, scheduled) is False, job_id
+            assert _evaluate(token, scheduled) == "pat", job_id
+            no_pat = {**scheduled, "secrets.GHCR_CLEANUP_TOKEN": ""}
+            assert _evaluate(token, no_pat) == "github", job_id
