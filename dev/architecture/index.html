@@ -3838,7 +3838,12 @@ release completes.</p>
 <code>.github/workflows/ops.yml</code> holds the exact time) and rebuilds every image
 with the registry cache disabled (<code>no-cache: true</code>):</p>
 <ul>
-<li><code>nightly-rebuild-dev</code> rebuilds all <code>dev-</code> images from <code>develop</code>.</li>
+<li><code>nightly-rebuild-dev</code> rebuilds all <code>dev-</code> images from <code>develop</code>. It logs
+  in to GHCR as the org automation App, not with <code>GITHUB_TOKEN</code>: it sets
+  <code>cd-docker-publish.yml</code>'s <code>app-registry-login</code> input and passes the App's
+  keys by name, and each push job declares the <code>automation</code> environment,
+  mints a token with <code>packages: write</code> and logs in with it. A missing key or
+  a failed mint fails the job; nothing falls back to <code>GITHUB_TOKEN</code>.</li>
 <li><code>nightly-rebuild-prod</code> rebuilds all <code>prod-</code> images from <code>main</code>, so they
   pick up upstream fixes without moving past the released source. It calls
   <code>main</code>'s copy of <code>cd-docker-publish.yml</code> (<code>@main</code>), not <code>develop</code>'s, so the
