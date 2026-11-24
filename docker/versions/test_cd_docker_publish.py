@@ -103,9 +103,10 @@ def test_no_input_narrows_what_a_run_publishes():
     # narrows it (a subset, a changed-only build) breaks that: rethink the
     # concurrency group before adding one. (no-cache changes how a run builds,
     # not what it publishes; the workflow's concurrency comment says what a
-    # replaced no-cache run loses.)
+    # replaced no-cache run loses. app-registry-login changes only how a run
+    # logs in to GHCR, vergil-containers#1029.)
     on = _workflow()[True]  # PyYAML reads the `on` key as True.
-    assert set(on["workflow_call"]["inputs"]) == {"image-prefix", "no-cache", "ref"}
+    assert set(on["workflow_call"]["inputs"]) == {"image-prefix", "no-cache", "ref", "app-registry-login"}
 
 
 def _checkout_ref(job: str) -> str:
