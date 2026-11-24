@@ -3859,7 +3859,11 @@ operations queue (epic
 publish job in <code>cd.yml</code>) each end with a reporting job that calls
 vergil-actions' <code>ops-report</code> action. A failed or cancelled run opens, or
 comments on, the issue <code>ops: vergil-containers / &lt;job&gt; failing</code> as the org
-automation App, under the org's operations epic; the first green run after
+automation App. The issue is filed in this repository and linked under the
+org's operations epic, <code>Epic (operations): vergil-project</code>, in
+vergil-project/.github (for example
+<a href="https://github.com/vergil-project/vergil-containers/issues/1013">#1013</a>,
+<code>ops: vergil-containers / image-publish failing</code>). The first green run after
 it records the recovery. Nothing closes the issue automatically. Only runs
 on <code>develop</code> report, and <code>image-publish</code> reports nothing for a release push
 (a push to <code>main</code>, or the release's back-merge to <code>develop</code>), which the

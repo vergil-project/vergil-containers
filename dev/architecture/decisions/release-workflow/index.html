@@ -3138,10 +3138,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#no-custom-failure-notification" class="md-nav__link">
+  <a href="#failure-notification-superseded" class="md-nav__link">
     <span class="md-ellipsis">
       
-        No custom failure notification
+        Failure notification (superseded)
       
     </span>
   </a>
@@ -3534,10 +3534,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#no-custom-failure-notification" class="md-nav__link">
+  <a href="#failure-notification-superseded" class="md-nav__link">
     <span class="md-ellipsis">
       
-        No custom failure notification
+        Failure notification (superseded)
       
     </span>
   </a>
@@ -3686,14 +3686,24 @@ to both <code>dev-</code> and <code>prod-</code> images. The only difference is 
 and when the workflow is triggered. Duplicating the pipeline would mean
 maintaining two copies of the Trivy scanning, attestation, and
 promotion logic.</p>
-<h3 id="no-custom-failure-notification">No custom failure notification<a class="headerlink" href="#no-custom-failure-notification" title="Permanent link">&para;</a></h3>
-<p>Nightly rebuild failures use built-in GitHub Actions email notifications.
-No custom issue-creation, Slack integration, or auto-recovery is
-implemented.</p>
-<p><strong>Why?</strong> The failure rate is low (typically new upstream CVEs that need
-triage, not infrastructure issues), and the team monitors GitHub
-notifications. Custom notification infrastructure would add complexity
-without proportional value at current scale.</p>
+<h3 id="failure-notification-superseded">Failure notification (superseded)<a class="headerlink" href="#failure-notification-superseded" title="Permanent link">&para;</a></h3>
+<p><strong>Superseded</strong> by the org's operations queue (epic
+<a href="https://github.com/vergil-project/.github/issues/1494">vergil-project/.github#1494</a>,
+task <a href="https://github.com/vergil-project/vergil-containers/issues/987">#987</a>).
+<a href="../../#failure-reports">Failure reports</a> describes how the jobs
+report today.</p>
+<p>The original decision relied on the built-in GitHub Actions email
+notifications for nightly rebuild failures, with no custom issue
+creation, Slack integration or auto-recovery. Its reasoning was that the
+failure rate was low (typically new upstream CVEs that need triage, not
+infrastructure issues) and that the team watched its GitHub
+notifications.</p>
+<p>That stopped holding once the jobs ran unattended: an email nobody reads
+is a silent failure. The nightly rebuilds and the image publish job now
+each end with a reporting job that opens, or comments on, an ops issue in
+this repository, so every failure is tracked in the operations queue.
+There is still no auto-recovery: nothing closes an ops issue
+automatically.</p>
 <h2 id="consumer-integration">Consumer Integration<a class="headerlink" href="#consumer-integration" title="Permanent link">&para;</a></h2>
 <p>Images are consumed via <code>vrg-container-run</code> in
 <a href="https://github.com/vergil-project/vergil-tooling">vergil-tooling</a>.
