@@ -17,6 +17,30 @@ on:
         type: string
         required: false
         default: ""
+      # GHCR login as the org automation App (epic vergil-project/.github#1494,
+      # spec §5.4; vergil-containers#1029). With it true, every push job
+      # (build-N and publish-N) declares the `automation` environment, where
+      # the App's keys live, mints an App token with `permission-packages:
+      # write`, and logs in to GHCR with that token alone. There is no
+      # fallback to GITHUB_TOKEN: a missing key or a failed mint fails the job,
+      # and so does an empty token (the `App token is set` step). With it
+      # false (the default), the jobs declare no environment and log in with
+      # GITHUB_TOKEN, as before. Only ops.yml's nightly-rebuild-dev sets it,
+      # passing both keys by name (ruling N0.16 on epic
+      # vergil-project/.github#1384); docker/versions/test_ops_reporting.py
+      # and test_automation_environment.py pin the layout.
+      app-registry-login:
+        description: "Log in to GHCR as the automation App (no GITHUB_TOKEN fallback)"
+        type: boolean
+        required: false
+        default: false
+    secrets:
+      APP_CLIENT_ID:
+        description: "The automation App's client ID (read only when app-registry-login is true)"
+        required: false
+      APP_PRIVATE_KEY:
+        description: "The automation App's private key (read only when app-registry-login is true)"
+        required: false
 
 permissions:
   packages: write
@@ -43,8 +67,9 @@ permissions:
 # published by the run that replaced it, and a failure of that run fails it,
 # visibly. One thing can be lost: a pending no-cache nightly replaced by a CD
 # run is rebuilt from the registry cache, so that prefix's fresh rebuild waits
-# for the next nightly. no-cache stays out of the group, since a group per
-# value would let two runs publish the same tags at once.
+# for the next nightly, and the same run's App login (app-registry-login) with
+# it. no-cache and app-registry-login stay out of the group, since a group
+# per value would let two runs publish the same tags at once.
 concurrency:
   group: docker-publish-${{ inputs.image-prefix }}
   cancel-in-progress: false
@@ -230,6 +255,10 @@ jobs:
     needs: [hadolint, versions]
     if: ${{ needs.versions.outputs.has-0 == 'true' }}
     runs-on: ${{ matrix.runner }}
+    # The automation environment only for an App login (see the
+    # app-registry-login input); no environment otherwise. Every push job
+    # declares this same value.
+    environment: &app-environment "${{ inputs.app-registry-login && 'automation' || '' }}"
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.versions.outputs.arch-matrix-0) }}
@@ -252,12 +281,49 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      # The GHCR login: as the App when app-registry-login is true, else with
+      # GITHUB_TOKEN. Exactly one of the two login steps runs. No
+      # continue-on-error anywhere here: a missing key or a failed mint fails
+      # the job before any GHCR call, and so does an empty token, so the App
+      # login never runs without one. Keep these four steps identical to the
+      # publish jobs'.
       - name: Log in to GHCR
+        id: ghcr-login
+        if: ${{ !inputs.app-registry-login }}
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate app token
+        id: app-token
+        if: ${{ inputs.app-registry-login }}
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-packages: write
+
+      - name: App token is set
+        id: app-token-set
+        if: ${{ inputs.app-registry-login }}
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          if [ -z "${APP_TOKEN}" ]; then
+            echo "::error title=No App token::app-registry-login is true but no App token was minted; refusing to fall back to GITHUB_TOKEN."
+            exit 1
+          fi
+
+      - name: Log in to GHCR as the App
+        id: ghcr-app-login
+        if: ${{ inputs.app-registry-login }}
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ steps.app-token.outputs.token }}
 
       # A child is built FROM its parent's published digest from this run, which
       # the parent's publish job (a tier earlier) uploaded after promoting it.
@@ -457,6 +523,7 @@ jobs:
     needs: [hadolint, versions, build-0]
     if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-0 == 'true' }}
     runs-on: ubuntu-24.04
+    environment: *app-environment
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.versions.outputs.matrix-0) }}
@@ -478,12 +545,44 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      # The same four GHCR login steps as the build jobs' (documented there).
       - name: Log in to GHCR
+        id: ghcr-login
+        if: ${{ !inputs.app-registry-login }}
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate app token
+        id: app-token
+        if: ${{ inputs.app-registry-login }}
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-packages: write
+
+      - name: App token is set
+        id: app-token-set
+        if: ${{ inputs.app-registry-login }}
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          if [ -z "${APP_TOKEN}" ]; then
+            echo "::error title=No App token::app-registry-login is true but no App token was minted; refusing to fall back to GITHUB_TOKEN."
+            exit 1
+          fi
+
+      - name: Log in to GHCR as the App
+        id: ghcr-app-login
+        if: ${{ inputs.app-registry-login }}
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ steps.app-token.outputs.token }}
 
       - name: Download the per-arch digests
         uses: actions/download-artifact@v7
@@ -669,6 +768,7 @@ jobs:
     needs: [hadolint, versions, publish-0]
     if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-1 == 'true' }}
     runs-on: ${{ matrix.runner }}
+    environment: *app-environment
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.versions.outputs.arch-matrix-1) }}
@@ -680,6 +780,7 @@ jobs:
     needs: [hadolint, versions, build-1]
     if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-1 == 'true' }}
     runs-on: ubuntu-24.04
+    environment: *app-environment
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.versions.outputs.matrix-1) }}
@@ -692,6 +793,7 @@ jobs:
     needs: [hadolint, versions, publish-1]
     if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-2 == 'true' }}
     runs-on: ${{ matrix.runner }}
+    environment: *app-environment
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.versions.outputs.arch-matrix-2) }}
@@ -703,6 +805,7 @@ jobs:
     needs: [hadolint, versions, build-2]
     if: ${{ !cancelled() && needs.hadolint.result == 'success' && needs.versions.result == 'success' && needs.versions.outputs.has-2 == 'true' }}
     runs-on: ubuntu-24.04
+    environment: *app-environment
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.versions.outputs.matrix-2) }}
