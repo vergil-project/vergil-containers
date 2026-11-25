@@ -61,6 +61,7 @@ READERS = [
     ("package-cleanup.yml", "cleanup"),
     ("package-cleanup.yml", "reap-aliases"),
     ("package-cleanup.yml", "report"),
+    ("package-cleanup.yml", "verify-deletes"),
 ]
 
 # (workflow, job, reusable workflow) of every caller of an App-key workflow.

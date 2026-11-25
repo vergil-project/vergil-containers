@@ -39,7 +39,7 @@ REPORTS = [
     ("ops.yml", "report-nightly-rebuild-dev", "nightly-rebuild-dev", ["nightly-rebuild-dev"]),
     ("ops.yml", "report-nightly-rebuild-prod", "nightly-rebuild-prod", ["nightly-rebuild-prod"]),
     ("cd.yml", "report-image-publish", "image-publish", ["docker-publish"]),
-    ("package-cleanup.yml", "report", "package-cleanup", ["cleanup", "reap-aliases"]),
+    ("package-cleanup.yml", "report", "package-cleanup", ["cleanup", "reap-aliases", "verify-deletes"]),
     ("package-cache-warm.yml", "report", "package-cache-warm", ["warm"]),
 ]
 IDS = [stable for _, _, stable, _ in REPORTS]
@@ -348,8 +348,13 @@ def test_cleanup_token_is_read_only_by_package_cleanup():
             assert "GHCR_CLEANUP_TOKEN" not in path.read_text(), path.name
     text = (WORKFLOWS / CLEANUP_WORKFLOW).read_text()
     assert "secrets.GITHUB_TOKEN" not in text
-    assert "github.token" not in text
     assert "steps.app-token" not in text
+    # GITHUB_TOKEN appears once: the delete check reads the job logs with it
+    # (vergil-containers#1051), and makes its GHCR calls with the PAT.
+    assert text.count("github.token") == 1
+    assert "github.token" not in yaml.safe_dump(
+        {job: yaml.safe_load(text)["jobs"][job] for job in CLEANUP_JOBS}
+    )
     # The App-token dry run was the proof; it is not coming back.
     doc = yaml.safe_load(text)
     on = doc["on"] if "on" in doc else doc[True]

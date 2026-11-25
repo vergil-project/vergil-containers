@@ -79,11 +79,13 @@ def test_cleanup_and_reap_never_run_at_the_same_time():
     # Issue #911: overlapping legs on one package made reap-aliases read
     # manifests cleanup was deleting, and fail with 404. reap-aliases must wait
     # for the whole cleanup job, and these must be the only two deleting jobs.
-    # The third, `report`, deletes nothing: it reports the run to the
-    # operations queue (test_ops_reporting.py pins it).
+    # `verify-deletes` checks their deletes happened (test_cleanup_verify.py)
+    # and `report` reports the run to the operations queue
+    # (test_ops_reporting.py): neither deletes anything.
     jobs = _workflow()["jobs"]
-    assert set(jobs) == {*JOBS, "report"}
-    assert not any(ACTION.match(str(s.get("uses", ""))) for s in jobs["report"]["steps"])
+    assert set(jobs) == {*JOBS, "verify-deletes", "report"}
+    for job in ("verify-deletes", "report"):
+        assert not any(ACTION.match(str(s.get("uses", ""))) for s in jobs[job]["steps"])
     assert "needs" not in jobs["cleanup"]
     assert jobs["reap-aliases"]["needs"] in ("cleanup", ["cleanup"])
 
