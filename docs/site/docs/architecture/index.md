@@ -373,8 +373,10 @@ GHCR rejects App installation tokens for registry pushes (`installation not
 allowed to Write organization package`), as the GHCR proof
 ([vergil-project/.github#1516](https://github.com/vergil-project/.github/issues/1516))
 found. The CD publish and both nightly rebuilds therefore keep `GITHUB_TOKEN`.
-The package cleanup and cache-warm workflows, which use only the Packages API,
-run as the App (see
+The cache-warm workflow, which only reads through the Packages API, runs as
+the App. The package cleanup workflow deletes, which the Packages API allows
+only a personal access token (classic), so it uses the `GHCR_CLEANUP_TOKEN`
+personal access token, a second recorded exception (see
 [Package Hygiene](../operations/package-hygiene.md#token)).
 
 ### GHCR package access grants

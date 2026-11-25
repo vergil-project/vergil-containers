@@ -192,9 +192,13 @@ def test_agent_audit_runs_after_the_config_job():
 # The container jobs' identity (epic vergil-project/.github#1494, Task 17,
 # spec §5.4; vergil-containers#990). The GHCR proof (vergil-project/.github#1516)
 # passed on the Packages API path and failed on the registry push path, so the
-# human's scope change on #990 splits the jobs: those that only use the
-# Packages API run as the App, with no fallback; those that log in to the
-# registry keep GITHUB_TOKEN, each a recorded exception.
+# human's scope change on #990 splits the jobs: those that log in to the
+# registry keep GITHUB_TOKEN, each a recorded exception. Of the jobs that use
+# only the Packages API, the cache warm only reads and runs as the App, with
+# no fallback. The cleanup jobs delete, which the Packages API allows only a
+# personal access token (classic): run 45635208056 on the App token deleted
+# nothing (vergil-containers#1050), so they use GHCR_CLEANUP_TOKEN alone, a
+# recorded exception too.
 APP_TOKEN_ACTION = "actions/create-github-app-token@v3"
 CLEANUP_ACTION = "dataaxiom/ghcr-cleanup-action@"
 APP_TOKEN = "${{ steps.app-token.outputs.token }}"
@@ -202,14 +206,19 @@ WARM_MISS = "steps.touch.outputs.cache-matched-key == ''"
 # (workflow, job, the packages permission its App token asks for, the `if:`
 # of its App-token steps: None when every run mints one).
 APP_JOBS = [
-    ("package-cleanup.yml", "cleanup", "write", None),
-    ("package-cleanup.yml", "reap-aliases", "write", None),
     ("package-cache-warm.yml", "warm", "read", WARM_MISS),
 ]
 APP_IDS = [f"{w}:{j}" for w, j, _, _ in APP_JOBS]
 EXCEPTION_REASON = (
     "GHCR rejects App installation tokens for registry pushes "
     "(`installation not allowed to Write organization package`)"
+)
+CLEANUP_WORKFLOW = "package-cleanup.yml"
+CLEANUP_JOBS = ("cleanup", "reap-aliases")
+CLEANUP_TOKEN = "${{ secrets.GHCR_CLEANUP_TOKEN }}"
+CLEANUP_EXCEPTION_REASON = (
+    "the Packages API accepts only a personal access token (classic), "
+    "not an App installation token"
 )
 PUBLISH = "cd-docker-publish.yml"
 # (workflow, job) of every caller of the registry-push workflow.
@@ -293,19 +302,77 @@ def test_ghcr_jobs_use_app_token(workflow, job_id, packages, condition):
             assert _expr(call["if"]) == condition
 
 
-def test_no_ghcr_cleanup_token():
-    # The PAT fallback is gone: no workflow reads GHCR_CLEANUP_TOKEN, and no
-    # GHCR call falls back to GITHUB_TOKEN once the App token is in place.
+@pytest.mark.parametrize("job_id", CLEANUP_JOBS)
+def test_cleanup_legs_use_only_the_cleanup_token(job_id):
+    doc = yaml.safe_load((WORKFLOWS / CLEANUP_WORKFLOW).read_text())
+    job = doc["jobs"][job_id]
+    # The token lives only in the automation environment.
+    assert job["environment"] == "automation"
+    # GITHUB_TOKEN has no packages access, so it cannot stand in for the PAT.
+    assert doc["permissions"] == {"contents": "read"}
+    assert "permissions" not in job
+
+    steps = job["steps"]
+    # No App token: the Packages API refuses it for deletes.
+    assert not any(str(s.get("uses", "")).startswith(APP_TOKEN_ACTION.split("@")[0]) for s in steps)
+    check = steps[0]
+    assert check["id"] == "cleanup-token-set"
+    # Never absorbed, and checked on every run: an empty token fails the leg.
+    assert "continue-on-error" not in check
+    assert "if" not in check
+    assert check["env"] == {"CLEANUP_TOKEN": CLEANUP_TOKEN}
+    for token, code in (("", 1), ("pat", 0)):
+        result = subprocess.run(
+            ["bash", "-e", "-c", check["run"]],
+            env={**os.environ, "CLEANUP_TOKEN": token},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == code, (job_id, token, result.stdout)
+        assert ("::error title=No cleanup token::" in result.stdout) is (code != 0)
+
+    calls = [s for s in steps if str(s.get("uses", "")).startswith(CLEANUP_ACTION)]
+    assert len(calls) == 2, job_id
+    for call in calls:
+        # After the check, and with the PAT alone: no `||` fallback.
+        assert steps.index(call) > steps.index(check)
+        assert call["with"]["token"] == CLEANUP_TOKEN
+
+
+def test_cleanup_token_is_read_only_by_package_cleanup():
+    # No other workflow reads the PAT, and package-cleanup never falls back
+    # to GITHUB_TOKEN or the App for a GHCR call.
     for path in sorted(WORKFLOWS.glob("*.yml")):
-        assert "GHCR_CLEANUP_TOKEN" not in path.read_text(), path.name
-    for workflow in sorted({w for w, _, _, _ in APP_JOBS}):
-        text = (WORKFLOWS / workflow).read_text()
-        assert "secrets.GITHUB_TOKEN" not in text, workflow
-        assert "github.token" not in text, workflow
-    # The App-token dry run was the proof; every run is an App run now.
-    doc = yaml.safe_load((WORKFLOWS / "package-cleanup.yml").read_text())
+        if path.name != CLEANUP_WORKFLOW:
+            assert "GHCR_CLEANUP_TOKEN" not in path.read_text(), path.name
+    text = (WORKFLOWS / CLEANUP_WORKFLOW).read_text()
+    assert "secrets.GITHUB_TOKEN" not in text
+    assert "github.token" not in text
+    assert "steps.app-token" not in text
+    # The App-token dry run was the proof; it is not coming back.
+    doc = yaml.safe_load(text)
     on = doc["on"] if "on" in doc else doc[True]
     assert set(on["workflow_dispatch"]["inputs"]) == {"dry_run"}
+    # The cache warm stays on the App (test_ghcr_jobs_use_app_token): it only
+    # reads, and test_package_cache_warm.py pins that it never deletes.
+
+
+def test_cleanup_token_is_a_recorded_identity_exception():
+    text = (WORKFLOWS / CLEANUP_WORKFLOW).read_text()
+    # Beside each of the four GHCR calls' token, with its reason.
+    comments = _comment_above(text, f"          token: {CLEANUP_TOKEN}")
+    assert len(comments) == 4
+    for comment in comments:
+        assert "Identity exception" in comment
+        assert CLEANUP_EXCEPTION_REASON in comment
+    # And in the header, with the run that showed it.
+    header = " ".join(
+        line.lstrip("#").strip() for line in text.split("\non:\n", 1)[0].splitlines()
+    )
+    assert "Identity exception" in header
+    assert CLEANUP_EXCEPTION_REASON in header
+    assert "45635208056" in header
 
 
 @pytest.mark.parametrize(("workflow", "job_id"), REGISTRY_JOBS, ids=REGISTRY_IDS)
