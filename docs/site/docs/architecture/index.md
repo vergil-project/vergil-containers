@@ -79,11 +79,13 @@ carries them because it is built `FROM` `dev-base`:
   entry points across GitHub Actions and local contexts.
 - **`github-cli.dockerfile`** — GitHub CLI via the official apt repo.
 - **`validation-tools.dockerfile`** — Architecture-aware binary
-  installs of shellcheck, shfmt, actionlint and git-cliff.
+  installs of shellcheck, shfmt and git-cliff.
   Uses `TARGETARCH` (injected by Docker Buildx) to select the correct
   binary for amd64 or arm64.
 - **`hadolint.dockerfile`** — hadolint, the Dockerfile linter, from its
   release binary.
+- **`actionlint.dockerfile`** — actionlint, the GitHub Actions workflow
+  linter, from its release tarball.
 - **`scorecard.dockerfile`** — The OpenSSF Scorecard CLI, from its release
   tarball.
 - **`security-tools.dockerfile`** — trivy, from its release tarball.
@@ -190,7 +192,7 @@ at build time.
 
 | Tool | Verification | Algorithm |
 | --- | --- | --- |
-| actionlint | Release checksums file | SHA-256 |
+| actionlint | Digest pinned in source | SHA-256 |
 | git-cliff | Release per-artifact sidecar file | SHA-512 |
 | hadolint | Digest pinned in source | SHA-256 |
 | nfpm | Digest pinned in source | SHA-256 |
