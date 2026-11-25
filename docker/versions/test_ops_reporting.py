@@ -218,9 +218,9 @@ CLEANUP_WORKFLOW = "package-cleanup.yml"
 CLEANUP_JOBS = ("cleanup", "reap-aliases")
 CLEANUP_TOKEN = "${{ secrets.GITHUB_TOKEN }}"
 CLEANUP_EXCEPTION_REASON = (
-    "GitHub Packages does not accept App installation tokens, and "
-    "GITHUB_TOKEN is the documented token for a workflow repository's own "
-    "packages"
+    "GitHub Packages refuses App installation tokens for deletes and "
+    "untags, though the App can list and read packages, and GITHUB_TOKEN is "
+    "the documented token for a workflow repository's own packages"
 )
 PUBLISH = "cd-docker-publish.yml"
 # (workflow, job) of every caller of the registry-push workflow.
