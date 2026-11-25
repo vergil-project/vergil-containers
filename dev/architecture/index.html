@@ -3925,9 +3925,10 @@ allowed to Write organization package</code>), as the GHCR proof
 (<a href="https://github.com/vergil-project/.github/issues/1516">vergil-project/.github#1516</a>)
 found. The CD publish and both nightly rebuilds therefore keep <code>GITHUB_TOKEN</code>.
 The cache-warm workflow, which only reads through the Packages API, runs as
-the App. The package cleanup workflow deletes, which the Packages API allows
-only a personal access token (classic), so it uses the <code>GHCR_CLEANUP_TOKEN</code>
-personal access token, a second recorded exception (see
+the App. The package cleanup workflow deletes packages, which GitHub Packages
+does not let an App installation token do, so it keeps <code>GITHUB_TOKEN</code> with
+<code>packages: write</code>, the documented token for a workflow repository's own
+packages: a second recorded exception (see
 <a href="../operations/package-hygiene/#token">Package Hygiene</a>).</p>
 <h3 id="ghcr-package-access-grants">GHCR package access grants<a class="headerlink" href="#ghcr-package-access-grants" title="Permanent link">&para;</a></h3>
 <p>Each <code>dev-*</code> and <code>prod-*</code> package on GHCR must explicitly grant this
