@@ -3830,8 +3830,8 @@ permission, and <code>verify-deletes</code> lists a package's versions with it, 
 <code>packages: read</code>. It is an identity exception to the rule that unattended jobs
 run as the org automation App (epic
 <a href="https://github.com/vergil-project/.github/issues/1494">vergil-project/.github#1494</a>):
-GitHub Packages does not accept App installation tokens, and <code>GITHUB_TOKEN</code> is
-the
+GitHub Packages refuses App installation tokens for deletes and untags, though
+the App can list and read packages, and <code>GITHUB_TOKEN</code> is the
 <a href="https://docs.github.com/en/packages/learn-github-packages/about-permissions-for-github-packages">documented token</a>
 for a workflow repository's own packages. The cleanup ran as the App once, in
 run
