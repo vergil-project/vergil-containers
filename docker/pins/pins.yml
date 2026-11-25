@@ -80,14 +80,16 @@ pins:
   # descriptive, not a hard-coded version — the version-of-record lives in the
   # template (extract_pins reads it). govulncheck FREED under #422 (installs via
   # `go install ...@latest`); its entry is removed. semgrep stays floating.
-  # hadolint, opentofu, nfpm, scorecard, trivy, uv, yq and actionlint (as
-  # cargo-nextest and cargo-deny below) each have their per-architecture
-  # sha256 pinned in their own fragment beside the version and
-  # verified at build; the refresh writes the digests with the version
-  # (resolve_latest.py, TOOL_DIGESTS; vergil-project/.github#1165,
-  # vergil-containers#945, #974).
-  shellcheck:  {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball URL embeds the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
-  shfmt:       {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary URL embeds the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
+  # hadolint, opentofu, nfpm, scorecard, trivy, uv, yq, actionlint,
+  # shellcheck and shfmt (as cargo-nextest and cargo-deny below) each have
+  # their per-architecture sha256 pinned in their own fragment beside the
+  # version and verified at build; the refresh writes the digests with the
+  # version (resolve_latest.py, TOOL_DIGESTS; vergil-project/.github#1165,
+  # vergil-containers#945, #974, #994). shellcheck and shfmt publish no
+  # checksums, so the refresh hashes their release assets itself, trust on
+  # first sight.
+  shellcheck:  {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball URL embeds the version, and its per-architecture sha256 is pinned in source beside it (#994) and verified at build; upstream publishes no checksums, so the daily upstream-refresh job in ops.yml floats the version and writes the digests it computes from the release tarballs (trust on first sight) in the same PR.", state: auto-managed, tracking_issue: null}
+  shfmt:       {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary URL embeds the version, and its per-architecture sha256 is pinned in source beside it (#994) and verified at build; upstream publishes no checksums, so the daily upstream-refresh job in ops.yml floats the version and writes the digests it computes from the release binaries (trust on first sight) in the same PR.", state: auto-managed, tracking_issue: null}
   actionlint:  {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball URL embeds the version, and its per-architecture sha256 is pinned in source beside it (#974) and verified at build; the daily upstream-refresh job in ops.yml floats the version and writes the digests from the tarball's line in the release's actionlint_<version>_checksums.txt in the same PR.", state: auto-managed, tracking_issue: null}
   git-cliff:   {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release tarball + per-version sha512 embed the version; floated to the leading edge by the daily upstream-refresh job in ops.yml.", state: auto-managed, tracking_issue: null}
   hadolint:    {constraint: "latest, auto-bumped daily", inducing_release: null, deterministic: false, reason: "auto-managed (#435) — GitHub release binary URL embeds the version, and its per-architecture sha256 is pinned in source beside it (#945) and verified at build; the daily upstream-refresh job in ops.yml floats the version and writes the digests from the asset's line in the release's checksums.sha256 in the same PR.", state: auto-managed, tracking_issue: null}

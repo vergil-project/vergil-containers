@@ -18,11 +18,14 @@ release in another major raises `MajorVersionError` before anything is written
 (#914).
 
 **Digests in source.** A prebuilt tool in TOOL_DIGESTS (cargo-nextest,
-cargo-deny, hadolint, opentofu, nfpm, trivy, scorecard, uv, yq, actionlint)
-also has its per-architecture sha256 pinned in its fragment,
+cargo-deny, hadolint, opentofu, nfpm, trivy, scorecard, uv, yq, actionlint,
+shellcheck, shfmt) also has its per-architecture sha256 pinned in its fragment,
 `ARG <STEM>_SHA256_AMD64=` and `_ARM64=` (epic vergil-project/.github#1165,
-spec §6.3; vergil-containers#945, #974), and the image build verifies against those, not
-against a checksum it downloads. Each such fragment pins exactly one tool, so
+spec §6.3; vergil-containers#945, #974, #994), and the image build verifies
+against those, not against a checksum it downloads. A tool whose release
+publishes no checksum (shellcheck, shfmt) has its digests computed by the
+refresh from the release asset itself, trust on first sight: once pinned, any
+later change to that asset fails the build. Each such fragment pins exactly one tool, so
 the refresh's path fence ties each digest to its own tool's version. `--write`
 resolves them from the release's checksum files at the version it writes and
 writes versions and digests together, all or nothing, so a refresh PR shows
@@ -41,6 +44,7 @@ and never touch the network.
 """
 from __future__ import annotations
 
+import hashlib
 import re
 import subprocess
 import sys
@@ -149,7 +153,10 @@ ARCHES = ("AMD64", "ARM64")
 #             file with one column per algorithm, in the order a second file
 #             (`hashes_order_url`) lists them, one name a line; the SHA-256
 #             column is found from that order (parse_checksum_columns).
-LAYOUTS = ("single", "list", "columns")
+#   asset   - no checksum file: the release publishes none, so `checksum_urls`
+#             names the asset itself, which the refresh downloads and hashes
+#             (fetch_asset), trust on first sight (vergil-containers#994).
+LAYOUTS = ("single", "list", "columns", "asset")
 
 
 @dataclass(frozen=True)
@@ -157,8 +164,9 @@ class DigestSource:
     """Where a prebuilt tool's release publishes each architecture's sha256.
 
     `checksum_urls` maps each of ARCHES to the URL template of the release's
-    checksum file for that architecture's asset, and `assets` to the asset's
-    file name; both take `{version}`, the bare `x.y.z` of the ARG. `layout`
+    checksum file for that architecture's asset (for the `asset` layout, of the
+    asset itself), and `assets` to the asset's file name; both take
+    `{version}`, the bare `x.y.z` of the ARG. `layout`
     (one of LAYOUTS) says how the file is laid out; a `columns` source also
     names `hashes_order_url`, the template of its algorithm order file."""
 
@@ -181,6 +189,13 @@ def _release_list(checksum_url: str, assets: dict[str, str]) -> DigestSource:
     """A DigestSource whose release publishes one `list` checksum file,
     `checksum_url`, for every architecture's asset."""
     return DigestSource(checksum_urls={arch: checksum_url for arch in ARCHES}, assets=assets, layout="list")
+
+
+def _release_assets(download: str, assets: dict[str, str]) -> DigestSource:
+    """A DigestSource whose release publishes no checksum: the refresh hashes
+    each architecture's asset, `download` + its name, itself."""
+    return DigestSource(checksum_urls={arch: download + asset for arch, asset in assets.items()},
+                        assets=assets, layout="asset")
 
 # tool → its DigestSource, for every prebuilt tool whose per-architecture
 # sha256 is pinned in source beside its version (epic vergil-project/.github
@@ -246,6 +261,14 @@ TOOL_DIGESTS = {
     "actionlint": _release_list(
         "https://github.com/rhysd/actionlint/releases/download/v{version}/actionlint_{version}_checksums.txt",
         {"AMD64": "actionlint_{version}_linux_amd64.tar.gz", "ARM64": "actionlint_{version}_linux_arm64.tar.gz"}),
+    # shellcheck and shfmt publish no checksums, so the refresh hashes each
+    # asset itself (vergil-containers#994).
+    "shellcheck": _release_assets(
+        "https://github.com/koalaman/shellcheck/releases/download/v{version}/",
+        {"AMD64": "shellcheck-v{version}.linux.x86_64.tar.xz", "ARM64": "shellcheck-v{version}.linux.aarch64.tar.xz"}),
+    "shfmt": _release_assets(
+        "https://github.com/mvdan/sh/releases/download/v{version}/",
+        {"AMD64": "shfmt_v{version}_linux_amd64", "ARM64": "shfmt_v{version}_linux_arm64"}),
 }
 
 # A release tag page (`.../releases/tag/<tag>`) or a release asset
@@ -462,6 +485,40 @@ def _curl_text(url: str) -> str:
             raise ResolutionError(f"{url}: unreadable checksum body: {exc}") from exc
 
 
+def _curl_hashes(url: str) -> dict[str, str]:
+    """Default asset fetcher: GET `url` with curl (retrying transient errors,
+    failing on an HTTP error) into a file, and return its digests,
+    {"sha256": <hex>, "sha512": <hex>}. Raises ResolutionError on any curl
+    failure, an unreadable file or an empty body."""
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "asset"
+        try:
+            subprocess.run(
+                ["curl", "-fsSL", "--retry", "5", "--retry-all-errors", "--retry-delay", "2",
+                 url, "-o", str(out)],
+                capture_output=True,
+                text=True,
+                timeout=600,
+                check=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            raise ResolutionError(f"curl failed fetching {url}: {exc.stderr.strip() or exc}") from exc
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise ResolutionError(f"curl failed fetching {url}: {exc}") from exc
+        sha256, sha512 = hashlib.sha256(), hashlib.sha512()
+        try:
+            with out.open("rb") as body:
+                for chunk in iter(lambda: body.read(1 << 20), b""):
+                    sha256.update(chunk)
+                    sha512.update(chunk)
+            size = out.stat().st_size
+        except OSError as exc:
+            raise ResolutionError(f"{url}: unreadable asset: {exc}") from exc
+        if size == 0:
+            raise ResolutionError(f"{url}: the asset is empty")
+        return {"sha256": sha256.hexdigest(), "sha512": sha512.hexdigest()}
+
+
 def parse_checksum(where: str, text: str, asset: str) -> str:
     """The sha256 in a release checksum file: one line, holding the digest
     alone or `<digest>  <file>` (a leading `*` on the file, binary mode, is
@@ -528,11 +585,13 @@ def parse_checksum_columns(where: str, text: str, order: str, asset: str) -> str
     return _hex_digest(where, rows[0][column])
 
 
-def resolve_digests(tool: str, version: str, fetch=_curl_text) -> dict[str, str]:
+def resolve_digests(tool: str, version: str, fetch=_curl_text, fetch_asset=_curl_hashes) -> dict[str, str]:
     """Resolve `tool`'s per-architecture sha256 at `version` from its release's
     checksum files (TOOL_DIGESTS) → {"AMD64": <hex>, "ARM64": <hex>}. `fetch`
-    takes a URL and returns its body as text. A missing or malformed checksum
-    raises ResolutionError naming the tool and the architecture."""
+    takes a URL and returns its body as text; `fetch_asset`, used for the
+    `asset` layout only, takes an asset's URL and returns its digests
+    (_curl_hashes). A missing or malformed checksum, or an asset that cannot
+    be fetched, raises ResolutionError naming the tool and the architecture."""
     source = TOOL_DIGESTS.get(tool)
     if source is None:
         raise ResolutionError(f"{tool}: no digest source in TOOL_DIGESTS")
@@ -559,6 +618,13 @@ def resolve_digests(tool: str, version: str, fetch=_curl_text) -> dict[str, str]
             raise ResolutionError(f"{where}: TOOL_DIGESTS names no checksum for this architecture")
         url = source.checksum_urls[arch].format(version=version)
         asset = source.assets[arch].format(version=version)
+        if source.layout == "asset":
+            try:
+                hashes = fetch_asset(url)
+            except ResolutionError as exc:
+                raise ResolutionError(f"{where}: no asset: {exc}") from exc
+            digests[arch] = _hex_digest(f"{where} ({url})", hashes.get("sha256", ""))
+            continue
         text = body(where, url)
         if source.layout == "single":
             digests[arch] = parse_checksum(f"{where} ({url})", text, asset)
@@ -628,7 +694,7 @@ def write(docker_root: Path, resolved: dict[str, str],
 
 
 def main(argv: list[str], docker_root: Path | None = None,
-         fetch=_curl_location, fetch_text=_curl_text) -> int:
+         fetch=_curl_location, fetch_text=_curl_text, fetch_asset=_curl_hashes) -> int:
     """Resolve every tool's latest version, and every TOOL_DIGESTS tool's
     digests at that version, before writing anything; print them, or with
     `--write` write them (see write). Any failed lookup raises ResolutionError
@@ -636,7 +702,8 @@ def main(argv: list[str], docker_root: Path | None = None,
     docker_root = Path(__file__).resolve().parent.parent if docker_root is None else docker_root
     resolved = resolve_all(fetch=fetch)
     workflow_resolved = resolve_all(WORKFLOW_PIN_REPOS, fetch=fetch)
-    digests = {tool: resolve_digests(tool, resolved[tool], fetch=fetch_text) for tool in TOOL_DIGESTS}
+    digests = {tool: resolve_digests(tool, resolved[tool], fetch=fetch_text, fetch_asset=fetch_asset)
+               for tool in TOOL_DIGESTS}
     if "--write" not in argv:
         for tool, ver in sorted({**resolved, **workflow_resolved}.items()):
             print(f"{tool}\t{ver}")

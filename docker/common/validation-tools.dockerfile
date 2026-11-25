@@ -3,13 +3,13 @@
 # Each tool uses different naming conventions for its release artifacts.
 ARG TARGETARCH
 
-ARG SHELLCHECK_VERSION=0.11.0
-ARG SHFMT_VERSION=3.14.1
 ARG GIT_CLIFF_VERSION=2.14.2
 
-# hadolint and actionlint, verified against digests pinned in source, have
-# their own fragments, common/hadolint.dockerfile (vergil-containers#945) and
-# common/actionlint.dockerfile (vergil-containers#974).
+# hadolint, actionlint, shellcheck and shfmt, verified against digests pinned
+# in source, have their own fragments: common/hadolint.dockerfile
+# (vergil-containers#945), common/actionlint.dockerfile (vergil-containers#974),
+# common/shellcheck.dockerfile and common/shfmt.dockerfile
+# (vergil-containers#994).
 #
 # Fetch retries (issue #743): every build-time curl carries
 # `--retry 5 --retry-all-errors --retry-delay 2` so a transient reset or 5xx
@@ -21,24 +21,11 @@ ARG GIT_CLIFF_VERSION=2.14.2
 # hadolint ignore=DL3003
 RUN case "${TARGETARCH}" in \
       amd64) \
-        SC_ARCH="x86_64" ; \
-        SHFMT_ARCH="amd64" ; \
         GC_ARCH="x86_64-unknown-linux-gnu" ;; \
       arm64) \
-        SC_ARCH="aarch64" ; \
-        SHFMT_ARCH="arm64" ; \
         GC_ARCH="aarch64-unknown-linux-gnu" ;; \
       *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac && \
-    SC_TARBALL="shellcheck-v${SHELLCHECK_VERSION}.linux.${SC_ARCH}.tar.xz" && \
-    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
-      "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/${SC_TARBALL}" \
-      -o "/tmp/${SC_TARBALL}" && \
-    tar -xJf "/tmp/${SC_TARBALL}" --strip-components=1 -C /usr/local/bin/ "shellcheck-v${SHELLCHECK_VERSION}/shellcheck" && \
-    rm "/tmp/${SC_TARBALL}" && \
-    curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
-      "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_${SHFMT_ARCH}" \
-      -o /usr/local/bin/shfmt && chmod +x /usr/local/bin/shfmt && \
     GC_TARBALL="git-cliff-${GIT_CLIFF_VERSION}-${GC_ARCH}.tar.gz" && \
     curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
       "https://github.com/orhun/git-cliff/releases/download/v${GIT_CLIFF_VERSION}/${GC_TARBALL}" \
