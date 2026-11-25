@@ -3786,8 +3786,11 @@ version; <code>docker/versions/test_package_cache_warm.py</code> enforces it.</p
 <h3 id="token">Token<a class="headerlink" href="#token" title="Permanent link">&para;</a></h3>
 <p>The default <code>GITHUB_TOKEN</code> can list and preview. If real deletion of org-owned
 package versions fails with a permissions error, provision a PAT with
-<code>delete:packages</code> and store it as the secret <code>GHCR_CLEANUP_TOKEN</code> — the
-workflow prefers it when present and falls back to <code>GITHUB_TOKEN</code> otherwise.</p>
+<code>delete:packages</code> and store it as <code>GHCR_CLEANUP_TOKEN</code> in the <code>automation</code>
+environment, never as a repository or organization secret: the token can write,
+so it lives only in that environment, which only <code>develop</code> and <code>main</code> may deploy
+to. The <code>cleanup</code> and <code>reap-aliases</code> jobs declare the environment to read it;
+each prefers it when present and falls back to <code>GITHUB_TOKEN</code> otherwise.</p>
 
 
 
