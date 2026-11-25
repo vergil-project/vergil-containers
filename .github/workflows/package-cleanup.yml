@@ -29,9 +29,10 @@ name: Package cleanup
 # Token: every GHCR call in this workflow uses GITHUB_TOKEN, with
 # `packages: write` on the two deleting jobs and `packages: read` on
 # `verify-deletes`. Identity exception (epic vergil-project/.github#1494):
-# GitHub Packages does not accept App installation tokens, and GITHUB_TOKEN
-# is the documented token for a workflow repository's own packages, so these
-# jobs cannot run as the org automation App. Run 45635208056 tried the App:
+# GitHub Packages refuses App installation tokens for deletes and untags,
+# though the App can list and read packages, and GITHUB_TOKEN is the
+# documented token for a workflow repository's own packages, so these jobs
+# cannot run as the org automation App. Run 45635208056 tried the App:
 # every delete came back "wasn't found" and the one untag came back 403
 # (vergil-containers#1050). Run 45056026741 made 10,400 deletes with
 # GITHUB_TOKEN and none came back "wasn't found" (vergil-containers#1054).
@@ -171,9 +172,10 @@ jobs:
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          # Identity exception: GitHub Packages does not accept App
-          # installation tokens, and GITHUB_TOKEN is the documented token for
-          # a workflow repository's own packages (see the header).
+          # Identity exception: GitHub Packages refuses App installation
+          # tokens for deletes and untags, though the App can list and read
+          # packages, and GITHUB_TOKEN is the documented token for a workflow
+          # repository's own packages (see the header).
           token: ${{ secrets.GITHUB_TOKEN }}
           delete-untagged: true
           # Same age floor as attempt 2 below (documented there).
@@ -196,9 +198,10 @@ jobs:
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          # Identity exception: GitHub Packages does not accept App
-          # installation tokens, and GITHUB_TOKEN is the documented token for
-          # a workflow repository's own packages (see the header).
+          # Identity exception: GitHub Packages refuses App installation
+          # tokens for deletes and untags, though the App can list and read
+          # packages, and GITHUB_TOKEN is the documented token for a workflow
+          # repository's own packages (see the header).
           token: ${{ secrets.GITHUB_TOKEN }}
           delete-untagged: true
           # The publish pipeline pushes each per-arch image by digest, untagged,
@@ -292,9 +295,10 @@ jobs:
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          # Identity exception: GitHub Packages does not accept App
-          # installation tokens, and GITHUB_TOKEN is the documented token for
-          # a workflow repository's own packages (see the header).
+          # Identity exception: GitHub Packages refuses App installation
+          # tokens for deletes and untags, though the App can list and read
+          # packages, and GITHUB_TOKEN is the documented token for a workflow
+          # repository's own packages (see the header).
           token: ${{ secrets.GITHUB_TOKEN }}
           # Same inputs as attempt 2 below, where each one is documented.
           older-than: ${{ matrix.older_than }}
@@ -317,9 +321,10 @@ jobs:
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          # Identity exception: GitHub Packages does not accept App
-          # installation tokens, and GITHUB_TOKEN is the documented token for
-          # a workflow repository's own packages (see the header).
+          # Identity exception: GitHub Packages refuses App installation
+          # tokens for deletes and untags, though the App can list and read
+          # packages, and GITHUB_TOKEN is the documented token for a workflow
+          # repository's own packages (see the header).
           token: ${{ secrets.GITHUB_TOKEN }}
           # Only images older than the window are eligible; in-window aliases
           # (and every rolling tag) are left for repoint rollback.
