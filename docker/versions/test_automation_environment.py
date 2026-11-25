@@ -87,11 +87,6 @@ APP_KEY_READ = re.compile(_NAMED.format(names="|".join(APP_KEYS)))
 # A read of the whole secrets context, as in toJSON(secrets).
 WHOLE_SECRETS = re.compile(r"\bsecrets\b(?!\s*[.\[])")
 EXPRESSION = re.compile(r"\$\{\{(.*?)\}\}", re.DOTALL)
-# The one conditional form a key-reading job may use: the automation
-# environment when the condition holds, none otherwise.
-CONDITIONAL_ENVIRONMENT = re.compile(
-    r"\$\{\{\s*(?P<condition>[^'\"|]+?)\s*&&\s*'" + ENVIRONMENT + r"'\s*\|\|\s*''\s*\}\}"
-)
 
 
 def _expressions(node, key=None):
@@ -121,11 +116,7 @@ def _declares_the_environment(job: dict) -> bool:
     environment = job.get("environment")
     if isinstance(environment, dict):
         environment = environment.get("name")
-    if environment == ENVIRONMENT:
-        return True
-    return isinstance(environment, str) and bool(
-        CONDITIONAL_ENVIRONMENT.fullmatch(environment)
-    )
+    return environment == ENVIRONMENT
 
 
 def _map_refusal(root, job: dict) -> str | None:
@@ -245,7 +236,6 @@ APP_KEY_MAP = {
     "APP_CLIENT_ID": "${{ secrets.APP_CLIENT_ID }}",
     "APP_PRIVATE_KEY": "${{ secrets.APP_PRIVATE_KEY }}",
 }
-CONDITIONAL = "\"${{ inputs.app-registry-login && 'automation' || '' }}\""
 
 
 def _caller(uses="./.github/workflows/callee.yml", secrets=None) -> dict:
@@ -265,10 +255,6 @@ def test_map_allowed_by_name_to_a_local_environment_callee(tmp_path):
 def test_map_of_one_app_key_allowed(tmp_path):
     caller = _caller(secrets={"APP_CLIENT_ID": "${{ secrets.APP_CLIENT_ID }}"})
     assert _map_refusal(_with_callee(tmp_path), caller) is None
-
-
-def test_map_allowed_to_a_conditional_environment_callee(tmp_path):
-    assert _map_refusal(_with_callee(tmp_path, CONDITIONAL), _caller()) is None
 
 
 def test_map_without_a_write_secret_is_not_checked(tmp_path):
@@ -349,11 +335,9 @@ def test_map_to_another_workflow_or_ref_refused(tmp_path, uses):
     "environment",
     [
         "other",
-        "\"${{ inputs.app-registry-login && 'other' || '' }}\"",
-        "\"${{ inputs.app-registry-login || 'automation' }}\"",
         "{name: other}",
     ],
-    ids=["other", "conditional-other", "not-the-one-if-form", "mapping-other"],
+    ids=["other", "mapping-other"],
 )
 def test_map_to_a_reader_in_another_environment_refused(tmp_path, environment):
     assert _map_refusal(_with_callee(tmp_path, environment), _caller())
