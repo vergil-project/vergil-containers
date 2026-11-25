@@ -78,10 +78,6 @@ carries them because it is built `FROM` `dev-base`:
 - **`path-defaults.dockerfile`** — Sets PATH for `uv tool install`
   entry points across GitHub Actions and local contexts.
 - **`github-cli.dockerfile`** — GitHub CLI via the official apt repo.
-- **`validation-tools.dockerfile`** — Architecture-aware binary
-  install of git-cliff.
-  Uses `TARGETARCH` (injected by Docker Buildx) to select the correct
-  binary for amd64 or arm64.
 - **`hadolint.dockerfile`** — hadolint, the Dockerfile linter, from its
   release binary.
 - **`actionlint.dockerfile`** — actionlint, the GitHub Actions workflow
@@ -90,6 +86,8 @@ carries them because it is built `FROM` `dev-base`:
   its release tarball.
 - **`shfmt.dockerfile`** — shfmt, the shell script formatter, from its
   release binary.
+- **`git-cliff.dockerfile`** — git-cliff, the changelog generator, from its
+  release tarball.
 - **`scorecard.dockerfile`** — The OpenSSF Scorecard CLI, from its release
   tarball.
 - **`security-tools.dockerfile`** — trivy, from its release tarball.
@@ -184,22 +182,20 @@ installed. Each verified download follows a three-step pattern: download the
 artifact to a temporary location, verify it, then extract and install. The
 build fails immediately if a checksum does not match.
 
-Most are verified against a **digest pinned in source**: one SHA-256 per
+Each is verified against a **digest pinned in source**: one SHA-256 per
 architecture, an `ARG <TOOL>_SHA256_AMD64=` and `_ARM64=` line beside the
 tool's `ARG <TOOL>_VERSION=` in its own fragment. The daily upstream refresh
 writes the digests from the release's published checksums in the same run
-that moves the version (for a tool whose release publishes none, from the
-release asset itself, which the refresh downloads and hashes: trust on first
-sight), so every digest change shows in a refresh PR beside
-its version change (see
-[Tool Version Management](../operations/version-management.md)). The rest
-are verified against the checksums file the release publishes, downloaded
-at build time.
+that moves the version (for a tool whose release publishes no SHA-256, from
+the release asset itself, which the refresh downloads and hashes), so every
+digest change shows in a refresh PR beside its version change (see
+[Tool Version Management](../operations/version-management.md)). No build
+downloads a checksum file beside the artifact.
 
 | Tool | Verification | Algorithm |
 | --- | --- | --- |
 | actionlint | Digest pinned in source | SHA-256 |
-| git-cliff | Release per-artifact sidecar file | SHA-512 |
+| git-cliff | Digest pinned in source (computed by the refresh) | SHA-256 |
 | hadolint | Digest pinned in source | SHA-256 |
 | nfpm | Digest pinned in source | SHA-256 |
 | opentofu | Digest pinned in source | SHA-256 |
@@ -213,14 +209,16 @@ at build time.
 The rust image's cargo-nextest and cargo-deny are verified against digests
 pinned in source the same way (see [Rust](../languages/rust.md)).
 
-A checksums file downloaded at build time protects against corrupted
-downloads, CDN integrity failures, and partial compromise of release
-artifacts. The published images also carry SLSA build provenance
-attestation.
+A digest pinned in source protects against corrupted downloads, CDN
+integrity failures, and a release artifact replaced after it was pinned,
+together with any checksum file beside it. The published images also carry
+SLSA build provenance attestation.
 
-shellcheck and shfmt publish no checksums, so their digests are trusted on
-first sight: the refresh pins what the release serves when it moves the
-version, and any later change to a pinned asset fails the build.
+git-cliff publishes only a SHA-512 per tarball, so the refresh checks each
+tarball against it before it pins the tarball's SHA-256. shellcheck and shfmt
+publish no checksums, so their digests are trusted on first sight: the
+refresh pins what the release serves when it moves the version. For all
+three, any later change to a pinned asset fails the build.
 
 ## Publishing
 

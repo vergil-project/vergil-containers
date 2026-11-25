@@ -62,7 +62,7 @@ def _expand(file: Path, docker: Path, stack: tuple[Path, ...], found: set[str]) 
 
 def fragments_of(template: Path) -> frozenset[str]:
     """Every fragment `template` includes, directly or through another fragment,
-    as repo-relative paths ("docker/common/validation-tools.dockerfile").
+    as repo-relative paths ("docker/common/hadolint.dockerfile").
 
     `template` is `<repo>/docker/<key>/Dockerfile.template`; include paths
     resolve against its `docker/` directory, as in generate.sh. Raises
