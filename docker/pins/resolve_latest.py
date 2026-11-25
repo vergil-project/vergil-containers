@@ -18,10 +18,10 @@ release in another major raises `MajorVersionError` before anything is written
 (#914).
 
 **Digests in source.** A prebuilt tool in TOOL_DIGESTS (cargo-nextest,
-cargo-deny, hadolint, opentofu, nfpm, trivy, scorecard, uv, yq) also has its
-per-architecture sha256 pinned in its fragment, `ARG <STEM>_SHA256_AMD64=` and
-`_ARM64=` (epic vergil-project/.github#1165, spec §6.3;
-vergil-containers#945), and the image build verifies against those, not
+cargo-deny, hadolint, opentofu, nfpm, trivy, scorecard, uv, yq, actionlint)
+also has its per-architecture sha256 pinned in its fragment,
+`ARG <STEM>_SHA256_AMD64=` and `_ARM64=` (epic vergil-project/.github#1165,
+spec §6.3; vergil-containers#945, #974), and the image build verifies against those, not
 against a checksum it downloads. Each such fragment pins exactly one tool, so
 the refresh's path fence ties each digest to its own tool's version. `--write`
 resolves them from the release's checksum files at the version it writes and
@@ -241,6 +241,11 @@ TOOL_DIGESTS = {
         layout="columns",
         hashes_order_url=f"{_YQ_DOWNLOAD}checksums_hashes_order",
     ),
+    # actionlint's actionlint_<version>_checksums.txt lists every asset of the
+    # release, `<digest>  <asset>` (vergil-containers#974).
+    "actionlint": _release_list(
+        "https://github.com/rhysd/actionlint/releases/download/v{version}/actionlint_{version}_checksums.txt",
+        {"AMD64": "actionlint_{version}_linux_amd64.tar.gz", "ARM64": "actionlint_{version}_linux_arm64.tar.gz"}),
 }
 
 # A release tag page (`.../releases/tag/<tag>`) or a release asset

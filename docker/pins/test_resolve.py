@@ -386,7 +386,8 @@ def _nextest_fragment(tmp_path, version="0.9.152", amd64=HEX_A, arm64=HEX_B, ext
 
 # The prebuilt tools whose digests are pinned in source (epic
 # vergil-project/.github#1165, vergil-containers#945).
-DIGEST_TOOLS = {"cargo-nextest", "cargo-deny", "hadolint", "opentofu", "nfpm", "trivy", "scorecard", "uv", "yq"}
+DIGEST_TOOLS = {"cargo-nextest", "cargo-deny", "hadolint", "opentofu", "nfpm", "trivy", "scorecard", "uv", "yq",
+                "actionlint"}
 
 
 def test_tool_digests_cover_only_registered_tools():
@@ -655,8 +656,12 @@ def test_resolve_digests_real_layouts():
             "yq_linux_arm64  df1b  " + HEX_A + "  9f\nyq_linux_amd64  20e4  " + HEX_B + "  4a\n"
             "yq_linux_amd64.tar.gz  0000  " + HEX_C + "  00\n",
         "https://github.com/mikefarah/yq/releases/download/v4.54.3/checksums_hashes_order": "CRC32\nSHA-256\nMD5\n",
+        "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_checksums.txt":
+            f"{HEX_C}  actionlint_1.7.12_linux_386.tar.gz\n{HEX_B}  actionlint_1.7.12_linux_amd64.tar.gz\n"
+            f"{HEX_A}  actionlint_1.7.12_linux_arm64.tar.gz\n{HEX_C}  actionlint_1.7.12_linux_armv6.tar.gz\n",
     }
     fetch = _text_fetch(bodies)
+    assert rl.resolve_digests("actionlint", "1.7.12", fetch=fetch) == {"AMD64": HEX_B, "ARM64": HEX_A}
     assert rl.resolve_digests("hadolint", "2.15.1", fetch=fetch) == {"AMD64": HEX_B, "ARM64": HEX_A}
     assert rl.resolve_digests("nfpm", "2.49.0", fetch=fetch) == {"AMD64": HEX_B, "ARM64": HEX_A}
     assert rl.resolve_digests("yq", "4.54.3", fetch=fetch) == {"AMD64": HEX_B, "ARM64": HEX_A}
