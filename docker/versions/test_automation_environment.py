@@ -1,12 +1,11 @@
 """Where this repo's workflows read their write-capable secrets (epic
 vergil-project/.github#1384, Task 3c: vergil-containers#1014).
 
-The automation App keys (`APP_CLIENT_ID`, `APP_PRIVATE_KEY`) and every other
-secret that can write or act (`GHCR_CLEANUP_TOKEN`, the personal access
-token package-cleanup deletes with, vergil-containers#1050) live only in the
-repo's
-`automation` deployment environment, which only `develop` and `main` may
-deploy to. A job reads an environment secret only when it declares the
+The automation App keys (`APP_CLIENT_ID`, `APP_PRIVATE_KEY`), the only
+secrets here that can write or act, live only in the repo's `automation`
+deployment environment, which only `develop` and `main` may deploy to.
+package-cleanup deletes with `GITHUB_TOKEN`, which is no environment secret
+(vergil-containers#1054), so only its `report` job reads one. A job reads an environment secret only when it declares the
 environment, so every job that reads one itself declares `environment:
 automation`.
 
@@ -47,7 +46,7 @@ import frozen
 WORKFLOWS = frozen.LIVE_ROOT / ".github" / "workflows"
 ENVIRONMENT = "automation"
 # The secrets only the automation environment holds.
-WRITE_SECRETS = ("APP_CLIENT_ID", "APP_PRIVATE_KEY", "GHCR_CLEANUP_TOKEN")
+WRITE_SECRETS = ("APP_CLIENT_ID", "APP_PRIVATE_KEY")
 SECRET_REF = re.compile(r"secrets\.(" + "|".join(WRITE_SECRETS) + r")\b")
 
 # (workflow, job) of every job that reads a write-capable secret itself.
@@ -58,10 +57,7 @@ READERS = [
     ("ops.yml", "report-nightly-rebuild-prod"),
     ("package-cache-warm.yml", "report"),
     ("package-cache-warm.yml", "warm"),
-    ("package-cleanup.yml", "cleanup"),
-    ("package-cleanup.yml", "reap-aliases"),
     ("package-cleanup.yml", "report"),
-    ("package-cleanup.yml", "verify-deletes"),
 ]
 
 # (workflow, job, reusable workflow) of every caller of an App-key workflow.
@@ -272,18 +268,16 @@ def test_map_without_a_write_secret_is_not_checked(tmp_path):
 @pytest.mark.parametrize(
     "secrets",
     [
-        {"GHCR_CLEANUP_TOKEN": "${{ secrets.GHCR_CLEANUP_TOKEN }}"},
-        {**APP_KEY_MAP, "GHCR_CLEANUP_TOKEN": "${{ secrets.GHCR_CLEANUP_TOKEN }}"},
-        {"TOKEN": "${{ secrets['GHCR_CLEANUP_TOKEN'] }}"},
+        {"TOKEN": "${{ secrets['APP_PRIVATE_KEY'] }}"},
+        {"APP_PRIVATE_KEY": "${{ secrets['APP_PRIVATE_KEY'] }}"},
         {"APP_CLIENT_ID": "${{ secrets.APP_PRIVATE_KEY }}"},
         {"KEY": "${{ secrets.APP_PRIVATE_KEY }}"},
         {"APP_CLIENT_ID": "${{ secrets.APP_CLIENT_ID || secrets.GITHUB_TOKEN }}"},
         {**APP_KEY_MAP, "OTHER": "${{ secrets.OTHER }}"},
     ],
     ids=[
-        "other-write-secret",
-        "app-keys-plus-other-write-secret",
         "bracket-form",
+        "bracket-form-own-name",
         "swapped-name",
         "new-name",
         "expression",

@@ -16,8 +16,7 @@ id: <id>") and those answered "not found", and fails when:
 - every planned delete of the leg was answered "not found": the token could
   not delete; or
 - a version answered "not found" is still among the package's active
-  versions, listed through the Packages API with the cleanup token: the
-  delete did not happen.
+  versions, listed through the Packages API: the delete did not happen.
 
 A version answered "not found" that is really gone was deleted by someone
 else between the action's listing and its delete (the race of issue #911),
@@ -25,8 +24,9 @@ and passes. A dry run logs its planned deletes but never calls delete, so it
 has no "not found" lines and passes.
 
 Run from the workflow with the environment GITHUB_TOKEN (actions: read, for
-the logs), CLEANUP_TOKEN (the Packages API), GITHUB_REPOSITORY,
-GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT and PACKAGE_OWNER. Transient API failures
+the logs, and packages: read, for the Packages API; the legs delete with the
+same token, vergil-containers#1054), GITHUB_REPOSITORY, GITHUB_RUN_ID,
+GITHUB_RUN_ATTEMPT and PACKAGE_OWNER. Transient API failures
 (5xx, 429, a dropped connection, a log not yet published) are retried with a
 back-off; one that persists fails the check, never passes it.
 """
@@ -87,9 +87,10 @@ def judge(leg: str, package: str, log: LegLog, present: Callable[[str, int], boo
             f"{len(log.planned)} deletes of package {package} were answered "
             "\"not found\" (\"wasn't found while trying to delete it\"), so the "
             "token could not delete them. GHCR answers 404 when the token may "
-            "not delete the package: check that GHCR_CLEANUP_TOKEN is a personal "
-            "access token (classic) with delete:packages whose owner can delete "
-            "this package (vergil-containers#1050, #1051)."
+            "not delete the package: check that the legs use GITHUB_TOKEN with "
+            "packages: write, and that the package grants this repository "
+            "access under Manage Actions access (vergil-containers#1050, #1051, "
+            "#1054)."
         ]
     still = sorted(i for i in log.not_found if present(package, i))
     if not still:
@@ -100,7 +101,8 @@ def judge(leg: str, package: str, log: LegLog, present: Callable[[str, int], boo
         f"{len(still)} of the {len(log.not_found)} deletes of package {package} "
         "answered \"not found\" are still present (version ids "
         f"{shown}), so the token could not delete them. Check "
-        "GHCR_CLEANUP_TOKEN's access to this package (vergil-containers#1051)."
+        "this repository's GITHUB_TOKEN access to this package "
+        "(vergil-containers#1051)."
     ]
 
 
@@ -177,9 +179,9 @@ def _log(repo: str, job_id: int, token: str) -> str:
 def main() -> int:
     env = os.environ
     repo, owner = env["GITHUB_REPOSITORY"], env["PACKAGE_OWNER"]
-    actions_token, cleanup_token = env["GITHUB_TOKEN"], env["CLEANUP_TOKEN"]
-    if not actions_token or not cleanup_token:
-        print("::error title=Delete check misconfigured::GITHUB_TOKEN and CLEANUP_TOKEN must both be set.")
+    token = env.get("GITHUB_TOKEN", "")
+    if not token:
+        print("::error title=Delete check misconfigured::GITHUB_TOKEN must be set.")
         return 1
 
     active: dict[str, set[int]] = {}
@@ -195,7 +197,7 @@ def main() -> int:
                     f"{API}/orgs/{owner}/packages/container/{package}/versions"
                     f"?state=active&per_page=100&page={page}"
                 )
-                status, _, body = _request(url, cleanup_token)
+                status, _, body = _request(url, token)
                 if status != 200:
                     raise RuntimeError(f"GET {url}: HTTP {status}")
                 batch = json.loads(body)
@@ -206,7 +208,7 @@ def main() -> int:
         return version_id in active[package]
 
     legs = []
-    for job in _jobs(repo, env["GITHUB_RUN_ID"], env["GITHUB_RUN_ATTEMPT"], actions_token):
+    for job in _jobs(repo, env["GITHUB_RUN_ID"], env["GITHUB_RUN_ATTEMPT"], token):
         if match := LEG.match(job["name"]):
             legs.append((job, match["package"]))
     if not legs:
@@ -221,7 +223,7 @@ def main() -> int:
         if job["status"] != "completed":
             errors.append(f"::error title=Delete check ran too early::{job['name']} has not finished ({job['status']}).")
             continue
-        log = parse_log(_log(repo, job["id"], actions_token))
+        log = parse_log(_log(repo, job["id"], token))
         found = judge(job["name"], package, log, present)
         print(f"{job['name']}: {len(log.planned)} planned deletes, {len(log.not_found)} answered \"not found\"")
         errors.extend(found)
