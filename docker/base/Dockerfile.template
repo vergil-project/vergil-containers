@@ -53,6 +53,8 @@ RUN apt-get update && \
 # @include common/validation-tools.dockerfile
 # @include common/hadolint.dockerfile
 # @include common/actionlint.dockerfile
+# @include common/shellcheck.dockerfile
+# @include common/shfmt.dockerfile
 # @include common/scorecard.dockerfile
 # @include common/security-tools.dockerfile
 # @include common/opentofu.dockerfile

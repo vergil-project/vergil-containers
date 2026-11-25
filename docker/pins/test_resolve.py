@@ -274,13 +274,15 @@ def _refresh_fetch(registry_tag: str):
 
 
 def _refresh_sums():
-    """Every digest tool's checksums at the 1.0.1 the refresh tree floats it to."""
-    return _text_fetch(_all_sums({"AMD64": HEX_A, "ARM64": HEX_B}, version="1.0.1"))
+    """Every digest tool's checksums at the 1.0.1 the refresh tree floats it
+    to, as main's fetch_text and fetch_asset keywords."""
+    bodies = _all_sums({"AMD64": HEX_A, "ARM64": HEX_B}, version="1.0.1")
+    return {"fetch_text": _text_fetch(bodies), "fetch_asset": _asset_fetch(bodies)}
 
 
 def test_refresh_moves_the_registry_within_its_major(tmp_path, capsys):
     fragment = _refresh_tree(tmp_path, "3.1.2")
-    assert rl.main(["--write"], docker_root=tmp_path, fetch_text=_refresh_sums(), fetch=_refresh_fetch("v3.1.3")) == 0
+    assert rl.main(["--write"], docker_root=tmp_path, **_refresh_sums(), fetch=_refresh_fetch("v3.1.3")) == 0
     assert (tmp_path / "pins" / "workflow-images.txt").read_text() == "REGISTRY_VERSION=3.1.3\n"
     assert "ARG TRIVY_VERSION=1.0.1\n" in fragment.read_text()
     assert "bumped registry: 3.1.2 -> 3.1.3" in capsys.readouterr().out
@@ -290,14 +292,14 @@ def test_refresh_fails_on_a_new_major_before_writing_anything(tmp_path):
     fragment = _refresh_tree(tmp_path, "3.1.2")
     before = fragment.read_text()
     with pytest.raises(rl.MajorVersionError):
-        rl.main(["--write"], docker_root=tmp_path, fetch_text=_refresh_sums(), fetch=_refresh_fetch("v4.0.0"))
+        rl.main(["--write"], docker_root=tmp_path, **_refresh_sums(), fetch=_refresh_fetch("v4.0.0"))
     assert fragment.read_text() == before
     assert (tmp_path / "pins" / "workflow-images.txt").read_text() == "REGISTRY_VERSION=3.1.2\n"
 
 
 def test_refresh_dry_run_lists_the_registry(tmp_path, capsys):
     _refresh_tree(tmp_path, "3.1.2")
-    assert rl.main([], docker_root=tmp_path, fetch_text=_refresh_sums(), fetch=_refresh_fetch("v3.1.3")) == 0
+    assert rl.main([], docker_root=tmp_path, **_refresh_sums(), fetch=_refresh_fetch("v3.1.3")) == 0
     assert "registry\t3.1.3\n" in capsys.readouterr().out
 
 # --- Pinned digests (epic vergil-project/.github#1165, spec §6.3) ---------------
@@ -322,7 +324,17 @@ def _nextest_sums(digests, version="0.9.153"):
 
 def _text_fetch(bodies):
     def fetch(url):
-        if url not in bodies:
+        if url not in bodies or not isinstance(bodies[url], str):
+            raise rl.ResolutionError(f"curl failed fetching {url}: HTTP 404")
+        return bodies[url]
+    return fetch
+
+
+def _asset_fetch(bodies):
+    """An asset fetch (rl._curl_hashes's shape) serving the digests in
+    `bodies` that are an `asset` tool's (a dict, not a checksum file's text)."""
+    def fetch(url):
+        if url not in bodies or not isinstance(bodies[url], dict):
             raise rl.ResolutionError(f"curl failed fetching {url}: HTTP 404")
         return bodies[url]
     return fetch
@@ -349,6 +361,8 @@ def _sums(tool, version, digests):
             bodies[source.hashes_order_url.format(version=version)] = "\n".join(YQ_ORDER) + "\n"
         elif source.layout == "list":
             bodies[url] = bodies.get(url, f"{HEX_C}  decoy-{asset}.sbom.json\n") + f"{digest}  {asset}\n"
+        elif source.layout == "asset":
+            bodies[url] = {"sha256": digest, "sha512": "0" * 128}
         else:
             bodies[url] = f"{digest}  {asset}\n"
     return bodies
@@ -366,11 +380,13 @@ def _digest_args(tools, digests):
 
 
 def _main_sums(nextest_digests):
-    """A checksum fetch for _main_fixture: cargo-nextest's at 0.9.153 as given,
-    and every other digest tool's at the 1.0.0 it stays at, unchanged."""
+    """The checksum fetches for _main_fixture, as main's fetch_text and
+    fetch_asset keywords: cargo-nextest's at 0.9.153 as given, and every other
+    digest tool's at the 1.0.0 it stays at, unchanged."""
     others = {url: body for tool in set(rl.TOOL_DIGESTS) - {"cargo-nextest"}
               for url, body in _sums(tool, "1.0.0", {"AMD64": HEX_A, "ARM64": HEX_B}).items()}
-    return _text_fetch({**_nextest_sums(nextest_digests), **others})
+    bodies = {**_nextest_sums(nextest_digests), **others}
+    return {"fetch_text": _text_fetch(bodies), "fetch_asset": _asset_fetch(bodies)}
 
 
 def _nextest_fragment(tmp_path, version="0.9.152", amd64=HEX_A, arm64=HEX_B, extra=""):
@@ -387,7 +403,7 @@ def _nextest_fragment(tmp_path, version="0.9.152", amd64=HEX_A, arm64=HEX_B, ext
 # The prebuilt tools whose digests are pinned in source (epic
 # vergil-project/.github#1165, vergil-containers#945).
 DIGEST_TOOLS = {"cargo-nextest", "cargo-deny", "hadolint", "opentofu", "nfpm", "trivy", "scorecard", "uv", "yq",
-                "actionlint"}
+                "actionlint", "shellcheck", "shfmt"}
 
 
 def test_tool_digests_cover_only_registered_tools():
@@ -440,7 +456,7 @@ def test_resolve_digests_malformed_checksum_raises(body, match):
 
 def test_resolve_digests_unknown_tool_raises():
     with pytest.raises(rl.ResolutionError, match="no digest source"):
-        rl.resolve_digests("shellcheck", "0.12.0", fetch=_text_fetch({}))
+        rl.resolve_digests("cargo-llvm-cov", "0.9.2", fetch=_text_fetch({}))
 
 
 def test_rewrite_digests_updates_both_arches(tmp_path):
@@ -498,7 +514,7 @@ def test_write_pins_versions_and_digests_together(tmp_path, capsys):
     other, fetch = _main_fixture(tmp_path)
     before = other.read_text()
     assert rl.main(["--write"], docker_root=tmp_path, fetch=fetch,
-                   fetch_text=_main_sums({"AMD64": HEX_C, "ARM64": HEX_A})) == 0
+                   **_main_sums({"AMD64": HEX_C, "ARM64": HEX_A})) == 0
     assert (tmp_path / "common" / "cargo-nextest.dockerfile").read_text() == (
         "ARG CARGO_NEXTEST_VERSION=0.9.153\n"
         f"ARG CARGO_NEXTEST_SHA256_AMD64={HEX_C}\n"
@@ -521,7 +537,7 @@ def test_write_refuses_a_digest_change_without_a_version_change(tmp_path, capsys
     with pytest.raises(rl.ResolutionError,
                        match="cargo-nextest 0.9.153: upstream now lists different release checksums"):
         rl.main(["--write"], docker_root=tmp_path, fetch=fetch,
-                fetch_text=_main_sums({"AMD64": HEX_C, "ARM64": HEX_B}))
+                **_main_sums({"AMD64": HEX_C, "ARM64": HEX_B}))
     assert {f: f.read_text() for f in before} == before
     assert "pinned" not in capsys.readouterr().out
 
@@ -534,7 +550,7 @@ def test_write_is_all_or_nothing(tmp_path):
     before = {nextest: nextest.read_text(), other: other.read_text()}
     with pytest.raises(rl.ResolutionError, match="cargo-nextest 0.9.153 ARM64"):
         rl.main(["--write"], docker_root=tmp_path, fetch=fetch,
-                fetch_text=_main_sums({"AMD64": HEX_C}))
+                **_main_sums({"AMD64": HEX_C}))
     assert {f: f.read_text() for f in before} == before
 
 
@@ -547,7 +563,7 @@ def test_write_restores_every_fragment_when_a_digest_rewrite_fails(tmp_path):
     before = {nextest: nextest.read_text(), other: other.read_text()}
     with pytest.raises(rl.ResolutionError, match="CARGO_NEXTEST_SHA256_ARM64"):
         rl.main(["--write"], docker_root=tmp_path, fetch=fetch,
-                fetch_text=_main_sums({"AMD64": HEX_C, "ARM64": HEX_A}))
+                **_main_sums({"AMD64": HEX_C, "ARM64": HEX_A}))
     assert {f: f.read_text() for f in before} == before
 
 
@@ -556,7 +572,7 @@ def test_main_without_write_prints_digests_and_writes_nothing(tmp_path, capsys):
     nextest = tmp_path / "common" / "cargo-nextest.dockerfile"
     before = nextest.read_text()
     assert rl.main([], docker_root=tmp_path, fetch=fetch,
-                   fetch_text=_main_sums({"AMD64": HEX_C, "ARM64": HEX_A})) == 0
+                   **_main_sums({"AMD64": HEX_C, "ARM64": HEX_A})) == 0
     assert nextest.read_text() == before
     out = capsys.readouterr().out
     assert "cargo-nextest\t0.9.153" in out
@@ -669,7 +685,8 @@ def test_resolve_digests_real_layouts():
 
 @pytest.mark.parametrize("tool", sorted(DIGEST_TOOLS))
 def test_resolve_digests_every_tool(tool):
-    assert rl.resolve_digests(tool, "1.2.3", fetch=_text_fetch(_sums(tool, "1.2.3", {"AMD64": HEX_A, "ARM64": HEX_B}))) == {
+    bodies = _sums(tool, "1.2.3", {"AMD64": HEX_A, "ARM64": HEX_B})
+    assert rl.resolve_digests(tool, "1.2.3", fetch=_text_fetch(bodies), fetch_asset=_asset_fetch(bodies)) == {
         "AMD64": HEX_A, "ARM64": HEX_B}
 
 
@@ -853,3 +870,79 @@ def test_llvm_cov_fragment_installs_locked_at_the_pinned_version():
     assert body.count("cargo install") == 1
     assert 'rm -rf "${CARGO_HOME:?}/registry"' in body
     assert "cargo llvm-cov --version" in body
+
+
+# --- Tools whose release publishes no checksum (vergil-containers#994) --------
+
+SC_DOWNLOAD = "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/"
+SHFMT_DOWNLOAD = "https://github.com/mvdan/sh/releases/download/v3.14.1/"
+
+
+def test_asset_tools_hash_the_release_asset_itself():
+    # No checksum file is fetched: each architecture's asset is fetched and
+    # its own SHA-256 pinned.
+    seen = []
+    bodies = {
+        f"{SC_DOWNLOAD}shellcheck-v0.11.0.linux.x86_64.tar.xz": {"sha256": HEX_A, "sha512": "0" * 128},
+        f"{SC_DOWNLOAD}shellcheck-v0.11.0.linux.aarch64.tar.xz": {"sha256": HEX_B, "sha512": "0" * 128},
+        f"{SHFMT_DOWNLOAD}shfmt_v3.14.1_linux_amd64": {"sha256": HEX_C, "sha512": "0" * 128},
+        f"{SHFMT_DOWNLOAD}shfmt_v3.14.1_linux_arm64": {"sha256": HEX_A, "sha512": "0" * 128},
+    }
+
+    def fetch_asset(url):
+        seen.append(url)
+        return _asset_fetch(bodies)(url)
+
+    no_text = _text_fetch({})
+    assert rl.resolve_digests("shellcheck", "0.11.0", fetch=no_text, fetch_asset=fetch_asset) == {
+        "AMD64": HEX_A, "ARM64": HEX_B}
+    assert rl.resolve_digests("shfmt", "3.14.1", fetch=no_text, fetch_asset=fetch_asset) == {
+        "AMD64": HEX_C, "ARM64": HEX_A}
+    assert seen == list(bodies)
+
+
+def test_asset_tool_without_its_asset_raises():
+    bodies = {f"{SC_DOWNLOAD}shellcheck-v0.11.0.linux.x86_64.tar.xz": {"sha256": HEX_A}}
+    with pytest.raises(rl.ResolutionError, match=r"shellcheck 0\.11\.0 ARM64: no asset"):
+        rl.resolve_digests("shellcheck", "0.11.0", fetch=_text_fetch({}), fetch_asset=_asset_fetch(bodies))
+
+
+@pytest.mark.parametrize("hashes", [{}, {"sha256": "zz"}, {"sha512": HEX_A + HEX_A}])
+def test_asset_tool_with_a_bad_digest_raises(hashes):
+    bodies = {f"{SHFMT_DOWNLOAD}shfmt_v3.14.1_linux_{arch}": hashes for arch in ("amd64", "arm64")}
+    with pytest.raises(rl.ResolutionError, match=r"shfmt 3\.14\.1 AMD64 .*is not a SHA-256"):
+        rl.resolve_digests("shfmt", "3.14.1", fetch=_text_fetch({}), fetch_asset=_asset_fetch(bodies))
+
+
+def test_curl_hashes_hashes_the_downloaded_file(monkeypatch):
+    import hashlib
+    payload = b"\x7fELF" + bytes(range(256)) * 9000
+    calls = []
+
+    def run(args, **kwargs):
+        calls.append(args)
+        Path(args[args.index("-o") + 1]).write_bytes(payload)
+
+    monkeypatch.setattr(rl.subprocess, "run", run)
+    assert rl._curl_hashes("https://x/shfmt") == {
+        "sha256": hashlib.sha256(payload).hexdigest(), "sha512": hashlib.sha512(payload).hexdigest()}
+    assert calls[0][:8] == ["curl", "-fsSL", "--retry", "5", "--retry-all-errors", "--retry-delay", "2",
+                            "https://x/shfmt"]
+
+
+def test_curl_hashes_raises_on_a_curl_failure(monkeypatch):
+    def run(args, **kwargs):
+        raise rl.subprocess.CalledProcessError(22, args, stderr="curl: (22) 404\n")
+
+    monkeypatch.setattr(rl.subprocess, "run", run)
+    with pytest.raises(rl.ResolutionError, match=r"curl failed fetching https://x/shfmt: curl: \(22\) 404"):
+        rl._curl_hashes("https://x/shfmt")
+
+
+def test_curl_hashes_refuses_an_empty_asset(monkeypatch):
+    def run(args, **kwargs):
+        Path(args[args.index("-o") + 1]).write_bytes(b"")
+
+    monkeypatch.setattr(rl.subprocess, "run", run)
+    with pytest.raises(rl.ResolutionError, match="the asset is empty"):
+        rl._curl_hashes("https://x/shfmt")

@@ -79,13 +79,17 @@ carries them because it is built `FROM` `dev-base`:
   entry points across GitHub Actions and local contexts.
 - **`github-cli.dockerfile`** — GitHub CLI via the official apt repo.
 - **`validation-tools.dockerfile`** — Architecture-aware binary
-  installs of shellcheck, shfmt and git-cliff.
+  install of git-cliff.
   Uses `TARGETARCH` (injected by Docker Buildx) to select the correct
   binary for amd64 or arm64.
 - **`hadolint.dockerfile`** — hadolint, the Dockerfile linter, from its
   release binary.
 - **`actionlint.dockerfile`** — actionlint, the GitHub Actions workflow
   linter, from its release tarball.
+- **`shellcheck.dockerfile`** — ShellCheck, the shell script linter, from
+  its release tarball.
+- **`shfmt.dockerfile`** — shfmt, the shell script formatter, from its
+  release binary.
 - **`scorecard.dockerfile`** — The OpenSSF Scorecard CLI, from its release
   tarball.
 - **`security-tools.dockerfile`** — trivy, from its release tarball.
@@ -184,7 +188,9 @@ Most are verified against a **digest pinned in source**: one SHA-256 per
 architecture, an `ARG <TOOL>_SHA256_AMD64=` and `_ARM64=` line beside the
 tool's `ARG <TOOL>_VERSION=` in its own fragment. The daily upstream refresh
 writes the digests from the release's published checksums in the same run
-that moves the version, so every digest change shows in a refresh PR beside
+that moves the version (for a tool whose release publishes none, from the
+release asset itself, which the refresh downloads and hashes: trust on first
+sight), so every digest change shows in a refresh PR beside
 its version change (see
 [Tool Version Management](../operations/version-management.md)). The rest
 are verified against the checksums file the release publishes, downloaded
@@ -198,8 +204,8 @@ at build time.
 | nfpm | Digest pinned in source | SHA-256 |
 | opentofu | Digest pinned in source | SHA-256 |
 | scorecard | Digest pinned in source | SHA-256 |
-| shellcheck | None (upstream does not publish checksums) | — |
-| shfmt | None (upstream does not publish checksums) | — |
+| shellcheck | Digest pinned in source (computed by the refresh) | SHA-256 |
+| shfmt | Digest pinned in source (computed by the refresh) | SHA-256 |
 | trivy | Digest pinned in source | SHA-256 |
 | uv | Digest pinned in source | SHA-256 |
 | yq | Digest pinned in source | SHA-256 |
@@ -212,9 +218,9 @@ downloads, CDN integrity failures, and partial compromise of release
 artifacts. The published images also carry SLSA build provenance
 attestation.
 
-Tools whose upstream projects do not publish checksums are installed
-without verification. If a project begins publishing checksums in the
-future, verification will be added at that time.
+shellcheck and shfmt publish no checksums, so their digests are trusted on
+first sight: the refresh pins what the release serves when it moves the
+version, and any later change to a pinned asset fails the build.
 
 ## Publishing
 
