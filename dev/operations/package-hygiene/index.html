@@ -3345,6 +3345,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#delete-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delete check
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#rate-limits" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3548,6 +3559,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#delete-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delete check
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#rate-limits" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3712,14 +3734,40 @@ preview is the explicit exception:</p>
   (the <code>dry_run</code> input set to <code>true</code>) only logs what it <em>would</em> delete. Use it
   before a change to the delete rules, and review the logs.</li>
 </ul>
-<p>A third job, <code>report</code>, deletes nothing. It reports the run to the org's
-operations queue (epic
+<p>A third job, <code>verify-deletes</code>, checks that the deletes happened (see
+<a href="#delete-check">Delete check</a>). A fourth, <code>report</code>, reports the run to the
+org's operations queue (epic
 <a href="https://github.com/vergil-project/.github/issues/1494">vergil-project/.github#1494</a>)
-under the name <code>package-cleanup</code>, taking both jobs as one result: any failed
-leg makes the run a failure. A failure opens, or comments on, the issue
+under the name <code>package-cleanup</code>, taking the three jobs as one result: any
+failed leg, or a failed delete check, makes the run a failure. Neither of
+these two jobs deletes anything. A failure opens, or comments on, the issue
 <code>ops: vergil-containers / package-cleanup failing</code>, and the first green run
 after it records the recovery. <code>package-cache-warm.yml</code> reports the same way,
 as <code>package-cache-warm</code>. Only runs on <code>develop</code> report.</p>
+<h3 id="delete-check">Delete check<a class="headerlink" href="#delete-check" title="Permanent link">&para;</a></h3>
+<p>The action treats a 404 on a version delete as success: it logs <em>"wasn't
+found while trying to delete it; treating as already deleted"</em> and goes on.
+GHCR answers 404 when the token may not delete the package, so a leg whose
+every delete failed used to end green: in run
+<a href="https://github.com/vergil-project/vergil-containers/actions/runs/45635208056">45635208056</a>
+every delete failed that way
+(<a href="https://github.com/vergil-project/vergil-containers/issues/1051">#1051</a>).</p>
+<p>The action has no outputs that count its deletes, and a step cannot read its
+own job's log while the job runs. So the <code>verify-deletes</code> job runs once every
+leg has finished, failed legs included. It downloads each leg's log through the
+Actions API and runs <code>docker/versions/cleanup_verify.py</code>, which fails the job,
+with an error naming the leg and the package, when:</p>
+<ul>
+<li>every delete the leg set out to make was answered "not found": the token
+  could not delete; or</li>
+<li>a version answered "not found" is still among the package's active versions:
+  that delete did not happen either.</li>
+</ul>
+<p>A version answered "not found" that is really gone was deleted by something
+else between the action's listing and its delete, such as an overlapping run
+(see <a href="#job-ordering">Job ordering</a>), and passes. A preview makes no deletes,
+so it always passes. The job retries a transient API failure with a back-off;
+one that persists fails the check.</p>
 <h3 id="rate-limits">Rate limits<a class="headerlink" href="#rate-limits" title="Permanent link">&para;</a></h3>
 <p>Every leg of both jobs fetches every manifest of its package from ghcr.io. On a
 cold manifest cache that is tens of thousands of registry requests per run, and
@@ -3776,19 +3824,34 @@ version; <code>docker/versions/test_package_cache_warm.py</code> enforces it.</p
 <p>To check that the cache is warm, read a cleanup leg's log: the line
 <code>manifest cache: N/M digests served from cache (P%)</code> should show more than 0%.</p>
 <h3 id="token">Token<a class="headerlink" href="#token" title="Permanent link">&para;</a></h3>
-<p>Both workflows call GHCR as the org automation App (epic
-<a href="https://github.com/vergil-project/.github/issues/1494">vergil-project/.github#1494</a>).
-Each <code>cleanup</code> and <code>reap-aliases</code> leg mints an App token with
-<code>packages: write</code>, and a cache-warm leg that has to rebuild its cache mints one
-with <code>packages: read</code>; every GHCR call uses that token. Nothing falls back to
-<code>GITHUB_TOKEN</code> or a personal access token: if the token cannot be minted, or
-comes back empty, the leg fails. The App's keys live only in the <code>automation</code>
-environment, which only <code>develop</code> and <code>main</code> may deploy to, and each of these
-jobs declares the environment to read them. The workflows' own <code>GITHUB_TOKEN</code>
-only reads the repository.</p>
-<p>The GHCR proof
+<p>The <code>cleanup</code> and <code>reap-aliases</code> jobs make every GHCR call with
+<code>GHCR_CLEANUP_TOKEN</code>, a personal access token (classic) with
+<code>delete:packages</code>, whose owner can delete these packages. It is an
+identity exception to the rule that unattended jobs run as the org automation
+App (epic
+<a href="https://github.com/vergil-project/.github/issues/1494">vergil-project/.github#1494</a>):
+the Packages API accepts only a personal access token (classic), not an App
+installation token. The cleanup ran as the App once, in run
+<a href="https://github.com/vergil-project/vergil-containers/actions/runs/45635208056">45635208056</a>:
+every delete came back "wasn't found" and the one untag came back 403, so
+nothing was deleted
+(<a href="https://github.com/vergil-project/vergil-containers/issues/1050">#1050</a>).</p>
+<p>Nothing falls back to <code>GITHUB_TOKEN</code> or the App: if <code>GHCR_CLEANUP_TOKEN</code> is
+empty, the leg fails before any GHCR call. The token can write, so it lives
+only in the <code>automation</code> environment, never as a repository or organization
+secret. Only <code>develop</code> and <code>main</code> may deploy to the environment, and both jobs
+declare it to read the token, as <code>verify-deletes</code> does to list a package's
+versions. The workflow's own <code>GITHUB_TOKEN</code> only reads the repository, and in
+<code>verify-deletes</code> the run's job logs. It could not replace the token either: it can delete only when the
+repository holds the admin role on the package, and these packages grant the
+repository the write role (see
+<a href="../../architecture/#ghcr-package-access-grants">Architecture</a>).</p>
+<p>A cache-warm leg that has to rebuild its cache runs as the App: it mints an
+App token with <code>packages: read</code>, and fails if the token cannot be minted or
+comes back empty. That works because the rebuild only reads: it is a preview
+that never deletes or untags. The GHCR proof
 (<a href="https://github.com/vergil-project/.github/issues/1516">vergil-project/.github#1516</a>)
-showed that the App can work these packages through the Packages API. It cannot
+showed that the App can read these packages through the Packages API. It cannot
 push images through the registry, so the publish and nightly rebuild jobs still
 log in with <code>GITHUB_TOKEN</code> (see
 <a href="../../architecture/#authentication">Architecture</a>).</p>
