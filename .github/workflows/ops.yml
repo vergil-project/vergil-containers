@@ -214,24 +214,12 @@ jobs:
       contents: read
     secrets: inherit
 
-  # The dev rebuild logs in to GHCR as the org automation App, with no
-  # fallback to GITHUB_TOKEN (epic vergil-project/.github#1494, spec §5.4;
-  # vergil-containers#1029): the first job to prove the App can push to GHCR,
-  # before the prod rebuild and image-publish follow. A call job cannot
-  # declare an environment, so it passes the App's two keys by name (never
-  # `secrets: inherit`), and the publish workflow's push jobs, which declare
-  # the `automation` environment where the keys live, mint the token (ruling
-  # N0.16 on epic vergil-project/.github#1384).
   nightly-rebuild-dev:
     uses: ./.github/workflows/cd-docker-publish.yml
     with:
       image-prefix: dev
       no-cache: true
       ref: develop
-      app-registry-login: true
-    secrets:
-      APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
     permissions:
       packages: write
       contents: read

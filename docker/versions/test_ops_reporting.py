@@ -194,15 +194,14 @@ CLEANUP_JOBS = ("cleanup", "reap-aliases")
 CLEANUP_ACTION = "dataaxiom/ghcr-cleanup-action@"
 APP_TOKEN_ACTION = "actions/create-github-app-token@v3"
 APP_DRY_RUN = "github.event_name == 'workflow_dispatch' && inputs.app-token-dry-run == true"
-_EXPR_TOKEN = re.compile(r"\s*('[^']*'|&&|\|\||==|!(?!=)|\(|\)|[A-Za-z_][\w.-]*)")
+_EXPR_TOKEN = re.compile(r"\s*('[^']*'|&&|\|\||==|\(|\)|[A-Za-z_][\w.-]*)")
 
 
 def _evaluate(expression: str, context: dict):
     """Evaluate a GitHub Actions expression of the shapes these workflows use:
-    dotted names, quoted strings, `true`/`false`, `==`, `&&`, `||`, a `!`
-    before a name or a parenthesis, and parentheses. `&&` and `||` return an
-    operand, as in Actions, so a falsy value falls through `||`. A name
-    missing from `context` is ''."""
+    dotted names, quoted strings, `true`/`false`, `==`, `&&`, `||` and
+    parentheses. `&&` and `||` return an operand, as in Actions, so a falsy
+    value falls through `||`. A name missing from `context` is ''."""
     out, pos = [], 0
     expression = expression.rstrip()
     while pos < len(expression):
@@ -213,8 +212,6 @@ def _evaluate(expression: str, context: dict):
             out.append(" and ")
         elif token == "||":
             out.append(" or ")
-        elif token == "!":
-            out.append(" not ")
         elif token in ("==", "(", ")") or token.startswith("'"):
             out.append(f" {token} ")
         elif token in ("true", "false"):
@@ -296,117 +293,3 @@ def test_cleanup_app_token_dry_run_is_dry_and_app_only(tmp_path):
             assert _evaluate(token, scheduled) == "pat", job_id
             no_pat = {**scheduled, "secrets.GHCR_CLEANUP_TOKEN": ""}
             assert _evaluate(token, no_pat) == "github", job_id
-
-
-# The dev rebuild logs in to GHCR as the App (epic vergil-project/.github#1494,
-# Task 15, spec §5.4; vergil-containers#1029). The call job passes the App
-# keys by name to this repo's own publish workflow (ruling N0.16 on epic
-# vergil-project/.github#1384), whose push jobs mint the token: a call job has
-# no steps, and a minted token cannot cross jobs as an output.
-PUBLISH = "cd-docker-publish.yml"
-PUSH_JOBS = [f"{kind}-{tier}" for tier in range(3) for kind in ("build", "publish")]
-APP_LOGIN = "inputs.app-registry-login"
-APP_KEY_MAP = {
-    "APP_CLIENT_ID": "${{ secrets.APP_CLIENT_ID }}",
-    "APP_PRIVATE_KEY": "${{ secrets.APP_PRIVATE_KEY }}",
-}
-LOGIN_ACTION = "docker/login-action@"
-
-
-def _publish_workflow() -> dict:
-    return yaml.safe_load((WORKFLOWS / PUBLISH).read_text())
-
-
-def test_nightly_rebuild_dev_uses_app_token():
-    dev = _jobs("ops.yml")["nightly-rebuild-dev"]
-    assert dev["uses"] == f"./.github/workflows/{PUBLISH}"
-    assert dev["with"]["app-registry-login"] is True
-    # Both keys by name, nothing else, and never `secrets: inherit`.
-    assert dev["secrets"] == APP_KEY_MAP
-    # Only the dev rebuild changes here: the prod rebuild and image-publish
-    # follow in Task 17, once the dev rebuild has proved the App on GHCR.
-    for job in (_jobs("ops.yml")["nightly-rebuild-prod"], _jobs("cd.yml")["docker-publish"]):
-        assert "app-registry-login" not in job["with"]
-        assert "secrets" not in job
-
-
-def test_app_registry_login_has_no_github_token_fallback():
-    workflow = _publish_workflow()
-    # PyYAML reads the bare key `on` as the boolean True.
-    call = (workflow["on"] if "on" in workflow else workflow[True])["workflow_call"]
-    option = call["inputs"]["app-registry-login"]
-    assert option["type"] == "boolean"
-    assert option["required"] is False
-    assert option["default"] is False
-    assert set(call["secrets"]) == set(APP_KEY_MAP)
-    assert all(secret["required"] is False for secret in call["secrets"].values())
-
-    on, off = {APP_LOGIN: True}, {APP_LOGIN: False}
-    # Every job that logs in to GHCR is a push job, and every push job does.
-    logging_in = {
-        job_id
-        for job_id, job in workflow["jobs"].items()
-        if any(str(s.get("uses", "")).startswith(LOGIN_ACTION) for s in job.get("steps", []))
-    }
-    assert logging_in == set(PUSH_JOBS)
-
-    for job_id in PUSH_JOBS:
-        job = workflow["jobs"][job_id]
-        # The automation environment, where the App keys live, only with the
-        # input on; with it off, no environment, as before.
-        assert _evaluate(_expr(job["environment"]), on) == "automation", job_id
-        assert _evaluate(_expr(job["environment"]), off) == "", job_id
-
-        steps = job["steps"]
-        mint = next(s for s in steps if s.get("id") == "app-token")
-        check = next(s for s in steps if s.get("id") == "app-token-set")
-        logins = [s for s in steps if str(s.get("uses", "")).startswith(LOGIN_ACTION)]
-        assert [s.get("id") for s in logins] == ["ghcr-login", "ghcr-app-login"], job_id
-        token_login, app_login = logins
-
-        # Minted first, packages: write only, and never absorbed: a missing
-        # key or a failed mint fails the job.
-        assert mint["uses"] == APP_TOKEN_ACTION
-        assert _expr(mint["if"]) == APP_LOGIN
-        assert mint["with"] == {
-            "app-id": "${{ secrets.APP_CLIENT_ID }}",
-            "private-key": "${{ secrets.APP_PRIVATE_KEY }}",
-            "permission-packages": "write",
-        }
-        # Then an empty token fails the job (the pattern of #989).
-        assert _expr(check["if"]) == APP_LOGIN
-        assert check["env"] == {"APP_TOKEN": "${{ steps.app-token.outputs.token }}"}
-        for token, code in (("", 1), ("app", 0)):
-            result = subprocess.run(
-                ["bash", "-e", "-c", check["run"]],
-                env={**os.environ, "APP_TOKEN": token},
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            assert result.returncode == code, (job_id, token, result.stdout)
-            assert ("::error title=No App token::" in result.stdout) is (code != 0)
-        for step in (mint, check, token_login, app_login):
-            assert "continue-on-error" not in step, (job_id, step.get("id"))
-        assert steps.index(mint) < steps.index(check) < steps.index(app_login)
-
-        # The App login reads the minted token alone: there is no `||`, so
-        # nothing can fall through to GITHUB_TOKEN.
-        assert _expr(app_login["if"]) == APP_LOGIN
-        assert app_login["with"] == {
-            "registry": "ghcr.io",
-            "username": "${{ github.repository_owner }}",
-            "password": "${{ steps.app-token.outputs.token }}",
-        }
-        # The GITHUB_TOKEN login runs only with the input off: exactly one
-        # of the two runs either way.
-        assert token_login["with"]["password"] == "${{ secrets.GITHUB_TOKEN }}"
-        for context, expected in ((on, (False, True)), (off, (True, False))):
-            ran = tuple(_evaluate(_expr(s["if"]), context) for s in (token_login, app_login))
-            assert ran == expected, (job_id, context)
-        # No other step reads GITHUB_TOKEN.
-        for step in steps:
-            if step is not token_login:
-                text = yaml.safe_dump(step)
-                for read in ("secrets.GITHUB_TOKEN", "github.token"):
-                    assert read not in text, (job_id, step.get("id", step.get("name")), read)

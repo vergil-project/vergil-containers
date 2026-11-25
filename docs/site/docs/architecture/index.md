@@ -309,12 +309,7 @@ The `ops.yml` workflow runs every morning (UTC; the `schedule` trigger in
 `.github/workflows/ops.yml` holds the exact time) and rebuilds every image
 with the registry cache disabled (`no-cache: true`):
 
-- `nightly-rebuild-dev` rebuilds all `dev-` images from `develop`. It logs
-  in to GHCR as the org automation App, not with `GITHUB_TOKEN`: it sets
-  `cd-docker-publish.yml`'s `app-registry-login` input and passes the App's
-  keys by name, and each push job declares the `automation` environment,
-  mints a token with `packages: write` and logs in with it. A missing key or
-  a failed mint fails the job; nothing falls back to `GITHUB_TOKEN`.
+- `nightly-rebuild-dev` rebuilds all `dev-` images from `develop`.
 - `nightly-rebuild-prod` rebuilds all `prod-` images from `main`, so they
   pick up upstream fixes without moving past the released source. It calls
   `main`'s copy of `cd-docker-publish.yml` (`@main`), not `develop`'s, so the
