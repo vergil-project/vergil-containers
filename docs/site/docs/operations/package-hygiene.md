@@ -203,5 +203,8 @@ To check that the cache is warm, read a cleanup leg's log: the line
 
 The default `GITHUB_TOKEN` can list and preview. If real deletion of org-owned
 package versions fails with a permissions error, provision a PAT with
-`delete:packages` and store it as the secret `GHCR_CLEANUP_TOKEN` — the
-workflow prefers it when present and falls back to `GITHUB_TOKEN` otherwise.
+`delete:packages` and store it as `GHCR_CLEANUP_TOKEN` in the `automation`
+environment, never as a repository or organization secret: the token can write,
+so it lives only in that environment, which only `develop` and `main` may deploy
+to. The `cleanup` and `reap-aliases` jobs declare the environment to read it;
+each prefers it when present and falls back to `GITHUB_TOKEN` otherwise.
