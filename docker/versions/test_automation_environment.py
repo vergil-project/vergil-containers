@@ -2,7 +2,9 @@
 vergil-project/.github#1384, Task 3c: vergil-containers#1014).
 
 The automation App keys (`APP_CLIENT_ID`, `APP_PRIVATE_KEY`) and every other
-secret that can write or act (`GHCR_CLEANUP_TOKEN`) live only in the repo's
+secret that can write or act (`GHCR_CLEANUP_TOKEN`, which no workflow reads
+since vergil-containers#990 moved the package jobs to the App, and which stays
+guarded here while the secret may still exist) live only in the repo's
 `automation` deployment environment, which only `develop` and `main` may
 deploy to. A job reads an environment secret only when it declares the
 environment, so every job that reads one itself declares `environment:
@@ -55,6 +57,7 @@ READERS = [
     ("ops.yml", "report-nightly-rebuild-dev"),
     ("ops.yml", "report-nightly-rebuild-prod"),
     ("package-cache-warm.yml", "report"),
+    ("package-cache-warm.yml", "warm"),
     ("package-cleanup.yml", "cleanup"),
     ("package-cleanup.yml", "reap-aliases"),
     ("package-cleanup.yml", "report"),

@@ -25,23 +25,16 @@ name: Package cleanup
 # `dry_run` input to true for a preview that only logs what would be deleted.
 # No repository variable arms or disarms it; what runs is what git records.
 #
-# Token: the default GITHUB_TOKEN can list/preview. Real deletion of
-# org-owned package versions may require a PAT with `delete:packages` stored
-# as the secret GHCR_CLEANUP_TOKEN; the workflow prefers it when present.
-# That token can write, so it lives only in the `automation` environment
-# (epic vergil-project/.github#1384), and both deleting jobs declare the
-# environment to read it, as `report` does for the automation App's keys. Only
-# develop and main may deploy to the environment.
-#
-# App-token dry run (epic vergil-project/.github#1494, spec §5.4): whether the
-# org automation App can list and delete GHCR package versions is unverified.
-# A manual run with the `app-token-dry-run` input set to true proves the read
-# half without risk: it is always a dry run, whatever `dry_run` says, and both
-# deleting jobs mint an App token with `permission-packages: write` and make
-# every GHCR call with it. There is no fallback to GHCR_CLEANUP_TOKEN or
-# GITHUB_TOKEN: a failed mint fails the leg, and so does an empty token (the
-# `App token is set` step, which stops the `||` fall-through, issue #388).
-# Scheduled runs, and manual runs with the input left false, are unchanged.
+# Token: both deleting jobs run as the org automation App (epic
+# vergil-project/.github#1494, spec §5.4). Each leg mints an App token with
+# `permission-packages: write` and makes every GHCR call with it; the GHCR
+# proof (vergil-project/.github#1516) showed the App lists these packages
+# through the Packages API. There is no fallback to any other token: a failed
+# mint fails the leg, and so does an empty token (the `App token is set`
+# step). The App's keys live only in the `automation` environment (epic
+# vergil-project/.github#1384), which both deleting jobs declare to read them,
+# as `report` does. Only develop and main may deploy to the environment. This
+# workflow's GITHUB_TOKEN only reads the repository.
 #
 # Rate limits (issue #652): every leg fetches every manifest of its package
 # from ghcr.io, and on a cold manifest cache that is ~25k registry GETs per
@@ -84,13 +77,10 @@ on:
         description: "Preview only — log what would be deleted, delete nothing"
         type: boolean
         default: false
-      app-token-dry-run:
-        description: "App-token dry run — preview only, every GHCR call as the automation App (no fallback)"
-        type: boolean
-        default: false
 
 permissions:
-  packages: write
+  # GITHUB_TOKEN only reads: every GHCR call uses the App token (see the
+  # header).
   contents: read
 
 # One run at a time, so two runs never delete at once: a reap leg of one run
@@ -153,12 +143,11 @@ jobs:
           - prod-pkg-rhel
           # END generated: versions (cleanup)
     steps:
-      # Only on an App-token dry run (see the header). No continue-on-error:
-      # a failed mint fails the leg before any GHCR call. Keep both steps
-      # identical to reap-aliases'.
+      # The App token every GHCR call uses (see the header). No
+      # continue-on-error: a failed mint fails the leg before any GHCR call.
+      # Keep both steps identical to reap-aliases'.
       - name: Generate app token
         id: app-token
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.app-token-dry-run == true }}
         uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.APP_CLIENT_ID }}
@@ -167,12 +156,11 @@ jobs:
 
       - name: App token is set
         id: app-token-set
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.app-token-dry-run == true }}
         env:
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           if [ -z "${APP_TOKEN}" ]; then
-            echo "::error title=No App token::The App-token dry run minted no token; refusing to fall back to GHCR_CLEANUP_TOKEN or GITHUB_TOKEN."
+            echo "::error title=No App token::The App token step minted no token; refusing to call GHCR, since no other token stands in for the App."
             exit 1
           fi
 
@@ -185,13 +173,13 @@ jobs:
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          token: ${{ github.event_name == 'workflow_dispatch' && inputs.app-token-dry-run == true && steps.app-token.outputs.token || secrets.GHCR_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           delete-untagged: true
           # Same age floor as attempt 2 below (documented there).
           older-than: 24 hours
           validate: true
           # Same dry-run expression as attempt 2 below (documented there).
-          dry-run: ${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run == true || inputs.app-token-dry-run == true) }}
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
 
       - name: Back off before retrying
         if: steps.attempt1.outcome == 'failure'
@@ -207,12 +195,10 @@ jobs:
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          # The App token on an App-token dry run, else the cleanup PAT when
-          # present, else GITHUB_TOKEN (see the header). On an App-token dry
-          # run the token is never empty here: a failed mint fails the leg,
-          # and the `App token is set` step fails it on an empty token, so
-          # the `||` cannot fall through to another token (issue #388).
-          token: ${{ github.event_name == 'workflow_dispatch' && inputs.app-token-dry-run == true && steps.app-token.outputs.token || secrets.GHCR_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
+          # The App token alone (see the header). It is never empty here: a
+          # failed mint fails the leg, and the `App token is set` step fails
+          # it on an empty token.
+          token: ${{ steps.app-token.outputs.token }}
           delete-untagged: true
           # The publish pipeline pushes each per-arch image by digest, untagged,
           # and only tags it (through the stitched multi-arch candidate) once
@@ -223,16 +209,14 @@ jobs:
           older-than: 24 hours
           validate: true
           # Live unless a manual run asks for a preview (issue #912): only a
-          # workflow_dispatch run with "Preview only" or "App-token dry run"
-          # checked is a dry run. A scheduled run has no inputs, so the
-          # expression is false and the run deletes. Its `||` only joins two
-          # booleans, never falling through to a non-boolean value, so the
-          # Actions falsy-fall-through pitfall (issue #388) cannot apply.
+          # workflow_dispatch run with "Preview only" checked is a dry run. A
+          # scheduled run has no inputs, so the expression is false and the
+          # run deletes.
           #
           # Keep the expression on one line: a newline inside ${{ }} makes
           # GitHub reject the whole file at startup (startup_failure, issue
           # #449), and actionlint does not catch it.
-          dry-run: ${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run == true || inputs.app-token-dry-run == true) }}
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
 
       - name: Report persistent failure
         if: failure() && steps.attempt2.outcome == 'failure'
@@ -299,7 +283,6 @@ jobs:
       # Same two App-token steps as `cleanup` (documented there).
       - name: Generate app token
         id: app-token
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.app-token-dry-run == true }}
         uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.APP_CLIENT_ID }}
@@ -308,12 +291,11 @@ jobs:
 
       - name: App token is set
         id: app-token-set
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.app-token-dry-run == true }}
         env:
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           if [ -z "${APP_TOKEN}" ]; then
-            echo "::error title=No App token::The App-token dry run minted no token; refusing to fall back to GHCR_CLEANUP_TOKEN or GITHUB_TOKEN."
+            echo "::error title=No App token::The App token step minted no token; refusing to call GHCR, since no other token stands in for the App."
             exit 1
           fi
 
@@ -326,13 +308,13 @@ jobs:
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          token: ${{ github.event_name == 'workflow_dispatch' && inputs.app-token-dry-run == true && steps.app-token.outputs.token || secrets.GHCR_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           # Same inputs as attempt 2 below, where each one is documented.
           older-than: ${{ matrix.older_than }}
           use-regex: true
           delete-tags: '^.+-\d{8}$'
           validate: true
-          dry-run: ${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run == true || inputs.app-token-dry-run == true) }}
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
 
       - name: Back off before retrying
         if: steps.attempt1.outcome == 'failure'
@@ -348,7 +330,7 @@ jobs:
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          token: ${{ github.event_name == 'workflow_dispatch' && inputs.app-token-dry-run == true && steps.app-token.outputs.token || secrets.GHCR_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           # Only images older than the window are eligible; in-window aliases
           # (and every rolling tag) are left for repoint rollback.
           older-than: ${{ matrix.older_than }}
@@ -371,9 +353,9 @@ jobs:
           # this one's.
           validate: true
           # Same dry-run expression as `cleanup` (documented there): live
-          # unless a manual run checks "Preview only" or "App-token dry run".
+          # unless a manual run checks "Preview only".
           # Keep it on one line.
-          dry-run: ${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run == true || inputs.app-token-dry-run == true) }}
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
 
       - name: Report persistent failure
         if: failure() && steps.attempt2.outcome == 'failure'

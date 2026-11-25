@@ -52,6 +52,12 @@ jobs:
       id-token: write
       attestations: write
 
+  # Identity exception (epic vergil-project/.github#1494, spec §5.4):
+  # the image publish keeps GITHUB_TOKEN, passing no App keys, because GHCR
+  # rejects App installation tokens for registry pushes (`installation not
+  # allowed to Write organization package`), as the GHCR proof
+  # (vergil-project/.github#1516) found. docker/versions/test_ops_reporting.py
+  # pins it.
   docker-publish:
     needs: [release]
     if: always() && (needs.release.result == 'success' || needs.release.result == 'skipped')

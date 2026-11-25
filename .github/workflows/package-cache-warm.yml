@@ -26,6 +26,17 @@ name: Package cache warm
 # and fails loudly if there is still no entry, because that means the key or
 # path below no longer matches what the action writes.
 #
+# Token: the rebuild runs as the org automation App (epic
+# vergil-project/.github#1494, spec §5.4). On a miss the leg mints an App
+# token with `permission-packages: read` and makes the rebuild's GHCR calls
+# with it alone; the GHCR proof (vergil-project/.github#1516) showed the App
+# reads these packages through the Packages API. There is no fallback to any
+# other token: a failed mint fails the leg, and so does an empty token (the
+# `App token is set` step). The App's keys live only in the `automation`
+# environment (epic vergil-project/.github#1384), which the `warm` job
+# declares to read them; only develop and main may deploy to it. A warm hit
+# mints nothing: the restore makes no GHCR call.
+#
 # Coupling: the path and key below copy the action's internal cache scheme
 # (src/manifest-cache.ts in ghcr-cleanup-action v1.2.2). They must stay in step
 # with the action version that package-cleanup.yml uses, which is why both
@@ -38,8 +49,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  # Read-only: the rebuild only lists and fetches; it never deletes.
-  packages: read
+  # GITHUB_TOKEN only reads the repository: the rebuild's GHCR calls use the
+  # App token (see the header), and it never deletes.
   contents: read
 
 # One run at a time, so two runs never warm at once: a cold rebuild fetches
@@ -54,8 +65,10 @@ permissions:
 # included, so that cancel is never reported. The cancelled run had done
 # nothing. The newer run that replaced it runs the whole matrix, but reports
 # only when it runs on develop, for the group is one for every ref: a
-# dispatch from another branch that replaces a pending run leaves its result
+# dispatch from main that replaces a pending run leaves its result
 # unreported, since the report action reports only from refs/heads/develop.
+# A dispatch from any other branch runs no job: the `automation` environment
+# refuses it.
 concurrency:
   # Own group: sharing package-cleanup's group could cancel a pending cleanup.
   group: package-cache-warm
@@ -65,6 +78,9 @@ jobs:
   warm:
     name: "warm: ${{ matrix.package }}"
     runs-on: ubuntu-24.04
+    # The App's keys, which the rebuild's token is minted from (see the
+    # header).
+    environment: automation
     strategy:
       fail-fast: false
       # Rate-limit cap (issue #652): a cold rebuild fetches every manifest.
@@ -115,13 +131,35 @@ jobs:
             echo "::warning title=Manifest cache cold::No manifest cache entry for ${PACKAGE}. Rebuilding it with a preview-only cleanup run, which fetches every manifest from ghcr.io."
           fi
 
+      # Only on a miss, as the rebuild (see the header). No continue-on-error:
+      # a failed mint fails the leg before any GHCR call.
+      - name: Generate app token
+        id: app-token
+        if: steps.touch.outputs.cache-matched-key == ''
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-packages: read
+
+      - name: App token is set
+        id: app-token-set
+        if: steps.touch.outputs.cache-matched-key == ''
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          if [ -z "${APP_TOKEN}" ]; then
+            echo "::error title=No App token::The App token step minted no token; refusing to call GHCR, since no other token stands in for the App."
+            exit 1
+          fi
+
       - name: Rebuild the manifest cache (preview only)
         if: steps.touch.outputs.cache-matched-key == ''
         uses: dataaxiom/ghcr-cleanup-action@v1.2.2
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           # A selector that matches no tag. A dry run still removes the digests
           # it would delete from the cache it saves, so delete-untagged here
           # would leave the untagged versions out of the rebuilt cache.

@@ -214,6 +214,12 @@ jobs:
       contents: read
     secrets: inherit
 
+  # Identity exception (epic vergil-project/.github#1494, spec §5.4):
+  # the dev rebuild keeps GITHUB_TOKEN, passing no App keys, because GHCR
+  # rejects App installation tokens for registry pushes (`installation not
+  # allowed to Write organization package`), as the GHCR proof
+  # (vergil-project/.github#1516) found. docker/versions/test_ops_reporting.py
+  # pins it.
   nightly-rebuild-dev:
     uses: ./.github/workflows/cd-docker-publish.yml
     with:
@@ -236,6 +242,13 @@ jobs:
   # `ref: main` input is still required, because a reusable workflow's checkout
   # defaults to the caller's commit, which is develop's. Keep the inputs passed
   # here to ones main's cd-docker-publish.yml already accepts.
+  #
+  # Identity exception (epic vergil-project/.github#1494, spec §5.4):
+  # the prod rebuild keeps GITHUB_TOKEN, passing no App keys, because GHCR
+  # rejects App installation tokens for registry pushes (`installation not
+  # allowed to Write organization package`), as the GHCR proof
+  # (vergil-project/.github#1516) found. docker/versions/test_ops_reporting.py
+  # pins it.
   nightly-rebuild-prod:
     uses: vergil-project/vergil-containers/.github/workflows/cd-docker-publish.yml@main
     with:

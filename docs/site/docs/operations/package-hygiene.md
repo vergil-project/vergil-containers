@@ -116,15 +116,6 @@ preview is the explicit exception:
 - **Preview on demand:** the same manual run with "Preview only" **checked**
   (the `dry_run` input set to `true`) only logs what it *would* delete. Use it
   before a change to the delete rules, and review the logs.
-- **App-token dry run:** the same manual run with "App-token dry run" checked
-  (the `app-token-dry-run` input set to `true`) is always a preview, whatever
-  "Preview only" says. Both jobs mint a token as the org automation App, with
-  `packages: write` only, and make every GHCR call with it. Nothing falls back
-  to `GHCR_CLEANUP_TOKEN` or `GITHUB_TOKEN`: if the token cannot be minted,
-  each leg fails. It checks that the App can list the packages the jobs prune
-  (epic
-  [vergil-project/.github#1494](https://github.com/vergil-project/.github/issues/1494)).
-  Scheduled runs and the other manual runs do not use the App token.
 
 A third job, `report`, deletes nothing. It reports the run to the org's
 operations queue (epic
@@ -190,7 +181,8 @@ ghcr.io.
 
 If a package has no entry at all, the leg logs a *Manifest cache cold* warning
 and rebuilds the cache with a preview-only run of the action that selects
-nothing for deletion. It then checks the entry exists and fails if it does not.
+nothing for deletion, as the org automation App (see [Token](#token)). It then
+checks the entry exists and fails if it does not.
 That failure means the workflow's cache path or key no longer matches what the
 action writes, which can happen when the action is upgraded. The workflow
 copies the action's cache scheme, so the two workflows must pin the same action
@@ -201,10 +193,20 @@ To check that the cache is warm, read a cleanup leg's log: the line
 
 ### Token
 
-The default `GITHUB_TOKEN` can list and preview. If real deletion of org-owned
-package versions fails with a permissions error, provision a PAT with
-`delete:packages` and store it as `GHCR_CLEANUP_TOKEN` in the `automation`
-environment, never as a repository or organization secret: the token can write,
-so it lives only in that environment, which only `develop` and `main` may deploy
-to. The `cleanup` and `reap-aliases` jobs declare the environment to read it;
-each prefers it when present and falls back to `GITHUB_TOKEN` otherwise.
+Both workflows call GHCR as the org automation App (epic
+[vergil-project/.github#1494](https://github.com/vergil-project/.github/issues/1494)).
+Each `cleanup` and `reap-aliases` leg mints an App token with
+`packages: write`, and a cache-warm leg that has to rebuild its cache mints one
+with `packages: read`; every GHCR call uses that token. Nothing falls back to
+`GITHUB_TOKEN` or a personal access token: if the token cannot be minted, or
+comes back empty, the leg fails. The App's keys live only in the `automation`
+environment, which only `develop` and `main` may deploy to, and each of these
+jobs declares the environment to read them. The workflows' own `GITHUB_TOKEN`
+only reads the repository.
+
+The GHCR proof
+([vergil-project/.github#1516](https://github.com/vergil-project/.github/issues/1516))
+showed that the App can work these packages through the Packages API. It cannot
+push images through the registry, so the publish and nightly rebuild jobs still
+log in with `GITHUB_TOKEN` (see
+[Architecture](../architecture/index.md#authentication)).
