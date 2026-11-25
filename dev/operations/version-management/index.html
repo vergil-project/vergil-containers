@@ -3826,9 +3826,12 @@ tracks the leading edge:</p>
   publishes other crates' releases), rewrites the <code>ARG *_VERSION=</code> pins in
   <code>docker/common/*</code>, and regenerates <code>CATALOG.md</code>. For a prebuilt tool whose
   digests are pinned in source (<code>TOOL_DIGESTS</code>: hadolint, opentofu, nfpm,
-  scorecard, trivy, uv, yq, cargo-nextest and cargo-deny, each in a fragment of
-  its own), it also reads
-  each architecture's sha256 from the release's checksum files and rewrites
+  scorecard, trivy, uv, yq, actionlint, shellcheck, shfmt, git-cliff,
+  cargo-nextest and cargo-deny, each in a fragment of its own), it also reads
+  each architecture's sha256 from the release's checksum files (for
+  shellcheck and shfmt, which publish none, it downloads each asset and
+  hashes it itself, and for git-cliff, which publishes only a SHA-512, it
+  checks the downloaded asset against that before hashing it) and rewrites
   the <code>ARG *_SHA256_AMD64=</code> and <code>_ARM64=</code> lines in the same run. The lookups
   all finish before anything is written, so a missing or malformed checksum
   fails the refresh, naming the tool and the architecture, with no fragment

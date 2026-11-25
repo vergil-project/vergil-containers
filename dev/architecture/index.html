@@ -3616,12 +3616,16 @@ carries them because it is built <code>FROM</code> <code>dev-base</code>:</p>
 <li><strong><code>path-defaults.dockerfile</code></strong> — Sets PATH for <code>uv tool install</code>
   entry points across GitHub Actions and local contexts.</li>
 <li><strong><code>github-cli.dockerfile</code></strong> — GitHub CLI via the official apt repo.</li>
-<li><strong><code>validation-tools.dockerfile</code></strong> — Architecture-aware binary
-  installs of shellcheck, shfmt, actionlint and git-cliff.
-  Uses <code>TARGETARCH</code> (injected by Docker Buildx) to select the correct
-  binary for amd64 or arm64.</li>
 <li><strong><code>hadolint.dockerfile</code></strong> — hadolint, the Dockerfile linter, from its
   release binary.</li>
+<li><strong><code>actionlint.dockerfile</code></strong> — actionlint, the GitHub Actions workflow
+  linter, from its release tarball.</li>
+<li><strong><code>shellcheck.dockerfile</code></strong> — ShellCheck, the shell script linter, from
+  its release tarball.</li>
+<li><strong><code>shfmt.dockerfile</code></strong> — shfmt, the shell script formatter, from its
+  release binary.</li>
+<li><strong><code>git-cliff.dockerfile</code></strong> — git-cliff, the changelog generator, from its
+  release tarball.</li>
 <li><strong><code>scorecard.dockerfile</code></strong> — The OpenSSF Scorecard CLI, from its release
   tarball.</li>
 <li><strong><code>security-tools.dockerfile</code></strong> — trivy, from its release tarball.</li>
@@ -3703,15 +3707,15 @@ stitches the two into one multi-arch manifest. Nothing is emulated.</p>
 installed. Each verified download follows a three-step pattern: download the
 artifact to a temporary location, verify it, then extract and install. The
 build fails immediately if a checksum does not match.</p>
-<p>Most are verified against a <strong>digest pinned in source</strong>: one SHA-256 per
+<p>Each is verified against a <strong>digest pinned in source</strong>: one SHA-256 per
 architecture, an <code>ARG &lt;TOOL&gt;_SHA256_AMD64=</code> and <code>_ARM64=</code> line beside the
 tool's <code>ARG &lt;TOOL&gt;_VERSION=</code> in its own fragment. The daily upstream refresh
 writes the digests from the release's published checksums in the same run
-that moves the version, so every digest change shows in a refresh PR beside
-its version change (see
-<a href="../operations/version-management/">Tool Version Management</a>). The rest
-are verified against the checksums file the release publishes, downloaded
-at build time.</p>
+that moves the version (for a tool whose release publishes no SHA-256, from
+the release asset itself, which the refresh downloads and hashes), so every
+digest change shows in a refresh PR beside its version change (see
+<a href="../operations/version-management/">Tool Version Management</a>). No build
+downloads a checksum file beside the artifact.</p>
 <table>
 <thead>
 <tr>
@@ -3723,13 +3727,13 @@ at build time.</p>
 <tbody>
 <tr>
 <td>actionlint</td>
-<td>Release checksums file</td>
+<td>Digest pinned in source</td>
 <td>SHA-256</td>
 </tr>
 <tr>
 <td>git-cliff</td>
-<td>Release per-artifact sidecar file</td>
-<td>SHA-512</td>
+<td>Digest pinned in source (computed by the refresh)</td>
+<td>SHA-256</td>
 </tr>
 <tr>
 <td>hadolint</td>
@@ -3753,13 +3757,13 @@ at build time.</p>
 </tr>
 <tr>
 <td>shellcheck</td>
-<td>None (upstream does not publish checksums)</td>
-<td>—</td>
+<td>Digest pinned in source (computed by the refresh)</td>
+<td>SHA-256</td>
 </tr>
 <tr>
 <td>shfmt</td>
-<td>None (upstream does not publish checksums)</td>
-<td>—</td>
+<td>Digest pinned in source (computed by the refresh)</td>
+<td>SHA-256</td>
 </tr>
 <tr>
 <td>trivy</td>
@@ -3780,13 +3784,15 @@ at build time.</p>
 </table>
 <p>The rust image's cargo-nextest and cargo-deny are verified against digests
 pinned in source the same way (see <a href="../languages/rust/">Rust</a>).</p>
-<p>A checksums file downloaded at build time protects against corrupted
-downloads, CDN integrity failures, and partial compromise of release
-artifacts. The published images also carry SLSA build provenance
-attestation.</p>
-<p>Tools whose upstream projects do not publish checksums are installed
-without verification. If a project begins publishing checksums in the
-future, verification will be added at that time.</p>
+<p>A digest pinned in source protects against corrupted downloads, CDN
+integrity failures, and a release artifact replaced after it was pinned,
+together with any checksum file beside it. The published images also carry
+SLSA build provenance attestation.</p>
+<p>git-cliff publishes only a SHA-512 per tarball, so the refresh checks each
+tarball against it before it pins the tarball's SHA-256. shellcheck and shfmt
+publish no checksums, so their digests are trusted on first sight: the
+refresh pins what the release serves when it moves the version. For all
+three, any later change to a pinned asset fails the build.</p>
 <h2 id="publishing">Publishing<a class="headerlink" href="#publishing" title="Permanent link">&para;</a></h2>
 <p>Images are published as multi-arch manifests to GitHub Container Registry
 via the reusable <code>cd-docker-publish.yml</code> workflow, parameterized by an
