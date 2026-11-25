@@ -187,109 +187,172 @@ def test_agent_audit_runs_after_the_config_job():
     assert job["permissions"] == {"contents": "read"}
 
 
-# The GHCR proof (epic vergil-project/.github#1494, Task 15, spec §5.4):
-# whether the automation App can work GHCR is unverified, so package-cleanup
-# gains a manual App-token dry run that proves it without deleting anything.
-CLEANUP_JOBS = ("cleanup", "reap-aliases")
-CLEANUP_ACTION = "dataaxiom/ghcr-cleanup-action@"
+
+
+# The container jobs' identity (epic vergil-project/.github#1494, Task 17,
+# spec §5.4; vergil-containers#990). The GHCR proof (vergil-project/.github#1516)
+# passed on the Packages API path and failed on the registry push path, so the
+# human's scope change on #990 splits the jobs: those that only use the
+# Packages API run as the App, with no fallback; those that log in to the
+# registry keep GITHUB_TOKEN, each a recorded exception.
 APP_TOKEN_ACTION = "actions/create-github-app-token@v3"
-APP_DRY_RUN = "github.event_name == 'workflow_dispatch' && inputs.app-token-dry-run == true"
-_EXPR_TOKEN = re.compile(r"\s*('[^']*'|&&|\|\||==|\(|\)|[A-Za-z_][\w.-]*)")
+CLEANUP_ACTION = "dataaxiom/ghcr-cleanup-action@"
+APP_TOKEN = "${{ steps.app-token.outputs.token }}"
+WARM_MISS = "steps.touch.outputs.cache-matched-key == ''"
+# (workflow, job, the packages permission its App token asks for, the `if:`
+# of its App-token steps: None when every run mints one).
+APP_JOBS = [
+    ("package-cleanup.yml", "cleanup", "write", None),
+    ("package-cleanup.yml", "reap-aliases", "write", None),
+    ("package-cache-warm.yml", "warm", "read", WARM_MISS),
+]
+APP_IDS = [f"{w}:{j}" for w, j, _, _ in APP_JOBS]
+EXCEPTION_REASON = (
+    "GHCR rejects App installation tokens for registry pushes "
+    "(`installation not allowed to Write organization package`)"
+)
+PUBLISH = "cd-docker-publish.yml"
+# (workflow, job) of every caller of the registry-push workflow.
+REGISTRY_JOBS = [
+    ("ops.yml", "nightly-rebuild-dev"),
+    ("ops.yml", "nightly-rebuild-prod"),
+    ("cd.yml", "docker-publish"),
+]
+REGISTRY_IDS = [j for _, j in REGISTRY_JOBS]
+# The inputs main's cd-docker-publish.yml declares, as of v2.1.50 (checked
+# against origin/main when vergil-containers#990 was written). A test cannot
+# read origin/main: CI's checkout and a worktree mounted into the validation
+# container have no such ref. The prod rebuild calls main's copy, so it may
+# pass only these, and no secret; develop's copy must declare them too.
+MAIN_PUBLISH_INPUTS = {"image-prefix", "no-cache", "ref"}
 
 
-def _evaluate(expression: str, context: dict):
-    """Evaluate a GitHub Actions expression of the shapes these workflows use:
-    dotted names, quoted strings, `true`/`false`, `==`, `&&`, `||` and
-    parentheses. `&&` and `||` return an operand, as in Actions, so a falsy
-    value falls through `||`. A name missing from `context` is ''."""
-    out, pos = [], 0
-    expression = expression.rstrip()
-    while pos < len(expression):
-        match = _EXPR_TOKEN.match(expression, pos)
-        assert match, f"cannot parse {expression[pos:]!r}"
-        token, pos = match.group(1), match.end()
-        if token == "&&":
-            out.append(" and ")
-        elif token == "||":
-            out.append(" or ")
-        elif token in ("==", "(", ")") or token.startswith("'"):
-            out.append(f" {token} ")
-        elif token in ("true", "false"):
-            out.append(f" {token == 'true'} ")
-        else:
-            out.append(f" _v({token!r}) ")
-    return eval("".join(out), {"__builtins__": {}, "_v": lambda name: context.get(name, "")})
+def _comment_above(text: str, marker: str) -> list[str]:
+    """The `#` comment lines directly above the line `marker` starts, joined
+    into one line, for each occurrence of `marker` in `text`."""
+    lines = text.splitlines()
+    blocks = []
+    for index, line in enumerate(lines):
+        if line != marker:
+            continue
+        comment = []
+        for above in reversed(lines[:index]):
+            stripped = above.strip()
+            if not stripped.startswith("#"):
+                break
+            comment.insert(0, stripped.lstrip("#").strip())
+        blocks.append(" ".join(comment))
+    return blocks
 
 
-def _cleanup_workflow() -> dict:
-    return yaml.safe_load((WORKFLOWS / "package-cleanup.yml").read_text())
+@pytest.mark.parametrize(("workflow", "job_id", "packages", "condition"), APP_JOBS, ids=APP_IDS)
+def test_ghcr_jobs_use_app_token(workflow, job_id, packages, condition):
+    doc = yaml.safe_load((WORKFLOWS / workflow).read_text())
+    job = doc["jobs"][job_id]
+    # The App's keys live only in the automation environment.
+    assert job["environment"] == "automation"
+    # GITHUB_TOKEN has no packages access, so it cannot stand in for the App.
+    assert doc["permissions"] == {"contents": "read"}
+    assert "permissions" not in job
+
+    steps = job["steps"]
+    ids = [s.get("id") for s in steps]
+    mint = steps[ids.index("app-token")]
+    check = steps[ids.index("app-token-set")]
+    assert ids.index("app-token-set") == ids.index("app-token") + 1
+    assert mint["uses"] == APP_TOKEN_ACTION
+    assert mint["with"] == {
+        "app-id": "${{ secrets.APP_CLIENT_ID }}",
+        "private-key": "${{ secrets.APP_PRIVATE_KEY }}",
+        "permission-packages": packages,
+    }
+    for step in (mint, check):
+        # Never absorbed: a failed mint or an empty token fails the leg.
+        assert "continue-on-error" not in step
+        assert (_expr(step["if"]) if "if" in step else None) == condition
+    assert check["env"] == {"APP_TOKEN": APP_TOKEN}
+    for token, code in (("", 1), ("app", 0)):
+        result = subprocess.run(
+            ["bash", "-e", "-c", check["run"]],
+            env={**os.environ, "APP_TOKEN": token},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == code, (job_id, token, result.stdout)
+        assert ("::error title=No App token::" in result.stdout) is (code != 0)
+
+    calls = [s for s in steps if str(s.get("uses", "")).startswith(CLEANUP_ACTION)]
+    assert calls, job_id
+    for call in calls:
+        # After the check, and with the App token alone: no `||` fallback.
+        assert steps.index(call) > steps.index(check)
+        assert call["with"]["token"] == APP_TOKEN
+        # A call runs only where the token was minted.
+        if condition is not None:
+            assert _expr(call["if"]) == condition
 
 
-def test_cleanup_app_token_dry_run_is_dry_and_app_only(tmp_path):
-    workflow = _cleanup_workflow()
-    # PyYAML reads the bare key `on` as the boolean True.
-    on = workflow["on"] if "on" in workflow else workflow[True]
-    option = on["workflow_dispatch"]["inputs"]["app-token-dry-run"]
-    assert option["type"] == "boolean"
-    assert option["default"] is False
+def test_no_ghcr_cleanup_token():
+    # The PAT fallback is gone: no workflow reads GHCR_CLEANUP_TOKEN, and no
+    # GHCR call falls back to GITHUB_TOKEN once the App token is in place.
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        assert "GHCR_CLEANUP_TOKEN" not in path.read_text(), path.name
+    for workflow in sorted({w for w, _, _, _ in APP_JOBS}):
+        text = (WORKFLOWS / workflow).read_text()
+        assert "secrets.GITHUB_TOKEN" not in text, workflow
+        assert "github.token" not in text, workflow
+    # The App-token dry run was the proof; every run is an App run now.
+    doc = yaml.safe_load((WORKFLOWS / "package-cleanup.yml").read_text())
+    on = doc["on"] if "on" in doc else doc[True]
+    assert set(on["workflow_dispatch"]["inputs"]) == {"dry_run"}
 
-    secrets = {"secrets.GHCR_CLEANUP_TOKEN": "pat", "secrets.GITHUB_TOKEN": "github"}
-    scheduled = {"github.event_name": "schedule", **secrets}
-    # A scheduled run never mints: the App-token steps are skipped.
-    assert _evaluate(APP_DRY_RUN, scheduled) is False
 
-    for job_id in CLEANUP_JOBS:
-        steps = workflow["jobs"][job_id]["steps"]
-        mint, check = steps[0], steps[1]
-        # Minted first, packages: write only, and never absorbed.
-        assert mint["id"] == "app-token"
-        assert mint["uses"] == APP_TOKEN_ACTION
-        assert _expr(mint["if"]) == APP_DRY_RUN
-        assert mint["with"] == {
-            "app-id": "${{ secrets.APP_CLIENT_ID }}",
-            "private-key": "${{ secrets.APP_PRIVATE_KEY }}",
-            "permission-packages": "write",
-        }
-        assert "continue-on-error" not in mint
-        # Then an empty token fails the leg, so no `||` can fall through.
-        assert check["id"] == "app-token-set"
-        assert _expr(check["if"]) == APP_DRY_RUN
-        assert check["env"] == {"APP_TOKEN": "${{ steps.app-token.outputs.token }}"}
-        assert "continue-on-error" not in check
-        for token, code in (("", 1), ("app", 0)):
-            result = subprocess.run(
-                ["bash", "-e", "-c", check["run"]],
-                env={**os.environ, "APP_TOKEN": token},
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            assert result.returncode == code, (job_id, token, result.stdout)
-            assert ("::error title=No App token::" in result.stdout) is (code != 0)
+@pytest.mark.parametrize(("workflow", "job_id"), REGISTRY_JOBS, ids=REGISTRY_IDS)
+def test_registry_jobs_keep_github_token(workflow, job_id):
+    text = (WORKFLOWS / workflow).read_text()
+    job = yaml.safe_load(text)["jobs"][job_id]
+    assert job["uses"].split("@")[0].endswith(f".github/workflows/{PUBLISH}")
+    # No App path: no secret passed, and no input beyond the publish's own.
+    assert "secrets" not in job
+    assert set(job["with"]) <= MAIN_PUBLISH_INPUTS
+    # The exception is recorded beside the job, with its reason.
+    (comment,) = _comment_above(text, f"  {job_id}:")
+    assert "Identity exception" in comment
+    assert EXCEPTION_REASON in comment
 
-        calls = [s for s in steps if str(s.get("uses", "")).startswith(CLEANUP_ACTION)]
-        assert len(calls) == 2, job_id
-        assert all(steps.index(call) > steps.index(check) for call in calls)
-        for call in calls:
-            token, dry = _expr(call["with"]["token"]), _expr(call["with"]["dry-run"])
-            for dry_run in (False, True):
-                # App-token dry run: always a dry run, always the App token.
-                app = {
-                    "github.event_name": "workflow_dispatch",
-                    "inputs.app-token-dry-run": True,
-                    "inputs.dry_run": dry_run,
-                    "steps.app-token.outputs.token": "app",
-                    **secrets,
-                }
-                assert _evaluate(dry, app) is True, job_id
-                assert _evaluate(token, app) == "app", job_id
-                # A manual run with the input off is as before.
-                manual = {**app, "inputs.app-token-dry-run": False}
-                manual["steps.app-token.outputs.token"] = ""
-                assert _evaluate(dry, manual) is dry_run, job_id
-                assert _evaluate(token, manual) == "pat", job_id
-            # A scheduled run is unchanged: live, with the PAT, else GITHUB_TOKEN.
-            assert _evaluate(dry, scheduled) is False, job_id
-            assert _evaluate(token, scheduled) == "pat", job_id
-            no_pat = {**scheduled, "secrets.GHCR_CLEANUP_TOKEN": ""}
-            assert _evaluate(token, no_pat) == "github", job_id
+
+def test_registry_publish_logs_in_with_github_token():
+    text = (WORKFLOWS / PUBLISH).read_text()
+    doc = yaml.safe_load(text)
+    assert "secrets" not in doc[True]["workflow_call"]
+    assert APP_TOKEN_ACTION.split("@")[0] not in text
+    logins = [
+        step
+        for job in doc["jobs"].values()
+        for step in job.get("steps", [])
+        if str(step.get("uses", "")).startswith("docker/login-action@")
+    ]
+    # One login per push job (the YAML anchors share the build and publish
+    # steps across tiers), each with GITHUB_TOKEN.
+    assert logins
+    for login in logins:
+        assert login["with"]["password"] == "${{ secrets.GITHUB_TOKEN }}"
+    # Each login step, as written (two: the build and publish anchors),
+    # names the exception and its reason.
+    comments = _comment_above(text, "      - name: Log in to GHCR")
+    assert len(comments) == 2
+    for comment in comments:
+        assert "Identity exception" in comment
+        assert EXCEPTION_REASON in comment
+
+
+def test_prod_rebuild_passes_only_what_main_declares():
+    job = _jobs("ops.yml")["nightly-rebuild-prod"]
+    assert job["uses"] == f"vergil-project/vergil-containers/.github/workflows/{PUBLISH}@main"
+    # Passing an input or secret main's copy does not declare is a workflow
+    # error that fails every job in ops.yml.
+    assert "secrets" not in job
+    assert set(job["with"]) <= MAIN_PUBLISH_INPUTS
+    declared = yaml.safe_load((WORKFLOWS / PUBLISH).read_text())[True]["workflow_call"]
+    assert MAIN_PUBLISH_INPUTS <= set(declared["inputs"])

@@ -100,11 +100,10 @@ def _on() -> dict:
     return wf["on"] if "on" in wf else wf[True]
 
 
-# Issue #912: live by default. Only a manual run that asks for a preview is a
-# dry run (either preview input: `dry_run`, or `app-token-dry-run`, which is
-# always a dry run, test_ops_reporting.py); a scheduled run, or a manual run
-# with default inputs, deletes.
-LIVE_DRY_RUN = "${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run == true || inputs.app-token-dry-run == true) }}"
+# Issue #912: live by default. Only a manual run that asks for a preview (the
+# `dry_run` input) is a dry run; a scheduled run, or a manual run with default
+# inputs, deletes.
+LIVE_DRY_RUN = "${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}"
 
 
 def test_manual_run_deletes_unless_a_preview_is_asked_for():

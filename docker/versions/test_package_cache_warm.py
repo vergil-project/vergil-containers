@@ -63,6 +63,8 @@ def test_steps_in_order():
     assert ids_or_names == [
         "touch",
         "Report the cache state",
+        "app-token",
+        "app-token-set",
         "Rebuild the manifest cache (preview only)",
         "verify",
         "Fail if the cache is still cold",
@@ -83,6 +85,9 @@ def test_restores_match_the_action_cache_scheme(step_id):
 def test_touch_always_runs_and_rebuild_only_on_a_miss():
     assert "if" not in _step(step_id="touch")
     assert _step(name="Rebuild the manifest cache (preview only)")["if"] == MISS
+    # The App token is minted only for the rebuild (test_ops_reporting.py).
+    assert _step(step_id="app-token")["if"] == MISS
+    assert _step(step_id="app-token-set")["if"] == MISS
     assert _step(step_id="verify")["if"] == MISS
     assert _step(name="Fail if the cache is still cold")["if"] == (
         f"{MISS} && steps.verify.outputs.cache-matched-key == ''"
@@ -107,7 +112,9 @@ def test_rebuild_uses_the_cleanup_action_version_and_never_deletes():
 
 
 def test_permissions_are_read_only():
-    assert _load(WARM)["permissions"] == {"packages": "read", "contents": "read"}
+    # GITHUB_TOKEN reads only the repository; the rebuild's GHCR calls use an
+    # App token minted with packages: read (test_ops_reporting.py).
+    assert _load(WARM)["permissions"] == {"contents": "read"}
 
 
 def test_concurrency_group_is_its_own():
