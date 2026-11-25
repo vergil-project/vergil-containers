@@ -19,13 +19,15 @@ release in another major raises `MajorVersionError` before anything is written
 
 **Digests in source.** A prebuilt tool in TOOL_DIGESTS (cargo-nextest,
 cargo-deny, hadolint, opentofu, nfpm, trivy, scorecard, uv, yq, actionlint,
-shellcheck, shfmt) also has its per-architecture sha256 pinned in its fragment,
-`ARG <STEM>_SHA256_AMD64=` and `_ARM64=` (epic vergil-project/.github#1165,
-spec §6.3; vergil-containers#945, #974, #994), and the image build verifies
-against those, not against a checksum it downloads. A tool whose release
-publishes no checksum (shellcheck, shfmt) has its digests computed by the
-refresh from the release asset itself, trust on first sight: once pinned, any
-later change to that asset fails the build. Each such fragment pins exactly one tool, so
+shellcheck, shfmt, git-cliff) also has its per-architecture sha256 pinned in its
+fragment, `ARG <STEM>_SHA256_AMD64=` and `_ARM64=` (epic
+vergil-project/.github#1165, spec §6.3; vergil-containers#945, #974, #994,
+#995), and the image build verifies against those, not against a checksum it
+downloads. A tool whose release publishes no SHA-256 has its digests computed
+by the refresh from the release asset itself: shellcheck and shfmt publish no
+checksum at all, so theirs are trusted on first sight (once pinned, any later
+change to that asset fails the build); git-cliff publishes a SHA-512 per
+asset, which the downloaded asset must match first. Each such fragment pins exactly one tool, so
 the refresh's path fence ties each digest to its own tool's version. `--write`
 resolves them from the release's checksum files at the version it writes and
 writes versions and digests together, all or nothing, so a refresh PR shows
@@ -153,9 +155,12 @@ ARCHES = ("AMD64", "ARM64")
 #             file with one column per algorithm, in the order a second file
 #             (`hashes_order_url`) lists them, one name a line; the SHA-256
 #             column is found from that order (parse_checksum_columns).
-#   asset   - no checksum file: the release publishes none, so `checksum_urls`
-#             names the asset itself, which the refresh downloads and hashes
-#             (fetch_asset), trust on first sight (vergil-containers#994).
+#   asset   - no SHA-256 file: `checksum_urls` names the asset itself, which
+#             the refresh downloads and hashes (fetch_asset). With no
+#             `sha512_urls` the release publishes no checksum and the digest is
+#             trusted on first sight (vergil-containers#994); with them, the
+#             asset's SHA-512 must first match the release's per-asset
+#             `<sha512>  <asset>` file (parse_sha512; vergil-containers#995).
 LAYOUTS = ("single", "list", "columns", "asset")
 
 
@@ -168,12 +173,15 @@ class DigestSource:
     asset itself), and `assets` to the asset's file name; both take
     `{version}`, the bare `x.y.z` of the ARG. `layout`
     (one of LAYOUTS) says how the file is laid out; a `columns` source also
-    names `hashes_order_url`, the template of its algorithm order file."""
+    names `hashes_order_url`, the template of its algorithm order file. An
+    `asset` source may name `sha512_urls`, each architecture's per-asset
+    SHA-512 file, which the downloaded asset must match."""
 
     checksum_urls: dict[str, str]
     assets: dict[str, str]
     layout: str = "single"
     hashes_order_url: str | None = None
+    sha512_urls: dict[str, str] | None = None
 
 
 _NEXTEST_DOWNLOAD = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-{version}/"
@@ -191,11 +199,15 @@ def _release_list(checksum_url: str, assets: dict[str, str]) -> DigestSource:
     return DigestSource(checksum_urls={arch: checksum_url for arch in ARCHES}, assets=assets, layout="list")
 
 
-def _release_assets(download: str, assets: dict[str, str]) -> DigestSource:
-    """A DigestSource whose release publishes no checksum: the refresh hashes
-    each architecture's asset, `download` + its name, itself."""
+def _release_assets(download: str, assets: dict[str, str], sha512_suffix: str | None = None) -> DigestSource:
+    """A DigestSource whose release publishes no SHA-256: the refresh hashes
+    each architecture's asset, `download` + its name, itself. With
+    `sha512_suffix`, the release publishes `<asset><suffix>`, a per-asset
+    SHA-512 file the asset must match first."""
+    sha512_urls = None if sha512_suffix is None else {
+        arch: download + asset + sha512_suffix for arch, asset in assets.items()}
     return DigestSource(checksum_urls={arch: download + asset for arch, asset in assets.items()},
-                        assets=assets, layout="asset")
+                        assets=assets, layout="asset", sha512_urls=sha512_urls)
 
 # tool → its DigestSource, for every prebuilt tool whose per-architecture
 # sha256 is pinned in source beside its version (epic vergil-project/.github
@@ -269,6 +281,14 @@ TOOL_DIGESTS = {
     "shfmt": _release_assets(
         "https://github.com/mvdan/sh/releases/download/v{version}/",
         {"AMD64": "shfmt_v{version}_linux_amd64", "ARM64": "shfmt_v{version}_linux_arm64"}),
+    # git-cliff publishes only a `<asset>.sha512` per tarball, `<sha512>  <asset>`:
+    # the refresh checks the tarball against it, then pins the tarball's
+    # SHA-256 (vergil-containers#995).
+    "git-cliff": _release_assets(
+        "https://github.com/orhun/git-cliff/releases/download/v{version}/",
+        {"AMD64": "git-cliff-{version}-x86_64-unknown-linux-gnu.tar.gz",
+         "ARM64": "git-cliff-{version}-aarch64-unknown-linux-gnu.tar.gz"},
+        sha512_suffix=".sha512"),
 }
 
 # A release tag page (`.../releases/tag/<tag>`) or a release asset
@@ -538,6 +558,28 @@ def parse_checksum(where: str, text: str, asset: str) -> str:
     return digest
 
 
+_SHA512_HEX = re.compile(r"^[0-9a-f]{128}$")
+
+
+def parse_sha512(where: str, text: str, asset: str) -> str:
+    """The SHA-512 in a release's per-asset checksum file: one line,
+    `<sha512>  <file>` (a leading `*` on the file, binary mode, is allowed),
+    the file being `asset`. Raises ResolutionError, naming `where`, on
+    anything else."""
+    lines = [line for line in text.splitlines() if line.strip()]
+    if len(lines) != 1:
+        raise ResolutionError(f"{where}: expected one SHA-512 line, got {len(lines)}")
+    parts = lines[0].split()
+    if len(parts) != 2:
+        raise ResolutionError(f"{where}: expected '<sha512>  <file>', got {lines[0]!r}")
+    digest = parts[0].lower()
+    if not _SHA512_HEX.match(digest):
+        raise ResolutionError(f"{where}: {parts[0]!r} is not a SHA-512 hex digest")
+    if parts[1].lstrip("*") != asset:
+        raise ResolutionError(f"{where}: the SHA-512 is for {parts[1]!r}, not {asset!r}")
+    return digest
+
+
 def _hex_digest(where: str, value: str) -> str:
     digest = value.lower()
     if not _SHA256_HEX.match(digest):
@@ -600,6 +642,8 @@ def resolve_digests(tool: str, version: str, fetch=_curl_text, fetch_asset=_curl
     order_template = source.hashes_order_url
     if (source.layout == "columns") != (order_template is not None):
         raise ResolutionError(f"{tool}: a hash order file goes with the columns layout, and only with it")
+    if source.sha512_urls is not None and source.layout != "asset":
+        raise ResolutionError(f"{tool}: a SHA-512 file goes with the asset layout only")
     bodies: dict[str, str] = {}
 
     def body(where: str, url: str) -> str:
@@ -623,6 +667,15 @@ def resolve_digests(tool: str, version: str, fetch=_curl_text, fetch_asset=_curl
                 hashes = fetch_asset(url)
             except ResolutionError as exc:
                 raise ResolutionError(f"{where}: no asset: {exc}") from exc
+            if source.sha512_urls is not None:
+                if arch not in source.sha512_urls:
+                    raise ResolutionError(f"{where}: TOOL_DIGESTS names no SHA-512 file for this architecture")
+                sha512_url = source.sha512_urls[arch].format(version=version)
+                published = parse_sha512(f"{where} ({sha512_url})", body(where, sha512_url), asset)
+                if hashes.get("sha512", "").lower() != published:
+                    raise ResolutionError(
+                        f"{where}: {url} does not match the release's SHA-512 ({sha512_url}): "
+                        "the asset may have been tampered with; nothing is pinned")
             digests[arch] = _hex_digest(f"{where} ({url})", hashes.get("sha256", ""))
             continue
         text = body(where, url)

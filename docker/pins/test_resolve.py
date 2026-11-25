@@ -310,6 +310,8 @@ NEXTEST_TRIPLES = {"AMD64": "x86_64-unknown-linux-gnu", "ARM64": "aarch64-unknow
 HEX_A = "a" * 64
 HEX_B = "b" * 64
 HEX_C = "c" * 64
+SHA512_D = "d" * 128
+SHA512_E = "e" * 128
 
 
 def _nextest_sums(digests, version="0.9.153"):
@@ -362,7 +364,9 @@ def _sums(tool, version, digests):
         elif source.layout == "list":
             bodies[url] = bodies.get(url, f"{HEX_C}  decoy-{asset}.sbom.json\n") + f"{digest}  {asset}\n"
         elif source.layout == "asset":
-            bodies[url] = {"sha256": digest, "sha512": "0" * 128}
+            bodies[url] = {"sha256": digest, "sha512": SHA512_D}
+            if source.sha512_urls is not None:
+                bodies[source.sha512_urls[arch].format(version=version)] = f"{SHA512_D}  {asset}\n"
         else:
             bodies[url] = f"{digest}  {asset}\n"
     return bodies
@@ -403,7 +407,7 @@ def _nextest_fragment(tmp_path, version="0.9.152", amd64=HEX_A, arm64=HEX_B, ext
 # The prebuilt tools whose digests are pinned in source (epic
 # vergil-project/.github#1165, vergil-containers#945).
 DIGEST_TOOLS = {"cargo-nextest", "cargo-deny", "hadolint", "opentofu", "nfpm", "trivy", "scorecard", "uv", "yq",
-                "actionlint", "shellcheck", "shfmt"}
+                "actionlint", "shellcheck", "shfmt", "git-cliff"}
 
 
 def test_tool_digests_cover_only_registered_tools():
@@ -758,6 +762,7 @@ def test_resolve_digests_refuses_an_inconsistent_source(monkeypatch):
         (rl.DigestSource(base.checksum_urls, base.assets, layout="tsv"), "unknown checksum layout"),
         (rl.DigestSource(base.checksum_urls, base.assets, layout="columns"), "hash order file"),
         (rl.DigestSource(base.checksum_urls, base.assets, hashes_order_url="x"), "hash order file"),
+        (rl.DigestSource(base.checksum_urls, base.assets, sha512_urls=base.checksum_urls), "SHA-512 file"),
     ]:
         monkeypatch.setitem(rl.TOOL_DIGESTS, "uv", bad)
         with pytest.raises(rl.ResolutionError, match=match):
@@ -946,3 +951,57 @@ def test_curl_hashes_refuses_an_empty_asset(monkeypatch):
     monkeypatch.setattr(rl.subprocess, "run", run)
     with pytest.raises(rl.ResolutionError, match="the asset is empty"):
         rl._curl_hashes("https://x/shfmt")
+
+
+# --- git-cliff: a SHA-512 per asset, a SHA-256 pinned (vergil-containers#995) --
+
+GC_DOWNLOAD = "https://github.com/orhun/git-cliff/releases/download/v2.14.2/"
+GC_ASSETS = {"AMD64": "git-cliff-2.14.2-x86_64-unknown-linux-gnu.tar.gz",
+             "ARM64": "git-cliff-2.14.2-aarch64-unknown-linux-gnu.tar.gz"}
+
+
+def _gc_bodies(sha512_files=None):
+    """git-cliff 2.14.2's assets (their digests) and `.sha512` files, keyed by
+    URL; `sha512_files` overrides a `.sha512` body by architecture."""
+    bodies = {}
+    for arch, sha256 in (("AMD64", HEX_A), ("ARM64", HEX_B)):
+        asset = GC_ASSETS[arch]
+        bodies[GC_DOWNLOAD + asset] = {"sha256": sha256, "sha512": SHA512_D}
+        bodies[f"{GC_DOWNLOAD}{asset}.sha512"] = (sha512_files or {}).get(arch, f"{SHA512_D}  {asset}\n")
+    return bodies
+
+
+def _gc_resolve(bodies):
+    return rl.resolve_digests("git-cliff", "2.14.2", fetch=_text_fetch(bodies), fetch_asset=_asset_fetch(bodies))
+
+
+def test_git_cliff_pins_the_sha256_of_an_asset_matching_its_sha512():
+    assert _gc_resolve(_gc_bodies()) == {"AMD64": HEX_A, "ARM64": HEX_B}
+    # Upstream's own `.sha512` lines, in upper case, are accepted.
+    upper = {arch: f"{SHA512_D.upper()}  {GC_ASSETS[arch]}\n" for arch in GC_ASSETS}
+    assert _gc_resolve(_gc_bodies(upper)) == {"AMD64": HEX_A, "ARM64": HEX_B}
+
+
+def test_git_cliff_refuses_an_asset_that_does_not_match_its_sha512():
+    bodies = _gc_bodies({"ARM64": f"{SHA512_E}  {GC_ASSETS['ARM64']}\n"})
+    with pytest.raises(rl.ResolutionError, match=r"git-cliff 2\.14\.2 ARM64: .*does not match the release's SHA-512"):
+        _gc_resolve(bodies)
+
+
+def test_git_cliff_without_its_sha512_file_raises():
+    bodies = _gc_bodies()
+    del bodies[f"{GC_DOWNLOAD}{GC_ASSETS['AMD64']}.sha512"]
+    with pytest.raises(rl.ResolutionError, match=r"git-cliff 2\.14\.2 AMD64: no checksum"):
+        _gc_resolve(bodies)
+
+
+@pytest.mark.parametrize("body,match", [
+    ("", "expected one SHA-512 line, got 0"),
+    (f"{SHA512_D}\n", "expected '<sha512>  <file>'"),
+    (f"{HEX_A}  git-cliff-2.14.2-x86_64-unknown-linux-gnu.tar.gz\n", "is not a SHA-512"),
+    (f"{SHA512_D}  git-cliff-2.14.2-aarch64-unknown-linux-gnu.tar.gz\n", "the SHA-512 is for"),
+])
+def test_git_cliff_malformed_sha512_file_raises(body, match):
+    with pytest.raises(rl.ResolutionError, match=re.escape(match)) as exc:
+        _gc_resolve(_gc_bodies({"AMD64": body}))
+    assert "git-cliff 2.14.2 AMD64" in str(exc.value)
