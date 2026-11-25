@@ -26,19 +26,18 @@ name: Package cleanup
 # `dry_run` input to true for a preview that only logs what would be deleted.
 # No repository variable arms or disarms it; what runs is what git records.
 #
-# Token: both deleting jobs make every GHCR call with GHCR_CLEANUP_TOKEN, a
-# personal access token (classic) with `delete:packages`. Identity exception
-# (epic vergil-project/.github#1494): the Packages API accepts only a personal
-# access token (classic), not an App installation token, so these jobs cannot
-# run as the org automation App. Run 45635208056 tried: every delete came back
-# "wasn't found" and the one untag came back 403 (vergil-containers#1050).
-# There is no fallback to any other token: an empty token fails the leg (the
-# `Cleanup token is set` step). The token can write, so it lives only in the
-# `automation` environment (epic vergil-project/.github#1384), which both
-# deleting jobs declare to read it, as `report` does for the App's keys. Only
-# develop and main may deploy to the environment. This workflow's
-# GITHUB_TOKEN only reads the repository (and, in `verify-deletes`, the run's
-# job logs).
+# Token: every GHCR call in this workflow uses GITHUB_TOKEN, with
+# `packages: write` on the two deleting jobs and `packages: read` on
+# `verify-deletes`. Identity exception (epic vergil-project/.github#1494):
+# GitHub Packages does not accept App installation tokens, and GITHUB_TOKEN
+# is the documented token for a workflow repository's own packages, so these
+# jobs cannot run as the org automation App. Run 45635208056 tried the App:
+# every delete came back "wasn't found" and the one untag came back 403
+# (vergil-containers#1050). Run 45056026741 made 10,400 deletes with
+# GITHUB_TOKEN and none came back "wasn't found" (vergil-containers#1054).
+# No personal access token and no fallback chain: GITHUB_TOKEN is always
+# present, so no job reads an `automation` environment secret but `report`,
+# which reads the App's keys.
 #
 # Rate limits (issue #652): every leg fetches every manifest of its package
 # from ghcr.io, and on a cold manifest cache that is ~25k registry GETs per
@@ -95,8 +94,8 @@ on:
         default: false
 
 permissions:
-  # GITHUB_TOKEN only reads: every GHCR call uses GHCR_CLEANUP_TOKEN (see
-  # the header).
+  # Read-only by default; each job that calls GHCR asks for the packages
+  # access it needs (see the header).
   contents: read
 
 # One run at a time, so two runs never delete at once: a reap leg of one run
@@ -116,7 +115,9 @@ permissions:
 # so that week's deletions wait, unreported, for the next scheduled run. A
 # dispatch from main deletes, but its result goes unreported: the report
 # action reports only from refs/heads/develop. A dispatch from any other
-# branch runs no job: the `automation` environment refuses it.
+# branch runs that branch's legs, which delete unless it is a preview, and
+# its delete check, but not `report`: the `automation` environment refuses
+# that job, so the run fails and nothing is reported.
 concurrency:
   group: package-cleanup
   cancel-in-progress: false
@@ -130,7 +131,9 @@ jobs:
   cleanup:
     name: "cleanup: ${{ matrix.package }}"
     runs-on: ubuntu-24.04
-    environment: automation
+    # Deletes through the Packages API, and checks out nothing.
+    permissions:
+      packages: write
     strategy:
       fail-fast: false
       # Rate-limit cap (issue #652): keep in step with reap-aliases.
@@ -159,19 +162,6 @@ jobs:
           - prod-pkg-rhel
           # END generated: versions (cleanup)
     steps:
-      # Stops the leg before any GHCR call when the token is missing, since
-      # no other token stands in for it (see the header). Keep this step
-      # identical to reap-aliases'.
-      - name: Cleanup token is set
-        id: cleanup-token-set
-        env:
-          CLEANUP_TOKEN: ${{ secrets.GHCR_CLEANUP_TOKEN }}
-        run: |
-          if [ -z "${CLEANUP_TOKEN}" ]; then
-            echo "::error title=No cleanup token::GHCR_CLEANUP_TOKEN is empty or not readable here (it lives only in the automation environment); refusing to call GHCR, since no other token can delete these packages."
-            exit 1
-          fi
-
       - name: Prune untagged versions (attempt 1)
         id: attempt1
         # A failure here is retried once below after a back-off; the leg's
@@ -181,10 +171,10 @@ jobs:
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          # Identity exception: the Packages API accepts only a personal
-          # access token (classic), not an App installation token (see the
-          # header).
-          token: ${{ secrets.GHCR_CLEANUP_TOKEN }}
+          # Identity exception: GitHub Packages does not accept App
+          # installation tokens, and GITHUB_TOKEN is the documented token for
+          # a workflow repository's own packages (see the header).
+          token: ${{ secrets.GITHUB_TOKEN }}
           delete-untagged: true
           # Same age floor as attempt 2 below (documented there).
           older-than: 24 hours
@@ -206,10 +196,10 @@ jobs:
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          # Identity exception: the Packages API accepts only a personal
-          # access token (classic), not an App installation token (see the
-          # header).
-          token: ${{ secrets.GHCR_CLEANUP_TOKEN }}
+          # Identity exception: GitHub Packages does not accept App
+          # installation tokens, and GITHUB_TOKEN is the documented token for
+          # a workflow repository's own packages (see the header).
+          token: ${{ secrets.GITHUB_TOKEN }}
           delete-untagged: true
           # The publish pipeline pushes each per-arch image by digest, untagged,
           # and only tags it (through the stitched multi-arch candidate) once
@@ -243,7 +233,9 @@ jobs:
     needs: cleanup
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
-    environment: automation
+    # Same access as `cleanup` (documented there).
+    permissions:
+      packages: write
     strategy:
       fail-fast: false
       # Rate-limit cap (issue #652): keep in step with cleanup.
@@ -291,17 +283,6 @@ jobs:
             older_than: "7 days"
             # END generated: versions (reap)
     steps:
-      # Same token check as `cleanup` (documented there).
-      - name: Cleanup token is set
-        id: cleanup-token-set
-        env:
-          CLEANUP_TOKEN: ${{ secrets.GHCR_CLEANUP_TOKEN }}
-        run: |
-          if [ -z "${CLEANUP_TOKEN}" ]; then
-            echo "::error title=No cleanup token::GHCR_CLEANUP_TOKEN is empty or not readable here (it lives only in the automation environment); refusing to call GHCR, since no other token can delete these packages."
-            exit 1
-          fi
-
       - name: Reap datestamp aliases past the retention window (attempt 1)
         id: attempt1
         # A failure here is retried once below after a back-off; the leg's
@@ -311,10 +292,10 @@ jobs:
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          # Identity exception: the Packages API accepts only a personal
-          # access token (classic), not an App installation token (see the
-          # header).
-          token: ${{ secrets.GHCR_CLEANUP_TOKEN }}
+          # Identity exception: GitHub Packages does not accept App
+          # installation tokens, and GITHUB_TOKEN is the documented token for
+          # a workflow repository's own packages (see the header).
+          token: ${{ secrets.GITHUB_TOKEN }}
           # Same inputs as attempt 2 below, where each one is documented.
           older-than: ${{ matrix.older_than }}
           use-regex: true
@@ -336,10 +317,10 @@ jobs:
         with:
           owner: vergil-project
           packages: ${{ matrix.package }}
-          # Identity exception: the Packages API accepts only a personal
-          # access token (classic), not an App installation token (see the
-          # header).
-          token: ${{ secrets.GHCR_CLEANUP_TOKEN }}
+          # Identity exception: GitHub Packages does not accept App
+          # installation tokens, and GITHUB_TOKEN is the documented token for
+          # a workflow repository's own packages (see the header).
+          token: ${{ secrets.GITHUB_TOKEN }}
           # Only images older than the window are eligible; in-window aliases
           # (and every rolling tag) are left for repoint rollback.
           older-than: ${{ matrix.older_than }}
@@ -376,18 +357,17 @@ jobs:
 
   # Checks that every leg's deletes happened (issue #1051; see the header).
   # It deletes nothing. It runs after a failed leg too, since that leg's
-  # deletes may have failed silently as well. It reads GHCR_CLEANUP_TOKEN, to
-  # ask the Packages API whether a version answered "not found" is still
-  # there, so it declares the `automation` environment; its GITHUB_TOKEN reads
-  # the run's job logs and the repository, nothing else.
+  # deletes may have failed silently as well. Its GITHUB_TOKEN reads the
+  # repository, the run's job logs, and the packages, to ask the Packages API
+  # whether a version answered "not found" is still there; nothing else.
   verify-deletes:
     needs: [cleanup, reap-aliases]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
-    environment: automation
     permissions:
       contents: read
       actions: read
+      packages: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -396,8 +376,7 @@ jobs:
 
       - name: Check that every leg's deletes happened
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-          CLEANUP_TOKEN: ${{ secrets.GHCR_CLEANUP_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PACKAGE_OWNER: vergil-project
         run: python3 docker/versions/cleanup_verify.py
 

@@ -195,10 +195,11 @@ def test_agent_audit_runs_after_the_config_job():
 # human's scope change on #990 splits the jobs: those that log in to the
 # registry keep GITHUB_TOKEN, each a recorded exception. Of the jobs that use
 # only the Packages API, the cache warm only reads and runs as the App, with
-# no fallback. The cleanup jobs delete, which the Packages API allows only a
-# personal access token (classic): run 45635208056 on the App token deleted
-# nothing (vergil-containers#1050), so they use GHCR_CLEANUP_TOKEN alone, a
-# recorded exception too.
+# no fallback. The cleanup jobs delete, which GitHub Packages does not let an
+# App installation token do: run 45635208056 on the App token deleted nothing
+# (vergil-containers#1050). They use GITHUB_TOKEN alone, the documented token
+# for a workflow repository's own packages, which deleted 10,400 versions in
+# run 45056026741 (vergil-containers#1054): a recorded exception too.
 APP_TOKEN_ACTION = "actions/create-github-app-token@v3"
 CLEANUP_ACTION = "dataaxiom/ghcr-cleanup-action@"
 APP_TOKEN = "${{ steps.app-token.outputs.token }}"
@@ -215,10 +216,11 @@ EXCEPTION_REASON = (
 )
 CLEANUP_WORKFLOW = "package-cleanup.yml"
 CLEANUP_JOBS = ("cleanup", "reap-aliases")
-CLEANUP_TOKEN = "${{ secrets.GHCR_CLEANUP_TOKEN }}"
+CLEANUP_TOKEN = "${{ secrets.GITHUB_TOKEN }}"
 CLEANUP_EXCEPTION_REASON = (
-    "the Packages API accepts only a personal access token (classic), "
-    "not an App installation token"
+    "GitHub Packages does not accept App installation tokens, and "
+    "GITHUB_TOKEN is the documented token for a workflow repository's own "
+    "packages"
 )
 PUBLISH = "cd-docker-publish.yml"
 # (workflow, job) of every caller of the registry-push workflow.
@@ -303,67 +305,61 @@ def test_ghcr_jobs_use_app_token(workflow, job_id, packages, condition):
 
 
 @pytest.mark.parametrize("job_id", CLEANUP_JOBS)
-def test_cleanup_legs_use_only_the_cleanup_token(job_id):
+def test_cleanup_legs_use_only_github_token(job_id):
     doc = yaml.safe_load((WORKFLOWS / CLEANUP_WORKFLOW).read_text())
     job = doc["jobs"][job_id]
-    # The token lives only in the automation environment.
-    assert job["environment"] == "automation"
-    # GITHUB_TOKEN has no packages access, so it cannot stand in for the PAT.
+    # GITHUB_TOKEN is always present, so the leg reads no environment secret
+    # and needs no token check (vergil-containers#1054).
+    assert "environment" not in job
+    # Read-only by default; the deleting jobs alone get packages: write, and
+    # nothing else, since they check out nothing.
     assert doc["permissions"] == {"contents": "read"}
-    assert "permissions" not in job
+    assert job["permissions"] == {"packages": "write"}
 
     steps = job["steps"]
-    # No App token: the Packages API refuses it for deletes.
+    # No App token: GitHub Packages refuses it for deletes.
     assert not any(str(s.get("uses", "")).startswith(APP_TOKEN_ACTION.split("@")[0]) for s in steps)
-    check = steps[0]
-    assert check["id"] == "cleanup-token-set"
-    # Never absorbed, and checked on every run: an empty token fails the leg.
-    assert "continue-on-error" not in check
-    assert "if" not in check
-    assert check["env"] == {"CLEANUP_TOKEN": CLEANUP_TOKEN}
-    for token, code in (("", 1), ("pat", 0)):
-        result = subprocess.run(
-            ["bash", "-e", "-c", check["run"]],
-            env={**os.environ, "CLEANUP_TOKEN": token},
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert result.returncode == code, (job_id, token, result.stdout)
-        assert ("::error title=No cleanup token::" in result.stdout) is (code != 0)
+    assert not any("token-set" in str(s.get("id", "")) for s in steps)
+    assert "secrets.GHCR_" not in yaml.safe_dump(job)
 
     calls = [s for s in steps if str(s.get("uses", "")).startswith(CLEANUP_ACTION)]
     assert len(calls) == 2, job_id
     for call in calls:
-        # After the check, and with the PAT alone: no `||` fallback.
-        assert steps.index(call) > steps.index(check)
+        # GITHUB_TOKEN alone: no `||` fallback chain.
         assert call["with"]["token"] == CLEANUP_TOKEN
 
 
-def test_cleanup_token_is_read_only_by_package_cleanup():
-    # No other workflow reads the PAT, and package-cleanup never falls back
-    # to GITHUB_TOKEN or the App for a GHCR call.
+def test_package_cleanup_reads_no_other_token():
+    # The personal access token of vergil-containers#1050 never existed as a
+    # secret; no workflow names it. Spelled in two halves so that this file
+    # does not name it either.
+    retired = "GHCR_" + "CLEANUP_TOKEN"
     for path in sorted(WORKFLOWS.glob("*.yml")):
-        if path.name != CLEANUP_WORKFLOW:
-            assert "GHCR_CLEANUP_TOKEN" not in path.read_text(), path.name
+        assert retired not in path.read_text(), path.name
     text = (WORKFLOWS / CLEANUP_WORKFLOW).read_text()
-    assert "secrets.GITHUB_TOKEN" not in text
-    assert "steps.app-token" not in text
-    # GITHUB_TOKEN appears once: the delete check reads the job logs with it
-    # (vergil-containers#1051), and makes its GHCR calls with the PAT.
-    assert text.count("github.token") == 1
-    assert "github.token" not in yaml.safe_dump(
-        {job: yaml.safe_load(text)["jobs"][job] for job in CLEANUP_JOBS}
-    )
-    # The App-token dry run was the proof; it is not coming back.
     doc = yaml.safe_load(text)
+    # Every GHCR call, the delete check's listing included, uses GITHUB_TOKEN,
+    # and `report` alone reads a secret: the App's keys.
+    assert "steps.app-token" not in text
+    assert "github.token" not in text
+    secrets = {
+        job_id: set(re.findall(r"secrets\.([A-Za-z0-9_]+)", yaml.safe_dump(job)))
+        for job_id, job in doc["jobs"].items()
+    }
+    assert secrets == {
+        "cleanup": {"GITHUB_TOKEN"},
+        "reap-aliases": {"GITHUB_TOKEN"},
+        "verify-deletes": {"GITHUB_TOKEN"},
+        "report": {"APP_CLIENT_ID", "APP_PRIVATE_KEY"},
+    }
+    # The App-token dry run was the proof; it is not coming back.
     on = doc["on"] if "on" in doc else doc[True]
     assert set(on["workflow_dispatch"]["inputs"]) == {"dry_run"}
     # The cache warm stays on the App (test_ghcr_jobs_use_app_token): it only
     # reads, and test_package_cache_warm.py pins that it never deletes.
 
 
-def test_cleanup_token_is_a_recorded_identity_exception():
+def test_package_cleanup_is_a_recorded_identity_exception():
     text = (WORKFLOWS / CLEANUP_WORKFLOW).read_text()
     # Beside each of the four GHCR calls' token, with its reason.
     comments = _comment_above(text, f"          token: {CLEANUP_TOKEN}")
@@ -371,13 +367,15 @@ def test_cleanup_token_is_a_recorded_identity_exception():
     for comment in comments:
         assert "Identity exception" in comment
         assert CLEANUP_EXCEPTION_REASON in comment
-    # And in the header, with the run that showed it.
+    # And in the header, with the runs that showed it: the App deleting
+    # nothing, and GITHUB_TOKEN deleting.
     header = " ".join(
         line.lstrip("#").strip() for line in text.split("\non:\n", 1)[0].splitlines()
     )
     assert "Identity exception" in header
     assert CLEANUP_EXCEPTION_REASON in header
     assert "45635208056" in header
+    assert "45056026741" in header
 
 
 @pytest.mark.parametrize(("workflow", "job_id"), REGISTRY_JOBS, ids=REGISTRY_IDS)

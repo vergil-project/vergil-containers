@@ -132,9 +132,10 @@ def _job(job_id, name, conclusion="success"):
     return {"id": job_id, "name": name, "status": "completed", "conclusion": conclusion}
 
 
-def _main(monkeypatch, capsys, jobs, logs, active):
+def _main(monkeypatch, capsys, jobs, logs, active, token="github-token"):
     """Run main() against a stubbed API: `jobs` the run's jobs, `logs` each
-    job's log by id, `active` each package's active version ids."""
+    job's log by id, `active` each package's active version ids, `token` the
+    GITHUB_TOKEN."""
     calls = []
 
     def fake(url, token, *, retry_404=False):
@@ -157,10 +158,11 @@ def _main(monkeypatch, capsys, jobs, logs, active):
         "GITHUB_RUN_ID": "7",
         "GITHUB_RUN_ATTEMPT": "1",
         "PACKAGE_OWNER": "vergil-project",
-        "GITHUB_TOKEN": "actions-token",
-        "CLEANUP_TOKEN": "pat",
+        "GITHUB_TOKEN": token,
     }.items():
         monkeypatch.setenv(key, value)
+    # The PAT of vergil-containers#1050 is gone; nothing may read it.
+    monkeypatch.delenv("CLEANUP_TOKEN", raising=False)
     code = cleanup_verify.main()
     return code, capsys.readouterr().out, calls
 
@@ -181,7 +183,10 @@ def test_main_fails_the_run_whose_deletes_were_all_not_found(monkeypatch, capsys
     # The log storage is fetched without the token, which stays on the API.
     assert (f"{STORAGE}/1", None) in calls
     assert all(token is None for url, token in calls if url.startswith(STORAGE))
-    assert all(token == "pat" for url, token in calls if "/packages/" in url)
+    # Every API call, the Packages API's included, uses GITHUB_TOKEN
+    # (vergil-containers#1054).
+    assert any("/packages/" in url for url, _ in calls)
+    assert all(token == "github-token" for url, token in calls if url.startswith(API))
 
 
 def test_main_passes_a_run_whose_deletes_happened(monkeypatch, capsys):
@@ -190,6 +195,13 @@ def test_main_passes_a_run_whose_deletes_happened(monkeypatch, capsys):
     # 303 was raced and is gone; 301 is listed but was never answered "not found".
     assert code == 0, out
     assert "::error" not in out
+
+
+def test_main_fails_without_a_token(monkeypatch, capsys):
+    code, out, calls = _main(monkeypatch, capsys, [_job(1, "cleanup: dev-base")], {1: NORMAL}, {}, token="")
+    assert code == 1
+    assert "::error title=Delete check misconfigured::GITHUB_TOKEN must be set." in out
+    assert calls == []
 
 
 def test_main_fails_when_it_finds_no_leg(monkeypatch, capsys):
@@ -223,16 +235,18 @@ def test_verify_job_runs_the_check_after_every_leg():
     jobs = yaml.safe_load(WORKFLOW.read_text())["jobs"]
     job = jobs["verify-deletes"]
     assert sorted(job["needs"]) == ["cleanup", "reap-aliases"]
-    # It runs after failed legs too, and reads the cleanup token from the
-    # environment it lives in; its GITHUB_TOKEN reads the logs and nothing else.
+    # It runs after failed legs too. Its GITHUB_TOKEN reads the logs and the
+    # packages, nothing else, and it reads no environment secret
+    # (vergil-containers#1054).
     assert job["if"] == "${{ !cancelled() }}"
-    assert job["environment"] == "automation"
-    assert job["permissions"] == {"contents": "read", "actions": "read"}
+    assert "environment" not in job
+    assert job["permissions"] == {"contents": "read", "actions": "read", "packages": "read"}
     step = job["steps"][-1]
     assert step["run"].strip() == "python3 docker/versions/cleanup_verify.py"
-    assert step["env"]["CLEANUP_TOKEN"] == "${{ secrets.GHCR_CLEANUP_TOKEN }}"
-    assert step["env"]["GITHUB_TOKEN"] == "${{ github.token }}"
-    assert step["env"]["PACKAGE_OWNER"] == "vergil-project"
+    assert step["env"] == {
+        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
+        "PACKAGE_OWNER": "vergil-project",
+    }
     assert "continue-on-error" not in step
     # The report counts it with the legs.
     assert "verify-deletes" in jobs["report"]["needs"]

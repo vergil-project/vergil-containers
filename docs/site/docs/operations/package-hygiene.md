@@ -222,29 +222,35 @@ To check that the cache is warm, read a cleanup leg's log: the line
 
 ### Token
 
-The `cleanup` and `reap-aliases` jobs make every GHCR call with
-`GHCR_CLEANUP_TOKEN`, a personal access token (classic) with
-`delete:packages`, whose owner can delete these packages. It is an
-identity exception to the rule that unattended jobs run as the org automation
-App (epic
+The `cleanup` and `reap-aliases` jobs make every GHCR call with the
+workflow's own `GITHUB_TOKEN`, with `packages: write` and no other
+permission, and `verify-deletes` lists a package's versions with it, with
+`packages: read`. It is an identity exception to the rule that unattended jobs
+run as the org automation App (epic
 [vergil-project/.github#1494](https://github.com/vergil-project/.github/issues/1494)):
-the Packages API accepts only a personal access token (classic), not an App
-installation token. The cleanup ran as the App once, in run
+GitHub Packages does not accept App installation tokens, and `GITHUB_TOKEN` is
+the
+[documented token](https://docs.github.com/en/packages/learn-github-packages/about-permissions-for-github-packages)
+for a workflow repository's own packages. The cleanup ran as the App once, in
+run
 [45635208056](https://github.com/vergil-project/vergil-containers/actions/runs/45635208056):
 every delete came back "wasn't found" and the one untag came back 403, so
 nothing was deleted
 ([#1050](https://github.com/vergil-project/vergil-containers/issues/1050)).
+Run
+[45056026741](https://github.com/vergil-project/vergil-containers/actions/runs/45056026741)
+deleted 10,400 versions with `GITHUB_TOKEN`, none of them answered "wasn't
+found"
+([#1054](https://github.com/vergil-project/vergil-containers/issues/1054)).
 
-Nothing falls back to `GITHUB_TOKEN` or the App: if `GHCR_CLEANUP_TOKEN` is
-empty, the leg fails before any GHCR call. The token can write, so it lives
-only in the `automation` environment, never as a repository or organization
-secret. Only `develop` and `main` may deploy to the environment, and both jobs
-declare it to read the token, as `verify-deletes` does to list a package's
-versions. The workflow's own `GITHUB_TOKEN` only reads the repository, and in
-`verify-deletes` the run's job logs. It could not replace the token either: it can delete only when the
-repository holds the admin role on the package, and these packages grant the
-repository the write role (see
-[Architecture](../architecture/index.md#ghcr-package-access-grants)).
+No personal access token is used, and nothing falls back to another token.
+`GITHUB_TOKEN` is always present, so the legs read no environment secret and declare no
+environment; only the `report` job declares the `automation` environment, to
+read the App's keys. The token reaches a package only while the package grants
+this repository access (see
+[Architecture](../architecture/index.md#ghcr-package-access-grants)). A
+package that does not answers its deletes 404, which the action logs as
+"wasn't found", and `verify-deletes` then fails the run.
 
 A cache-warm leg that has to rebuild its cache runs as the App: it mints an
 App token with `packages: read`, and fails if the token cannot be minted or
