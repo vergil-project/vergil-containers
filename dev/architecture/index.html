@@ -3917,6 +3917,16 @@ for the scans and the evidence it uploads.</p>
 <h3 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h3>
 <p>The workflow authenticates with <code>GITHUB_TOKEN</code> using <code>packages: write</code>
 permission. No personal access token or additional secret is needed.</p>
+<p>This is a recorded exception to the rule that unattended jobs run as the org
+automation App (epic
+<a href="https://github.com/vergil-project/.github/issues/1494">vergil-project/.github#1494</a>):
+GHCR rejects App installation tokens for registry pushes (<code>installation not
+allowed to Write organization package</code>), as the GHCR proof
+(<a href="https://github.com/vergil-project/.github/issues/1516">vergil-project/.github#1516</a>)
+found. The CD publish and both nightly rebuilds therefore keep <code>GITHUB_TOKEN</code>.
+The package cleanup and cache-warm workflows, which use only the Packages API,
+run as the App (see
+<a href="../operations/package-hygiene/#token">Package Hygiene</a>).</p>
 <h3 id="ghcr-package-access-grants">GHCR package access grants<a class="headerlink" href="#ghcr-package-access-grants" title="Permanent link">&para;</a></h3>
 <p>Each <code>dev-*</code> and <code>prod-*</code> package on GHCR must explicitly grant this
 repository write access. The packages were originally created by the

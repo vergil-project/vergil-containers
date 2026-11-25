@@ -3711,15 +3711,6 @@ preview is the explicit exception:</p>
 <li><strong>Preview on demand:</strong> the same manual run with "Preview only" <strong>checked</strong>
   (the <code>dry_run</code> input set to <code>true</code>) only logs what it <em>would</em> delete. Use it
   before a change to the delete rules, and review the logs.</li>
-<li><strong>App-token dry run:</strong> the same manual run with "App-token dry run" checked
-  (the <code>app-token-dry-run</code> input set to <code>true</code>) is always a preview, whatever
-  "Preview only" says. Both jobs mint a token as the org automation App, with
-  <code>packages: write</code> only, and make every GHCR call with it. Nothing falls back
-  to <code>GHCR_CLEANUP_TOKEN</code> or <code>GITHUB_TOKEN</code>: if the token cannot be minted,
-  each leg fails. It checks that the App can list the packages the jobs prune
-  (epic
-  <a href="https://github.com/vergil-project/.github/issues/1494">vergil-project/.github#1494</a>).
-  Scheduled runs and the other manual runs do not use the App token.</li>
 </ul>
 <p>A third job, <code>report</code>, deletes nothing. It reports the run to the org's
 operations queue (epic
@@ -3776,7 +3767,8 @@ restore downloads from the GitHub cache service and sends no requests to
 ghcr.io.</p>
 <p>If a package has no entry at all, the leg logs a <em>Manifest cache cold</em> warning
 and rebuilds the cache with a preview-only run of the action that selects
-nothing for deletion. It then checks the entry exists and fails if it does not.
+nothing for deletion, as the org automation App (see <a href="#token">Token</a>). It then
+checks the entry exists and fails if it does not.
 That failure means the workflow's cache path or key no longer matches what the
 action writes, which can happen when the action is upgraded. The workflow
 copies the action's cache scheme, so the two workflows must pin the same action
@@ -3784,13 +3776,22 @@ version; <code>docker/versions/test_package_cache_warm.py</code> enforces it.</p
 <p>To check that the cache is warm, read a cleanup leg's log: the line
 <code>manifest cache: N/M digests served from cache (P%)</code> should show more than 0%.</p>
 <h3 id="token">Token<a class="headerlink" href="#token" title="Permanent link">&para;</a></h3>
-<p>The default <code>GITHUB_TOKEN</code> can list and preview. If real deletion of org-owned
-package versions fails with a permissions error, provision a PAT with
-<code>delete:packages</code> and store it as <code>GHCR_CLEANUP_TOKEN</code> in the <code>automation</code>
-environment, never as a repository or organization secret: the token can write,
-so it lives only in that environment, which only <code>develop</code> and <code>main</code> may deploy
-to. The <code>cleanup</code> and <code>reap-aliases</code> jobs declare the environment to read it;
-each prefers it when present and falls back to <code>GITHUB_TOKEN</code> otherwise.</p>
+<p>Both workflows call GHCR as the org automation App (epic
+<a href="https://github.com/vergil-project/.github/issues/1494">vergil-project/.github#1494</a>).
+Each <code>cleanup</code> and <code>reap-aliases</code> leg mints an App token with
+<code>packages: write</code>, and a cache-warm leg that has to rebuild its cache mints one
+with <code>packages: read</code>; every GHCR call uses that token. Nothing falls back to
+<code>GITHUB_TOKEN</code> or a personal access token: if the token cannot be minted, or
+comes back empty, the leg fails. The App's keys live only in the <code>automation</code>
+environment, which only <code>develop</code> and <code>main</code> may deploy to, and each of these
+jobs declares the environment to read them. The workflows' own <code>GITHUB_TOKEN</code>
+only reads the repository.</p>
+<p>The GHCR proof
+(<a href="https://github.com/vergil-project/.github/issues/1516">vergil-project/.github#1516</a>)
+showed that the App can work these packages through the Packages API. It cannot
+push images through the registry, so the publish and nightly rebuild jobs still
+log in with <code>GITHUB_TOKEN</code> (see
+<a href="../../architecture/#authentication">Architecture</a>).</p>
 
 
 
