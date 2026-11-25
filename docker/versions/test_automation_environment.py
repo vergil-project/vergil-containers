@@ -6,9 +6,7 @@ secret that can write or act (`GHCR_CLEANUP_TOKEN`) live only in the repo's
 `automation` deployment environment, which only `develop` and `main` may
 deploy to. A job reads an environment secret only when it declares the
 environment, so every job that reads one itself declares `environment:
-automation`. The publish workflow's push jobs read the App keys only on an
-App login to GHCR (vergil-containers#1029), so they declare the environment
-only then, in the one conditional form `_declares_the_environment` accepts.
+automation`.
 
 A job that calls a reusable workflow cannot declare an environment, so it
 hands the callee its secrets: all of them with `secrets: inherit`, or the ones
@@ -62,14 +60,6 @@ READERS = [
     ("package-cleanup.yml", "report"),
 ]
 
-# (workflow, job) of every job that reads the App keys only when an input asks
-# for it, and declares the environment only then (vergil-containers#1029): the
-# publish workflow's push jobs, on an App login to GHCR.
-APP_LOGIN_ENVIRONMENT = "${{ inputs.app-registry-login && 'automation' || '' }}"
-CONDITIONAL_READERS = [
-    ("cd-docker-publish.yml", f"{kind}-{tier}") for tier in range(3) for kind in ("build", "publish")
-]
-
 # (workflow, job, reusable workflow) of every caller of an App-key workflow.
 INHERITORS = [
     ("cd.yml", "docs", "cd-docs.yml"),
@@ -97,11 +87,6 @@ APP_KEY_READ = re.compile(_NAMED.format(names="|".join(APP_KEYS)))
 # A read of the whole secrets context, as in toJSON(secrets).
 WHOLE_SECRETS = re.compile(r"\bsecrets\b(?!\s*[.\[])")
 EXPRESSION = re.compile(r"\$\{\{(.*?)\}\}", re.DOTALL)
-# The one conditional form a key-reading job may use: the automation
-# environment when the condition holds, none otherwise.
-CONDITIONAL_ENVIRONMENT = re.compile(
-    r"\$\{\{\s*(?P<condition>[^'\"|]+?)\s*&&\s*'" + ENVIRONMENT + r"'\s*\|\|\s*''\s*\}\}"
-)
 
 
 def _expressions(node, key=None):
@@ -131,11 +116,7 @@ def _declares_the_environment(job: dict) -> bool:
     environment = job.get("environment")
     if isinstance(environment, dict):
         environment = environment.get("name")
-    if environment == ENVIRONMENT:
-        return True
-    return isinstance(environment, str) and bool(
-        CONDITIONAL_ENVIRONMENT.fullmatch(environment)
-    )
+    return environment == ENVIRONMENT
 
 
 def _map_refusal(root, job: dict) -> str | None:
@@ -186,15 +167,6 @@ def test_reader_declares_the_automation_environment(workflow, job_id):
     assert job.get("environment") == ENVIRONMENT, f"{workflow}:{job_id}"
 
 
-@pytest.mark.parametrize(
-    ("workflow", "job_id"), CONDITIONAL_READERS, ids=[f"{w}:{j}" for w, j in CONDITIONAL_READERS]
-)
-def test_conditional_reader_declares_the_environment_with_its_input(workflow, job_id):
-    job = _jobs(workflow)[job_id]
-    assert job.get("environment") == APP_LOGIN_ENVIRONMENT, f"{workflow}:{job_id}"
-    assert _declares_the_environment(job), f"{workflow}:{job_id}"
-
-
 def test_every_reader_is_listed():
     # A job that reads a write-capable secret without the environment sees it
     # unset once the secret lives only there, so none may be missed.
@@ -205,7 +177,7 @@ def test_every_reader_is_listed():
                 continue
             if SECRET_REF.search(yaml.safe_dump(job)):
                 found.add((workflow, job_id))
-    assert found == set(READERS) | set(CONDITIONAL_READERS)
+    assert found == set(READERS)
 
 
 def test_only_readers_declare_the_environment():
@@ -215,7 +187,7 @@ def test_only_readers_declare_the_environment():
         for job_id, job in _jobs(workflow).items()
         if "environment" in job
     }
-    assert declaring == set(READERS) | set(CONDITIONAL_READERS)
+    assert declaring == set(READERS)
 
 
 @pytest.mark.parametrize(
@@ -264,7 +236,6 @@ APP_KEY_MAP = {
     "APP_CLIENT_ID": "${{ secrets.APP_CLIENT_ID }}",
     "APP_PRIVATE_KEY": "${{ secrets.APP_PRIVATE_KEY }}",
 }
-CONDITIONAL = "\"${{ inputs.app-registry-login && 'automation' || '' }}\""
 
 
 def _caller(uses="./.github/workflows/callee.yml", secrets=None) -> dict:
@@ -284,10 +255,6 @@ def test_map_allowed_by_name_to_a_local_environment_callee(tmp_path):
 def test_map_of_one_app_key_allowed(tmp_path):
     caller = _caller(secrets={"APP_CLIENT_ID": "${{ secrets.APP_CLIENT_ID }}"})
     assert _map_refusal(_with_callee(tmp_path), caller) is None
-
-
-def test_map_allowed_to_a_conditional_environment_callee(tmp_path):
-    assert _map_refusal(_with_callee(tmp_path, CONDITIONAL), _caller()) is None
 
 
 def test_map_without_a_write_secret_is_not_checked(tmp_path):
@@ -368,11 +335,9 @@ def test_map_to_another_workflow_or_ref_refused(tmp_path, uses):
     "environment",
     [
         "other",
-        "\"${{ inputs.app-registry-login && 'other' || '' }}\"",
-        "\"${{ inputs.app-registry-login || 'automation' }}\"",
         "{name: other}",
     ],
-    ids=["other", "conditional-other", "not-the-one-if-form", "mapping-other"],
+    ids=["other", "mapping-other"],
 )
 def test_map_to_a_reader_in_another_environment_refused(tmp_path, environment):
     assert _map_refusal(_with_callee(tmp_path, environment), _caller())
