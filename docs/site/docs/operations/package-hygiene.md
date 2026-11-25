@@ -117,14 +117,43 @@ preview is the explicit exception:
   (the `dry_run` input set to `true`) only logs what it *would* delete. Use it
   before a change to the delete rules, and review the logs.
 
-A third job, `report`, deletes nothing. It reports the run to the org's
-operations queue (epic
+A third job, `verify-deletes`, checks that the deletes happened (see
+[Delete check](#delete-check)). A fourth, `report`, reports the run to the
+org's operations queue (epic
 [vergil-project/.github#1494](https://github.com/vergil-project/.github/issues/1494))
-under the name `package-cleanup`, taking both jobs as one result: any failed
-leg makes the run a failure. A failure opens, or comments on, the issue
+under the name `package-cleanup`, taking the three jobs as one result: any
+failed leg, or a failed delete check, makes the run a failure. Neither of
+these two jobs deletes anything. A failure opens, or comments on, the issue
 `ops: vergil-containers / package-cleanup failing`, and the first green run
 after it records the recovery. `package-cache-warm.yml` reports the same way,
 as `package-cache-warm`. Only runs on `develop` report.
+
+### Delete check
+
+The action treats a 404 on a version delete as success: it logs *"wasn't
+found while trying to delete it; treating as already deleted"* and goes on.
+GHCR answers 404 when the token may not delete the package, so a leg whose
+every delete failed used to end green: in run
+[45635208056](https://github.com/vergil-project/vergil-containers/actions/runs/45635208056)
+every delete failed that way
+([#1051](https://github.com/vergil-project/vergil-containers/issues/1051)).
+
+The action has no outputs that count its deletes, and a step cannot read its
+own job's log while the job runs. So the `verify-deletes` job runs once every
+leg has finished, failed legs included. It downloads each leg's log through the
+Actions API and runs `docker/versions/cleanup_verify.py`, which fails the job,
+with an error naming the leg and the package, when:
+
+- every delete the leg set out to make was answered "not found": the token
+  could not delete; or
+- a version answered "not found" is still among the package's active versions:
+  that delete did not happen either.
+
+A version answered "not found" that is really gone was deleted by something
+else between the action's listing and its delete, such as an overlapping run
+(see [Job ordering](#job-ordering)), and passes. A preview makes no deletes,
+so it always passes. The job retries a transient API failure with a back-off;
+one that persists fails the check.
 
 ### Rate limits
 
@@ -210,8 +239,9 @@ Nothing falls back to `GITHUB_TOKEN` or the App: if `GHCR_CLEANUP_TOKEN` is
 empty, the leg fails before any GHCR call. The token can write, so it lives
 only in the `automation` environment, never as a repository or organization
 secret. Only `develop` and `main` may deploy to the environment, and both jobs
-declare it to read the token. The workflow's own `GITHUB_TOKEN` only reads the
-repository. It could not replace the token either: it can delete only when the
+declare it to read the token, as `verify-deletes` does to list a package's
+versions. The workflow's own `GITHUB_TOKEN` only reads the repository, and in
+`verify-deletes` the run's job logs. It could not replace the token either: it can delete only when the
 repository holds the admin role on the package, and these packages grant the
 repository the write role (see
 [Architecture](../architecture/index.md#ghcr-package-access-grants)).

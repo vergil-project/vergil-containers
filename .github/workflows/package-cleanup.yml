@@ -1,8 +1,9 @@
 name: Package cleanup
 
 # Two deleting jobs, both live: they delete for real unless a manual run asks
-# for a preview. A third, `report`, deletes nothing: it reports the run's
-# result to the org's operations queue.
+# for a preview. A third, `verify-deletes`, checks that their deletes
+# happened, and a fourth, `report`, reports the run's result to the org's
+# operations queue. Neither of those deletes anything.
 #
 # `cleanup` prunes the untagged version cruft the publish pipeline mints on
 # every run (per-arch child manifests, provenance attestations, superseded
@@ -36,7 +37,8 @@ name: Package cleanup
 # `automation` environment (epic vergil-project/.github#1384), which both
 # deleting jobs declare to read it, as `report` does for the App's keys. Only
 # develop and main may deploy to the environment. This workflow's
-# GITHUB_TOKEN only reads the repository.
+# GITHUB_TOKEN only reads the repository (and, in `verify-deletes`, the run's
+# job logs).
 #
 # Rate limits (issue #652): every leg fetches every manifest of its package
 # from ghcr.io, and on a cold manifest cache that is ~25k registry GETs per
@@ -64,6 +66,18 @@ name: Package cleanup
 # the matching leg of another job, so the whole job waits. It also runs after
 # a failed cleanup leg (`!cancelled()`): a reap does not depend on the prune
 # succeeding, and skipping it would let the aliases pile up.
+#
+# Delete check (issue #1051): the action treats a 404 on a version delete as
+# success ("wasn't found while trying to delete it; treating as already
+# deleted"), and a token that cannot delete gets exactly that 404, so in run
+# 45635208056 every delete failed and the legs still passed. The action has
+# no outputs, and a step cannot read its own job's log while the job runs, so
+# `verify-deletes` runs once every leg has finished. It downloads each leg's
+# log through the Actions API (its GITHUB_TOKEN has `actions: read` for
+# that), and docker/versions/cleanup_verify.py fails it, with an error naming
+# the leg and the package, when every delete of a leg was answered "not
+# found", or when a version answered "not found" is still present. A delete
+# raced by another deletion (issue #911) leaves the version gone, and passes.
 #
 # The cold start itself is avoided by package-cache-warm.yml, which restores
 # the action's manifest cache mid-week so GitHub's 7-day eviction never empties
@@ -360,9 +374,36 @@ jobs:
           echo "::error title=Package cleanup failed twice::ghcr-cleanup-action failed on both attempts for ${PACKAGE}, with a ${RETRY_BACKOFF_BASE_SECONDS}-$(( RETRY_BACKOFF_BASE_SECONDS + RETRY_BACKOFF_JITTER_SECONDS ))s back-off between them. If the attempt logs show 'Request failed with status code 429', ghcr.io is still rate limiting this token after the action's per-request retries (which honour Retry-After) and this workflow's retry: re-run the failed legs later, or lower max-parallel. If they show 'Request failed with status code 404', it is not a rate limit: a manifest was deleted while the action read it, so another deletion was working on the same package at the same time (as cleanup and reap-aliases once did, issue #911); check for an overlapping run before re-running. Any other error is not a rate limit either; read the attempt logs (issue #652)."
           exit 1
 
-  # Report package-cleanup, both its jobs as one result, to the org's
-  # operations queue (epic vergil-project/.github#1494): any failed leg makes
-  # it a failure, else any cancelled one a cancel. The ops-report action opens
+  # Checks that every leg's deletes happened (issue #1051; see the header).
+  # It deletes nothing. It runs after a failed leg too, since that leg's
+  # deletes may have failed silently as well. It reads GHCR_CLEANUP_TOKEN, to
+  # ask the Packages API whether a version answered "not found" is still
+  # there, so it declares the `automation` environment; its GITHUB_TOKEN reads
+  # the run's job logs and the repository, nothing else.
+  verify-deletes:
+    needs: [cleanup, reap-aliases]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    environment: automation
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Check that every leg's deletes happened
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLEANUP_TOKEN: ${{ secrets.GHCR_CLEANUP_TOKEN }}
+          PACKAGE_OWNER: vergil-project
+        run: python3 docker/versions/cleanup_verify.py
+
+  # Report package-cleanup, its three jobs as one result, to the org's
+  # operations queue (epic vergil-project/.github#1494): any failed leg, or a
+  # failed delete check, makes it a failure, else any cancelled one a cancel. The ops-report action opens
   # or comments on the job's ops issue when it fails or is cancelled, and
   # records the first green run after one; it never closes an issue. It runs
   # whatever the jobs did (always()), and reports only from refs/heads/develop,
@@ -373,7 +414,7 @@ jobs:
   # layer's inputs in its env.
   # docker/versions/test_ops_reporting.py pins this layout.
   report:
-    needs: [cleanup, reap-aliases]
+    needs: [cleanup, reap-aliases, verify-deletes]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     environment: automation
@@ -393,6 +434,6 @@ jobs:
           VRG_AUTOMATION_APP: ${{ vars.VRG_AUTOMATION_APP }}
         with:
           job: package-cleanup
-          results: ${{ needs.cleanup.result }},${{ needs.reap-aliases.result }}
+          results: ${{ needs.cleanup.result }},${{ needs.reap-aliases.result }},${{ needs.verify-deletes.result }}
           app-client-id: ${{ secrets.APP_CLIENT_ID }}
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
