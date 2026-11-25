@@ -135,8 +135,7 @@ def test_dry_run_only_for_a_manual_preview(job, step_id):
 def test_steps_are_attempt_backoff_retry_report_in_order(job):
     ids_or_names = [s.get("id", s["name"]) for s in _steps(job)]
     assert ids_or_names == [
-        "app-token",
-        "app-token-set",
+        "cleanup-token-set",
         "attempt1",
         "Back off before retrying",
         "attempt2",

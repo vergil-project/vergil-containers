@@ -193,20 +193,35 @@ To check that the cache is warm, read a cleanup leg's log: the line
 
 ### Token
 
-Both workflows call GHCR as the org automation App (epic
-[vergil-project/.github#1494](https://github.com/vergil-project/.github/issues/1494)).
-Each `cleanup` and `reap-aliases` leg mints an App token with
-`packages: write`, and a cache-warm leg that has to rebuild its cache mints one
-with `packages: read`; every GHCR call uses that token. Nothing falls back to
-`GITHUB_TOKEN` or a personal access token: if the token cannot be minted, or
-comes back empty, the leg fails. The App's keys live only in the `automation`
-environment, which only `develop` and `main` may deploy to, and each of these
-jobs declares the environment to read them. The workflows' own `GITHUB_TOKEN`
-only reads the repository.
+The `cleanup` and `reap-aliases` jobs make every GHCR call with
+`GHCR_CLEANUP_TOKEN`, a personal access token (classic) with
+`delete:packages`, whose owner can delete these packages. It is an
+identity exception to the rule that unattended jobs run as the org automation
+App (epic
+[vergil-project/.github#1494](https://github.com/vergil-project/.github/issues/1494)):
+the Packages API accepts only a personal access token (classic), not an App
+installation token. The cleanup ran as the App once, in run
+[45635208056](https://github.com/vergil-project/vergil-containers/actions/runs/45635208056):
+every delete came back "wasn't found" and the one untag came back 403, so
+nothing was deleted
+([#1050](https://github.com/vergil-project/vergil-containers/issues/1050)).
 
-The GHCR proof
+Nothing falls back to `GITHUB_TOKEN` or the App: if `GHCR_CLEANUP_TOKEN` is
+empty, the leg fails before any GHCR call. The token can write, so it lives
+only in the `automation` environment, never as a repository or organization
+secret. Only `develop` and `main` may deploy to the environment, and both jobs
+declare it to read the token. The workflow's own `GITHUB_TOKEN` only reads the
+repository. It could not replace the token either: it can delete only when the
+repository holds the admin role on the package, and these packages grant the
+repository the write role (see
+[Architecture](../architecture/index.md#ghcr-package-access-grants)).
+
+A cache-warm leg that has to rebuild its cache runs as the App: it mints an
+App token with `packages: read`, and fails if the token cannot be minted or
+comes back empty. That works because the rebuild only reads: it is a preview
+that never deletes or untags. The GHCR proof
 ([vergil-project/.github#1516](https://github.com/vergil-project/.github/issues/1516))
-showed that the App can work these packages through the Packages API. It cannot
+showed that the App can read these packages through the Packages API. It cannot
 push images through the registry, so the publish and nightly rebuild jobs still
 log in with `GITHUB_TOKEN` (see
 [Architecture](../architecture/index.md#authentication)).
